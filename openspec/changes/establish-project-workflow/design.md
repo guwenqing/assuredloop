@@ -42,7 +42,7 @@ The Epic owner is accountable for the closeout Task; Architect is a staffing exa
 
 ### 3. Native delivery checklist and GitHub operational work
 
-Retain the native `tasks.md` artifact and `- [ ] X.Y ...` syntax. Each checkbox carries stable delivery scope, its verification obligation, and a GitHub Issue link. Several bounded checklist steps can belong to one implementation Issue; there is no one-checkbox/one-Issue requirement. The Issue links back to the relevant numbered plan item and specific requirement/design basis, adding operational context rather than duplicating the formal task body.
+Retain the native `tasks.md` artifact and `- [ ] X.Y ...` syntax. Each checkbox carries stable delivery scope and its verification obligation, and resolves to a GitHub Issue through its own link or an unambiguous work-package heading link. Several bounded checklist steps can belong to one implementation Issue; there is no one-checkbox/one-Issue requirement. The Issue links back to the relevant numbered plan items and specific requirement/design basis, adding operational context rather than duplicating the formal task body.
 
 | Content | Authority | Update point |
 | --- | --- | --- |
@@ -68,11 +68,13 @@ The minimum record vocabulary is:
 | Record | Required relationship data | Conditional data |
 | --- | --- | --- |
 | Incoming Request | No pre-triage block required | Triage adds its route rationale and next work context |
-| Routed work Issue | `activity`, `request`, `basis` | `change`, `plan_items`, `prior_work`, `no_spec_reason`, split rationale where applicable |
+| Routed work Issue | `activity`, `request`, `basis` | `change`, `plan_items`, `depends_on`, `prior_work`, `no_spec_reason`, split rationale where applicable |
 | Work PR | `issues`, `change` when applicable, `basis` | `plan_items`, `no_spec_reason` |
 | Evidence comment | `head`, `scope`, `result`, evidence references | reviewer/producer session declarations for independent review; command and exit result for executed checks |
 
 `activity` names the applicable work guidance (planning, research, delivery or closeout), not a mandatory human role or a change-risk level. Request/category comes from the configured GitHub label; do not duplicate ticket state or assignee in the JSON. `request` and `issues` use repository-qualified GitHub references. `basis` and `plan_items` resolve to explicit repo revisions and paths, with requirement/decision heading or task number where relevant. For no-Spec work, request context still exists and `no_spec_reason` explains the exemption; an empty list alone is not sufficient. `change` identifies the active native change, not a copied Proposal body. Later work can reference an archived delivery by an immutable file/PR reference without editing it.
+
+Use qualified `owner/repository#number` strings for Issue references, immutable GitHub blob URLs for `basis`, and `plan_items` entries with `revision`, repo-relative `path` and numbered `items`. `depends_on` lists prerequisite work references. Creating and reviewing the plan only requires those records to exist with clear scope; execution/closeout applies the appropriate prerequisite-delivery checks. These are relationship fields, not duplicate copies of their state.
 
 A task gets its current owner from the GitHub assignment or an explicit named responsibility in its body when a bot account does not exist. Assignment is mutable operational data. The fixture/record schema requires that responsibility be discoverable at handoff; it does not falsely authenticate a model identity.
 
@@ -88,7 +90,7 @@ Proposed surfaces, to be implemented rather than claimed available now:
 
 - `inspect`: produce a focused review packet from a work Issue or PR.
 - `check`: validate applicable structured records, links, revision identity, task evidence and status consistency; a closeout mode adds complete-change/baseline coverage.
-- `setup`: explicitly selected local adoption, with a preview of files/configuration to add or change. No automatic push, GitHub settings change or account setup.
+- `init`: explicitly selected project adoption, with a preview of files/configuration to add or change. No automatic push, GitHub settings change or account setup.
 
 `inspect` and `check` are read-only. They cannot edit labels, close Issues, merge PRs, run commands embedded in a ticket, fetch arbitrary URLs, execute repo code, or silently repair an artifact. GitHub writes stay explicit operations through the relevant Skill and authorized tool. Fetch only the selected repo and explicit permitted reference scope; missing cross-repo access remains a visible limitation. File resolution stays within the selected repo/revision and rejects traversal or external symlink targets.
 
@@ -113,7 +115,11 @@ Implementation layout (proposed files, not existing implementation):
 | `.assuredloop/config.json` | This consumer repo's project policy and repository binding, not a shipped target default |
 | `openspec/` and GitHub work records | This consumer's actual goals, plans, implementation work and evidence |
 
-Setup deploys reusable assets at a pinned version into the explicitly selected target and generates target-specific discovery/configuration only after a preview. It preserves native/user-owned files and fails on unapproved conflicts. A small root README points to usage and the formal Specs; it is not another copy of requirements. This repo's self-adoption uses the same path as a different target, without a hardcoded self-hosting mode. A cross-target fixture changes repository identity, directory, Issue numbers and label mapping and verifies correct context, links and unchanged source assets.
+Distribute through a normal versioned npm package with a `bin` entry, an explicit package-files allowlist and the assets above. npm installs the runtime into its package location (global, one-shot execution cache or pinned project dependency); `init` generates only target-specific configuration and Skill discovery files after a preview. It does not copy the source repository or inject framework Specs into consumer Specs. Preserve native/user-owned files and fail on unapproved conflicts. Running a toolkit version that disagrees with the target's pin requires an explicit compatible selection or upgrade, not silent rebinding.
+
+Use [npm's bin/package metadata](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#bin) and [npm pack](https://docs.npmjs.com/cli/v11/commands/npm-pack/) rather than a custom package manager. The package allowlist includes runtime, schemas, parameterized templates, reusable Skill sources and generated contract assets, but excludes this consumer's config, active/archived change history, credentials, test-run logs and local work. Test the actual tarball installation and CLI from a different directory without the source checkout. The package name/scope and registry account are release settings to confirm before actual publication; this plan authorizes building/testing the distributable, not registry writes or access changes. Existing `private: true` is not removed merely to make a planning check pass.
+
+A small root README points to usage and the formal Specs; it is not another copy of requirements. This repo's self-adoption uses the same installation/init path as a different target, without a hardcoded self-hosting mode. A cross-target fixture changes repository identity, directory, Issue numbers and label mapping and verifies correct context, links and unchanged source assets.
 
 Validation takes the accepted policy revision as a separate input from the candidate revision. A change cannot weaken the very rule used to judge itself by changing candidate schema/config. For initial bootstrap, explicitly record the reviewed planning basis. After activation, resolve the accepted policy basis from the recorded activation/delivery history. Candidate schema conformance is an additional test, not a replacement for the existing agreement.
 
@@ -156,6 +162,7 @@ For this release, current Specs mean the integrated contract of completed change
 3. Use native sync guidance to apply all intended adds, modifications, removals and renames to current Specs, preserving unaffected contracts and links. Do not just copy delta files with operation headings into the baseline.
 4. Run native current-Spec validation and inspect the baseline diff against every delta. Mechanical checks report coverage/shape and unresolved references; independent AI review checks the actual meaning and preservation of unaffected behavior.
 5. Prepare the archive in the same closeout candidate only after synchronization is verified. Preserve the original delta at the source revision and the archived files for review; the candidate's archive move is not a completed operational claim before merge.
+   For the framework's own release, regenerate the packaged workflow contracts from that synchronized canonical revision, verify content equality and version/source metadata, and replace the self-adoption bootstrap binding with the delivered contract package. Pack/install validation must resolve the new contracts without the active-change path. These are release outputs of this consumer project, not a requirement to package every adopting project's business Specs.
 6. Review the entire closeout PR, including aggregate acceptance evidence, baseline changes and archive move. Run the applicable pre-merge checks explicitly now, and through configured automation when a later change installs it. A sync/archive PR is not exempt.
 7. If base or relevant work evidence changes, refresh integration and affected checks/review. After authorized merge, confirm the merged baseline and archive result. Close the closeout Task, then the parent Epic if its full agreed outcome is satisfied.
 

@@ -70,6 +70,8 @@ All executable tooling scripts authored for this extension SHALL run on Node.js,
 
 An adopting project SHALL have access to the pinned framework's workflow contracts independently of its own product requirements. Framework contracts SHALL NOT be injected into the consumer's current specification baseline, and their packaged copies SHALL remain derived from an identified canonical revision rather than become another authored rule source.
 
+The toolkit SHALL be distributable as a versioned npm package with a Node.js CLI and explicit project initialization. An installed package SHALL contain the runtime, schemas, templates, reusable Skill sources and identified framework contracts needed for adoption without cloning the source repo. Initialization SHALL write only the agreed target configuration/discovery artifacts and SHALL preserve the consumer's own work. Packed artifacts SHALL exclude consumer instance configuration, project change history, credentials and execution logs.
+
 #### Scenario: One person coordinates multiple work categories
 - **WHEN** a project uses one coordinator instead of dedicated PM and Architect bots
 - **THEN** the Skills remain usable, while planning/implementation assignment and producer/reviewer separation remain explicit
@@ -89,3 +91,7 @@ An adopting project SHALL have access to the pinned framework's workflow contrac
 #### Scenario: Consumer checks its own product change
 - **WHEN** a consumer uses an installed framework version without the original source checkout
 - **THEN** guidance resolves the framework rules from that pinned installation and the consumer's requirements from its own OpenSpec context, without adding the framework's product Specs to the consumer baseline
+
+#### Scenario: Packed CLI initializes an unrelated project
+- **WHEN** the packed npm artifact is installed and invoked against a new consumer fixture
+- **THEN** its CLI can initialize and inspect that target using the packaged assets and explicit bindings, without copying AssuredLoop's own project records or requiring its source checkout
