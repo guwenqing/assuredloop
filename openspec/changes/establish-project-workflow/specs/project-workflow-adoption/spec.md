@@ -66,6 +66,8 @@ Adoption verification SHALL exercise the major supported work categories using o
 
 The minimum SHALL support self-use in one repo with explicit project policy and extension points. Policy SHALL distinguish project choices from repository bindings without requiring multiple repos or bot scheduling in this release. Users SHALL be able to assign the same work categories to different people or agents while preserving ownership and review independence. Setup SHALL make the active obligations and deferred automation visible and SHALL NOT require an authoritative database.
 
+All executable tooling scripts authored for this extension SHALL run on Node.js, matching the upstream tool's runtime. Reusable scripts, Skills and templates SHALL resolve the target's identity, paths, Issue references and configurable conventions from explicit inputs, target configuration or native OpenSpec context. AssuredLoop Base's own consumer data SHALL NOT be baked into reusable behavior. Installed guidance SHALL use resolved target references or explicit placeholders and SHALL NOT treat the framework source repository as the consumer's project. Missing required bindings SHALL produce a clear setup/context error rather than a fallback to this repo's data.
+
 #### Scenario: One person coordinates multiple work categories
 - **WHEN** a project uses one coordinator instead of dedicated PM and Architect bots
 - **THEN** the Skills remain usable, while planning/implementation assignment and producer/reviewer separation remain explicit
@@ -73,3 +75,11 @@ The minimum SHALL support self-use in one repo with explicit project policy and 
 #### Scenario: A project wants stricter behavior
 - **WHEN** the project proposes stronger local workflow obligations
 - **THEN** those obligations enter the same traced change and validation process instead of silently changing inherited instructions
+
+#### Scenario: A different repository adopts the workflow
+- **WHEN** a target has a different directory, GitHub identity, Issue numbers and configured label names from AssuredLoop Base
+- **THEN** the same scripts and Skills operate on that target through its bindings without source edits, copied source-project work data or unintended access to the framework's Issues
+
+#### Scenario: Target binding is incomplete
+- **WHEN** a work operation lacks the required target context
+- **THEN** it reports the missing binding and does not guess this project's repository, paths or Issue identifiers

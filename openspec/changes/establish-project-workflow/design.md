@@ -80,7 +80,7 @@ Single-source split: Specs own behavior, JSON Schema owns field/type shape, and 
 
 ### 5. Small local tools and explicit trust boundaries
 
-Implement a Node.js ESM CLI using the standard library for filesystem, Git subprocesses and JSON. Use native OpenSpec CLI JSON/status/instructions/validation for OpenSpec artifacts, not a new parser. Use `gh api` to fetch GitHub records and native parent/sub-issue relations; paginate and report unavailable input. The only planned additional validation dependency is a pinned direct Ajv 8 version for standard JSON Schema, selected and checked for release age before installation. Do not rely on an undeclared transitive dependency. [Ajv documents schema-based JSON validation](https://ajv.js.org/guide/getting-started.html).
+Implement a Node.js ESM CLI using the standard library for filesystem, Git subprocesses and JSON. All executable scripts maintained by this extension, including setup, validation, generation and test helpers, use Node.js; do not add Python or shell-script implementations of the extension. Declarative configuration and documented invocations of native tools are not another runtime. Use native OpenSpec CLI JSON/status/instructions/validation for OpenSpec artifacts, not a new parser. Use `gh api` to fetch GitHub records and native parent/sub-issue relations; paginate and report unavailable input. The only planned additional validation dependency is a pinned direct Ajv 8 version for standard JSON Schema, selected and checked for release age before installation. Do not rely on an undeclared transitive dependency. [Ajv documents schema-based JSON validation](https://ajv.js.org/guide/getting-started.html).
 
 Proposed surfaces, to be implemented rather than claimed available now:
 
@@ -91,6 +91,22 @@ Proposed surfaces, to be implemented rather than claimed available now:
 `inspect` and `check` are read-only. They cannot edit labels, close Issues, merge PRs, run commands embedded in a ticket, fetch arbitrary URLs, execute repo code, or silently repair an artifact. GitHub writes stay explicit operations through the relevant Skill and authorized tool. Fetch only the selected repo and explicit permitted reference scope; missing cross-repo access remains a visible limitation. File resolution stays within the selected repo/revision and rejects traversal or external symlink targets.
 
 Use one `.assuredloop/config.json` with distinct `project` policy and `repository` binding sections. Project configuration selects the workflow contracts and optional extensions; repository binding identifies the GitHub repository and local OpenSpec context. No multi-repo service, mirrored authoritative database or fixed bot topology is needed. Inspectable configuration and entry-point help are part of setup acceptance.
+
+The framework and the consumer have separate roots. The selected target root, its configuration and native OpenSpec context determine all work-data lookups. The framework's source/install directory is used only for versioned runtime assets. A missing target binding is an error, never an invitation to use this checkout's remote, user home, Issue numbers or plan. Generic Skills reference target-resolved contract locations and variable names; shipped templates use placeholders such as `{{repository}}` and `{{change}}`, rendered only from explicit validated context. Unresolved placeholders block a handoff artifact. Do not copy this repo's actual configuration, source requests, changes, credentials or activation records into an adopting project.
+
+Implementation layout (proposed files, not existing implementation):
+
+| Location | Ownership |
+| --- | --- |
+| `src/` | Reusable Node.js CLI, native-tool adapters, checks and template/setup helpers |
+| `schemas/` and `templates/` | Reusable field contracts and parameterized Issue/PR/evidence templates |
+| `.agents/skills/assuredloop-*/` | Authored reusable work-category guidance, separate from upstream-generated Skills |
+| `.claude/skills/assuredloop-*/` | Generated discoverable copies from that same authored guidance; checked for drift |
+| `test/` | Sanitized fixtures and Node.js tests, with distinct framework and consumer roots |
+| `.assuredloop/config.json` | This consumer repo's project policy and repository binding, not a shipped target default |
+| `openspec/` and GitHub work records | This consumer's actual goals, plans, implementation work and evidence |
+
+Setup deploys reusable assets at a pinned version into the explicitly selected target and generates target-specific discovery/configuration only after a preview. It preserves native/user-owned files and fails on unapproved conflicts. A small root README points to usage and the formal Specs; it is not another copy of requirements. This repo's self-adoption uses the same path as a different target, without a hardcoded self-hosting mode. A cross-target fixture changes repository identity, directory, Issue numbers and label mapping and verifies correct context, links and unchanged source assets.
 
 Validation takes the accepted policy revision as a separate input from the candidate revision. A change cannot weaken the very rule used to judge itself by changing candidate schema/config. For initial bootstrap, explicitly record the reviewed planning basis. After activation, resolve the accepted policy basis from the recorded activation/delivery history. Candidate schema conformance is an additional test, not a replacement for the existing agreement.
 
@@ -118,7 +134,7 @@ The following are initial work groupings, not a permanent count or role chart:
 | Review work | Read-only assessment of original basis and actual artifacts; report findings with revision/scope | Native validate; artifact coherence guidance; native verify where applicable to implementation |
 | Close a change | Aggregate acceptance; synchronize and verify Specs; closeout PR; archive and completion | Sync-specs and archive-change |
 
-Each explains required inputs, record meanings, decisions, allowed edits, expected outputs, references, checks, failure handling and handoff. Issue splitting and checkbox reconciliation are conventions within these workflows, not separate Skills. Keep project-authored instructions separate from generated native Skills; project guidance invokes native workflows and adds declared obligations. Support both Codex and Claude discovery using one authored source and mechanically checked generated copies/links, not independently edited versions.
+Each explains required inputs, record meanings, decisions, allowed edits, expected outputs, references, checks, failure handling and handoff. Issue splitting and checkbox reconciliation are conventions within these workflows, not separate Skills. Keep project-authored instructions separate from generated native Skills; project guidance invokes native workflows and adds declared obligations. Support both Codex and Claude discovery using the authored Codex-path source and mechanically checked generated Claude-path copies, not independently edited versions. Repo-specific context is resolved when using the guidance, not copied from this project's task data into reusable instructions.
 
 No Skill promises that invocation alone enforces behavior. Representative execution by an agent without this conversation verifies that the guidance is sufficient. Both guidance and checker defects can be found; do not blame the executor for a requirement hidden only in code.
 
@@ -155,6 +171,8 @@ The functional acceptance set covers incoming uncertainty, bounded clear work, a
 Separate three milestones: reviewed usable base, explicit activation of that fixed revision, and final minimum acceptance after a real governed self-change. Activation records the adopted policy/contract revision and evidence on GitHub; it does not assert that the parent Epic is finished. While this initial change is still active, the activation record points to its reviewed contract revision explicitly. The absence of current Specs at this bootstrap point is visible, not silently treated as unrestricted policy.
 
 After base implementation and representative verification pass, the authorized owner records activation. A bounded genuine improvement found in those trials is then delivered under that active policy, with its own scoped Issue/PR and original evidence. Do not invent a cosmetic change merely to produce a success badge; if no meaningful candidate exists, the self-change acceptance item remains incomplete until the owner selects one. This selection is acceptance execution, not an unresolved runtime architecture choice.
+
+The activation checkpoint and the subsequent improvement are distinct. The acceptance work package records and verifies activation, then verifies evidence from the separately assigned improvement; it does not authorize implementing that improvement inside the activation checkbox. The improvement's own Issue carries its scope, active-policy basis, implementation ownership and PR, and is linked from the acceptance Issue when the genuine candidate is selected. No placeholder successor is created now solely to satisfy a count.
 
 The separate closeout Task runs after that self-use evidence is available. It synchronizes the final accepted delta, archives and closes the Epic. Later work reads the integrated current Specs and accepted configuration, and changes them through the same workflow. Neither a candidate validator nor a proposed Skill can exempt its own PR from the currently applicable rules.
 

@@ -3,8 +3,8 @@
 Work package: project configuration, record schema and safe setup. GitHub Issue will be linked before planning handoff. Basis: [adoption](specs/project-workflow-adoption/spec.md), [traceability](specs/github-work-traceability/spec.md), [Design decisions 4-5](design.md#4-minimal-structured-relationships-not-a-second-task-database).
 
 - [ ] 1.1 Define the minimal JSON Schema, descriptions and valid/invalid examples for configuration and workflow records; verify independently authored schema tests reject missing/invalid required data and accept rough pre-triage requests, staged planning, legitimate no-Spec work and extensible project policy.
-- [ ] 1.2 Implement safe local setup and project/repository configuration using native OpenSpec initialization; verify genuine RED/GREEN functional tests for explicit target selection, idempotent adoption, unrelated-file preservation and overlap failure, with pinned direct dependencies and no remote writes.
-- [ ] 1.3 Deliver the adoption guidance and verify a fresh executor can configure a local fixture using only its instructions and declared context; record independent review and adoption evidence on the work PR.
+- [ ] 1.2 Implement Node.js-only safe local setup and project/repository configuration using native OpenSpec initialization; verify genuine RED/GREEN functional tests for explicit target selection, idempotent adoption, unrelated-file preservation, overlap failure and missing-binding errors, with pinned direct dependencies and no remote writes.
+- [ ] 1.3 Deliver parameterized adoption guidance and verify a fresh executor can configure a distinct consumer fixture using only its instructions and declared context; vary repository identity, path, Issue numbers and labels without source changes or source-project data leakage, and record independent review/adoption evidence on the work PR.
 
 ## 2. Work-category Skills and handoff templates
 
@@ -12,7 +12,7 @@ Work package: complete guidance for doing the work, not one Skill per operation.
 
 - [ ] 2.1 Implement triage, planning/decomposition and bounded-research guidance with referenced Issue templates/contracts and native workflows; verify fresh-agent trials for continuous planning, justified splitting, active-plan additions and a Spike that ends at the human decision without automatic successor work.
 - [ ] 2.2 Implement delivery, independent-review and closeout guidance, including native checklist/GitHub reconciliation and complete-change synchronization; verify instructions expose required inputs, references, checks, scope limits and completion obligations without hidden validator rules or duplicated task status.
-- [ ] 2.3 Provide one authored source for Codex/Claude-discoverable guidance and template references; verify synchronization/example checks and an independent full guidance review, without editing upstream Skill logic or installing any review-provider automation.
+- [ ] 2.3 Provide one authored reusable source for Codex/Claude-discoverable guidance and parameterized template references; verify generated-copy/example checks, missing-placeholder rejection and independent full guidance review against a different target, without hardcoded consumer data, upstream Skill edits or review-provider automation.
 
 ## 3. Read-only trace checks and reviewer context
 
@@ -28,7 +28,8 @@ Work package: local inspect/check tools, not a new workflow engine. Depends on p
 Work package: acceptance execution and activation evidence. Depends on packages 1-3 being delivered. GitHub Issue will be linked before planning handoff. Basis: [adoption verification](specs/project-workflow-adoption/spec.md#requirement-verify-adoption-through-representative-guided-work), [self-evolution](specs/workflow-self-evolution/spec.md), [Design decisions 9-10](design.md#9-test-first-implementation-and-acceptance-evidence).
 
 - [ ] 4.1 Run representative end-to-end work-guidance trials and local functional checks using only declared context, including negative cases; fix or return findings to the responsible work and verify independent acceptance review of the usable base before recording any activation.
-- [ ] 4.2 Record authorized activation of a fixed verified revision, then select a genuine bounded improvement from the trials and deliver it under the active workflow with a scoped Issue/PR; verify traced basis, applicable RED/GREEN or artifact checks, independent review and completion evidence without claiming automation or closing the parent Epic.
+- [ ] 4.2 Record authorized activation of a fixed verified revision with its policy basis and verification evidence; verify that new work can resolve that active basis while the bootstrap change and parent Epic remain incomplete.
+- [ ] 4.3 Verify that a genuine post-activation improvement selected from the trials has been separately scoped, assigned and delivered through its own Issue/PR under the active workflow; inspect traced basis, applicable RED/GREEN or artifact checks, independent review and completion evidence, without implementing the improvement as part of the activation checkpoint or claiming automation.
 
 ## 5. Owner-led closeout
 
