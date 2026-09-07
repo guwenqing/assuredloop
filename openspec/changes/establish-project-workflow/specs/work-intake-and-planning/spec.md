@@ -20,6 +20,8 @@ The workflow SHALL accept a rough request as a GitHub Issue and guide initial ex
 
 The workflow SHALL route work requiring new or materially changed agreement through deeper exploration and an OpenSpec Proposal. Planning/design work and implementation work SHALL use distinct, independently assignable Issues with identified owners, inputs and expected outputs. Planning SHALL NOT authorize business-code edits. Task decomposition SHALL connect implementation work to relevant requirements and decisions, not only to an Epic parent.
 
+For Epic work, an explicit planning Task SHALL remain separate from the parent request's overall delivery and cover continuous exploration, Proposal, Specs, Design, decomposition and handoff. Artifact stages, additional PRs and review rounds SHALL NOT by themselves require new Issues or complete that Task. Further splits SHALL identify meaningful separately assignable outcomes or responsibilities and their relationship to existing work, with the rationale available for review.
+
 #### Scenario: Request needs a new capability
 - **WHEN** triage identifies clear work that changes accepted requirements
 - **THEN** it routes the request to Epic planning, where the responsible owner develops a formal change before handing off scoped implementation work
@@ -28,10 +30,6 @@ The workflow SHALL route work requiring new or materially changed agreement thro
 - **WHEN** the planning owner prepares implementation Issues
 - **THEN** each Issue identifies the agreed context, intended deliverable, acceptance evidence and relevant plan references, and can be assigned independently of the planning Issue
 
-### Requirement: Keep continuous planning in one scoped Task
-
-For Epic work, the workflow SHALL keep an explicit planning Task separate from the parent request's overall delivery and from implementation Tasks. That planning Task SHALL cover the continuous work of deeper exploration, Proposal, Specs, Design, implementation-task decomposition and handoff. Moving between these stages, publishing another planning PR or obtaining another review SHALL NOT by itself create a new Issue or complete the planning Task. A further split SHALL identify a meaningful separately assignable outcome or responsibility and its relationship to the existing work. The workflow SHALL make that rationale available for review rather than treating a new file or stage as sufficient justification.
-
 #### Scenario: Proposal merges before Design is finished
 - **WHEN** a planning Task has delivered an accepted Proposal but still owes Design, decomposition or handoff
 - **THEN** the same Task remains open, subsequent planning PRs reference it, and the parent request remains open for overall delivery
@@ -39,10 +37,6 @@ For Epic work, the workflow SHALL keep an explicit planning Task separate from t
 #### Scenario: Planning contains independently assignable work
 - **WHEN** further decomposition identifies a meaningful separate planning outcome or responsibility
 - **THEN** the owner can create linked work with explicit scope, handoff and split rationale rather than being forced to put all planning in one oversized Task
-
-#### Scenario: Stage-only split is proposed
-- **WHEN** the sole reason for a new planning Issue is that work has moved from Proposal to Specs or Design
-- **THEN** the work continues in the existing planning Task and review identifies the proposed split as unnecessary
 
 ### Requirement: Bound research and return decisions to the human
 

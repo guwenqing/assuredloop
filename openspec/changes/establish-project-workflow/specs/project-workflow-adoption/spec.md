@@ -20,29 +20,19 @@ Adoption SHALL use native OpenSpec tooling and Skills where they fulfill the agr
 
 Every major category of work that creates or changes traceable content SHALL have usable Skill guidance, including Issue handling, repository-artifact changes and changes to the workflow itself. Skills SHALL be organized by coherent work rather than mandatory bot titles or a fixed count. Individual field edits, links and status updates SHALL be guided steps within the relevant work, not mandatory standalone Skills. Skill guidance SHALL identify its input, allowed scope, output and handoff boundaries, including planning versus implementation and independent review.
 
+For its supported work, the guidance SHALL explain what context to read, the meanings and relationships of the applicable work records, the decisions the executor must make, how to create or update the expected artifacts and associations, and how to check, review, hand off and complete the work. These conventions SHALL be available through the Skill and its authoritative references, not assumed from a role title or private conversation. Issue continuity and decomposition are examples of those conventions within planning work, not a separate Skill category.
+
 #### Scenario: Executor triages a request
 - **WHEN** an executor selects the request-triage work guidance
 - **THEN** it explains how to preserve and enrich the Issue, distinguish assumptions, assess the route, update required context and hand off the result
 
 #### Scenario: Planner creates implementation Issues
 - **WHEN** an executor turns an agreed plan into scoped implementation work
-- **THEN** its guidance explains the required context, requirement/decision associations, ownership and evidence expectations for the resulting Issues
+- **THEN** its guidance explains the existing request and planning Task, the agreed basis for decomposition, the required context and requirement/decision associations of the resulting Issues, and their ownership, verification and handoff expectations under [formal planning](../work-intake-and-planning/spec.md#requirement-route-formal-planning-separately-from-implementation)
 
 #### Scenario: Maintainer changes a workflow rule
 - **WHEN** work changes the methodology or a traced repo artifact rather than business code
 - **THEN** a relevant work-category Skill still governs the change and its review; it is not exempt because it is documentation or process work
-
-### Requirement: Planning guidance governs Issue continuity and decomposition
-
-The planning/decomposition work-category Skill SHALL teach the executor how to find and continue the responsible planning Task, relate multiple planning PRs to it, and decide whether additional Issues are justified under [continuous planning](../work-intake-and-planning/spec.md#requirement-keep-continuous-planning-in-one-scoped-task). It SHALL guide creation of independently assignable implementation work, requirement/decision references, split rationale, handoff and evidence-backed closure. These SHALL be steps of coherent planning work, not a mandatory separate Skill for each Issue operation. Native artifact guidance SHALL be supplemented where it does not cover these GitHub work relationships.
-
-#### Scenario: Fresh executor starts Design after Proposal merge
-- **WHEN** an executor without the original conversation uses the planning Skill to continue an existing change
-- **THEN** the guidance leads it to the still-responsible planning Task and required context instead of creating a new Issue merely for the next artifact
-
-#### Scenario: Verification challenges an unnecessary split
-- **WHEN** representative guided-work verification supplies a proposed split justified only by a new planning stage
-- **THEN** independent review assesses the split against the referenced rule and reports the violation; mechanical checks only establish required context and rationale presence, not whether the rationale is sound
 
 ### Requirement: Creation guidance and validation share authoritative contracts
 
