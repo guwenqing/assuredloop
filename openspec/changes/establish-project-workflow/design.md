@@ -12,6 +12,8 @@ The owner's subsequent decisions are recorded on #2: keep native tasks.md with G
 
 **Non-Goals:** a replacement OpenSpec parser, workflow scheduler, universal requirement ontology, new change-size taxonomy, bot accounts, multi-repo coordination, automatic review provider integration, CI installation, or a mandatory database. This plan does not install its proposed helpers or Skills.
 
+The current delivery boundary is the usable, installable single-repo workflow and its verified self-use. Node.js, npm packaging, target bindings and framework-contract separation refine how that agreed tool is delivered; they do not authorize a broader hosting or orchestration product. New details are assessed against the accepted outcome. Necessary bounded refinements are incorporated with traceable review; material expansion returns to the owner. Deferred automation/CI, multi-repo coordination, bot orchestration and generic hierarchy enforcement remain incomplete follow-up candidates for future Proposals, not hidden Tasks of this change. Registry publication is an explicit release operation requiring confirmed identity and authorization, not a background side effect of producing the package.
+
 ## Decisions
 
 ### 1. Native artifacts and one readable requirement hierarchy

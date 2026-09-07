@@ -58,9 +58,15 @@ The workflow SHALL support Spikes with explicit questions, research boundaries a
 
 The workflow SHALL route proposed additions to an ongoing change to its responsible planning owner for impact assessment and plan reconciliation. Accepted additions SHALL receive the same context and traceability obligations as originally decomposed work. An implementer SHALL NOT silently expand the accepted agreement by adding a ticket.
 
+The owner SHALL assess additions against the agreed outcome, allowing necessary bounded refinement without treating an active Proposal as unlimited scope. Material expansion SHALL return to the required human decision. Work outside that outcome SHALL remain explicitly deferred for a future Proposal rather than silently become current delivery obligations or completed work.
+
 #### Scenario: New task belongs to an active Epic
 - **WHEN** a Task/Bug reveals additional work within an ongoing change
 - **THEN** the active-plan owner assesses whether to update the plan within scope or return a material Proposal change for human review before authorizing the addition
+
+#### Scenario: Useful idea exceeds the current outcome
+- **WHEN** work discovers an improvement outside the accepted release scope
+- **THEN** the owner records it as deferred follow-up for a future Proposal, without automatically expanding the current task set or claiming the improvement delivered
 
 ### Requirement: Implementation-only handling preserves the accepted agreement
 
