@@ -1,6 +1,6 @@
 ## Purpose
 
-L1 goal: Keep requests, formal planning and actual delivery connected while using GitHub for work collaboration. L2 capability: GitHub work traceability. The requirements and scenarios below express its L3 behavior contracts. Origin: [accepted traceability decisions](https://github.com/guwenqing/assuredloop-base/blob/55e73ccb3ed83ede943f135a5977308cfdff1408/openspec/changes/establish-project-workflow/proposal.md#what-changes).
+Keep requests, formal planning and actual delivery connected while using GitHub for work collaboration. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-work-is-traceable-and-proportionate). Its requirements and scenarios below define L3 behavior.
 
 ## ADDED Requirements
 

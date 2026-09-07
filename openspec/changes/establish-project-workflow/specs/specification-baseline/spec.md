@@ -1,12 +1,14 @@
 ## Purpose
 
-L1 goal: Keep a readable current requirement set in addition to the history of individual changes. L2 capability: specification baseline. The requirements and scenarios below express its L3 behavior contracts. Origin: [accepted baseline and writing-pilot decisions](https://github.com/guwenqing/assuredloop-base/blob/55e73ccb3ed83ede943f135a5977308cfdff1408/openspec/changes/establish-project-workflow/proposal.md#impact).
+Keep a readable current requirement set in addition to the history of individual changes. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-shared-facts-support-human-and-machine-judgment). Its requirements and scenarios below define L3 behavior.
 
 ## ADDED Requirements
 
 ### Requirement: Keep current requirements distinct from change history
 
 The workflow SHALL use native OpenSpec current specifications and change deltas rather than a parallel specification store. Accepted deltas SHALL be integrated through the native synchronization/archive workflow at the agreed lifecycle point, with validation and review of the resulting current requirements. Proposed, accepted and delivered state SHALL remain distinguishable; synchronized text alone SHALL NOT prove implementation. An active change SHALL NOT be archived merely because its Proposal merged.
+
+For this release, the current specification set SHALL represent the integrated contract of completed changes. Accepted work still being implemented SHALL remain visible in the active change. At delivery closeout, the change owner SHALL synchronize the complete delta and verify the resulting baseline before archive and overall completion.
 
 #### Scenario: Reader asks what the project currently requires
 - **WHEN** a reader inspects the current specification set
@@ -27,6 +29,18 @@ The workflow SHALL guide changes to applicable current Specs through native delt
 #### Scenario: Later request changes an archived feature
 - **WHEN** a new request materially changes a feature whose original change is archived
 - **THEN** a new active change targets the current requirement and references history as evidence instead of revising the archived plan
+
+### Requirement: Owner-led closeout verifies the integrated specification
+
+An Epic SHALL have a separately assignable closeout Task owned by its responsible change owner after implementation work. The Task SHALL assess aggregate delivery, reconcile current Specs with the full accepted change, validate the synchronized result and obtain independent AI review of its PR before completing archive and closing the Epic. The PR SHALL follow the same applicable pre-merge obligations as other work, including later configured automation; the initial release executes checks and review explicitly. Missing or incorrect synchronization SHALL block closeout even when all developer Issues are closed. Acceptance failures SHALL return to the responsible work rather than be hidden by closing the Epic.
+
+#### Scenario: Child Tasks are closed but one requirement was not integrated
+- **WHEN** aggregate closeout finds that an accepted delta is missing from the proposed current specification
+- **THEN** closeout remains incomplete, the discrepancy is reported and corrected, and the final synchronized revision is checked and reviewed before merge
+
+#### Scenario: Closeout is ready
+- **WHEN** aggregate delivery and synchronization have passed applicable checks, independent review and required human decisions
+- **THEN** the owner can merge the closeout PR, confirm the merged state and archive result, and close the closeout Task followed by the Epic
 
 ### Requirement: Pilot readable goal-to-behavior references
 

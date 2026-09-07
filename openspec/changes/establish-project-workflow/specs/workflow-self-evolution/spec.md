@@ -1,6 +1,6 @@
 ## Purpose
 
-L1 goal: Make the minimum workflow govern later changes to itself after an explicit, verified activation. L2 capability: workflow self-evolution. The requirements and scenarios below express its L3 behavior contracts. Origin: [accepted self-use and evolution decision](https://github.com/guwenqing/assuredloop-base/blob/55e73ccb3ed83ede943f135a5977308cfdff1408/openspec/changes/establish-project-workflow/proposal.md#what-changes).
+Make the minimum workflow govern later changes to itself after an explicit, verified activation. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-reuse-supports-governed-evolution). Its requirements and scenarios below define L3 behavior.
 
 ## ADDED Requirements
 

@@ -1,6 +1,6 @@
 ## Purpose
 
-L1 goal: Let an executor adopt and use the workflow through practical work-category guidance while reusing OpenSpec. L2 capability: project workflow adoption. The requirements and scenarios below express its L3 behavior contracts. Origin: [accepted Skill and adoption decisions](https://github.com/guwenqing/assuredloop-base/blob/55e73ccb3ed83ede943f135a5977308cfdff1408/openspec/changes/establish-project-workflow/proposal.md#what-changes).
+Let an executor adopt and use the workflow through practical work-category guidance while reusing OpenSpec. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-reuse-supports-governed-evolution). Its requirements and scenarios below define L3 behavior.
 
 ## ADDED Requirements
 

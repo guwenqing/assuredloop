@@ -1,6 +1,6 @@
 ## Purpose
 
-L1 goal: Turn incoming requests into proportionate, explicitly owned work without treating uncertainty as permission to implement. L2 capability: work intake and planning. The requirements and scenarios below express its L3 behavior contracts. Origin: [accepted goal and routing decisions](https://github.com/guwenqing/assuredloop-base/blob/55e73ccb3ed83ede943f135a5977308cfdff1408/openspec/changes/establish-project-workflow/proposal.md#what-changes).
+Turn incoming requests into proportionate, explicitly owned work without treating uncertainty as permission to implement. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-work-is-traceable-and-proportionate). Its requirements and scenarios below define L3 behavior.
 
 ## ADDED Requirements
 
@@ -37,6 +37,10 @@ For Epic work, an explicit planning Task SHALL remain separate from the parent r
 #### Scenario: Planning contains independently assignable work
 - **WHEN** further decomposition identifies a meaningful separate planning outcome or responsibility
 - **THEN** the owner can create linked work with explicit scope, handoff and split rationale rather than being forced to put all planning in one oversized Task
+
+#### Scenario: Reviewed planning is ready for implementation
+- **WHEN** Design, the scoped implementation Tasks and handoff have passed their applicable checks and review
+- **THEN** the planning Task can complete, developers take the implementation Tasks, and the parent Epic stays open for delivery and a separate owner-led closeout Task
 
 ### Requirement: Bound research and return decisions to the human
 
