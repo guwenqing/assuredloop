@@ -20,6 +20,8 @@ Mechanical validation SHALL check applicable record presence, structured fields,
 
 Review preparation SHALL gather the original request, scoped Issue, applicable requirements and decisions, actual changes, relevant test/evidence records, known impacts and unresolved questions. It SHALL identify the revision under review and missing or excluded context, and allow the reviewer to request a broader scope. Context selection SHALL NOT substitute the producer's conclusion for source evidence or conceal an omitted dependency. No-Spec and implementation-only claims SHALL include their basis for review.
 
+Packets SHALL use a declared inline depth and finite configured byte budget, retaining a paginated reference inventory for content not inlined. Roots and direct requirement/decision references are eligible through depth 1; deeper or over-budget items SHALL remain listed with reasons and resolvable structured references. Expansion SHALL be explicit and bounded, and absence of inlined content SHALL NOT be confused with absence of a requirement or evidence.
+
 #### Scenario: Focused packet omits a needed dependency
 - **WHEN** the reviewer finds that an affected contract lies outside the supplied context
 - **THEN** the reviewer can expand the context and withhold a conclusion until the missing basis is available
@@ -28,9 +30,13 @@ Review preparation SHALL gather the original request, scoped Issue, applicable r
 - **WHEN** a task claims no applicable Spec but changes behavior covered by one
 - **THEN** review challenges the exemption and returns work to the appropriate requirement/plan path
 
+#### Scenario: Whole-change context exceeds one page
+- **WHEN** closeout context contains required content beyond the configured byte budget or inline depth
+- **THEN** the packet remains bounded, lists the remaining references/pages and reasons, and permits explicit expansion without silently declaring coverage complete
+
 ### Requirement: Keep review independent and revision-specific
 
-Workers SHALL obtain internal review by a different agent/session at the configured Sol/Astra level before submission. A producer SHALL NOT independently accept its own output. Review SHALL identify the examined revision, scope and unresolved findings; material changes after review SHALL receive appropriate renewed review. Fable SHALL NOT be invoked without explicit owner request. In this initial release, checks and review handoffs SHALL be explicitly executed and recorded; automatic external-review setup, CI jobs and enforced automatic gates SHALL remain a later Proposal.
+Workers SHALL obtain internal review by a different agent/session under the accepted consumer `project.review` configuration. `depth: full-scope` SHALL require assessment of the assigned scope's original basis, actual changes, completeness, correctness, coherence, relevant negative cases and cross-contract impacts. The configured internal model allowlist and exclusions SHALL govern declared eligibility; unresolved aliases or missing policy SHALL not be replaced by assumed vendor tiers. Excluded models SHALL require a recorded owner override for the specific review. A producer SHALL NOT independently accept its own output. Review SHALL identify the examined revision, scope, model/depth declarations and unresolved findings; material changes SHALL receive appropriate renewed review. In this initial release, checks/review handoffs are explicitly executed and recorded; automatic external-review setup and CI gates remain a later Proposal.
 
 #### Scenario: Previous version passed
 - **WHEN** a producer changes reviewed content after a PASS
@@ -43,6 +49,38 @@ Workers SHALL obtain internal review by a different agent/session at the configu
 #### Scenario: No automation is installed
 - **WHEN** native checks and an independent review are run manually for a PR
 - **THEN** the results are recorded as explicit manual execution, not as configured automatic external review or CI enforcement
+
+#### Scenario: Review declarations do not establish distinct sessions
+- **WHEN** an evidence record has identical producer/reviewer session declarations or omits either declaration
+- **THEN** mechanical checking rejects the independence declaration; distinct strings alone still do not prove the review really occurred independently
+
+#### Scenario: Review policy is missing or unresolved
+- **WHEN** no accepted model eligibility/depth configuration can be resolved
+- **THEN** the operation reports review policy unavailable and cannot count a guessed model or undefined tier as accepted review
+
+### Requirement: Context and check operations preserve a read-only trust boundary
+
+Context and check tooling SHALL be read-only with respect to the target repository and GitHub. It SHALL NOT execute commands or target code supplied by work records, fetch arbitrary record-provided URLs, or resolve paths outside the selected permitted repository and revision. Repository references SHALL be structured and constrained by explicit trusted bindings/allowlists. Candidate tool configuration SHALL NOT loosen these boundaries during its own check.
+
+#### Scenario: A ticket contains executable instructions
+- **WHEN** an Issue body or a referenced artifact contains a shell command or URL instructing the checker to run or fetch it
+- **THEN** the checker treats it as data, performs no commanded side effect, and resolves only permitted structured evidence references
+
+#### Scenario: Reference escapes the selected repository
+- **WHEN** a reference contains a parent-directory escape, absolute path or symlink target outside the permitted root
+- **THEN** it is rejected and no outside file is read as valid scoped evidence
+
+### Requirement: Tool availability is distinguished from missing evidence
+
+GitHub-dependent operations SHALL detect missing, unsupported, unauthenticated, insufficiently authorized, rate-limited or unreachable prerequisites as tool/environment unavailability, distinct from an unavailable record in an accessible repository. The operation SHALL explain the reason and any known retry condition without claiming a record does not exist. Local-only diagnostics SHALL expose skipped remote checks and SHALL NOT report complete pre-merge validation.
+
+#### Scenario: GitHub CLI is not authenticated
+- **WHEN** the required GitHub client is absent or cannot authenticate/access the bound repository
+- **THEN** the operation reports tool unavailable with the relevant reason, not a broken Issue link or successful review packet
+
+#### Scenario: Authenticated access encounters a missing resource
+- **WHEN** repository access is confirmed but the requested record cannot be obtained
+- **THEN** the unavailable evidence is reported distinctly and completion remains unproven
 
 ### Requirement: Verify code with independent test-first evidence
 

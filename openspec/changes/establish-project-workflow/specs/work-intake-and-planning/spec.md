@@ -6,7 +6,7 @@ Turn incoming requests into proportionate, explicitly owned work without treatin
 
 ### Requirement: Preserve and triage the incoming request
 
-The workflow SHALL accept a rough request as a GitHub Issue and guide initial exploration before assigning an execution route. Triage SHALL preserve the original request, distinguish confirmed context from assumptions and open questions, record the routing rationale, and identify the next responsible owner. A route or activity label SHALL NOT imply implementation authorization.
+The workflow SHALL accept a rough request as a GitHub Issue and guide initial exploration before assigning an execution route. Triage SHALL preserve the original request, distinguish confirmed context from assumptions and open questions, record the routing rationale, and identify the next responsible owner. A route, work selector or discipline label SHALL NOT imply implementation authorization.
 
 #### Scenario: Request is incomplete
 - **WHEN** the incoming Issue omits information needed to choose a responsible next step

@@ -1,6 +1,6 @@
 ## Purpose
 
-Provide the shared L1 goals and constraints for AssuredLoop Base. These goals govern the L2 capabilities linked below; those capabilities contain the L3 behavior requirements and scenarios. This is ordinary OpenSpec content, not a new layer schema. Origin: [accepted Proposal](https://github.com/guwenqing/assuredloop-base/blob/55e73ccb3ed83ede943f135a5977308cfdff1408/openspec/changes/establish-project-workflow/proposal.md).
+Provide the shared L1 goals and constraints for AssuredLoop Base. These goals govern the L2 capabilities linked below; those capabilities contain the L3 behavior requirements and scenarios. This is ordinary OpenSpec content, not a new layer schema. Origin: [expanded Proposal at the owner-accepted revision](https://github.com/guwenqing/assuredloop-base/blob/5c1f33a26b5f106d594b11be46764b2ad23b6322/openspec/changes/establish-project-workflow/proposal.md), with [Wenqing's B4 acceptance recorded on PR #5](https://github.com/guwenqing/assuredloop-base/pull/5#issuecomment-5576464303). Acceptance of that scope is distinct from acceptance of subsequent design-review corrections.
 
 ## ADDED Requirements
 

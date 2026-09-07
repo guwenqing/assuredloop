@@ -8,6 +8,8 @@ Keep requests, formal planning and actual delivery connected while using GitHub 
 
 The workflow SHALL let a worker or reviewer starting from an Issue or PR resolve the originating request, responsible work item, relevant current specification or active change, and applicable requirement and decision references. Legitimate absence of a relevant Spec SHALL be represented explicitly with a reason. Parent membership alone SHALL NOT count as requirement-level traceability. Review records SHALL identify the revision and work context they assessed.
 
+Machine-authoritative basis and plan references SHALL carry repository, immutable revision and normalized path as structured fields, with the applicable heading or task identifiers, rather than require parsing arbitrary display URLs. The work-guidance selector SHALL have one authoritative representation; optional display/discipline labels SHALL NOT select a different workflow implicitly.
+
 #### Scenario: Reviewer starts at a delivery PR
 - **WHEN** a reviewer follows a PR's work reference
 - **THEN** the reviewer can reach the scoped Issue, original request, applicable requirements and decisions, and evidence for that delivery without needing the author's conversation history

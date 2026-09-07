@@ -66,12 +66,6 @@ Adoption verification SHALL exercise the major supported work categories using o
 
 The minimum SHALL support self-use in one repo with explicit project policy and extension points. Policy SHALL distinguish project choices from repository bindings without requiring multiple repos or bot scheduling in this release. Users SHALL be able to assign the same work categories to different people or agents while preserving ownership and review independence. Setup SHALL make the active obligations and deferred automation visible and SHALL NOT require an authoritative database.
 
-All executable tooling scripts authored for this extension SHALL run on Node.js, matching the upstream tool's runtime. Reusable scripts, Skills and templates SHALL resolve the target's identity, paths, Issue references and configurable conventions from explicit inputs, target configuration or native OpenSpec context. AssuredLoop Base's own consumer data SHALL NOT be baked into reusable behavior. Installed guidance SHALL use resolved target references or explicit placeholders and SHALL NOT treat the framework source repository as the consumer's project. Missing required bindings SHALL produce a clear setup/context error rather than a fallback to this repo's data.
-
-An adopting project SHALL have access to the pinned framework's workflow contracts independently of its own product requirements. Framework contracts SHALL NOT be injected into the consumer's current specification baseline, and their packaged copies SHALL remain derived from an identified canonical revision rather than become another authored rule source.
-
-The toolkit SHALL be distributable as a versioned npm package with a Node.js CLI and explicit project initialization. An installed package SHALL contain the runtime, schemas, templates, reusable Skill sources and identified framework contracts needed for adoption without cloning the source repo. Initialization SHALL write only the agreed target configuration/discovery artifacts and SHALL preserve the consumer's own work. Packed artifacts SHALL exclude consumer instance configuration, project change history, credentials and execution logs.
-
 #### Scenario: One person coordinates multiple work categories
 - **WHEN** a project uses one coordinator instead of dedicated PM and Architect bots
 - **THEN** the Skills remain usable, while planning/implementation assignment and producer/reviewer separation remain explicit
@@ -79,6 +73,10 @@ The toolkit SHALL be distributable as a versioned npm package with a Node.js CLI
 #### Scenario: A project wants stricter behavior
 - **WHEN** the project proposes stronger local workflow obligations
 - **THEN** those obligations enter the same traced change and validation process instead of silently changing inherited instructions
+
+### Requirement: Resolve targets and Skill roots from explicit bindings
+
+All executable tooling scripts authored for this extension SHALL run on Node.js, matching the upstream runtime. Reusable scripts, Skills and templates SHALL resolve target identity, paths, Issue references and conventions from explicit inputs, target configuration or native context, without baked-in consumer data. Skill destinations SHALL follow the target's selected native tool configuration rather than fixed Codex/Claude roots. Initialization SHALL honor upstream ownership markers, preserve unrelated content, and stop on unresolved compatibility or co-tenancy conflicts. Missing target bindings SHALL cause a clear error, not a fallback to this repo.
 
 #### Scenario: A different repository adopts the workflow
 - **WHEN** a target has a different directory, GitHub identity, Issue numbers and configured label names from AssuredLoop Base
@@ -88,9 +86,21 @@ The toolkit SHALL be distributable as a versioned npm package with a Node.js CLI
 - **WHEN** a work operation lacks the required target context
 - **THEN** it reports the missing binding and does not guess this project's repository, paths or Issue identifiers
 
+#### Scenario: Consumer selects another native agent tool
+- **WHEN** a consumer selects a supported tool with a different Skill root or a shared-root ownership marker
+- **THEN** initialization resolves the native destination, installs only its own namespaced guidance there and preserves the upstream marker and existing Skills without source changes
+
+### Requirement: Separate framework contracts from consumer specifications
+
+An adopting project SHALL access the pinned framework's workflow contracts independently of its own product requirements. Framework contracts SHALL NOT be injected into the consumer's current specification baseline; packaged copies SHALL derive from an identified canonical revision rather than become another authored rule source.
+
 #### Scenario: Consumer checks its own product change
 - **WHEN** a consumer uses an installed framework version without the original source checkout
 - **THEN** guidance resolves the framework rules from that pinned installation and the consumer's requirements from its own OpenSpec context, without adding the framework's product Specs to the consumer baseline
+
+### Requirement: Distribute as an installable package
+
+The toolkit SHALL be distributable as a versioned npm package with a Node.js CLI and explicit project initialization. An installed package SHALL contain the runtime, schemas, templates, reusable Skill sources and identified framework contracts needed without cloning the source repo. Initialization SHALL write only agreed target configuration/discovery artifacts and preserve consumer work. Packed artifacts SHALL exclude instance configuration, project change history, credentials and execution logs.
 
 #### Scenario: Packed CLI initializes an unrelated project
 - **WHEN** the packed npm artifact is installed and invoked against a new consumer fixture

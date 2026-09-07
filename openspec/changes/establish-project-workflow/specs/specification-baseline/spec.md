@@ -22,6 +22,8 @@ For this release, the current specification set SHALL represent the integrated c
 
 The workflow SHALL guide changes to applicable current Specs through native delta operations and assess affected requirement and decision references. When replacing a requirement, the complete resulting behavior contract SHALL be retained, including applicable scenarios. Historical archived planning SHALL remain unchanged by later follow-up work. Missing or obsolete references SHALL be surfaced for review rather than silently treated as valid context.
 
+Requirement-heading changes SHALL include repair of affected current inbound references and a reviewable old/new mapping; immutable historical links SHALL retain their historical identity rather than silently be redirected to unrelated content.
+
 #### Scenario: Requirement changes but an old guarantee remains
 - **WHEN** a change modifies part of an existing requirement
 - **THEN** the resulting delta preserves the rest of the agreed contract and its relevant scenarios, or explicitly proposes their removal
@@ -56,8 +58,20 @@ This project SHALL express L1 goals, L2 capabilities and L3 concrete behavior wi
 
 ### Requirement: Formal files remain the reconstructible authority
 
-Final formal requirements, decisions and necessary repo relationships SHALL be versioned, English-language, human-readable files. Tools SHALL operate from these files and explicit GitHub work records without a required authoritative database or access to the originating conversation. Execution logs and review discussions SHALL remain collaboration evidence rather than a second committed rule set. Optional caches SHALL be disposable and reconstructible.
+Final formal requirements, decisions and necessary repo relationships SHALL be versioned, English-language, human-readable files. Tools SHALL operate from these files and explicit GitHub work records without a required authoritative database or access to the originating conversation. Execution logs and full review discussions SHALL remain collaboration evidence rather than a second committed rule set. A compact final acceptance/fixity manifest is a versioned delivery record, not a full log or duplicate policy. Optional caches SHALL be disposable and reconstructible.
 
 #### Scenario: Fresh reviewer has no local database
 - **WHEN** a reviewer checks out the repo and obtains the applicable GitHub records
 - **THEN** authoritative context is available without restoring an uncommitted database or private conversation
+
+### Requirement: Closeout preserves acceptance evidence fixity
+
+The closeout candidate SHALL include a versioned manifest identifying accepted delivery Issue/PR references, evidence comment identifiers, assessed revisions, results, scope and captured-content digests, including planning delivery. It SHALL move with the archived change and SHALL be checked against captured source evidence before acceptance. Full logs SHALL remain external. The manifest SHALL NOT claim that its own future merge or post-merge review already happened. Later changed or unavailable source evidence SHALL be reported as drift or unavailability, not silently accepted; a digest SHALL NOT be claimed to reconstruct missing content or authenticate a human decision.
+
+#### Scenario: An accepted evidence comment changes later
+- **WHEN** a fetched comment differs from the body captured by the committed manifest
+- **THEN** revalidation reports evidence drift while preserving the prior recorded summary and digest at its Git revision
+
+#### Scenario: Captured evidence disappears
+- **WHEN** a manifest reference can no longer be fetched
+- **THEN** the prior fixity record remains readable but the source is reported unavailable and no complete revalidation PASS is claimed
