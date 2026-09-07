@@ -28,6 +28,22 @@ The workflow SHALL route work requiring new or materially changed agreement thro
 - **WHEN** the planning owner prepares implementation Issues
 - **THEN** each Issue identifies the agreed context, intended deliverable, acceptance evidence and relevant plan references, and can be assigned independently of the planning Issue
 
+### Requirement: Keep continuous planning in one scoped Task
+
+For Epic work, the workflow SHALL keep an explicit planning Task separate from the parent request's overall delivery and from implementation Tasks. That planning Task SHALL cover the continuous work of deeper exploration, Proposal, Specs, Design, implementation-task decomposition and handoff. Moving between these stages, publishing another planning PR or obtaining another review SHALL NOT by itself create a new Issue or complete the planning Task. A further split SHALL identify a meaningful separately assignable outcome or responsibility and its relationship to the existing work. The workflow SHALL make that rationale available for review rather than treating a new file or stage as sufficient justification.
+
+#### Scenario: Proposal merges before Design is finished
+- **WHEN** a planning Task has delivered an accepted Proposal but still owes Design, decomposition or handoff
+- **THEN** the same Task remains open, subsequent planning PRs reference it, and the parent request remains open for overall delivery
+
+#### Scenario: Planning contains independently assignable work
+- **WHEN** further decomposition identifies a meaningful separate planning outcome or responsibility
+- **THEN** the owner can create linked work with explicit scope, handoff and split rationale rather than being forced to put all planning in one oversized Task
+
+#### Scenario: Stage-only split is proposed
+- **WHEN** the sole reason for a new planning Issue is that work has moved from Proposal to Specs or Design
+- **THEN** the work continues in the existing planning Task and review identifies the proposed split as unnecessary
+
 ### Requirement: Bound research and return decisions to the human
 
 The workflow SHALL support Spikes with explicit questions, research boundaries and expected evidence, without requiring a predetermined positive conclusion. Uncertain work and oversized work needing decomposition into independently scoped requests SHALL be eligible for a Spike. Triage SHALL normally use that route for oversized work even if its overall goal is clear, and SHALL explain any alternative. Research SHALL report conclusions, limitations and unresolved questions, then return to the human. Closing a Spike SHALL NOT create or authorize successor requests or implementation automatically.

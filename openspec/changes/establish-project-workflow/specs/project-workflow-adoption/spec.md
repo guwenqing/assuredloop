@@ -32,6 +32,18 @@ Every major category of work that creates or changes traceable content SHALL hav
 - **WHEN** work changes the methodology or a traced repo artifact rather than business code
 - **THEN** a relevant work-category Skill still governs the change and its review; it is not exempt because it is documentation or process work
 
+### Requirement: Planning guidance governs Issue continuity and decomposition
+
+The planning/decomposition work-category Skill SHALL teach the executor how to find and continue the responsible planning Task, relate multiple planning PRs to it, and decide whether additional Issues are justified under [continuous planning](../work-intake-and-planning/spec.md#requirement-keep-continuous-planning-in-one-scoped-task). It SHALL guide creation of independently assignable implementation work, requirement/decision references, split rationale, handoff and evidence-backed closure. These SHALL be steps of coherent planning work, not a mandatory separate Skill for each Issue operation. Native artifact guidance SHALL be supplemented where it does not cover these GitHub work relationships.
+
+#### Scenario: Fresh executor starts Design after Proposal merge
+- **WHEN** an executor without the original conversation uses the planning Skill to continue an existing change
+- **THEN** the guidance leads it to the still-responsible planning Task and required context instead of creating a new Issue merely for the next artifact
+
+#### Scenario: Verification challenges an unnecessary split
+- **WHEN** representative guided-work verification supplies a proposed split justified only by a new planning stage
+- **THEN** independent review assesses the split against the referenced rule and reports the violation; mechanical checks only establish required context and rationale presence, not whether the rationale is sound
+
 ### Requirement: Creation guidance and validation share authoritative contracts
 
 The applicable formats, required fields, references, statuses and completion evidence SHALL be discoverable from the relevant Skill through authoritative contracts or templates, together with applicable checks and failure handling. Rules SHALL NOT exist only in validator code or be independently duplicated across Skills. Executors SHALL be able to distinguish a mechanical failure they can correct from a semantic or authority question that needs review or human input.
