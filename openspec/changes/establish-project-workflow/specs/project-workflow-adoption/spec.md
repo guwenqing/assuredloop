@@ -68,6 +68,8 @@ The minimum SHALL support self-use in one repo with explicit project policy and 
 
 All executable tooling scripts authored for this extension SHALL run on Node.js, matching the upstream tool's runtime. Reusable scripts, Skills and templates SHALL resolve the target's identity, paths, Issue references and configurable conventions from explicit inputs, target configuration or native OpenSpec context. AssuredLoop Base's own consumer data SHALL NOT be baked into reusable behavior. Installed guidance SHALL use resolved target references or explicit placeholders and SHALL NOT treat the framework source repository as the consumer's project. Missing required bindings SHALL produce a clear setup/context error rather than a fallback to this repo's data.
 
+An adopting project SHALL have access to the pinned framework's workflow contracts independently of its own product requirements. Framework contracts SHALL NOT be injected into the consumer's current specification baseline, and their packaged copies SHALL remain derived from an identified canonical revision rather than become another authored rule source.
+
 #### Scenario: One person coordinates multiple work categories
 - **WHEN** a project uses one coordinator instead of dedicated PM and Architect bots
 - **THEN** the Skills remain usable, while planning/implementation assignment and producer/reviewer separation remain explicit
@@ -83,3 +85,7 @@ All executable tooling scripts authored for this extension SHALL run on Node.js,
 #### Scenario: Target binding is incomplete
 - **WHEN** a work operation lacks the required target context
 - **THEN** it reports the missing binding and does not guess this project's repository, paths or Issue identifiers
+
+#### Scenario: Consumer checks its own product change
+- **WHEN** a consumer uses an installed framework version without the original source checkout
+- **THEN** guidance resolves the framework rules from that pinned installation and the consumer's requirements from its own OpenSpec context, without adding the framework's product Specs to the consumer baseline
