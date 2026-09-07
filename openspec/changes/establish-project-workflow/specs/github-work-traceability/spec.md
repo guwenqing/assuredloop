@@ -34,7 +34,7 @@ Each PR SHALL identify its work Issue, scope, applicable plan or no-Spec rationa
 
 #### Scenario: Proposal PR merges
 - **WHEN** a PR delivers only an approved Proposal
-- **THEN** the proposal-writing task can complete on its evidence while the implementation request remains incomplete
+- **THEN** that Proposal contribution is recorded as accepted while the continuous planning Task remains open until its full assigned planning and handoff outcome is delivered, and the parent request remains open for overall delivery
 
 #### Scenario: One task has multiple delivery PRs
 - **WHEN** scoped work is delivered through more than one PR
