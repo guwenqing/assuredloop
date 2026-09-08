@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-08T03:00:00Z",
+  "closeout_policy_ref": {
+    "repository": "example/consumer",
+    "revision": "0123456789abcdef0123456789abcdef01234567",
+    "path": "openspec/changes/example-change/design.md",
+    "anchor": "8-closeout-is-a-normal-reviewed-delivery"
+  },
+  "deliveries": [
+    {
+      "issues": [
+        "example/consumer#6"
+      ],
+      "prs": [
+        "example/consumer#42"
+      ],
+      "reviewed_head": "0123456789abcdef0123456789abcdef01234567",
+      "result": "pass",
+      "scope": "Issue #6 schema and record contracts",
+      "base_ref": "main",
+      "base_sha": "0123456789abcdef0123456789abcdef01234567",
+      "policy_ref": {
+        "repository": "example/consumer",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "path": "openspec/changes/example-change/design.md"
+      },
+      "policy_mode": "bootstrap",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "example/consumer",
+        "comment_id": 101,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "issues": [
+        "example/consumer#7"
+      ],
+      "prs": [
+        "example/consumer#43"
+      ],
+      "reviewed_head": "abcdef0123456789abcdef0123456789abcdef01",
+      "result": "pass",
+      "scope": "Issue #7 work-category guidance",
+      "base_ref": "release",
+      "base_sha": "abcdef0123456789abcdef0123456789abcdef01",
+      "policy_ref": {
+        "repository": "example/consumer",
+        "revision": "abcdef0123456789abcdef0123456789abcdef01",
+        "path": "openspec/changes/example-change/design.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "git-blob",
+        "representation": "raw-bytes",
+        "ref": {
+          "repository": "example/consumer",
+          "revision": "abcdef0123456789abcdef0123456789abcdef01",
+          "path": ".assuredloop/config.json"
+        }
+      },
+      "content_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+    }
+  ],
+  "decisions": [
+    {
+      "record_type": "self-change-decision",
+      "selection": "closeout-alternative",
+      "work": "example/consumer#10",
+      "rationale": "The closeout is the named bounded self-change demonstration after activation.",
+      "authorized_by": "example-owner",
+      "evidence": [
+        {
+          "repository": "example/consumer",
+          "comment_id": 101
+        }
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "example/consumer",
+        "comment_id": 101,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ]
+}

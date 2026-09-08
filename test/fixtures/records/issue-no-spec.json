@@ -1,0 +1,7 @@
+{
+  "activity": "deliver",
+  "request": "example/consumer#12",
+  "basis": [],
+  "no_spec_reason": "This bounded maintenance task has no applicable current OpenSpec requirement.",
+  "prior_work": ["example/consumer#6"]
+}

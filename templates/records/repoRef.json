@@ -1,0 +1,6 @@
+{
+  "repository": "example/consumer",
+  "revision": "0123456789abcdef0123456789abcdef01234567",
+  "path": "openspec/changes/example-change/design.md",
+  "anchor": "5-small-local-tools-and-explicit-trust-boundaries"
+}

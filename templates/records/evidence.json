@@ -1,0 +1,45 @@
+{
+  "head": "0123456789abcdef0123456789abcdef01234567",
+  "scope": "Issue #6 schema and record contracts",
+  "result": "pass",
+  "evidence": [
+    {
+      "repository": "example/consumer",
+      "comment_id": 101
+    },
+    {
+      "repository": "example/consumer",
+      "revision": "0123456789abcdef0123456789abcdef01234567",
+      "path": "test/schema.test.js"
+    }
+  ],
+  "pr": "example/consumer#42",
+  "base_ref": "main",
+  "base_sha": "0123456789abcdef0123456789abcdef01234567",
+  "policy_ref": {
+    "repository": "example/consumer",
+    "revision": "0123456789abcdef0123456789abcdef01234567",
+    "path": "openspec/changes/example-change/design.md",
+    "anchor": "5-small-local-tools-and-explicit-trust-boundaries"
+  },
+  "contract_package": {
+    "name": "assuredloop-workflow",
+    "version": "0.1.0",
+    "integrity": "sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "source_ref": {
+      "repository": "example/framework",
+      "revision": "0123456789abcdef0123456789abcdef01234567",
+      "path": "openspec/specs"
+    },
+    "contracts_path": "contracts"
+  },
+  "config_digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "activation_digest": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+  "policy_mode": "activation",
+  "producer_session": "producer-session-6",
+  "reviewer_session": "reviewer-session-6",
+  "reviewer_model": "example-review-model-a",
+  "review_depth": "full-scope",
+  "command": "node --test test/schema.test.js",
+  "exit_code": 0
+}

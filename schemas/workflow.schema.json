@@ -1,0 +1,1407 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://assuredloop.local/schemas/workflow.schema.json",
+  "title": "AssuredLoop workflow records",
+  "description": "Reusable field contracts; resolve references, policy and actual behavior separately.",
+  "$defs": {
+    "text": {
+      "type": "string",
+      "pattern": "\\S",
+      "minLength": 1,
+      "description": "Nonempty declaration; not proof of authenticity."
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "description": "Explicit GitHub owner/repository."
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$",
+      "description": "Full Git commit SHA."
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of the recorded source representation."
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^(?:\\.|(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)(?!.*[\\\\\\u0000-\\u001f\\u007f])(?!.*\\{\\{)[^/]+(?:/[^/]+)*)$",
+      "description": "Normalized relative POSIX path without traversal, control characters, backslashes or placeholders."
+    },
+    "utc": {
+      "type": "string",
+      "format": "utc-timestamp",
+      "description": "Valid UTC timestamp ending in Z."
+    },
+    "work": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9._-]*#[1-9][0-9]*$",
+      "description": "Qualified Issue/PR reference."
+    },
+    "repoRef": {
+      "type": "object",
+      "description": "Immutable source reference, never a URL or command.",
+      "properties": {
+        "repository": {
+          "$ref": "#/$defs/repository"
+        },
+        "revision": {
+          "$ref": "#/$defs/sha"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "anchor": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\s#]+$"
+        }
+      },
+      "required": [
+        "repository",
+        "revision",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "planRef": {
+      "type": "object",
+      "description": "Immutable task artifact and native task identifiers.",
+      "properties": {
+        "repository": {
+          "$ref": "#/$defs/repository"
+        },
+        "revision": {
+          "$ref": "#/$defs/sha"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9]+(?:\\.[0-9]+)+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "repository",
+        "revision",
+        "path",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "commentRef": {
+      "type": "object",
+      "description": "GitHub conversation comment reference.",
+      "properties": {
+        "repository": {
+          "$ref": "#/$defs/repository"
+        },
+        "comment_id": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "repository",
+        "comment_id"
+      ],
+      "additionalProperties": false
+    },
+    "evidenceRef": {
+      "description": "Comment or versioned file reference.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/commentRef"
+        },
+        {
+          "$ref": "#/$defs/repoRef"
+        }
+      ]
+    },
+    "contractPackage": {
+      "type": "object",
+      "description": "Package binding; integrity is npm SRI, not an authorization claim.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+        },
+        "integrity": {
+          "type": "string",
+          "pattern": "^(?:sha256-[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=|sha384-[A-Za-z0-9+/]{64}|sha512-[A-Za-z0-9+/]{85}[AQgw]==)$"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/repoRef"
+        },
+        "contracts_path": {
+          "$ref": "#/$defs/path"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "integrity",
+        "source_ref",
+        "contracts_path"
+      ],
+      "additionalProperties": false
+    },
+    "bootstrap": {
+      "type": "object",
+      "description": "Policy adoption and Proposal-scope acceptance are distinct; reference presence is not approval.",
+      "properties": {
+        "policy_ref": {
+          "$ref": "#/$defs/repoRef"
+        },
+        "policy_acceptance": {
+          "$ref": "#/$defs/evidenceRef"
+        },
+        "proposal_acceptance": {
+          "$ref": "#/$defs/evidenceRef"
+        },
+        "authorized_by": {
+          "$ref": "#/$defs/text"
+        }
+      },
+      "required": [
+        "policy_ref",
+        "policy_acceptance",
+        "proposal_acceptance",
+        "authorized_by"
+      ],
+      "additionalProperties": false
+    },
+    "activity": {
+      "type": "string",
+      "enum": [
+        "adopt",
+        "triage",
+        "plan",
+        "research",
+        "deliver",
+        "review",
+        "closeout"
+      ],
+      "description": "Authoritative guidance selector."
+    },
+    "review": {
+      "type": "object",
+      "description": "Explicit consumer review choices. Resolve eligibility separately.",
+      "properties": {
+        "depth": {
+          "const": "full-scope"
+        },
+        "internal": {
+          "type": "object",
+          "description": "Internal eligible models.",
+          "properties": {
+            "allowed_models": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/text"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "allowed_models"
+          ],
+          "additionalProperties": false
+        },
+        "excluded_models": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "model_aliases": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "context": {
+          "type": "object",
+          "description": "Context presentation budget.",
+          "properties": {
+            "max_inline_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 65536
+            }
+          },
+          "required": [
+            "max_inline_bytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "depth",
+        "internal",
+        "excluded_models"
+      ],
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Explicit namespaced policy extensions.",
+      "patternProperties": {
+        "^[a-z][a-z0-9.-]*:[a-z][a-z0-9.-]*$": {}
+      },
+      "additionalProperties": false
+    },
+    "config": {
+      "type": "object",
+      "description": "Explicit consumer configuration; initialization is not activation.",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "project": {
+          "type": "object",
+          "description": "Project policy separate from repository binding.",
+          "properties": {
+            "workflow": {
+              "$ref": "#/$defs/contractPackage"
+            },
+            "review": {
+              "$ref": "#/$defs/review"
+            },
+            "bootstrap": {
+              "$ref": "#/$defs/bootstrap"
+            },
+            "extensions": {
+              "$ref": "#/$defs/extensions"
+            }
+          },
+          "required": [
+            "workflow",
+            "review"
+          ],
+          "additionalProperties": false
+        },
+        "repository": {
+          "type": "object",
+          "description": "Target bindings; no framework-project fallback.",
+          "properties": {
+            "name": {
+              "$ref": "#/$defs/repository"
+            },
+            "openspec_root": {
+              "$ref": "#/$defs/path"
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/text"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "labels": {
+              "type": "object",
+              "description": "Configured category and optional display labels.",
+              "properties": {
+                "type": {
+                  "type": "object",
+                  "description": "Category label mapping.",
+                  "properties": {
+                    "request": {
+                      "$ref": "#/$defs/text",
+                      "default": "type:request"
+                    },
+                    "epic": {
+                      "$ref": "#/$defs/text",
+                      "default": "type:epic"
+                    },
+                    "task": {
+                      "$ref": "#/$defs/text",
+                      "default": "type:task"
+                    },
+                    "bug": {
+                      "$ref": "#/$defs/text",
+                      "default": "type:bug"
+                    },
+                    "spike": {
+                      "$ref": "#/$defs/text",
+                      "default": "type:spike"
+                    }
+                  },
+                  "required": [
+                    "request",
+                    "epic",
+                    "task",
+                    "bug",
+                    "spike"
+                  ],
+                  "additionalProperties": false
+                },
+                "discipline": {
+                  "type": "object",
+                  "description": "Display labels do not select guidance.",
+                  "properties": {
+                    "adopt": {
+                      "$ref": "#/$defs/text"
+                    },
+                    "triage": {
+                      "$ref": "#/$defs/text"
+                    },
+                    "plan": {
+                      "$ref": "#/$defs/text"
+                    },
+                    "research": {
+                      "$ref": "#/$defs/text"
+                    },
+                    "deliver": {
+                      "$ref": "#/$defs/text"
+                    },
+                    "review": {
+                      "$ref": "#/$defs/text"
+                    },
+                    "closeout": {
+                      "$ref": "#/$defs/text"
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            "allowed_reference_repositories": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/repository"
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "name",
+            "openspec_root",
+            "tools",
+            "labels"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "project",
+        "repository"
+      ],
+      "additionalProperties": false
+    },
+    "issue": {
+      "type": "object",
+      "description": "Routed context. Live status and ownership remain in GitHub.",
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/activity"
+        },
+        "request": {
+          "$ref": "#/$defs/work"
+        },
+        "change": {
+          "$ref": "#/$defs/text"
+        },
+        "basis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/repoRef"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "plan_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/planRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "no_spec_reason": {
+          "$ref": "#/$defs/text"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/work"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "prior_work": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/work"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "split_rationale": {
+          "$ref": "#/$defs/text"
+        }
+      },
+      "required": [
+        "activity",
+        "request",
+        "basis"
+      ],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "basis": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "no_spec_reason"
+          ]
+        }
+      ]
+    },
+    "pr": {
+      "type": "object",
+      "description": "Work PR contribution context.",
+      "properties": {
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/work"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "change": {
+          "$ref": "#/$defs/text"
+        },
+        "basis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/repoRef"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "plan_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/planRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "no_spec_reason": {
+          "$ref": "#/$defs/text"
+        }
+      },
+      "required": [
+        "issues",
+        "basis"
+      ],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "basis": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "no_spec_reason"
+          ]
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Revision-specific execution/review evidence; shape is not semantic acceptance.",
+      "properties": {
+        "head": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scope": {
+          "$ref": "#/$defs/text"
+        },
+        "result": {
+          "$ref": "#/$defs/text"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "no_head_reason": {
+          "$ref": "#/$defs/text"
+        },
+        "command": {
+          "$ref": "#/$defs/text"
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "producer_session": {
+          "$ref": "#/$defs/text"
+        },
+        "reviewer_session": {
+          "$ref": "#/$defs/text"
+        },
+        "reviewer_model": {
+          "$ref": "#/$defs/text"
+        },
+        "review_depth": {
+          "const": "full-scope"
+        },
+        "pr": {
+          "$ref": "#/$defs/work"
+        },
+        "base_ref": {
+          "$ref": "#/$defs/text"
+        },
+        "base_sha": {
+          "$ref": "#/$defs/sha"
+        },
+        "policy_ref": {
+          "$ref": "#/$defs/repoRef"
+        },
+        "contract_package": {
+          "$ref": "#/$defs/contractPackage"
+        },
+        "config_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "activation_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_mode": {
+          "enum": [
+            "bootstrap",
+            "activation"
+          ]
+        }
+      },
+      "required": [
+        "head",
+        "scope",
+        "result",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "head": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "head"
+            ]
+          },
+          "then": {
+            "required": [
+              "no_head_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "producer_session"
+            ]
+          },
+          "then": {
+            "required": [
+              "producer_session",
+              "reviewer_session",
+              "reviewer_model",
+              "review_depth"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "reviewer_session"
+            ]
+          },
+          "then": {
+            "required": [
+              "producer_session",
+              "reviewer_session",
+              "reviewer_model",
+              "review_depth"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "reviewer_model"
+            ]
+          },
+          "then": {
+            "required": [
+              "producer_session",
+              "reviewer_session",
+              "reviewer_model",
+              "review_depth"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "review_depth"
+            ]
+          },
+          "then": {
+            "required": [
+              "producer_session",
+              "reviewer_session",
+              "reviewer_model",
+              "review_depth"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "pr"
+            ]
+          },
+          "then": {
+            "required": [
+              "pr",
+              "base_ref",
+              "base_sha",
+              "policy_ref",
+              "contract_package",
+              "config_digest",
+              "activation_digest",
+              "policy_mode"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "base_ref"
+            ]
+          },
+          "then": {
+            "required": [
+              "pr",
+              "base_ref",
+              "base_sha",
+              "policy_ref",
+              "contract_package",
+              "config_digest",
+              "activation_digest",
+              "policy_mode"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "base_sha"
+            ]
+          },
+          "then": {
+            "required": [
+              "pr",
+              "base_ref",
+              "base_sha",
+              "policy_ref",
+              "contract_package",
+              "config_digest",
+              "activation_digest",
+              "policy_mode"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "policy_ref"
+            ]
+          },
+          "then": {
+            "required": [
+              "pr",
+              "base_ref",
+              "base_sha",
+              "policy_ref",
+              "contract_package",
+              "config_digest",
+              "activation_digest",
+              "policy_mode"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "contract_package"
+            ]
+          },
+          "then": {
+            "required": [
+              "pr",
+              "base_ref",
+              "base_sha",
+              "policy_ref",
+              "contract_package",
+              "config_digest",
+              "activation_digest",
+              "policy_mode"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "config_digest"
+            ]
+          },
+          "then": {
+            "required": [
+              "pr",
+              "base_ref",
+              "base_sha",
+              "policy_ref",
+              "contract_package",
+              "config_digest",
+              "activation_digest",
+              "policy_mode"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "activation_digest"
+            ]
+          },
+          "then": {
+            "required": [
+              "pr",
+              "base_ref",
+              "base_sha",
+              "policy_ref",
+              "contract_package",
+              "config_digest",
+              "activation_digest",
+              "policy_mode"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "policy_mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "pr",
+              "base_ref",
+              "base_sha",
+              "policy_ref",
+              "contract_package",
+              "config_digest",
+              "activation_digest",
+              "policy_mode"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "command"
+            ]
+          },
+          "then": {
+            "required": [
+              "exit_code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "exit_code"
+            ]
+          },
+          "then": {
+            "required": [
+              "command"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "policy_mode": {
+                "const": "activation"
+              }
+            },
+            "required": [
+              "policy_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "activation_digest": {
+                "$ref": "#/$defs/digest"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "policy_mode": {
+                "const": "bootstrap"
+              }
+            },
+            "required": [
+              "policy_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "activation_digest": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "activation": {
+      "type": "object",
+      "description": "Versioned pointer; authorization must be independently assessed.",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "enum": [
+            "active",
+            "suspended"
+          ]
+        },
+        "policy_ref": {
+          "$ref": "#/$defs/repoRef"
+        },
+        "contract_package": {
+          "$ref": "#/$defs/contractPackage"
+        },
+        "activated_at": {
+          "$ref": "#/$defs/utc"
+        },
+        "authorized_by": {
+          "$ref": "#/$defs/text"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "state",
+        "policy_ref",
+        "contract_package",
+        "activated_at",
+        "authorized_by",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "selfChangeDecision": {
+      "type": "object",
+      "description": "Owner choice, distinct from Evidence and delivered-work results.",
+      "properties": {
+        "record_type": {
+          "const": "self-change-decision"
+        },
+        "selection": {
+          "enum": [
+            "improvement",
+            "closeout-alternative",
+            "not-accepted"
+          ]
+        },
+        "work": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/work"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rationale": {
+          "$ref": "#/$defs/text"
+        },
+        "authorized_by": {
+          "$ref": "#/$defs/text"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "record_type",
+        "selection",
+        "work",
+        "rationale",
+        "authorized_by",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "selection": {
+                "enum": [
+                  "improvement",
+                  "closeout-alternative"
+                ]
+              }
+            },
+            "required": [
+              "selection"
+            ]
+          },
+          "then": {
+            "properties": {
+              "work": {
+                "$ref": "#/$defs/work"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "gitBlobSource": {
+      "type": "object",
+      "description": "Raw Git blob bytes. kind/representation are outside RepoRef.",
+      "properties": {
+        "kind": {
+          "const": "git-blob"
+        },
+        "representation": {
+          "const": "raw-bytes"
+        },
+        "ref": {
+          "$ref": "#/$defs/repoRef"
+        }
+      },
+      "required": [
+        "kind",
+        "representation",
+        "ref"
+      ],
+      "additionalProperties": false
+    },
+    "commentSource": {
+      "type": "object",
+      "description": "Hash JSON-decoded body encoded UTF-8 without normalization.",
+      "properties": {
+        "kind": {
+          "const": "github-issue-comment"
+        },
+        "repository": {
+          "$ref": "#/$defs/repository"
+        },
+        "comment_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "endpoint": {
+          "const": "GET /repos/{owner}/{repo}/issues/comments/{id}"
+        },
+        "api_version": {
+          "const": "2022-11-28"
+        },
+        "media_type": {
+          "const": "application/vnd.github.raw+json"
+        },
+        "field": {
+          "const": "body"
+        },
+        "encoding": {
+          "const": "utf-8"
+        },
+        "normalization": {
+          "const": "none"
+        }
+      },
+      "required": [
+        "kind",
+        "repository",
+        "comment_id",
+        "endpoint",
+        "api_version",
+        "media_type",
+        "field",
+        "encoding",
+        "normalization"
+      ],
+      "additionalProperties": false
+    },
+    "source": {
+      "description": "Exact source representation for fixity.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/gitBlobSource"
+        },
+        {
+          "$ref": "#/$defs/commentSource"
+        }
+      ]
+    },
+    "delivery": {
+      "type": "object",
+      "description": "Historical assessment. Explicit null audit values retain gaps, not complete provenance.",
+      "properties": {
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/work"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "prs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/work"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "reviewed_head": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "result": {
+          "$ref": "#/$defs/text"
+        },
+        "scope": {
+          "$ref": "#/$defs/text"
+        },
+        "base_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "base_sha": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/repoRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "bootstrap",
+                "activation"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "no_head_reason": {
+          "$ref": "#/$defs/text"
+        }
+      },
+      "required": [
+        "issues",
+        "reviewed_head",
+        "result",
+        "scope",
+        "base_ref",
+        "base_sha",
+        "policy_ref",
+        "policy_mode",
+        "source",
+        "content_sha256"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "reviewed_head": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "reviewed_head"
+            ]
+          },
+          "then": {
+            "required": [
+              "no_head_reason"
+            ]
+          }
+        }
+      ]
+    },
+    "manifestDecision": {
+      "type": "object",
+      "description": "Fixed decision source; no delivery audit fields.",
+      "properties": {
+        "record_type": {
+          "const": "self-change-decision"
+        },
+        "selection": {
+          "enum": [
+            "improvement",
+            "closeout-alternative",
+            "not-accepted"
+          ]
+        },
+        "work": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/work"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rationale": {
+          "$ref": "#/$defs/text"
+        },
+        "authorized_by": {
+          "$ref": "#/$defs/text"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "required": [
+        "record_type",
+        "selection",
+        "work",
+        "rationale",
+        "authorized_by",
+        "evidence",
+        "source",
+        "content_sha256"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "selection": {
+                "enum": [
+                  "improvement",
+                  "closeout-alternative"
+                ]
+              }
+            },
+            "required": [
+              "selection"
+            ]
+          },
+          "then": {
+            "properties": {
+              "work": {
+                "$ref": "#/$defs/work"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "manifest": {
+      "type": "object",
+      "description": "Closeout evidence fixity, not proof of historical source equality.",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "captured_at": {
+          "$ref": "#/$defs/utc"
+        },
+        "closeout_policy_ref": {
+          "$ref": "#/$defs/repoRef"
+        },
+        "deliveries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/delivery"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/manifestDecision"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "captured_at",
+        "closeout_policy_ref",
+        "deliveries",
+        "decisions"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
