@@ -11,7 +11,7 @@ const installedRoot = fileURLToPath(new URL('..', import.meta.url));
 const plans = new WeakMap();
 
 function render(content, bindings) {
-  const result = content.replace(/\{\{([a-z_]+)\}\}/g, (original, key) => bindings[key] ?? original);
+  const result = content.replace(/\{\{([a-z_]+)\}\}/g, (original, key) => Object.hasOwn(bindings, key) ? bindings[key] : original);
   let inTemplate = false;
   for (const line of result.split('\n')) {
     const marker = line.trim();

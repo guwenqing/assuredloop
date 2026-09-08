@@ -314,6 +314,30 @@ test('unknown or misspelled tokens outside a marked reusable example are rejecte
   );
 });
 
+test('inherited binding keys are rejected outside reusable examples', async (t) => {
+  for (const token of ['constructor', '__proto__']) {
+    const { packageFixture, target, config } = await makeScenario(t);
+    await writeFile(path.join(packageFixture.root, 'skills/assuredloop-adopt/SKILL.md'), `outside={{${token}}}\n`);
+    await expectCode(
+      () => planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true }),
+      'binding-invalid',
+    );
+  }
+});
+
+test('inherited binding keys remain literal inside reusable examples', async (t) => {
+  const { packageFixture, target, config } = await makeScenario(t);
+  await writeFile(path.join(packageFixture.root, 'skills/assuredloop-adopt/SKILL.md'), [
+    '<!-- assuredloop:template:start -->',
+    'Reusable example, not completed target data',
+    '{"constructor":"{{constructor}}","__proto__":"{{__proto__}}","change":"{{change}}"}',
+    '<!-- assuredloop:template:end -->',
+  ].join('\n') + '\n');
+  const plan = await planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true });
+  const skill = plannedFile(plan, '.gemini/skills/assuredloop-adopt/SKILL.md').content;
+  assert.match(skill, /\{"constructor":"\{\{constructor\}\}","__proto__":"\{\{__proto__\}\}","change":"\{\{change\}\}"\}/);
+});
+
 test('template regions reject unbalanced and nested markers', async (t) => {
   const cases = [
     '<!-- assuredloop:template:start -->\nReusable example, not completed target data\n',
