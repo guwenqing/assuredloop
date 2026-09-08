@@ -1,0 +1,14 @@
+Historical delivery report
+
+Work issue: example/consumer#81
+Pull request: example/consumer#82
+Assessed head: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Result: pass
+Scope: The bounded trace package described by this report.
+Base branch: main
+Base commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+Policy reference: example/consumer@cccccccccccccccccccccccccccccccccccccccc:openspec/specs/policy.md#requirement-policy
+Policy mode: bootstrap
+
+This report records the source facts available for the bounded package. It explicitly
+does not claim a wider release, archive, activation, or repository-wide result.

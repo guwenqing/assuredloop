@@ -1,0 +1,34 @@
+{
+  "head": "dddddddddddddddddddddddddddddddddddddddd",
+  "scope": "Planning delivery",
+  "result": "pass",
+  "evidence": [
+    {
+      "repository": "example/consumer",
+      "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "path": "openspec/changes/example/tasks.md"
+    }
+  ],
+  "pr": "example/consumer#41",
+  "base_ref": "main",
+  "base_sha": "ffffffffffffffffffffffffffffffffffffffff",
+  "policy_ref": {
+    "repository": "example/consumer",
+    "revision": "1111111111111111111111111111111111111111",
+    "path": "openspec/changes/example/design.md"
+  },
+  "contract_package": {
+    "name": "assuredloop-workflow",
+    "version": "0.1.0",
+    "integrity": "sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "source_ref": {
+      "repository": "example/consumer",
+      "revision": "2323232323232323232323232323232323232323",
+      "path": "contracts/specs"
+    },
+    "contracts_path": "contracts"
+  },
+  "config_digest": "5656565656565656565656565656565656565656565656565656565656565656",
+  "activation_digest": null,
+  "policy_mode": "bootstrap"
+}

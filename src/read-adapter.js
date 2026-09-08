@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { execFile, fail, git, relativePath, repositoryIdentity, repositoryRoot } from './files.js';
 import { githubAuthentication } from './native.js';
 import { validateRecord } from './records.js';
@@ -16,7 +17,7 @@ export function workIdentity(value) {
 function githubFailure(error, accessConfirmed = false) {
   const message = String(error.stderr || error.message);
   const missing = /HTTP 404/.test(message);
-  if (missing && accessConfirmed) fail('record-unavailable', 'The record is unavailable in the accessible repository.');
+  if (missing && accessConfirmed) fail('record-unavailable', 'The record is unavailable in the accessible repository.', { reason: 'not-found' });
   const reason = /rate.limit|HTTP 429/i.test(message) ? 'rate-limited'
     : /HTTP 401/.test(message) ? 'authentication-required'
       : /HTTP (403|404)/.test(message) ? 'insufficient-access' : 'transport-error';
@@ -34,6 +35,7 @@ async function objectRead(root, args) {
   try {
     return (await execFile('git', ['--no-replace-objects', '-C', root, ...args], {
       encoding: 'buffer', maxBuffer: 16 * 1024 * 1024,
+      env: { ...process.env, GIT_NO_LAZY_FETCH: '1' },
     })).stdout;
   } catch (error) {
     if (error.code === 'ENOENT') fail('tool-unavailable', 'Git is unavailable.', { reason: 'missing-binary' });
@@ -76,7 +78,7 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
   async function localRoot(name) {
     const normalized = scope(name);
     if (roots.has(normalized)) return roots.get(normalized);
-    if (!suppliedRoots.has(normalized)) fail('record-unavailable', 'No explicitly bound local checkout contains this reference.');
+    if (!suppliedRoots.has(normalized)) fail('record-unavailable', 'No explicitly bound local checkout contains this reference.', { reason: 'checkout-unavailable' });
     const root = await repositoryRoot(suppliedRoots.get(normalized));
     if (repositoryIdentity(await git(root, ['remote', 'get-url', 'origin'])) !== normalized) {
       fail('binding-invalid', 'Reference checkout origin does not match its explicit binding.');
@@ -96,19 +98,19 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
       prefix = prefix ? `${prefix}/${part}` : part;
       const entries = treeEntries(await objectRead(root, ['ls-tree', '-z', ref.revision, '--', prefix]));
       const entry = entries.find((item) => item.path === prefix);
-      if (!entry) fail('record-unavailable', 'The referenced path does not exist at the selected revision.');
+      if (!entry) fail('record-unavailable', 'The referenced path does not exist at the selected revision.', { reason: 'path-missing' });
       if (entry.mode === '120000' || entry.mode === '160000') fail('path-unsafe', 'Symbolic links and submodule paths are not scoped file evidence.');
     }
     return root;
   }
 
-  async function rawApi(endpoint, paginate = false) {
+  async function rawApi(endpoint, paginate = false, media = 'application/vnd.github.raw+json') {
     const args = ['api', endpoint, '--hostname', 'github.com', '--method', 'GET',
-      '-H', 'Accept: application/vnd.github.raw+json', '-H', 'X-GitHub-Api-Version: 2022-11-28'];
+      '-H', `Accept: ${media}`, '-H', 'X-GitHub-Api-Version: 2022-11-28'];
     if (paginate) args.push('--paginate', '--slurp');
     const { stdout } = await execFile('gh', args, { maxBuffer: 16 * 1024 * 1024 });
     try { return JSON.parse(stdout); }
-    catch { fail('record-unavailable', 'GitHub returned an unsupported JSON representation.'); }
+    catch { fail('record-unavailable', 'GitHub returned an unsupported JSON representation.', { reason: 'invalid-response' }); }
   }
 
   async function confirmRepository(name) {
@@ -121,15 +123,16 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
     if (typeof info?.full_name !== 'string' || info.full_name.toLowerCase() !== name) {
       fail('binding-invalid', 'GitHub repository rename/redirect requires an explicit verified binding update.');
     }
+    return info;
   }
 
-  async function api(name, resource, paginate = false) {
+  async function api(name, resource, paginate = false, media) {
     const normalized = scope(name);
     if (localOnly) fail('tool-unavailable', 'GitHub reads are skipped in local-only diagnostics.', { reason: 'local-only' });
     if (!authenticated) { await githubAuthentication(); authenticated = true; }
     await confirmRepository(normalized);
     let result;
-    try { result = await rawApi(`repos/${normalized}/${resource}${paginate ? '?per_page=100' : ''}`, paginate); }
+    try { result = await rawApi(`repos/${normalized}/${resource}${paginate ? '?per_page=100' : ''}`, paginate, media); }
     catch (error) {
       if (error.code === 'record-unavailable') throw error;
       if (/HTTP 404/.test(String(error.stderr || error.message))) await confirmRepository(normalized);
@@ -147,29 +150,129 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
     return api(ref.repository, `${collection}/${ref.number}${suffix}`, paginate);
   }
 
+  function unavailable() {
+    fail('record-unavailable', 'GitHub returned an inconsistent or unsupported Git object.', { reason: 'invalid-response' });
+  }
+
+  async function remoteObject(repository, kind, sha) {
+    if (!/^[a-f0-9]{40}$/.test(sha)) unavailable();
+    const result = await api(repository, `git/${kind}/${sha}`, false, 'application/vnd.github+json');
+    if (result?.sha !== sha) unavailable();
+    return result;
+  }
+
+  async function remoteTree(repository, sha) {
+    const result = await remoteObject(repository, 'trees', sha);
+    if (result.truncated !== false || !Array.isArray(result.tree)) unavailable();
+    const names = new Set();
+    return result.tree.map((entry) => {
+      if (typeof entry?.path !== 'string') unavailable();
+      relativePath(entry.path);
+      if (entry.path === '.' || entry.path.includes('/') || names.has(entry.path)) unavailable();
+      names.add(entry.path);
+      if (!/^[a-f0-9]{40}$/.test(entry.sha)) unavailable();
+      const type = { '040000': 'tree', '100644': 'blob', '100755': 'blob', '120000': 'blob', '160000': 'commit' }[entry.mode];
+      if (!type || entry.type !== type) unavailable();
+      return { path: entry.path, mode: entry.mode, type, sha: entry.sha };
+    });
+  }
+
+  function scopedEntry(entry) {
+    if (entry.mode === '120000' || entry.mode === '160000') fail('path-unsafe', 'Symbolic links and submodule paths are not scoped file evidence.');
+    return entry;
+  }
+
+  async function remoteSource(ref) {
+    const commit = await remoteObject(ref.repository, 'commits', ref.revision);
+    if (!/^[a-f0-9]{40}$/.test(commit.tree?.sha)) unavailable();
+    let selected = { path: '.', mode: '040000', type: 'tree', sha: commit.tree.sha };
+    let prefix = '';
+    for (const part of ref.path === '.' ? [] : ref.path.split('/')) {
+      if (selected.type !== 'tree') fail('record-unavailable', 'The referenced path does not exist.', { reason: 'path-missing' });
+      const entries = await remoteTree(ref.repository, selected.sha);
+      const next = entries.find((entry) => entry.path === part);
+      if (!next) fail('record-unavailable', 'The referenced path does not exist.', { reason: 'path-missing' });
+      prefix = prefix ? `${prefix}/${part}` : part;
+      selected = { ...scopedEntry(next), path: prefix };
+    }
+    return selected;
+  }
+
+  async function withRemoteFallback(ref, local, remote) {
+    try { return await local(await source(ref)); }
+    catch (error) {
+      if (localOnly || error.code !== 'record-unavailable' ||
+          !['git-object-unavailable', 'checkout-unavailable'].includes(error.details?.reason)) throw error;
+      return remote(await remoteSource(ref));
+    }
+  }
+
   return {
     repository: bound,
     targetRoot: target,
     localOnly,
+    async readRepository(name) {
+      const normalized = scope(name);
+      if (localOnly) fail('tool-unavailable', 'GitHub reads are skipped in local-only diagnostics.', { reason: 'local-only' });
+      if (!authenticated) { await githubAuthentication(); authenticated = true; }
+      return confirmRepository(normalized);
+    },
+    async readBranchHead({ repository: name, branch } = {}) {
+      const normalized = scope(name);
+      if (typeof branch !== 'string' || !branch || branch.startsWith('-') || branch === '@' ||
+          branch.includes('..') || branch.includes('@{') || /[\s\x00-\x1f\x7f~^:?*\[\\$`;&|()<>"']/.test(branch) ||
+          branch.split('/').some((part) => !part || part.startsWith('.') || part.endsWith('.') || part.endsWith('.lock'))) {
+        fail('binding-invalid', 'Expected a supported explicit branch name, not a command or URL.');
+      }
+      const result = await api(normalized, `git/ref/heads/${branch.split('/').map(encodeURIComponent).join('/')}`);
+      if (result?.ref !== `refs/heads/${branch}` || result?.object?.type !== 'commit' || !validateRecord('sha', result?.object?.sha).valid) unavailable();
+      return result.object.sha;
+    },
     async readBlob(ref) {
-      const root = await source(ref);
-      const entries = treeEntries(await objectRead(root, ['ls-tree', '-z', ref.revision, '--', ref.path]));
-      const file = entries.find((entry) => entry.path === ref.path && entry.type === 'blob');
-      if (!file) fail('record-unavailable', 'Reference does not identify a file blob.');
-      return objectRead(root, ['cat-file', 'blob', file.sha]);
+      return withRemoteFallback(ref, async (root) => {
+        const entries = treeEntries(await objectRead(root, ['ls-tree', '-z', ref.revision, '--', ref.path]));
+        const file = entries.find((entry) => entry.path === ref.path && entry.type === 'blob');
+        if (!file) fail('record-unavailable', 'Reference does not identify a file blob.', { reason: 'not-a-blob' });
+        return objectRead(root, ['cat-file', 'blob', file.sha]);
+      }, async (file) => {
+        if (file.type !== 'blob') fail('record-unavailable', 'Reference does not identify a file blob.', { reason: 'not-a-blob' });
+        const blob = await remoteObject(ref.repository, 'blobs', file.sha);
+        if (blob.encoding !== 'base64' || typeof blob.content !== 'string') unavailable();
+        const encoded = blob.content.replace(/[\r\n]/g, '');
+        const bytes = Buffer.from(encoded, 'base64');
+        if (bytes.toString('base64') !== encoded || blob.size !== bytes.length) unavailable();
+        const actual = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+        if (actual !== file.sha) unavailable();
+        return bytes;
+      });
     },
     async listFiles(ref) {
-      const root = await source(ref);
-      return treeEntries(await objectRead(root, ['ls-tree', '-r', '-z', ref.revision, '--', ref.path]));
+      return withRemoteFallback(ref, async (root) =>
+        treeEntries(await objectRead(root, ['ls-tree', '-r', '-z', ref.revision, '--', ref.path])), async (selected) => {
+        const result = [];
+        const pending = [selected];
+        let visited = 0;
+        while (pending.length) {
+          if (++visited > 10000) fail('record-unavailable', 'Git tree inventory exceeds the bounded read limit.');
+          const current = scopedEntry(pending.pop());
+          if (current.type === 'blob') result.push(current);
+          else {
+            const entries = await remoteTree(ref.repository, current.sha);
+            for (const entry of entries) pending.push({ ...entry, path: current.path === '.' ? entry.path : `${current.path}/${entry.path}` });
+          }
+        }
+        return result.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+      });
     },
     readIssue: (work) => workRead(work, 'issues'),
     readPull: (work) => workRead(work, 'pulls'),
     listComments: (work) => workRead(work, 'issues', '/comments', true),
+    listTimeline: (work) => workRead(work, 'issues', '/timeline', true),
     listChildren: (work) => workRead(work, 'issues', '/sub_issues', true),
     listPullFiles: (work) => workRead(work, 'pulls', '/files', true),
     async readParent(work) {
       try { return await workRead(work, 'issues', '/parent'); }
-      catch (error) { if (error.code === 'record-unavailable') return null; throw error; }
+      catch (error) { if (error.code === 'record-unavailable' && error.details?.reason === 'not-found') return null; throw error; }
     },
     readComment(ref) {
       if (!validateRecord('commentRef', ref).valid) fail('binding-invalid', 'Expected a structured comment reference.');

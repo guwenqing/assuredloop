@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 
-const scenario = JSON.parse(readFileSync(process.env.FAKE_GH_SCENARIO, 'utf8'));
+const scenarioPath = process.env.FAKE_GH_SCENARIO;
+const scenario = JSON.parse(readFileSync(scenarioPath, 'utf8'));
 const args = process.argv.slice(2);
-if (process.env.FAKE_GH_LOG) {
-  appendFileSync(process.env.FAKE_GH_LOG, `${JSON.stringify(args)}\n`);
-}
+if (process.env.FAKE_GH_LOG) appendFileSync(process.env.FAKE_GH_LOG, `${JSON.stringify(args)}\n`);
 
 function loggedCommands() {
   try {
@@ -20,6 +19,15 @@ function loggedCommands() {
 function fail(message) {
   process.stderr.write(`${message}\n`);
   process.exitCode = 1;
+}
+
+function applyMutation(resource) {
+  const mutation = scenario.dynamicMutation;
+  if (!mutation || scenario.dynamicMutationApplied || mutation.resource !== resource) return;
+  const updated = JSON.parse(JSON.stringify(scenario));
+  updated.records[resource] = { ...updated.records[resource], ...mutation.patch };
+  updated.dynamicMutationApplied = true;
+  writeFileSync(scenarioPath, `${JSON.stringify(updated)}\n`);
 }
 
 if (args[0] === '--version') {
@@ -59,6 +67,7 @@ if (args[0] === '--version') {
     fail('HTTP 404 Not Found');
   } else if (scenario.records && Object.hasOwn(scenario.records, resource)) {
     console.log(JSON.stringify(scenario.records[resource]));
+    applyMutation(resource);
   } else {
     fail(`HTTP 404 Not Found: ${resource}`);
   }

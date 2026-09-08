@@ -1,0 +1,5 @@
+Historical delivery assessment
+
+The source note discusses a package of checks and says that the assessment was made
+from the material available at that time. The note itself does not establish that all
+later work or every repository requirement was covered.

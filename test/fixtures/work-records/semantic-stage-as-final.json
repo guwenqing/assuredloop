@@ -1,0 +1,29 @@
+{
+  "case": "stage-only-evidence-offered-for-wider-final-outcome",
+  "description": "The source evidence describes an intermediate branch while the assigned request explicitly asks for final integration.",
+  "issue": {
+    "number": 62,
+    "state": "closed",
+    "state_reason": "completed",
+    "body": "The assigned outcome requires the released destination and the parent change to be complete."
+  },
+  "pulls": [
+    {
+      "number": 72,
+      "state": "closed",
+      "merged": true,
+      "merge_commit_sha": "9999999999999999999999999999999999999999",
+      "head": {"sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "ref": "feature/records-stage"},
+      "base": {"sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "ref": "integration"}
+    }
+  ],
+  "evidence": [
+    {
+      "ref": {"repository": "example/consumer", "comment_id": 502},
+      "record": {
+        "scope": "Only the integration branch contribution was observed.",
+        "result": "pass"
+      }
+    }
+  ]
+}

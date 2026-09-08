@@ -1,0 +1,13 @@
+{
+  "record_type": "self-change-decision",
+  "selection": "improvement",
+  "work": "example/consumer#44",
+  "rationale": "A bounded improvement has its own work item and independent assessment.",
+  "authorized_by": "example-owner",
+  "evidence": [
+    {
+      "repository": "example/consumer",
+      "comment_id": 905
+    }
+  ]
+}

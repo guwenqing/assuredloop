@@ -1,0 +1,6 @@
+Historical delivery assessment
+
+The note records a bounded read-only trace check for example/consumer#81. It describes
+the source material that was available when the assessment was written and leaves the
+meaning of the stated scope for an independent reviewer to compare with the original
+work.

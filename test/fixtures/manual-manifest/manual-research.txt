@@ -1,0 +1,5 @@
+Historical research note
+
+This note records external research without a Git revision. It is a non-revisioned
+research source and still requires a reviewer to compare the stated summary with the
+original note.
