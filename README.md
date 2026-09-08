@@ -16,6 +16,10 @@ Create the input from the illustrative `templates/records/config.json` and the d
 
 The adoption procedure is in `skills/assuredloop-adopt/SKILL.md`. Native tool roots are discovered from the pinned OpenSpec registry, including Gemini; upstream ownership markers are preserved. Framework contracts remain in the selected installation, separate from the consumer's product Specs. The returned file list identifies target discovery copies.
 
+### Authoring reusable Skill examples
+
+Initialization resolves `{{repository}}`, `{{openspec_root}}`, `{{package_name}}` and `{{package_version}}` everywhere in packaged Skill text. To show a later-work template, place the own-line comment `<!-- assuredloop:template:start -->` before the example and `<!-- assuredloop:template:end -->` after it, with a visible caption identifying the content as a reusable template/example rather than completed target data. Other tokens, such as `{{change}}`, are preserved only inside that declared region. Unknown tokens outside it, unbalanced regions and nesting are errors. Do not use these markers to exempt executable instructions or actual work records; semantic review must assess the declaration. Target configuration always remains strict. This convention does not validate completed handoff records.
+
 ## Package and contract assets
 
 The package stays private; no npm publication is authorized. `npm pack` builds a tarball with an explicit file allowlist. Its output reports the tarball's integrity; retain that value with the package name/version and generated contract source reference in the consumer binding. Contract file hashes verify the generated assets, not publisher identity or policy acceptance.

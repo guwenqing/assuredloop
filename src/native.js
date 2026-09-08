@@ -76,7 +76,7 @@ export async function githubPreflight(repository, labels, localOnly) {
   const remote = JSON.parse(await api(`repos/${repository}`));
   if (remote.full_name.toLowerCase() !== repository.toLowerCase()) fail('binding-invalid', 'Repository redirect/rename requires an explicit binding update.');
   const pages = JSON.parse(await api(`repos/${repository}/labels?per_page=100`, ['--paginate', '--slurp']));
-  const existing = new Set(pages.flat().map((label) => label.name));
-  const missing = Object.values(labels.type).filter((label) => !existing.has(label));
+  const existing = new Set(pages.flat().map((label) => label.name.toLowerCase()));
+  const missing = Object.values(labels.type).filter((label) => !existing.has(label.toLowerCase()));
   return missing.length ? [{ code: 'labels-missing', labels: missing, message: 'Adopting owner must provision or map these labels before routed work.' }] : [];
 }

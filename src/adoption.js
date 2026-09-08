@@ -12,7 +12,20 @@ const plans = new WeakMap();
 
 function render(content, bindings) {
   const result = content.replace(/\{\{([a-z_]+)\}\}/g, (original, key) => bindings[key] ?? original);
-  if (result.includes('{{')) fail('binding-invalid', 'Required template bindings remain unresolved.');
+  let inTemplate = false;
+  for (const line of result.split('\n')) {
+    const marker = line.trim();
+    if (marker === '<!-- assuredloop:template:start -->') {
+      if (inTemplate) fail('binding-invalid', 'Reusable template regions cannot be nested.');
+      inTemplate = true;
+    } else if (marker === '<!-- assuredloop:template:end -->') {
+      if (!inTemplate) fail('binding-invalid', 'Reusable template end has no matching start.');
+      inTemplate = false;
+    } else if (!inTemplate && line.includes('{{')) {
+      fail('binding-invalid', 'Required template bindings remain unresolved outside a declared reusable example.');
+    }
+  }
+  if (inTemplate) fail('binding-invalid', 'Reusable template region has no matching end.');
   return result;
 }
 

@@ -1,6 +1,6 @@
 All executable items below, including generated helpers, obey [independent test authorship, genuine RED/GREEN and controlled-fault checks](specs/review-and-validation/spec.md#requirement-verify-code-with-independent-test-first-evidence). Test authors and implementation producers are different agents; producer review is also independent. This obligation applies uniformly, not only where a task mentions tests. Non-code items use artifact checks and semantic review without fabricated runtime RED/GREEN.
 
-Checked planning items mean this PR contains those candidate contributions, not that AL Reviewer accepted the revision or that it may merge. All implementation items remain unchecked. Checklist granularity supports honest partial delivery within the same work Issue; it does not require a separate Issue or PR for every line.
+Checked items record candidate contributions for their linked work Issues, not proof of review, merge or Issue completion; consult the revision-specific GitHub evidence. Package 0 retains its planning-stage contribution wording. Checklist granularity supports honest partial delivery within the same work Issue; it does not require a separate Issue or PR for every line.
 
 ## 0. Planning and handoff
 

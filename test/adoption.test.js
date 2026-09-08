@@ -278,3 +278,82 @@ test('initialization honors a custom OpenSpec root and category label mapping', 
   assert.deepEqual(await readJson(path.join(target.root, '.assuredloop/config.json')), config);
   assert.equal(await readFile(path.join(customRoot, 'config.yaml'), 'utf8'), 'schema: spec-driven\n');
 });
+
+test('rendered adoption guidance resolves installation bindings and preserves marked later-work tokens', async (t) => {
+  const { packageFixture, target, config } = await makeScenario(t);
+  await writeFile(path.join(packageFixture.root, 'skills/assuredloop-adopt/SKILL.md'), [
+    '# Adoption example',
+    'repository={{repository}}',
+    'openspec_root={{openspec_root}}',
+    'package_name={{package_name}}',
+    'package_version={{package_version}}',
+    '<!-- assuredloop:template:start -->',
+    'Reusable example, not completed target data',
+    '{"repository":"{{repository}}","openspec_root":"{{openspec_root}}","package":"{{package_name}}@{{package_version}}","change":"{{change}}"}',
+    '<!-- assuredloop:template:end -->',
+  ].join('\n') + '\n');
+  const plan = await planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true });
+  const skill = plannedFile(plan, '.gemini/skills/assuredloop-adopt/SKILL.md').content;
+  assert.match(skill, /repository=example\/adoption-consumer/);
+  assert.match(skill, /openspec_root=openspec/);
+  assert.match(skill, /package_name=assuredloop-base/);
+  assert.match(skill, /package_version=0\.1\.0/);
+  assert.match(skill, /Reusable example, not completed target data/);
+  assert.match(skill, /\{"repository":"example\/adoption-consumer","openspec_root":"openspec","package":"assuredloop-base@0\.1\.0","change":"\{\{change\}\}"\}/);
+  for (const known of ['{{repository}}', '{{openspec_root}}', '{{package_name}}', '{{package_version}}']) {
+    assert.equal(skill.includes(known), false, `known installation token remains: ${known}`);
+  }
+});
+
+test('unknown or misspelled tokens outside a marked reusable example are rejected', async (t) => {
+  const { packageFixture, target, config } = await makeScenario(t);
+  await writeFile(path.join(packageFixture.root, 'skills/assuredloop-adopt/SKILL.md'), 'outside={{chang}}\n');
+  await expectCode(
+    () => planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true }),
+    'binding-invalid',
+  );
+});
+
+test('template regions reject unbalanced and nested markers', async (t) => {
+  const cases = [
+    '<!-- assuredloop:template:start -->\nReusable example, not completed target data\n',
+    '<!-- assuredloop:template:end -->\nReusable example, not completed target data\n',
+    '<!-- assuredloop:template:start -->\n<!-- assuredloop:template:start -->\nReusable example, not completed target data\n<!-- assuredloop:template:end -->\n',
+  ];
+  for (const skillText of cases) {
+    const { packageFixture, target, config } = await makeScenario(t);
+    await writeFile(path.join(packageFixture.root, 'skills/assuredloop-adopt/SKILL.md'), skillText);
+    await expectCode(
+      () => planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true }),
+      'binding-invalid',
+    );
+  }
+});
+
+test('template markers never exempt placeholders in target configuration', async (t) => {
+  const markerConfig = await makeScenario(t);
+  markerConfig.config.project.extensions = {
+    'example:note': '<!-- assuredloop:template:start --> {{change}} <!-- assuredloop:template:end -->',
+  };
+  await expectCode(
+    () => planInitialization({
+      targetRoot: markerConfig.target.root,
+      config: markerConfig.config,
+      packageRoot: markerConfig.packageFixture.root,
+      localOnly: true,
+    }),
+    'binding-invalid',
+  );
+
+  const requiredBinding = await makeScenario(t);
+  requiredBinding.config.repository.name = '{{repository}}';
+  await expectCode(
+    () => planInitialization({
+      targetRoot: requiredBinding.target.root,
+      config: requiredBinding.config,
+      packageRoot: requiredBinding.packageFixture.root,
+      localOnly: true,
+    }),
+    'binding-invalid',
+  );
+});

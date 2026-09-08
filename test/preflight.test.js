@@ -63,10 +63,19 @@ async function makeGhFixture(t, {
   version = '2.88.0',
   mode = 'labels-missing',
   requireApiHostname = false,
+  labelCaseVariant = false,
 } = {}) {
   const bin = await mkdtemp(path.join(os.tmpdir(), 'assuredloop-gh-bin-'));
   const log = path.join(bin, 'commands.log');
-  const labels = [[{ name: 'type:request' }, { name: 'type:task' }]];
+  const labels = labelCaseVariant
+    ? [[
+      { name: 'TYPE:REQUEST' },
+      { name: 'Type:Epic' },
+      { name: 'type:TASK' },
+      { name: 'Type:Bug' },
+      { name: 'TYPE:SPIKE' },
+    ]]
+    : [[{ name: 'type:request' }, { name: 'type:task' }]];
   const enterpriseLabels = [[
     { name: 'type:request' },
     { name: 'type:epic' },
@@ -254,6 +263,21 @@ test('GitHub API reads pin github.com despite an ambient GH_HOST override', asyn
     assert.match(args[1], /^repos\/example\/project/);
     assert.deepEqual(args.slice(2, 4), ['--hostname', 'github.com']);
   }
+});
+
+test('GitHub label identity comparison is case-insensitive', async (t) => {
+  const fixture = await makeGhFixture(t, { labelCaseVariant: true });
+  const diagnostics = await withPath(fixture.env.PATH, () =>
+    githubPreflight('example/project', {
+      type: {
+        request: 'Type:Request',
+        epic: 'TYPE:EPIC',
+        task: 'Type:Task',
+        bug: 'TYPE:BUG',
+        spike: 'type:spike',
+      },
+    }, false), { MOCK_GH_LOG: fixture.log });
+  assert.deepEqual(diagnostics, []);
 });
 
 test('native registry version and shape incompatibilities are explicit in an isolated runtime copy', async (t) => {
