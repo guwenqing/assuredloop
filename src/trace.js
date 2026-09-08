@@ -155,7 +155,9 @@ export async function createTrace({ targetRoot, work }) {
         unresolvedRelations.push(pr);
         continue;
       }
-      const record = await structuredBody(pull.body, { allowPlain: false });
+      const record = required.has(pr)
+        ? (await sourceRecord(pull.body, pr, { expectedKind: 'pr' })).record
+        : await structuredBody(pull.body, { allowPlain: false });
       if (pr !== ref && (!validateRecord('pr', record).valid || !record.issues.some((item) => normalizeWork(item) === ref))) {
         findings.push({ code: 'relation-not-reciprocal', message: `${pr} does not explicitly map to ${ref}.` });
         continue;
@@ -218,6 +220,11 @@ export async function createTrace({ targetRoot, work }) {
   acquisition = await establishAcquisition({ targetRoot, work, issue: primaryIssue, pull: primaryPull, initialAdapter: adapter });
   adapter = acquisition.adapter;
   sourceCache.set(key(acquisition.source.source.ref), { content: acquisition.source.content, references: [] });
+  const primaryLabels = (primaryIssue.labels || []).map((label) => typeof label === 'string' ? label : label?.name);
+  const primaryRouted = primaryLabels.some((label) => acquisition.routedIssueLabels.includes(label));
+  await sourceRecord(primaryIssue.body, normalizeWork(work), {
+    expectedKind: primaryIssue.pull_request ? 'pr' : 'issue', allowMissing: !primaryIssue.pull_request && !primaryRouted,
+  });
 
   return {
     repository, findings, issueAt, pullAt, bundleAt, load,

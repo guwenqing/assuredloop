@@ -47,6 +47,7 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
 
   return {
     context, contexts,
+    routedIssueLabels: ['task', 'bug', 'spike'].map((kind) => primary.config.repository.labels?.type?.[kind]).filter((label) => typeof label === 'string'),
     source: { source: { kind: 'git-blob', ref: primary.ref }, content: primary.bytes.toString('utf8'), content_sha256: digest(primary.bytes) },
     get adapter() { return active.reader; },
     get scopeKey() { return [...active.allowed].sort().join(','); },
