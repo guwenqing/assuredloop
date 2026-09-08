@@ -39,6 +39,8 @@ A missing author recipient blocks addressed return, not publication that is alre
 
 Read the return recipient from the explicit CURRENT work handoff. Do not infer a session from a job title, GitHub login, historical comment, framework source repo or global default. If recipient context is missing/ambiguous, report that and ask the responsible work owner to resolve it. Do not send to a guessed person or channel.
 
+A producer_session declaration identifies the producer for independence checks. It is a return recipient only when the current handoff explicitly designates that session for return; its name or producer role alone does not supply that instruction.
+
 Send the outcome URL, exact revision, verdict, concise findings/limits and required next action through the available authorized communication mechanism. Distinguish requested/queued sending from confirmed delivery. Missing tools or unconfirmed receipt must be reported honestly; do not build a provider, dispatcher, routing schema or recurring retry loop. Review PASS remains separate from any required final approval and merge.
 
 Illustrative current-handoff examples, not completed target data:

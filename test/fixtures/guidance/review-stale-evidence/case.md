@@ -23,7 +23,7 @@ reviewer_session: session-reviewer
 reviewer_model: model-reviewer
 review_depth: full-scope
 prior_result: clean review at head cccccccccccccccccccccccccccccccccccccccc
-current_head: dddddddddddddddddddddddddddddddddddddddddddd
+current_head: dddddddddddddddddddddddddddddddddddddddd
 ```
 
 The current pull request changes the implementation after the recorded clean result.
