@@ -41,7 +41,8 @@ function removeComment(pages, id) {
 /**
  * Add one valid command/exit-only Evidence record beside the existing review
  * Evidence in the read-only trace fixture. `mode: verification-only` removes
- * the review record; `mode: partial-review` removes one review declaration.
+ * the review record; `mode: partial-review` removes one review declaration;
+ * `mode: mixed-partial` keeps the complete review and adds a malformed one.
  */
 export async function makeTraceEvidenceFixture(t, { mode = 'mixed', ordinary = {} } = {}) {
   const fixture = await makeTraceFixture(t);
@@ -61,8 +62,19 @@ export async function makeTraceEvidenceFixture(t, { mode = 'mixed', ordinary = {
     const partialBody = JSON.stringify(partial, null, 2);
     issueComments = replaceComment(issueComments, 101, partialBody);
     pullComments = replaceComment(pullComments, 101, partialBody);
+  } else if (mode === 'mixed-partial') {
+    const partial = clone(review);
+    delete partial.reviewer_session;
+    const partialBody = JSON.stringify(partial, null, 2);
+    issueComments = issueComments.map((page, index) => index === 0
+      ? [...page, { id: 110, body: partialBody }]
+      : page);
+    pullComments = pullComments.map((page, index) => index === 0
+      ? [...page, { id: 110, body: partialBody }]
+      : page);
+    scenario.records['issues/comments/110'] = { id: 110, body: partialBody };
   }
-  if (mode !== 'partial-review') {
+  if (mode === 'mixed' || mode === 'verification-only') {
     issueComments = issueComments.map((page, index) => index === 0
       ? [...page, { id: 109, body: ordinaryBody }]
       : page);

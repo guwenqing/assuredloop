@@ -56,6 +56,15 @@ test('valid review remains sufficient when ordinary command/exit Evidence is pre
     'the ordinary command remains available as execution evidence');
 });
 
+test('a valid review does not hide a second partial review declaration', async (t) => {
+  const fixture = await makeTraceEvidenceFixture(t, { mode: 'mixed-partial' });
+  const result = await runCli(['check', '--target', fixture.root, '--work', workPull], fixture.env);
+  const checked = outputOf(result);
+  assert.match(findingText(checked), /review-evidence-invalid/);
+  assert.notEqual(result.exitCode, 0, 'an explicitly malformed review source makes the check non-successful');
+  assert.notEqual(checked.status, 'pass');
+});
+
 test('verification-only Evidence cannot satisfy the required PR review obligation', async (t) => {
   const fixture = await makeTraceEvidenceFixture(t, { mode: 'verification-only' });
   const result = await runCli(['check', '--target', fixture.root, '--work', workPull], fixture.env);

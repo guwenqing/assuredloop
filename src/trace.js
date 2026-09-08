@@ -72,7 +72,7 @@ export async function createTrace({ targetRoot, work }) {
         const source = { repository: identity.repository, comment_id: row.id };
         if (!validateRecord('commentRef', source).valid || typeof row.body !== 'string') fail('record-unavailable', 'Comment inventory contains an unsupported identity/body.');
         const record = await structuredBody(row.body);
-        if (hasReviewDeclarations(record) && !validateRecord('evidence', record).valid) findings.push({ code: 'review-evidence-invalid', message: `Comment ${row.id} has incomplete or invalid review declarations.` });
+        if (hasReviewDeclarations(record) && !validateRecord('evidence', record).valid) findings.push({ code: 'review-evidence-invalid', severity: 'error', message: `Comment ${row.id} has incomplete or invalid review declarations.` });
         sourceCache.set(key(source), { content: row.body, references: recordReferences(record) });
         entries.push({ ref: source, record, body: row.body });
       }
@@ -312,6 +312,7 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     const roots = [...(closeout?.roots || []), work, ...bundle.pulls.map((pull) => `${trace.repository}#${pull.number}`), ...bundle.evidence.map((entry) => entry.ref), ...policyRoots, ...changedRoots, ...declaredRoots];
     const normalizedRoots = roots.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref);
     result.findings.push(...trace.findings);
+    if (trace.findings.some((finding) => finding.severity === 'error')) result.status = 'invalid';
     result.findings = [...new Map(result.findings.map((finding) => [key(finding), finding])).values()];
     result.packet = await buildReviewPacket({ roots: [...new Map(normalizedRoots.map((ref) => [key(ref), ref])).values()], load: trace.load, maxInlineBytes: budget, cursor,
       expand: expand.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref), envelope: result });

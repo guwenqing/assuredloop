@@ -150,7 +150,11 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
       if (!isDeepStrictEqual([pull.head.sha, pull.base.sha, pull.base.ref], [fresh.head?.sha, fresh.base?.sha, fresh.base?.ref])) add('assessment-context-stale', `${pr}: the PR head or destination changed during the check.`);
     }
     for (const finding of await trace.recheckWorkSources()) add(finding.code, finding.message);
-    result.findings.push(...trace.findings, { code: 'formal-check-only', message: 'Formal checks do not grant merge permission, authenticate review independence or establish the full assigned outcome.' });
+    for (const finding of trace.findings) {
+      if (finding.severity === 'error') add(finding.code, finding.message);
+      else result.findings.push(finding);
+    }
+    result.findings.push({ code: 'formal-check-only', message: 'Formal checks do not grant merge permission, authenticate review independence or establish the full assigned outcome.' });
   } catch (error) {
     add(error.code || 'check-unavailable', error.message, 'unavailable', error.details);
   }
