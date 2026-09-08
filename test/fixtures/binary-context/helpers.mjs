@@ -1,6 +1,8 @@
-import { rm } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 
-import { git, makeGitFixture } from '../adoption/helpers.js';
+import { git } from '../adoption/helpers.js';
+import { makeTraceFixture } from '../trace-cli/helpers.mjs';
 
 export { git };
 
@@ -11,15 +13,13 @@ export const binaryBytes = Buffer.from([
 ]);
 
 export async function makeBinaryFixture(t) {
-  const fixture = await makeGitFixture({
-    prefix: 'assuredloop-binary-context-',
-    remote: `https://github.com/${repository}.git`,
-    files: {
-      'docs/binary.bin': binaryBytes,
-      'docs/notes.md': '# Readable context\n\nThe adjacent binary source is retained by identity.\n',
-    },
-  });
-  t.after(() => rm(fixture.root, { recursive: true, force: true }));
+  const fixture = await makeTraceFixture(t);
+  await mkdir(path.join(fixture.root, 'docs'), { recursive: true });
+  await writeFile(path.join(fixture.root, 'docs/binary.bin'), binaryBytes);
+  await writeFile(path.join(fixture.root, 'docs/notes.md'), '# Readable context\n\nThe adjacent binary source is retained by identity.\n');
+  await git(fixture.root, ['add', 'docs/binary.bin', 'docs/notes.md']);
+  await git(fixture.root, ['commit', '-q', '-m', 'add binary context fixture']);
+  const binaryRevision = (await git(fixture.root, ['rev-parse', 'HEAD'])).stdout.trim();
   const statusBefore = (await git(fixture.root, ['status', '--porcelain'])).stdout;
   return {
     ...fixture,
@@ -27,10 +27,10 @@ export async function makeBinaryFixture(t) {
     work,
     binaryBytes,
     statusBefore,
-    binaryRef: { repository, revision: fixture.revision, path: 'docs/binary.bin' },
-    binaryPlanRef: { repository, revision: fixture.revision, path: 'docs/binary.bin', items: ['3.1'] },
-    anchoredBinaryRef: { repository, revision: fixture.revision, path: 'docs/binary.bin', anchor: 'binary-section' },
-    textRef: { repository, revision: fixture.revision, path: 'docs/notes.md' },
+    binaryRef: { repository, revision: binaryRevision, path: 'docs/binary.bin' },
+    binaryPlanRef: { repository, revision: binaryRevision, path: 'docs/binary.bin', items: ['3.1'] },
+    anchoredBinaryRef: { repository, revision: binaryRevision, path: 'docs/binary.bin', anchor: 'binary-section' },
+    textRef: { repository, revision: binaryRevision, path: 'docs/notes.md' },
   };
 }
 

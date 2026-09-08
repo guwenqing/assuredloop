@@ -46,20 +46,20 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
   result.context.required_work_refs = [record.request, ...(record.prior_work || [])];
   const native = await loadNativeRuntime();
   const loaded = new Map();
-  async function refsOf(value, allowedWorks = [work]) {
+  async function refsOf(value, allowedWorks = [work], sourceWork = work) {
     const memberships = new Map();
     for (const ref of [...(value.basis || []), ...(value.plan_items || [])]) {
       const { items, ...fileRef } = ref;
-      const id = JSON.stringify(fileRef);
+      const id = `${sourceWork.toLowerCase()}:${JSON.stringify(fileRef)}`;
       try {
         if (!loaded.has(id)) {
           if (typeof resolveRef !== 'function') throw Object.assign(new Error('Reference resolver is unavailable.'), { code: 'record-unavailable' });
-          const source = await resolveRef(fileRef);
+          const source = await resolveRef(fileRef, { work: sourceWork });
           if (typeof source?.content !== 'string' && !Buffer.isBuffer(source?.bytes)) throw Object.assign(new Error('Reference content is unavailable.'), { code: 'record-unavailable' });
           if ((fileRef.anchor || items) && typeof source.content !== 'string') throw Object.assign(new Error('A heading anchor or native PlanRef requires text; the acquired source is non-text.'), { code: 'non-text-source' });
           if (typeof source.content === 'string') await checkAnchor(fileRef, source.content);
           loaded.set(id, source);
-          result.context.references.push({ ref: fileRef, content: source.content,
+          result.context.references.push({ ref: fileRef, source_work: sourceWork, content: source.content,
             ...(Buffer.isBuffer(source.bytes) ? { bytes: Buffer.from(source.bytes), disposition: source.disposition, reason: source.reason } : {}) });
         }
         if (items) {
@@ -72,10 +72,10 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
           result.context.task_associations ??= [];
           result.context.task_associations.push({ ref, ...association });
           for (const item of association.associations) if (item.verified) memberships.set(planKey(ref, item.item), item.owners[0]);
-          for (const finding of association.findings) add(finding.code, finding.message, finding.severity, { ref });
+          for (const finding of association.findings) add(finding.code, finding.message, finding.severity, { ref, source_work: sourceWork });
         }
       } catch (error) {
-        add('reference-unavailable', `${phase}: ${error.message}`, 'unavailable', { ref, cause: error.code });
+        add('reference-unavailable', `${phase}: ${error.message}`, 'unavailable', { ref, source_work: sourceWork, cause: error.code });
       }
     }
     return memberships;
@@ -101,7 +101,7 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
     if (!parsedPull.record || parsedPull.findings.length) continue;
     const prRecord = parsedPull.record;
     if (!prRecord.issues.some((item) => item.toLowerCase() === work)) add('pr-issue-mismatch', 'Referenced PR is unrelated to this Issue mapping.', 'error', { pr });
-    const memberships = await refsOf(prRecord, prRecord.issues);
+    const memberships = await refsOf(prRecord, prRecord.issues, pr);
     for (const item of plans(prRecord)) {
       const owner = memberships.get(item);
       if (!owner) unverifiedContributions.add(item);

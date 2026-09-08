@@ -1,11 +1,12 @@
 import { fail } from './files.js';
 import { loadNativeRuntime } from './native-runtime.js';
 
-export async function readRecordBody(body, { allowPlain = false } = {}) {
+export async function readRecordBody(body, { allowPlain = false, withFormat = false } = {}) {
   if (typeof body !== 'string') fail('record-context-invalid', 'Record body must be text.');
+  const result = (record, format) => withFormat ? { record, format } : record;
   let plainError;
   if (allowPlain) {
-    try { return JSON.parse(body); } catch (error) { plainError = error; }
+    try { return result(JSON.parse(body), 'json'); } catch (error) { plainError = error; }
   }
   const { MarkdownParser } = await loadNativeRuntime();
   const contexts = [];
@@ -32,6 +33,6 @@ export async function readRecordBody(body, { allowPlain = false } = {}) {
     } else lines.push(line);
   }
   if (fence || blocks.length !== 1) fail('record-context-invalid', 'Exactly one complete fenced JSON record is required under Workflow context.');
-  try { return JSON.parse(blocks[0]); }
+  try { return result(JSON.parse(blocks[0]), 'workflow-context'); }
   catch (error) { fail('record-context-invalid', `Malformed record JSON: ${error.message}`); }
 }

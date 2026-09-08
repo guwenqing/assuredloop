@@ -17,6 +17,14 @@ function findingText(value) {
 
 async function traceFor(t) {
   const fixture = await makeBinaryFixture(t);
+  const previous = new Map(Object.keys(fixture.env).map((key) => [key, process.env[key]]));
+  Object.assign(process.env, fixture.env);
+  t.after(() => {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
   const trace = await createTrace({ targetRoot: fixture.root, work });
   return { fixture, trace };
 }

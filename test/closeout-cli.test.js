@@ -117,12 +117,26 @@ test('check evaluates an open closeout candidate with delivered prerequisites, f
   assert.match(findingText(checked), /formal-check-only|semantic|review/i,
     'formal output keeps the independent semantic/authorization boundary visible');
 
-  const packet = packetOf(checked);
-  assert.ok(packet && Array.isArray(packet.entries), 'closeout check returns a reviewer packet');
-  assert.ok(packet.counts && packet.counts.total >= 5, 'all closeout roots are inventoried');
+  assert.equal(packetOf(checked), undefined,
+    'formal closeout check diagnostics do not expose a dead-end reviewer packet');
+  assert.doesNotMatch(JSON.stringify(checked), /"next_cursor"/,
+    'formal check output does not expose an unredeemable packet cursor');
+
+  const inspectResult = await runCli([
+    ...closeoutArgs(fixture, 'inspect'), '--max-inline-bytes', '8192',
+  ], fixture.env);
+  const inspected = outputOf(inspectResult);
+  assert.equal(inspectResult.exitCode, 0, findingText(inspected));
+  assert.equal(inspected.operation, 'inspect');
+  assert.equal(inspected.status, 'pass');
+  assert.ok(Buffer.byteLength(inspectResult.stdout, 'utf8') <= 8192,
+    'bounded closeout context is supplied through inspect');
+  const packet = packetOf(inspected);
+  assert.ok(packet && Array.isArray(packet.entries), 'inspect returns the bounded closeout reviewer packet');
+  assert.ok(packet.counts && packet.counts.total >= 5, 'inspect inventories all closeout roots');
   const refs = packetRefs(packet);
-  assert.ok([...refs].some((ref) => ref.includes(fixture.deltaRef.path)), 'the fixed delta root remains in the packet');
-  assert.ok([...refs].some((ref) => ref.includes(fixture.manifestRef.path)), 'the candidate manifest root remains in the packet');
+  assert.ok([...refs].some((ref) => ref.includes(fixture.deltaRef.path)), 'the fixed delta root remains in inspect context');
+  assert.ok([...refs].some((ref) => ref.includes(fixture.manifestRef.path)), 'the candidate manifest root remains in inspect context');
 
   assert.equal(await git(fixture.root, ['status', '--porcelain']).then(({ stdout }) => stdout), fixture.statusBefore,
     'closeout check does not write the target checkout');

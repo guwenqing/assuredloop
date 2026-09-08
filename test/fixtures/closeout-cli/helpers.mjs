@@ -391,6 +391,7 @@ export async function makeCloseoutFixture(t, options = {}) {
   const drift = options.fixityDrift;
   const scenario = {
     repository,
+    repositoryMetadata: { full_name: repository, private: false, default_branch: 'main' },
     records: {
       [`issues/${closeoutIssue.split('#')[1]}`]: {
         number: 90,

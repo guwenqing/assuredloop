@@ -118,6 +118,13 @@ export async function checkSynchronization({ repository, baseRevision, headRevis
         } catch (error) { finding('synchronization-native-build-invalid', error.message); }
       }
     }
+    for (const [file, bytes] of candidate) {
+      if (!isSpec(file) || expected.has(file)) continue;
+      finding('synchronization-unaccounted-candidate', `Canonical candidate Spec is outside the supplied base and native delta outcome: ${file}. Supply its own accepted scope before claiming complete synchronization.`);
+      const name = file.slice(specsPrefix.length, -'/spec.md'.length);
+      const validation = await validator.validateSpecContent(name, decode(bytes));
+      if (!validation.valid) finding('synchronization-native-candidate-invalid', `${file}: ${JSON.stringify(validation)}`);
+    }
     for (const [file, bytes] of expected) {
       const actual = candidate.get(file);
       if (!actual) { finding('synchronization-candidate-unavailable', `Missing canonical candidate artifact: ${file}`, 'unavailable'); continue; }

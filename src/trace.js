@@ -1,13 +1,21 @@
 import { createReadAdapter, workIdentity } from './read-adapter.js';
 import { fail, relativePath } from './files.js';
-import { validateRecord, collectRecordReferences, hasReviewDeclarations } from './records.js';
+import { validateRecord, collectRecordReferences } from './records.js';
 import { resolvePolicy, resolveCurrentPolicy } from './policy.js';
 import { readRecordBody } from './record-body.js';
+import { readSourceRecord } from './source-record.js';
+import { establishAcquisition } from './acquisition.js';
 import { buildReviewPacket } from './review-packet.js';
 import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
 
-const key = (ref) => JSON.stringify(ref);
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((name) =>
+    [name, name === 'repository' && typeof value[name] === 'string' ? value[name].toLowerCase() : canonical(value[name])]));
+  return value;
+}
+const key = (ref) => JSON.stringify(canonical(ref));
 const copySource = (source) => ({ ...source,
   ...(Buffer.isBuffer(source.bytes) ? { bytes: Buffer.from(source.bytes) } : {}),
   ...(source.references ? { references: structuredClone(source.references) } : {}) });
@@ -32,12 +40,37 @@ export const recordReferences = (value) => collectRecordReferences(value).map((r
 export async function createTrace({ targetRoot, work }) {
   const { repository } = workIdentity(work);
   let adapter = await createReadAdapter({ targetRoot, repository });
+  let acquisition;
   const issues = new Map(), pulls = new Map(), comments = new Map(), bundles = new Map();
   const sourceCache = new Map();
+  const installedAssets = new Set();
+  const invalidSources = new Map();
   const findings = [];
+
+  function authorize(ref) {
+    if (acquisition && !installedAssets.has(key(ref))) acquisition.authorize(ref);
+  }
+  async function withinPolicyScope(pull, action) {
+    const previous = adapter;
+    return acquisition.within(pull, async () => {
+      adapter = acquisition.adapter;
+      try { return await action(); }
+      finally { adapter = previous; }
+    });
+  }
+
+  async function sourceRecord(body, ref, options) {
+    const parsed = await readSourceRecord(body, options);
+    for (const finding of parsed.findings) findings.push({ ...finding, source: structuredClone(ref) });
+    if (parsed.state === 'invalid' && !invalidSources.has(key(ref))) invalidSources.set(key(ref), {
+      ref: structuredClone(ref), body, kind: parsed.kind, state: parsed.state, captured_at: new Date().toISOString(), findings: parsed.findings,
+    });
+    return parsed;
+  }
 
   async function issueAt(ref) {
     ref = normalizeWork(ref);
+    authorize(ref);
     if (!issues.has(ref)) {
       const identity = workIdentity(ref);
       const issue = await adapter.readIssue(ref);
@@ -51,6 +84,7 @@ export async function createTrace({ targetRoot, work }) {
 
   async function pullAt(ref) {
     ref = normalizeWork(ref);
+    authorize(ref);
     if (!pulls.has(ref)) {
       const identity = workIdentity(ref);
       const pull = await adapter.readPull(ref);
@@ -64,6 +98,7 @@ export async function createTrace({ targetRoot, work }) {
 
   async function commentsAt(ref) {
     ref = normalizeWork(ref);
+    authorize(ref);
     if (!comments.has(ref)) {
       const identity = workIdentity(ref);
       const rows = await adapter.listComments(ref);
@@ -71,9 +106,9 @@ export async function createTrace({ targetRoot, work }) {
       for (const row of rows) {
         const source = { repository: identity.repository, comment_id: row.id };
         if (!validateRecord('commentRef', source).valid || typeof row.body !== 'string') fail('record-unavailable', 'Comment inventory contains an unsupported identity/body.');
-        const record = await structuredBody(row.body);
-        if (hasReviewDeclarations(record) && !validateRecord('evidence', record).valid) findings.push({ code: 'review-evidence-invalid', severity: 'error', message: `Comment ${row.id} has incomplete or invalid review declarations.` });
-        sourceCache.set(key(source), { content: row.body, references: recordReferences(record) });
+        const parsed = await sourceRecord(row.body, source, { allowPlain: true, discoverEvidence: true });
+        const record = parsed.record;
+        sourceCache.set(key(source), { content: row.body, references: parsed.state === 'valid' ? recordReferences(record) : [], record_state: parsed.state, record_kind: parsed.kind });
         entries.push({ ref: source, record, body: row.body });
       }
       comments.set(ref, entries);
@@ -83,13 +118,19 @@ export async function createTrace({ targetRoot, work }) {
 
   async function bundleAt(ref) {
     ref = normalizeWork(ref);
-    if (bundles.has(ref)) return bundles.get(ref);
+    authorize(ref);
+    const bundleKey = `${acquisition?.scopeKey || repository}:${ref}`;
+    if (bundles.has(bundleKey)) return bundles.get(bundleKey);
     const issue = await issueAt(ref);
     const entries = [...await commentsAt(ref)];
     const refs = new Set();
-    if (issue.pull_request) refs.add(ref);
+    const required = new Set();
+    if (issue.pull_request) { refs.add(ref); required.add(ref); }
     else {
-      for (const entry of entries) if (validateRecord('evidence', entry.record).valid && entry.record.pr) refs.add(normalizeWork(entry.record.pr));
+      for (const entry of entries) if (validateRecord('evidence', entry.record).valid && entry.record.pr) {
+        const pr = normalizeWork(entry.record.pr);
+        refs.add(pr); required.add(pr);
+      }
       for (const event of await adapter.listTimeline(ref)) {
         const source = event?.source?.issue;
         if (event.event !== 'cross-referenced' || !source?.pull_request) continue;
@@ -103,8 +144,17 @@ export async function createTrace({ targetRoot, work }) {
       }
     }
     const related = [];
+    const unresolvedRelations = [];
     for (const pr of refs) {
-      const pull = await pullAt(pr);
+      let pull;
+      try { pull = await pullAt(pr); }
+      catch (error) {
+        if (!['reference-out-of-scope', 'record-unavailable', 'tool-unavailable'].includes(error.code)) throw error;
+        findings.push({ code: error.code, message: `${pr}: ${error.message}`, source: pr,
+          ...(required.has(pr) ? { severity: 'unavailable' } : {}) });
+        unresolvedRelations.push(pr);
+        continue;
+      }
       const record = await structuredBody(pull.body, { allowPlain: false });
       if (pr !== ref && (!validateRecord('pr', record).valid || !record.issues.some((item) => normalizeWork(item) === ref))) {
         findings.push({ code: 'relation-not-reciprocal', message: `${pr} does not explicitly map to ${ref}.` });
@@ -114,25 +164,35 @@ export async function createTrace({ targetRoot, work }) {
       if (pr !== ref) entries.push(...await commentsAt(pr));
     }
     const evidence = [...new Map(entries.filter((entry) => validateRecord('evidence', entry.record).valid).map((entry) => [key(entry.ref), entry])).values()];
-    const bundle = { issue, pulls: related, evidence };
-    bundles.set(ref, bundle);
+    const bundle = { issue, pulls: related, evidence, unresolvedRelations };
+    bundles.set(bundleKey, bundle);
     return bundle;
   }
 
-  async function load(ref) {
+  async function load(ref, { expectedKind } = {}) {
     if (typeof ref === 'string') ref = normalizeWork(ref);
-    if (sourceCache.has(key(ref))) return copySource(sourceCache.get(key(ref)));
+    authorize(ref);
+    if (sourceCache.has(key(ref))) {
+      const cached = copySource(sourceCache.get(key(ref)));
+      if (expectedKind) {
+        const parsed = await sourceRecord(cached.content, ref, { allowPlain: true, expectedKind });
+        return { ...cached, record_state: parsed.state, record_kind: parsed.kind };
+      }
+      return cached;
+    }
     let content, references;
     if (typeof ref === 'string') {
       const issue = await issueAt(ref);
-      const record = await structuredBody(issue.body, { allowPlain: false });
+      const parsed = await sourceRecord(issue.body, ref, { expectedKind: issue.pull_request ? 'pr' : 'issue', allowMissing: !issue.pull_request });
+      const record = parsed.record;
       references = recordReferences(record);
       const entries = await commentsAt(ref);
       references.push(...entries.map((entry) => entry.ref));
       const pull = issue.pull_request ? await pullAt(ref) : null;
       if (pull && pull.body !== issue.body) fail('context-source-stale', 'PR body changed between its Issue and PR source reads.');
       const { body, ...facts } = issueFacts(issue);
-      content = `${JSON.stringify({ issue: { ...facts, ...(body === null ? { body: null } : {}) }, ...(pull ? { pull: publicBundle({ issue, pulls: [pull] }).pulls[0] } : {}) })}\n\n${body ?? ''}`;
+      content = `${JSON.stringify({ issue: { ...facts, ...(body === null ? { body: null } : {}) }, ...(pull ? { pull: publicBundle({ issue, pulls: [pull] }).pulls[0] } : {}),
+        ...(ref === normalizeWork(work) ? { acquisition: acquisition.context } : {}) })}\n\n${body ?? ''}`;
     } else if (Object.hasOwn(ref, 'comment_id')) {
       const comment = await adapter.readComment(ref);
       if (comment?.id !== ref.comment_id || typeof comment.body !== 'string') fail('record-unavailable', 'Referenced comment identity/body is unavailable.');
@@ -146,13 +206,39 @@ export async function createTrace({ targetRoot, work }) {
         return copySource(result);
       }
     }
-    const result = { content, references: references || recordReferences(await structuredBody(content)) };
+    const parsed = references ? null : await sourceRecord(content, ref, { allowPlain: true, expectedKind });
+    const result = { content, references: references || (parsed.state === 'valid' ? recordReferences(parsed.record) : []),
+      ...(parsed ? { record_state: parsed.state, record_kind: parsed.kind } : {}) };
     sourceCache.set(key(ref), result);
     return copySource(result);
   }
 
+  const primaryIssue = await issueAt(work);
+  const primaryPull = primaryIssue.pull_request ? await pullAt(work) : null;
+  acquisition = await establishAcquisition({ targetRoot, work, issue: primaryIssue, pull: primaryPull, initialAdapter: adapter });
+  adapter = acquisition.adapter;
+  sourceCache.set(key(acquisition.source.source.ref), { content: acquisition.source.content, references: [] });
+
   return {
     repository, findings, issueAt, pullAt, bundleAt, load,
+    acquisitionContext: () => structuredClone({ primary: acquisition.context, secondary: acquisition.contexts }),
+    invalidSourceContext: () => [...invalidSources.values()].map((source) => {
+      try { authorize(source.ref); return structuredClone(source); }
+      catch (error) {
+        if (error.code !== 'reference-out-of-scope') throw error;
+        return { ref: structuredClone(source.ref), disposition: 'out-of-scope' };
+      }
+    }),
+    acquisitionSource: acquisition.source,
+    recheckAcquisition: () => acquisition.recheck(),
+    withPolicyScope: withinPolicyScope,
+    resetScope() { acquisition.reset(); adapter = acquisition.adapter; },
+    async loadForWork(ref, { work: owner } = {}) {
+      const pull = owner && pulls.get(normalizeWork(owner));
+      if (!pull) return load(ref);
+      authorize(owner);
+      return withinPolicyScope(pull, () => load(ref));
+    },
     cacheSource: (ref, value) => sourceCache.set(key(ref), value),
     get adapter() { return adapter; },
     async recheckWorkSources() {
@@ -174,14 +260,14 @@ export async function createTrace({ targetRoot, work }) {
       return changed;
     },
     async bindPolicyScope(pull) {
-      const bytes = await adapter.readBlob({ repository, revision: pull.base.sha, path: '.assuredloop/config.json' });
-      const config = JSON.parse(decode(bytes));
-      if (!validateRecord('config', config).valid || config.repository.name.toLowerCase() !== repository) fail('policy-unavailable', 'Actual destination repository configuration is invalid.');
-      adapter = await createReadAdapter({ targetRoot, repository, allowedRepositories: config.repository.allowed_reference_repositories || [] });
+      const context = await acquisition.narrow(pull);
+      adapter = acquisition.adapter;
+      return context;
     },
     cacheSources(sources) {
       for (const source of sources) {
         const ref = source.source.kind === 'git-blob' ? source.source.ref : { repository: source.source.repository, comment_id: source.source.comment_id };
+        if (source.acquisition === 'installed-contract') installedAssets.add(key(ref));
         sourceCache.set(key(ref), { content: source.content, references: [] });
       }
     },
@@ -238,11 +324,10 @@ export function publicBundle(bundle) {
 }
 
 export async function currentTracePolicy(trace) {
-  return resolveCurrentPolicy({ adapter: trace.adapter, repository: trace.repository,
-    prepareSnapshot: async ({ revision }) => {
-      await trace.bindPolicyScope({ base: { sha: revision } });
-      return trace.adapter;
-    } });
+  trace.resetScope();
+  const policy = await resolveCurrentPolicy({ adapter: trace.adapter, repository: trace.repository });
+  await trace.recheckAcquisition();
+  return policy;
 }
 
 export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = null, expand = [], deltaRef, manifestRef } = {}) {
@@ -257,8 +342,22 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
       base: { sha: pull.base.sha, ref: pull.base.ref }, state: pull.state, merged: pull.merged, merge_commit_sha: pull.merge_commit_sha }));
     const policies = [];
     for (const pull of bundle.pulls) {
-      await trace.bindPolicyScope(pull);
-      policies.push(await resolvePolicy({ adapter: trace.adapter, work: `${trace.repository}#${pull.number}` }));
+      const pr = `${trace.repository}#${pull.number}`;
+      policies.push(await trace.withPolicyScope(pull, async () => {
+        const policy = await resolvePolicy({ adapter: trace.adapter, work: pr });
+        trace.cacheSources(policy.sources || []);
+        const refs = recordReferences(await structuredBody(pull.body, { allowPlain: false }));
+        for (const entry of bundle.evidence.filter((item) => item.record.pr?.toLowerCase() === pr)) refs.push(...entry.record.evidence);
+        for (const ref of new Map(refs.map((value) => [key(value), value])).values()) {
+          try { await trace.load(ref); }
+          catch (error) {
+            if (!['reference-out-of-scope', 'record-unavailable', 'tool-unavailable', 'path-unsafe'].includes(error.code)) throw error;
+            trace.findings.push({ code: error.code, severity: 'unavailable', source: ref, assessment: pr,
+              message: `${pr}: required source could not be acquired in this assessment: ${error.message}` });
+          }
+        }
+        return policy;
+      }));
     }
     if (!policies.length) policies.push(await currentTracePolicy(trace));
     result.policy = { status: policies[0].status, mode: policies[0].mode, policy_ref: policies[0].policy_ref };
@@ -268,7 +367,7 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
       if (policy.status !== 'available') result.status = policy.status === 'invalid' ? 'invalid' : 'unavailable';
       trace.cacheSources(policy.sources || []);
     }
-    const budgets = policies.filter((policy) => policy.status === 'available').map((policy) => policy.config.project.review.context.max_inline_bytes);
+    const budgets = policies.filter((policy) => policy.status === 'available').map((policy) => policy.config.project.review.context?.max_inline_bytes ?? 65536);
     budget = Math.min(...budgets, maxInlineBytes ?? 65536);
     if (!budgets.length) fail('policy-unavailable', 'No available policy establishes the inspection budget.');
     const policyRoots = policies.flatMap((policy) => (policy.sources || []).map((source) => source.source.kind === 'git-blob'
@@ -304,18 +403,25 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
         if (file.status === 'removed') trace.cacheSource(ref, { disposition: 'unavailable', reason: 'removed-at-head', references: [] });
       }
       const source = await trace.load(pr);
-      trace.cacheSource(pr, { ...source, content: `${source.content}\n\n${JSON.stringify({ changed_files: changes })}`,
+      trace.cacheSource(pr, { ...source, content: `${source.content}\n\n${JSON.stringify({ changed_files: changes,
+        assessment_acquisition: trace.acquisitionContext().secondary.filter((entry) => entry.work === pr) })}`,
         references: [...source.references, ...changedRoots] });
     }
     const declaredRoots = recordReferences(await structuredBody(bundle.issue.body, { allowPlain: false }));
     for (const pull of bundle.pulls) declaredRoots.push(...recordReferences(await structuredBody(pull.body, { allowPlain: false })));
-    const roots = [...(closeout?.roots || []), work, ...bundle.pulls.map((pull) => `${trace.repository}#${pull.number}`), ...bundle.evidence.map((entry) => entry.ref), ...policyRoots, ...changedRoots, ...declaredRoots];
+    const roots = [...(closeout?.roots || []), work, ...bundle.pulls.map((pull) => `${trace.repository}#${pull.number}`), ...(bundle.unresolvedRelations || []),
+      ...bundle.evidence.map((entry) => entry.ref), trace.acquisitionSource.source.ref, ...policyRoots, ...changedRoots, ...declaredRoots];
     const normalizedRoots = roots.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref);
     result.findings.push(...trace.findings);
     if (trace.findings.some((finding) => finding.severity === 'error')) result.status = 'invalid';
+    else if (result.status === 'pass' && trace.findings.some((finding) => finding.severity === 'unavailable')) result.status = 'unavailable';
     result.findings = [...new Map(result.findings.map((finding) => [key(finding), finding])).values()];
     result.packet = await buildReviewPacket({ roots: [...new Map(normalizedRoots.map((ref) => [key(ref), ref])).values()], load: trace.load, maxInlineBytes: budget, cursor,
       expand: expand.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref), envelope: result });
+    result.findings = [...new Map([...result.findings, ...trace.findings].map((finding) => [key(finding), finding])).values()];
+    if (trace.findings.some((finding) => finding.severity === 'error')) result.status = 'invalid';
+    else if (result.status === 'pass' && trace.findings.some((finding) => finding.severity === 'unavailable')) result.status = 'unavailable';
+    await trace.recheckAcquisition();
   } catch (error) {
     result.status = 'unavailable';
     result.findings.push({ code: error.code || 'inspection-unavailable', message: error.message, details: error.details });

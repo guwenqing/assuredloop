@@ -220,6 +220,10 @@ export async function makeTraceFixture(t, options = {}) {
   const destinationRevision = (await git(target.root, ['rev-parse', 'HEAD'])).stdout.trim();
   const remoteDestinationRevision = options.remoteDestinationRevision ??
     (options.advanceDestination ? destinationRevision : revision);
+  const destinationBranch = options.baseRef ?? 'main';
+  const defaultBranch = options.defaultBranch ?? 'main';
+  const defaultBranchRevision = options.defaultBranchRevision ??
+    (defaultBranch === destinationBranch ? remoteDestinationRevision : revision);
   const records = {
     [`issues/${issueRef.number}`]: {
       number: issueRef.number,
@@ -307,14 +311,21 @@ export async function makeTraceFixture(t, options = {}) {
     [`issues/1/comments`]: [[]],
     [`pulls/${pullRef.number}/files`]: [candidateFiles],
     [`pulls/${timelinePull.number}/files`]: [candidateFiles],
-    [`git/ref/heads/${options.baseRef ?? 'main'}`]: {
-      ref: `refs/heads/${options.baseRef ?? 'main'}`,
+    [`git/ref/heads/${destinationBranch}`]: {
+      ref: `refs/heads/${destinationBranch}`,
       object: { type: 'commit', sha: remoteDestinationRevision },
     },
+    ...(defaultBranch === destinationBranch ? {} : {
+      [`git/ref/heads/${defaultBranch}`]: {
+        ref: `refs/heads/${defaultBranch}`,
+        object: { type: 'commit', sha: defaultBranchRevision },
+      },
+    }),
   };
   if (options.missingEvidence) delete records['issues/42/comments'];
   const scenario = {
     repository,
+    repositoryMetadata: { full_name: repository, private: false, default_branch: defaultBranch },
     records,
     ...(options.mode ? { mode: options.mode } : {}),
     ...(options.missing ? { missing: options.missing } : {}),

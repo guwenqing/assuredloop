@@ -68,6 +68,7 @@ async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPul
       requireShape('evidenceRef', ref, role);
       let bytes;
       let descriptor;
+      let installedAsset = false;
       if (Object.hasOwn(ref, 'comment_id')) {
         if (!allowed.has(ref.repository.toLowerCase())) fail('reference-out-of-scope', 'Acceptance source is outside permitted repositories.');
         const comment = await adapter.readComment(ref);
@@ -78,9 +79,12 @@ async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPul
           media_type: 'application/vnd.github.raw+json', field: 'body', encoding: 'utf-8', normalization: 'none' };
       } else {
         const prefix = metadata?.source_ref.path === '.' ? '' : `${metadata?.source_ref.path}/`;
-        const asset = metadata && ref.repository === metadata.source_ref.repository && ref.revision === metadata.source_ref.revision &&
+        const asset = metadata && ref.repository.toLowerCase() === metadata.source_ref.repository.toLowerCase() && ref.revision === metadata.source_ref.revision &&
           metadata.files.find((item) => ref.path === `${prefix}${item.path}`);
-        if (asset) bytes = await readFile(await safePath(packageRoot, `${metadata.contracts_path}/${asset.path}`));
+        if (asset) {
+          bytes = await readFile(await safePath(packageRoot, `${metadata.contracts_path}/${asset.path}`));
+          installedAsset = true;
+        }
         else {
           if (!allowed.has(ref.repository.toLowerCase())) fail('reference-out-of-scope', 'Policy source is outside permitted repositories.');
           try { bytes = await adapter.readBlob(ref); }
@@ -89,7 +93,7 @@ async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPul
         descriptor = { kind: 'git-blob', representation: 'raw-bytes', ref: structuredClone(ref) };
       }
       const content = decode(bytes);
-      result.sources.push({ role, source: descriptor, content, content_sha256: digest(bytes) });
+      result.sources.push({ role, source: descriptor, content, content_sha256: digest(bytes), ...(installedAsset ? { acquisition: 'installed-contract' } : {}) });
       await checkAnchor(ref, content);
       return { bytes, content };
     }

@@ -1,7 +1,6 @@
 import { git } from './files.js';
 import { createReadAdapter, workIdentity } from './read-adapter.js';
 import { createTrace, currentTracePolicy, closeoutContext, publicBundle, structuredBody, recordReferences } from './trace.js';
-import { buildReviewPacket } from './review-packet.js';
 import { validateRecord, hasReviewDeclarations } from './records.js';
 import { checkWorkRecords, parseWorkRecord } from './work-records.js';
 import { resolvePolicy, resolveHistoricalPolicy, checkReviewEvidence, checkEvidenceContext } from './policy.js';
@@ -9,15 +8,17 @@ import { isDeepStrictEqual } from 'node:util';
 
 async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
   const result = { operation: 'check', mode: 'live', status: 'pass', work, findings: [], policies: [], records: [] };
+  let trace;
   const add = (code, message, status = 'invalid', details) => {
     result.findings.push({ code, message, details });
     if (status === 'invalid' || result.status === 'pass') result.status = status;
   };
   try {
-    const trace = await createTrace({ targetRoot, work });
+    trace = await createTrace({ targetRoot, work });
     const selected = await trace.bundleAt(work);
     result.repository = trace.repository;
     result.context = publicBundle(selected);
+    result.context.acquisition = trace.acquisitionContext();
     if (!selected.pulls.length) {
       const policy = await currentTracePolicy(trace);
       result.policy = policy;
@@ -49,33 +50,35 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
       if (!assessments.some((entry) => hasReviewDeclarations(entry.record))) add('review-evidence-missing', `${pr} has no structured review assessment evidence.`);
       for (const entry of assessments.length ? assessments : [null]) {
         const historical = pull.merged === true && entry;
-        await trace.bindPolicyScope(historical ? { ...pull, base: { ...pull.base, sha: entry.record.base_sha } } : pull);
-        const policy = historical
-          ? await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record })
-          : await resolvePolicy({ adapter: trace.adapter, work: pr });
-        result.policies.push(policy);
-        result.policy ??= policy;
-        result.assessment ??= policy.assessment;
-        result.findings.push(...policy.findings);
-        if (policy.status !== 'available') { add('policy-unavailable', `${pr}: required policy could not be established.`, policy.status === 'invalid' ? 'invalid' : 'unavailable'); continue; }
-        trace.cacheSources(policy.sources);
-        const current = { ...policy.assessment, policy_ref: policy.policy_ref, contract_package: policy.contract_package,
-          config_digest: policy.config_digest, activation_digest: policy.activation_digest };
-        if (!historical) {
-          const observed = await trace.adapter.readBranchHead({ repository: trace.repository, branch: pull.base.ref });
-          if (observed !== policy.assessment.base_sha) add('destination-base-stale', `${pr}: the remote destination branch advanced after the assessed base.`, 'invalid', { assessed: policy.assessment.base_sha, observed });
-          if (policy.assessment.head !== pull.head.sha || policy.assessment.base_sha !== pull.base.sha || policy.assessment.base_ref !== pull.base.ref) add('assessment-context-stale', `${pr}: PR identity changed while policy was read.`);
-        }
-        if (entry) {
-          for (const finding of (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current })) {
-            if (finding.severity === 'review') result.findings.push(finding);
-            else add(finding.code, finding.message);
+        await trace.bindPolicyScope(pull);
+        try {
+          const policy = historical
+            ? await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record })
+            : await resolvePolicy({ adapter: trace.adapter, work: pr });
+          result.policies.push(policy);
+          result.policy ??= policy;
+          result.assessment ??= policy.assessment;
+          result.findings.push(...policy.findings);
+          if (policy.status !== 'available') { add('policy-unavailable', `${pr}: required policy could not be established.`, policy.status === 'invalid' ? 'invalid' : 'unavailable'); continue; }
+          trace.cacheSources(policy.sources);
+          const current = { ...policy.assessment, policy_ref: policy.policy_ref, contract_package: policy.contract_package,
+            config_digest: policy.config_digest, activation_digest: policy.activation_digest };
+          if (!historical) {
+            const observed = await trace.adapter.readBranchHead({ repository: trace.repository, branch: pull.base.ref });
+            if (observed !== policy.assessment.base_sha) add('destination-base-stale', `${pr}: the remote destination branch advanced after the assessed base.`, 'invalid', { assessed: policy.assessment.base_sha, observed });
+            if (policy.assessment.head !== pull.head.sha || policy.assessment.base_sha !== pull.base.sha || policy.assessment.base_ref !== pull.base.ref) add('assessment-context-stale', `${pr}: PR identity changed while policy was read.`);
           }
-          for (const ref of entry.record.evidence) {
-            try { await trace.load(ref); }
-            catch (error) { add('evidence-source-unavailable', error.message, 'unavailable', { ref, cause: error.code }); }
+          if (entry) {
+            for (const finding of (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current })) {
+              if (finding.severity === 'review') result.findings.push(finding);
+              else add(finding.code, finding.message);
+            }
+            for (const ref of entry.record.evidence) {
+              try { await trace.load(ref); }
+              catch (error) { add('evidence-source-unavailable', error.message, 'unavailable', { ref, cause: error.code }); }
+            }
           }
-        }
+        } finally { trace.resetScope(); }
       }
     }
     const record = await structuredBody(selected.issue.body, { allowPlain: false });
@@ -102,7 +105,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
         try { await trace.load(ref); }
         catch (error) { add('reference-unavailable', error.message, 'unavailable', { ref, cause: error.code }); }
       }
-      const checked = await checkWorkRecords({ work: issueRef, ...bundle, phase: parsed.record?.activity === 'closeout' ? 'closeout' : 'handoff', resolveRef: trace.load, resolveWork: trace.bundleAt });
+      const checked = await checkWorkRecords({ work: issueRef, ...bundle, phase: parsed.record?.activity === 'closeout' ? 'closeout' : 'handoff', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt });
       checked.work = issueRef;
       result.records.push(checked);
       for (const finding of checked.findings) {
@@ -121,28 +124,29 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
       if (!closeout.manifest.valid) add('manifest-invalid', 'Acceptance manifest verification did not pass.', 'invalid', closeout.manifest.findings);
       for (const dependency of closeout.record.depends_on || []) {
         const bundle = await trace.bundleAt(dependency);
-        const checked = await checkWorkRecords({ work: dependency, ...bundle, phase: 'closeout', resolveRef: trace.load, resolveWork: trace.bundleAt });
+        const checked = await checkWorkRecords({ work: dependency, ...bundle, phase: 'closeout', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt });
         result.records.push({ work: dependency, ...checked });
         if (checked.status !== 'valid') add('prerequisite-unverified', `${dependency}: prerequisite checks did not pass.`, checked.status === 'invalid' ? 'invalid' : 'unavailable', checked.findings);
         for (const entry of bundle.evidence.filter((item) => item.record.pr)) {
           const pull = bundle.pulls.find((item) => entry.record.pr.toLowerCase() === `${trace.repository}#${item.number}`);
           if (!pull?.merged) continue;
-          await trace.bindPolicyScope({ ...pull, base: { ...pull.base, sha: entry.record.base_sha } });
-          const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record });
-          result.policies.push(policy);
-          if (policy.status !== 'available') add('prerequisite-policy-unavailable', `${dependency}: recorded policy could not be reconstructed.`, policy.status === 'invalid' ? 'invalid' : 'unavailable', policy.findings);
-          else {
-            const current = { ...policy.assessment, policy_ref: policy.policy_ref, contract_package: policy.contract_package,
-              config_digest: policy.config_digest, activation_digest: policy.activation_digest };
-            for (const finding of (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current })) {
-              if (finding.severity === 'review') result.findings.push({ ...finding, work: dependency });
-              else add('prerequisite-review-invalid', `${dependency}: ${finding.message}`, 'invalid', finding);
+          await trace.bindPolicyScope(pull);
+          try {
+            const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record });
+            result.policies.push(policy);
+            if (policy.status !== 'available') add('prerequisite-policy-unavailable', `${dependency}: recorded policy could not be reconstructed.`, policy.status === 'invalid' ? 'invalid' : 'unavailable', policy.findings);
+            else {
+              const current = { ...policy.assessment, policy_ref: policy.policy_ref, contract_package: policy.contract_package,
+                config_digest: policy.config_digest, activation_digest: policy.activation_digest };
+              for (const finding of (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current })) {
+                if (finding.severity === 'review') result.findings.push({ ...finding, work: dependency });
+                else add('prerequisite-review-invalid', `${dependency}: ${finding.message}`, 'invalid', finding);
+              }
             }
-          }
+          } finally { trace.resetScope(); }
         }
       }
-      await trace.bindPolicyScope(selected.pulls[0]);
-      result.packet = await buildReviewPacket({ roots: [...closeout.roots, work], load: trace.load, maxInlineBytes: result.policy.config.project.review.context.max_inline_bytes });
+      trace.resetScope();
     }
     for (const pull of selected.pulls.filter((item) => !item.merged)) {
       const pr = `${trace.repository}#${pull.number}`;
@@ -150,13 +154,24 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
       if (!isDeepStrictEqual([pull.head.sha, pull.base.sha, pull.base.ref], [fresh.head?.sha, fresh.base?.sha, fresh.base?.ref])) add('assessment-context-stale', `${pr}: the PR head or destination changed during the check.`);
     }
     for (const finding of await trace.recheckWorkSources()) add(finding.code, finding.message);
+    await trace.recheckAcquisition();
+    result.context.acquisition = trace.acquisitionContext();
     for (const finding of trace.findings) {
-      if (finding.severity === 'error') add(finding.code, finding.message);
+      if (finding.severity === 'error') add(finding.code, finding.message, 'invalid', { source: finding.source, errors: finding.details });
+      else if (finding.severity === 'unavailable') add(finding.code, finding.message, 'unavailable', { source: finding.source });
       else result.findings.push(finding);
     }
     result.findings.push({ code: 'formal-check-only', message: 'Formal checks do not grant merge permission, authenticate review independence or establish the full assigned outcome.' });
   } catch (error) {
+    if (error.code === 'acquisition-context-stale' && error.details?.assessment) result.assessment ??= error.details.assessment;
     add(error.code || 'check-unavailable', error.message, 'unavailable', error.details);
+  } finally {
+    if (trace) {
+      trace.resetScope();
+      result.context ??= {};
+      result.context.invalid_sources = trace.invalidSourceContext();
+      result.context.acquisition = trace.acquisitionContext();
+    }
   }
   return result;
 }
