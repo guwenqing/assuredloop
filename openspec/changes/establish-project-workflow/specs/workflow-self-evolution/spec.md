@@ -16,21 +16,25 @@ Before activation, work SHALL use native OpenSpec planning and explicitly execut
 - **WHEN** the usable base has the required verification, independent review and acceptance evidence
 - **THEN** activation records the applicable revision and obligations so the next work item can follow them without inheriting private bootstrap context
 
-### Requirement: Accepted policy is selected from the trusted base
+### Requirement: Policy assessment uses destination pre-change state
 
 The activation/policy pointer and consumer config for a PR assessment SHALL be read from the actual destination branch's current pre-change revision, separately from candidate content. Policy/config changes SHALL be assessed under that destination's pre-change policy; candidate files, stale merge-bases and supplied ref overrides SHALL NOT replace it. Activation SHALL identify fixed policy/package refs, authorization and evidence.
 
-PR assessment evidence SHALL bind repository/PR identity, destination branch, full base SHA, candidate head, assessed scope, selected policy/package refs and config/activation digests. Changed destination, base, head or applicable policy/work context SHALL require renewed applicable assessment; a prior result SHALL NOT silently transfer between destinations. Feature-branch acceptance SHALL remain destination/scope-specific. Final integration SHALL assess the cumulative proposed change under the final destination's pre-change policy. Normal staging and final squash integration SHALL NOT be prohibited by a single global base restriction.
+PR assessment evidence SHALL bind repository/PR identity, destination branch, full base SHA, candidate head, assessed scope, selected policy/package refs and config/activation digests. Changed destination, base, head or applicable policy/work context SHALL require renewed applicable assessment; a prior result SHALL NOT silently transfer between destinations. Feature-branch acceptance SHALL remain destination/scope-specific. Final integration SHALL assess the cumulative proposed change under the final destination's pre-change policy. Destination-scoped assessment SHALL NOT itself require every PR to target one branch; independently configured consumer policies remain applicable.
 
-When activation is absent, accepted destination config's `project.bootstrap` SHALL provide a fixed policy RepoRef and structured Proposal-acceptance evidence ref. Its actual policy revision SHALL have explicit adoption/handoff acceptance. A resolvable authorized bootstrap basis SHALL enable bootstrap-policy checking without claiming activation; absent/unresolved input SHALL yield policy unavailable. Existing suspended/invalid activation SHALL NOT fall back to bootstrap. Mutable comments may support evidence, not select policy automatically. The checks SHALL distinguish scoped consistency from owner authorization and SHALL NOT claim to prevent privileged direct writes or local operators bypassing unenforced controls.
+When activation is absent, accepted destination config's `project.bootstrap` SHALL contain required `policy_ref`, `policy_acceptance`, `proposal_acceptance` and `authorized_by`. The policy reference SHALL be a fixed-revision RepoRef, both acceptance fields SHALL use the shared EvidenceRef vocabulary, and the owner identity SHALL be a nonempty declaration with activation's semantics. `policy_acceptance` SHALL identify explicit owner-authorized, independently reviewed adoption/handoff of the actual fixed policy revision in `policy_ref`; Proposal-scope acceptance alone SHALL NOT satisfy it. Fields and resolvable references SHALL NOT by themselves establish genuine authorization. A resolvable authorized bootstrap basis SHALL permit bootstrap-policy checks without claiming activation; absent/unresolved input SHALL yield policy unavailable. Suspended/invalid activation SHALL NOT fall back to bootstrap. Mutable comments may support evidence, not select policy automatically; scoped consistency SHALL NOT be presented as protection against privileged bypass of unenforced controls.
 
 #### Scenario: Candidate edits its own activation pointer
 - **WHEN** a PR changes the configured policy or activation source
-- **THEN** checking still resolves the prior accepted pointer from the current trusted base and reports the candidate policy change for review
+- **THEN** checking still resolves the prior accepted pointer from the assessment destination's pre-change state and reports the candidate policy change for review
 
 #### Scenario: Bootstrap has no accepted pointer
 - **WHEN** no versioned activation or explicit authorized bootstrap basis is available
 - **THEN** checking reports policy unavailable and cannot accept the work through a permissive fallback
+
+#### Scenario: Bootstrap carries only scope acceptance
+- **WHEN** bootstrap lacks policy-revision acceptance or declared owner identity, or the referenced acceptance establishes only Proposal scope or a different policy revision
+- **THEN** it cannot establish an authorized bootstrap basis: missing/unresolved data is reported, and independent/human assessment of the acceptance content cannot be replaced by evidence presence or an owner-name string
 
 #### Scenario: Work stages through a feature branch
 - **WHEN** work PRs merge into a feature branch before a final PR into the agreed delivery destination

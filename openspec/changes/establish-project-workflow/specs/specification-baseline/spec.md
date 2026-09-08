@@ -66,7 +66,7 @@ Final formal requirements, decisions and necessary repo relationships SHALL be v
 
 ### Requirement: Closeout preserves acceptance evidence fixity
 
-The closeout candidate SHALL include a versioned manifest identifying accepted delivery Issue/PR references, evidence comment identifiers, assessed revisions, results, scope and captured-content digests, including planning delivery. It SHALL move with the archived change and SHALL be checked against captured source evidence before acceptance. Full logs SHALL remain external. The manifest SHALL NOT claim that its own future merge or post-merge review already happened. Later changed or unavailable source evidence SHALL be reported as drift or unavailability, not silently accepted; a digest SHALL NOT be claimed to reconstruct missing content or authenticate a human decision.
+The closeout candidate SHALL include a versioned manifest recording delivery Issue/PR references, evidence identity in the source descriptor, assessed revisions/results/scope and captured-content digests, including planning delivery. Every `deliveries[]` entry SHALL preserve its own assessed `base_ref`, `base_sha`, `policy_ref` and `policy_mode` as audit evidence copied from its source assessment, not as workflow-routing or staging-outcome declarations. The top-level `closeout_policy_ref` SHALL describe only closeout's assessment policy and SHALL NOT substitute for per-entry provenance. Missing or inapplicable source metadata SHALL be explicit and reported rather than inferred from current state. The manifest SHALL move with the archive and be checked against source evidence; full logs remain external. It SHALL NOT claim future merge/review actions, and drift/unavailable evidence SHALL be reported without claiming a digest reconstructs missing content or authenticates a decision.
 
 Each digest SHALL identify its reproducible source representation, including the adapter endpoint/field and decoding/encoding rules. Typed self-change decisions SHALL retain their decision fields and discriminator in separate decision entries rather than be converted into a delivery head/result. A valid decision's integrity SHALL NOT prove its selected work has been performed.
 
@@ -81,3 +81,7 @@ Each digest SHALL identify its reproducible source representation, including the
 #### Scenario: A verifier uses a different comment rendering
 - **WHEN** one client displays rendered text or normalizes line endings instead of the recorded raw body representation
 - **THEN** verification reacquires the specified field/representation for hashing rather than treating a display transformation as evidence drift or silently changing the digest rule
+
+#### Scenario: Deliveries were assessed under different policies
+- **WHEN** captured deliveries include different recorded bases and both bootstrap and activation assessments
+- **THEN** each entry retains its original base/policy audit metadata, and closeout's later policy cannot overwrite or stand in for those source assessments
