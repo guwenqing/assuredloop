@@ -58,6 +58,24 @@ Workers SHALL obtain internal review by a different agent/session under the acce
 - **WHEN** no accepted model eligibility/depth configuration can be resolved
 - **THEN** the operation reports review policy unavailable and cannot count a guessed model or undefined tier as accepted review
 
+### Requirement: Review guidance publishes and returns the outcome
+
+The reusable review Skill SHALL guide the whole scoped work: identify the PR/revision and existing review coverage, independently assess original basis and changes, obtain an additional reviewer when requested or required by applicable policy, consolidate supported findings and publish the review comment. After publication it SHALL return the comment URL, reviewed revision, verdict and concise findings summary to the originating author session identified by the current work's explicit handoff context, including for a clean verdict. It SHALL report only the notification state supported by the available tool and disclose unconfirmed or failed delivery. Completed review covering unchanged revision, scope and applicable context SHALL avoid unnecessary duplication unless a fresh review is requested or required.
+
+The guidance SHALL be part of the project's explicitly selected framework version, not a machine-wide rule or independently authored policy copy per project. It SHALL NOT infer the recipient from a repeated display name or retain a temporary session ID as a cross-project default. Missing or ambiguous author context SHALL be reported and clarified without guessing; independent review can continue where its scope is otherwise clear. This initial obligation is usable work guidance, not a requirement for automated session discovery/dispatch, a routing schema, a provider integration or elaborate retries.
+
+#### Scenario: Planning review returns to its author
+- **WHEN** the handoff explicitly identifies the planning author's session, such as the current work's al-arch session
+- **THEN** after posting a findings or clean-review comment, the reviewer returns its URL, revision, verdict and summary to that supplied session reference
+
+#### Scenario: Implementation review has a different author
+- **WHEN** the handoff identifies an implementation author's session, such as al-developer, rather than the planning author's session
+- **THEN** the reviewer uses that work-specific recipient instead of a global al-arch default and reports notification status accurately
+
+#### Scenario: Author session context is unavailable
+- **WHEN** the author session is missing or ambiguous, or the messaging tool cannot confirm the requested delivery
+- **THEN** the reviewer reports the routing/delivery limitation and asks for missing context without guessing or claiming success, while continuing review work that can safely proceed
+
 ### Requirement: Context and check operations preserve a read-only trust boundary
 
 Context and check tooling SHALL be read-only with respect to the target repository and GitHub. It SHALL NOT execute commands or target code supplied by work records, fetch arbitrary record-provided URLs, or resolve paths outside the selected permitted repository and revision. Repository references SHALL be structured and constrained by explicit trusted bindings/allowlists. Candidate tool configuration SHALL NOT loosen these boundaries during its own check.
