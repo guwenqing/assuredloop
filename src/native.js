@@ -46,8 +46,7 @@ export async function skillRoots(targetRoot, selected) {
   return [...roots.keys()];
 }
 
-export async function githubPreflight(repository, labels, localOnly) {
-  if (localOnly) return [{ code: 'github-skipped', message: 'Local-only initialization: GitHub access, labels and live acceptance were not checked.' }];
+export async function githubAuthentication() {
   let version;
   try { version = (await execFile('gh', ['--version'])).stdout; }
   catch (error) { fail('tool-unavailable', 'GitHub CLI unavailable.', { reason: error.code === 'ENOENT' ? 'missing-binary' : 'transport-error' }); }
@@ -58,6 +57,11 @@ export async function githubPreflight(repository, labels, localOnly) {
   try {
     await execFile('gh', ['auth', 'status', '--hostname', 'github.com']);
   } catch { fail('tool-unavailable', 'GitHub authentication is required; initialize credentials explicitly.', { reason: 'authentication-required' }); }
+}
+
+export async function githubPreflight(repository, labels, localOnly) {
+  if (localOnly) return [{ code: 'github-skipped', message: 'Local-only initialization: GitHub access, labels and live acceptance were not checked.' }];
+  await githubAuthentication();
   async function api(endpoint, extra = []) {
     try { return (await execFile('gh', ['api', endpoint, '--hostname', 'github.com', ...extra], { maxBuffer: 4 * 1024 * 1024 })).stdout; }
     catch (error) {

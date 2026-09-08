@@ -10,6 +10,14 @@ try {
     console.log(`assuredloop ${pkg.version}\n\ninit --target ABS_ROOT --config ABS_JSON [--apply] [--local-only]\n  Preview explicit local adoption; --apply writes the listed files.\ngenerate-contracts --source-root ABS_ROOT --repository OWNER/REPO --revision FULL_SHA\n  --specs-path REL_PATH --out ABS_DIRECTORY --basis bootstrap|canonical\n--version\n\nInitialization is not activation. inspect/check are delivered separately.`);
   } else if (args[0] === '--version') {
     console.log(pkg.version);
+  } else if (args[0] === 'check') {
+    const { values } = parseArgs({ args: args.slice(1), options: {
+      target: { type: 'string' }, work: { type: 'string' }, 'local-only': { type: 'boolean', default: false },
+    } });
+    const { checkWork } = await import('./check.js');
+    const result = await checkWork({ targetRoot: values.target, work: values.work, localOnly: values['local-only'] });
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status !== 'pass') process.exitCode = 1;
   } else if (args[0] === 'init') {
     const { values } = parseArgs({ args: args.slice(1), options: {
       target: { type: 'string' }, config: { type: 'string' }, apply: { type: 'boolean', default: false },
