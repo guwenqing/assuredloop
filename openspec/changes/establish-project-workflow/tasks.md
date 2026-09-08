@@ -1,0 +1,64 @@
+All executable items below, including generated helpers, obey [independent test authorship, genuine RED/GREEN and controlled-fault checks](specs/review-and-validation/spec.md#requirement-verify-code-with-independent-test-first-evidence). Test authors and implementation producers are different agents; producer review is also independent. This obligation applies uniformly, not only where a task mentions tests. Non-code items use artifact checks and semantic review without fabricated runtime RED/GREEN.
+
+Checked planning items mean this PR contains those candidate contributions, not that AL Reviewer accepted the revision or that it may merge. All implementation items remain unchecked. Checklist granularity supports honest partial delivery within the same work Issue; it does not require a separate Issue or PR for every line.
+
+## 0. Planning and handoff
+
+Work Issue: [#2](https://github.com/guwenqing/assuredloop-base/issues/2). Basis: [Proposal](proposal.md), [Design](design.md), [owner B4 acceptance](https://github.com/guwenqing/assuredloop-base/pull/5#issuecomment-5576464303), [prior public AL r2 review](https://github.com/guwenqing/assuredloop-base/pull/5#issuecomment-5576944911) and the Architect-directed r3 follow-up recorded on PR #5. The PR remains draft for AL Reviewer re-review; this package has no implementation authority.
+
+- [x] 0.1 Deliver the refined Proposal and repointed workflow-goals Origin in this candidate; supporting evidence is the external six-item owner acceptance, whose no-merge/no-implementation limits remain intact.
+- [x] 0.2 Deliver the seven Specs and Design correction candidate; verify native strict validation and local references, with the external disposition record as supporting evidence and AL re-review still pending.
+- [x] 0.3 Deliver the versioned scoped task decomposition and repo-side Issue references; verify the external handoff records' structured refs, coverage, selectors and acyclic dependencies without treating them as files in the candidate or claiming work started.
+
+## 1. Project adoption and record contracts
+
+Work Issue: [#6](https://github.com/guwenqing/assuredloop-base/issues/6). Depends on package 0. Basis: [adoption](specs/project-workflow-adoption/spec.md), [traceability](specs/github-work-traceability/spec.md), [record and tool decisions](design.md#4-minimal-structured-relationships-not-a-second-task-database).
+
+- [ ] 1.1 Deliver described JSON Schemas/examples for config including project.bootstrap with required policy_ref, policy_acceptance, proposal_acceptance and authorized_by, named label/review mappings, RepoRef/PlanRef, PR evidence, activity selectors, activation and manifests with per-delivery audit base_ref/base_sha/policy_ref/policy_mode; verify complete bootstrap/acceptance-ref types, missing-field/wrong-type negatives, mixed-policy audit records and distinct decision/Evidence-comment shapes.
+- [ ] 1.2 Deliver target/repository binding and prerequisite preflight for initialization; verify missing/invalid bindings and tool/version conditions are explicit and never default to this consumer's data.
+- [ ] 1.3 Deliver idempotent initialization and conflict-safe file planning; verify repeat runs, unrelated-file preservation, upstream ownership-marker preservation and overlap failures.
+- [ ] 1.4 Deliver pinned dependency/tool selection and non-mutating preview boundaries; verify no implicit remote writes, login, publication or prerequisite installation occurs.
+- [ ] 1.5 Deliver framework-contract generation with an explicit source RepoRef/root; verify both reviewed bootstrap delta roots and integrated canonical roots, exact asset equality and revision/version metadata without a second authored rule source.
+- [ ] 1.6 Deliver the `assuredloop` npm binary and package allowlist; verify tarball installation and init/help/version without a source checkout, exclusion of consumer data/logs, and version-binding mismatch handling. Package 3 owns inspect/check fixture tests; package 4 owns end-to-end tests through the packed CLI.
+- [ ] 1.7 Deliver native tool-root resolution and parameterized adoption guidance; verify a different repository, path, Issue/label set and Cursor/Gemini tool configuration work without source edits, while marker co-tenancy and registry compatibility failures are explicit.
+
+## 2. Work-category Skills and handoff templates
+
+Work Issue: [#7](https://github.com/guwenqing/assuredloop-base/issues/7). Depends on package 1. Basis: [work guidance](specs/project-workflow-adoption/spec.md#requirement-cover-traced-mutations-through-coherent-work-category-skills), [intake/planning](specs/work-intake-and-planning/spec.md), [review-result handoff](specs/review-and-validation/spec.md#requirement-review-guidance-publishes-and-returns-the-outcome), [work conventions](design.md#7-skills-explain-complete-work-with-native-operations-inside).
+
+- [ ] 2.1 Deliver triage and follow-up guidance/templates; verify fresh-agent trials explicitly choose and justify implementation-only work without an active change, legitimate no-Spec work, and rejection of an unjustified exemption.
+- [ ] 2.2 Deliver planning/decomposition and bounded-research guidance; verify continuous planning, justified splits, active-plan additions and a Spike returning to the human without automatic successors.
+- [ ] 2.3 Deliver assigned-work and full independent-review guidance: scope/prior coverage, original-basis assessment, additional reviewer when requested/required, consolidation, publication and return of URL/revision/verdict/summary to the current work's explicit author session. Verify the existing follow-up/policy/independence/staleness checks plus readable planning-author, implementation-author and missing/ambiguous-author examples, clean-result notification and honest delivery limitations, without global routes or an automated dispatch/schema subsystem.
+- [ ] 2.4 Deliver owner-led closeout guidance; verify aggregate assessment, current-anchor repair, synchronization, contract regeneration/binding transition, fixity capture and honest post-merge operations are covered.
+- [ ] 2.5 Deliver single-source Skill assets, target-tool discovery, README and repository-agent instruction pointers; verify schema-aligned templates, unresolved-placeholder rejection and cross-tool discovery, including guidance assigning missing category-label provisioning/mapping to the adopting owner before first use, without automatic GitHub mutation or upstream Skill edits.
+
+## 3. Read-only trace checks and reviewer context
+
+Work Issue: [#8](https://github.com/guwenqing/assuredloop-base/issues/8). Depends on package 1; integrate package 2 guidance when available. Basis: [checks and trust boundary](specs/review-and-validation/spec.md), [record relationships](specs/github-work-traceability/spec.md), [policy assessment rule](specs/workflow-self-evolution/spec.md#requirement-policy-assessment-uses-destination-pre-change-state), [tools/context design](design.md#5-small-local-tools-and-explicit-trust-boundaries).
+
+- [ ] 3.1 Deliver read-only native/Git/GitHub adapters; verify structured local/offline refs, pagination, allowed-repository bounds, command/path/symlink rejection, and absent/old/unauthenticated/denied/rate-limited `gh` as tool-unavailable rather than record-unavailable.
+- [ ] 3.2 Deliver record/link/status checks; verify missing basis, stage-appropriate planning inputs, legitimate no-Spec/research/cancellation cases, scoped staging completion and rejection of staging evidence misrepresented as required final integration.
+- [ ] 3.3 Deliver review-evidence checks; verify missing/equal session declarations, disallowed/unresolved model identity/depth, stale assessment/context and reproducible config/activation digests from raw Git blobs at recorded base_sha, without treating declarations as proof of independence.
+- [ ] 3.4 Deliver destination-scoped activation/bootstrap-policy resolution; verify accepted activation/bootstrap paths, missing/unresolved fields, scope-only or mismatched-revision policy acceptance without inferred authorization, suspended/invalid activation without fallback, candidate/stale-merge-base rejection and retarget/base freshness while retaining the existing feature/squash assessment cases.
+- [ ] 3.5 Deliver depth-1, byte-bounded paginated reviewer packets; verify reference inventories/counts, outside-depth/over-budget/unavailable distinctions, explicit expansion and all closeout roots without silent truncation.
+- [ ] 3.6 Deliver synchronization coverage checks around native outputs; verify omitted deltas, scenario loss, inbound heading repair, stale base and open-own-closeout versus delivered prerequisite semantics.
+- [ ] 3.7 Deliver acceptance-manifest generation/checking; verify raw source representations/digests, typed decisions, file/planning evidence and per-entry base_ref/base_sha/policy_ref/policy_mode across mixed bootstrap/activation assessments, including missing-audit-data reporting and rejection of closeout-policy substitution without new workflow-record fields.
+
+## 4. Integrated adoption, activation and governed self-use
+
+Work Issue: [#9](https://github.com/guwenqing/assuredloop-base/issues/9). Depends on packages 1-3. Basis: [adoption verification](specs/project-workflow-adoption/spec.md#requirement-verify-adoption-through-representative-guided-work), [self-evolution](specs/workflow-self-evolution/spec.md), [activation/decision path](design.md#10-bootstrap-activation-and-real-self-use).
+
+- [ ] 4.1 Verify the complete packed CLI in a distinct consumer fixture, including inspect/check, tool-root selection, separated framework/consumer contracts and unavailable environment outcomes; record integration evidence and return defects to the owning package.
+- [ ] 4.2 Run fresh-agent work-guidance trials with declared context only, including follow-up/no-Spec, same-reviewer, scope-boundary and closeout faults; obtain independent usable-base assessment before activation.
+- [ ] 4.3 Establish this consumer's initial destination config/project.bootstrap under #9: obtain owner-authorized, independently reviewed acceptance of the fixed policy revision and deliver the accepted records through the native/manual boundary before activation assessment (or verify existing accepted records). Then assess and deliver activation using that pre-change basis; verify the establishment/acceptance/delivery evidence and ordering, and that records introduced only in the activation candidate cannot authorize it. Keep both steps within #9 without automatic owner approval or a new Issue.
+- [ ] 4.4 Record and validate the distinct tagged self-change-decision at the end of trials: either a separately scoped/delivered improvement, or a reasoned owner-approved alternative with independent review. It must satisfy the decision schema, not borrow Evidence-comment head/scope/result. For closeout alternatives hand demonstration verification to package 5 without claiming it ran; for not-accepted return to the owner rather than wait indefinitely.
+
+## 5. Owner-led closeout
+
+Work Issue: [#10](https://github.com/guwenqing/assuredloop-base/issues/10). Depends on packages 0-4 and, when selected, delivery of the separate improvement. An approved closeout-alternative decision from 4.4 is a handoff input, not a circular prerequisite that closeout is already complete. Basis: [closeout contract](specs/specification-baseline/spec.md#requirement-owner-led-closeout-verifies-the-integrated-specification), [fixity](specs/specification-baseline/spec.md#requirement-closeout-preserves-acceptance-evidence-fixity), [closeout design](design.md#8-closeout-is-a-normal-reviewed-delivery).
+
+- [ ] 5.1 Deliver the aggregate requirement/delivery assessment, including planning package 0 and any delegated alternative self-change demonstration; verify independent assessment of actual evidence and return unresolved acceptance gaps to responsible work.
+- [ ] 5.2 Deliver the synchronized canonical Specs and repaired current inbound anchors; verify full-delta coverage, preserved scenarios/links and native validation before staging archive.
+- [ ] 5.3 Deliver regenerated release contract assets and the reviewed activation/bootstrap-binding transition; verify source/version/integrity metadata and installed-package resolution without stale active-change paths.
+- [ ] 5.4 Deliver the versioned acceptance-manifest candidate and archive move; verify source identity, results/digests and per-delivery base/policy audit metadata, distinguish closeout_policy_ref from historical entries, and report incomplete provenance or later drift/unavailability without committing full logs.
+- [ ] 5.5 Deliver the closeout acceptance package and operational handoff; verify GitHub retains the pending final review, authorized merge, post-merge confirmation and Issue/Epic closure obligations, none marked done prematurely in this native checklist.
