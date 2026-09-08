@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, mkdtemp, readFile, readlink, rm, symlink, unlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -10,6 +10,7 @@ import { applyInitialization, planInitialization } from '../src/adoption.js';
 import { githubPreflight, nativeTools } from '../src/native.js';
 import {
   execFile,
+  git,
   makeGitFixture,
   makePackageFixture,
   makeConfig,
@@ -266,6 +267,31 @@ test('apply rejects target changes after preview and leaves absent artifacts unt
   );
   await assert.rejects(readFile(path.join(target.root, '.gemini/skills/assuredloop-adopt/SKILL.md')));
   assert.deepEqual(await readJson(path.join(target.root, '.assuredloop/config.json')), { changed: true });
+});
+
+test('apply rechecks the target repository binding after preview', async (t) => {
+  const { packageFixture, target, config } = await makeScenario(t);
+  const plan = await planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true });
+  await git(target.root, ['remote', 'set-url', 'origin', 'https://github.com/example/another-consumer.git']);
+  await expectCode(() => applyInitialization(plan), 'binding-invalid');
+  await assert.rejects(readFile(path.join(target.root, '.assuredloop/config.json')));
+  await assert.rejects(readFile(path.join(target.root, '.gemini/skills/assuredloop-adopt/SKILL.md')));
+});
+
+test('apply rejects an OpenSpec context symlink introduced after preview', async (t) => {
+  const { packageFixture, target, config } = await makeScenario(t);
+  const contextPath = path.join(target.root, 'openspec/config.yaml');
+  const outside = await mkdtemp(path.join(os.tmpdir(), 'assuredloop-context-outside-'));
+  const outsideConfig = path.join(outside, 'config.yaml');
+  await writeFile(outsideConfig, 'schema: spec-driven\n');
+  const plan = await planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true });
+  await unlink(contextPath);
+  await symlink(outsideConfig, contextPath);
+  t.after(() => rm(outside, { recursive: true, force: true }));
+  await expectCode(() => applyInitialization(plan), 'path-unsafe');
+  assert.equal(await readlink(contextPath), outsideConfig);
+  await assert.rejects(readFile(path.join(target.root, '.assuredloop/config.json')));
+  await assert.rejects(readFile(path.join(target.root, '.gemini/skills/assuredloop-adopt/SKILL.md')));
 });
 
 test('target package source references are checked independently of version text', async (t) => {

@@ -16,6 +16,17 @@ function render(content, bindings) {
   return result;
 }
 
+async function validateTarget(targetRoot, config) {
+  const actualRoot = await repositoryRoot(targetRoot);
+  const origin = await git(actualRoot, ['remote', 'get-url', 'origin']);
+  if (repositoryIdentity(origin) !== config.repository.name.toLowerCase()) {
+    fail('binding-invalid', 'Explicit repository binding does not match the target origin.');
+  }
+  const contextPath = await safePath(actualRoot, `${config.repository.openspec_root}/config.yaml`.replace(/^\.\//, ''));
+  if (await optionalRead(contextPath) === null) fail('binding-invalid', 'Native OpenSpec context is missing. Run its explicit initialization first.');
+  return actualRoot;
+}
+
 async function checkFile(targetRoot, file) {
   const destination = await safePath(targetRoot, file.path);
   const existing = await optionalRead(destination);
@@ -30,13 +41,7 @@ export async function planInitialization({ targetRoot, config, packageRoot = ins
   const validation = validateRecord('config', config);
   if (!validation.valid) fail('binding-invalid', 'Explicit target configuration is missing or invalid.', validation.errors);
   if (JSON.stringify(config).includes('{{')) fail('binding-invalid', 'Unresolved placeholder in target configuration.');
-  const actualRoot = await repositoryRoot(targetRoot);
-  const origin = await git(actualRoot, ['remote', 'get-url', 'origin']);
-  if (repositoryIdentity(origin) !== config.repository.name.toLowerCase()) {
-    fail('binding-invalid', 'Explicit repository binding does not match the target origin.');
-  }
-  const contextPath = await safePath(actualRoot, `${config.repository.openspec_root}/config.yaml`.replace(/^\.\//, ''));
-  if (await optionalRead(contextPath) === null) fail('binding-invalid', 'Native OpenSpec context is missing. Run its explicit initialization first.');
+  const actualRoot = await validateTarget(targetRoot, config);
   const metadata = await verifyContracts(packageRoot);
   const packageJson = JSON.parse(await readFile(await safePath(packageRoot, 'package.json'), 'utf8'));
   const binding = config.project.workflow;
@@ -68,7 +73,7 @@ export async function planInitialization({ targetRoot, config, packageRoot = ins
 export async function applyInitialization(plan) {
   const saved = plans.get(plan);
   if (!saved || !isDeepStrictEqual(saved.snapshot, plan)) fail('binding-invalid', 'Apply requires an unchanged plan returned by this initialization process.');
-  if (await repositoryRoot(plan.targetRoot) !== saved.root) fail('binding-invalid', 'Target changed after preview.');
+  if (await validateTarget(plan.targetRoot, saved.config) !== saved.root) fail('binding-invalid', 'Target changed after preview.');
   await skillRoots(saved.root, saved.config.repository.tools);
   for (const file of plan.files) {
     if (await checkFile(saved.root, file) !== file.action) fail('file-conflict', `Target changed after preview: ${file.path}`);
