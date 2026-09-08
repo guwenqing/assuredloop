@@ -87,9 +87,9 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
     for (const issueRef of issueRefs) {
       const bundle = issueRef === work ? selected : await trace.bundleAt(issueRef);
       if (!selected.pulls.length && !record && bundle.issue.state === 'open') {
-        const names = Array.isArray(bundle.issue.labels) ? bundle.issue.labels.map((label) => typeof label === 'string' ? label : label?.name) : [];
+        const names = Array.isArray(bundle.issue.labels) ? bundle.issue.labels.map((label) => (typeof label === 'string' ? label : label?.name)?.toLowerCase()) : [];
         const mapping = result.policy?.config?.repository?.labels?.type || {};
-        const routed = ['task', 'bug', 'spike'].some((kind) => typeof mapping[kind] === 'string' && names.includes(mapping[kind]));
+        const routed = ['task', 'bug', 'spike'].some((kind) => typeof mapping[kind] === 'string' && names.includes(mapping[kind].toLowerCase()));
         const intake = await parseWorkRecord({ body: bundle.issue.body ?? '', kind: routed ? 'issue' : 'roughRequest', allowMissing: !routed });
         result.records.push({ ...intake, context: { issue: bundle.issue, evidence: bundle.evidence } });
         for (const finding of intake.findings) add(finding.code, finding.message);

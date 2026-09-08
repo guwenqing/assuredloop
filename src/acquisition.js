@@ -27,9 +27,10 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
         ...error.details, repository, branch, assessed_base_sha: revision,
       });
     }
-    if (observed !== revision) fail('acquisition-context-stale', 'The current primary PR destination changed before acquisition.', {
+    if (pull.merged !== true && observed !== revision) fail('acquisition-context-stale', 'The current primary PR destination changed before acquisition.', {
       assessment: { pr: work, head: pull.head?.sha, base_ref: branch, base_sha: revision }, observed_base_sha: observed,
     });
+    revision = observed;
   } else {
     const metadata = await initialAdapter.readRepository(repository);
     branch = metadata.default_branch;
@@ -61,7 +62,8 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
       const pr = `${name}#${candidate.number}`;
       const observed = await reader.readPull(pr);
       if (observed?.number !== candidate.number || observed?.base?.repo?.full_name?.toLowerCase() !== name) fail('binding-invalid', 'Secondary PR identity changed.');
-      const scoped = await configAt(reader, name, observed.base.sha);
+      const currentRevision = await reader.readBranchHead({ repository: name, branch: observed.base.ref });
+      const scoped = await configAt(reader, name, currentRevision);
       const allowed = new Set([repository, ...[...scoped.allowed].filter((value) => ceiling.has(value))]);
       active = { reader: await makeReader(allowed), allowed };
       const item = { work: pr, config_ref: scoped.ref, config_digest: digest(scoped.bytes),

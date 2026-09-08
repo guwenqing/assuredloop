@@ -220,8 +220,8 @@ export async function createTrace({ targetRoot, work }) {
   acquisition = await establishAcquisition({ targetRoot, work, issue: primaryIssue, pull: primaryPull, initialAdapter: adapter });
   adapter = acquisition.adapter;
   sourceCache.set(key(acquisition.source.source.ref), { content: acquisition.source.content, references: [] });
-  const primaryLabels = (primaryIssue.labels || []).map((label) => typeof label === 'string' ? label : label?.name);
-  const primaryRouted = primaryLabels.some((label) => acquisition.routedIssueLabels.includes(label));
+  const primaryLabels = (primaryIssue.labels || []).map((label) => (typeof label === 'string' ? label : label?.name)?.toLowerCase());
+  const primaryRouted = acquisition.routedIssueLabels.some((label) => primaryLabels.includes(label.toLowerCase()));
   await sourceRecord(primaryIssue.body, normalizeWork(work), {
     expectedKind: primaryIssue.pull_request ? 'pr' : 'issue', allowMissing: !primaryIssue.pull_request && !primaryRouted,
   });
@@ -419,15 +419,18 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     const roots = [...(closeout?.roots || []), work, ...bundle.pulls.map((pull) => `${trace.repository}#${pull.number}`), ...(bundle.unresolvedRelations || []),
       ...bundle.evidence.map((entry) => entry.ref), trace.acquisitionSource.source.ref, ...policyRoots, ...changedRoots, ...declaredRoots];
     const normalizedRoots = roots.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref);
-    result.findings.push(...trace.findings);
-    if (trace.findings.some((finding) => finding.severity === 'error')) result.status = 'invalid';
-    else if (result.status === 'pass' && trace.findings.some((finding) => finding.severity === 'unavailable')) result.status = 'unavailable';
-    result.findings = [...new Map(result.findings.map((finding) => [key(finding), finding])).values()];
-    result.packet = await buildReviewPacket({ roots: [...new Map(normalizedRoots.map((ref) => [key(ref), ref])).values()], load: trace.load, maxInlineBytes: budget, cursor,
+    const mergeSourceFindings = () => {
+      result.findings = [...new Map([...result.findings, ...trace.findings].map((finding) => [key(finding), finding])).values()];
+      if (trace.findings.some((finding) => finding.severity === 'error')) result.status = 'invalid';
+      else if (result.status === 'pass' && trace.findings.some((finding) => finding.severity === 'unavailable')) result.status = 'unavailable';
+    };
+    mergeSourceFindings();
+    const loadPacketSource = async (ref) => {
+      try { return await trace.load(ref); }
+      finally { mergeSourceFindings(); }
+    };
+    result.packet = await buildReviewPacket({ roots: [...new Map(normalizedRoots.map((ref) => [key(ref), ref])).values()], load: loadPacketSource, maxInlineBytes: budget, cursor,
       expand: expand.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref), envelope: result });
-    result.findings = [...new Map([...result.findings, ...trace.findings].map((finding) => [key(finding), finding])).values()];
-    if (trace.findings.some((finding) => finding.severity === 'error')) result.status = 'invalid';
-    else if (result.status === 'pass' && trace.findings.some((finding) => finding.severity === 'unavailable')) result.status = 'unavailable';
     await trace.recheckAcquisition();
   } catch (error) {
     result.status = 'unavailable';
