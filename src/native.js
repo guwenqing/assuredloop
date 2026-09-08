@@ -59,7 +59,7 @@ export async function githubPreflight(repository, labels, localOnly) {
     await execFile('gh', ['auth', 'status', '--hostname', 'github.com']);
   } catch { fail('tool-unavailable', 'GitHub authentication is required; initialize credentials explicitly.', { reason: 'authentication-required' }); }
   async function api(endpoint, extra = []) {
-    try { return (await execFile('gh', ['api', endpoint, ...extra], { maxBuffer: 4 * 1024 * 1024 })).stdout; }
+    try { return (await execFile('gh', ['api', endpoint, '--hostname', 'github.com', ...extra], { maxBuffer: 4 * 1024 * 1024 })).stdout; }
     catch (error) {
       const message = String(error.stderr || error.message);
       const reason = /rate.limit|HTTP 429/i.test(message) ? 'rate-limited' : /HTTP (403|404)/.test(message) ? 'insufficient-access' : 'transport-error';

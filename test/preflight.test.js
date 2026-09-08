@@ -62,11 +62,19 @@ async function withPath(value, operation, extra = {}) {
 async function makeGhFixture(t, {
   version = '2.88.0',
   mode = 'labels-missing',
+  requireApiHostname = false,
 } = {}) {
   const bin = await mkdtemp(path.join(os.tmpdir(), 'assuredloop-gh-bin-'));
   const log = path.join(bin, 'commands.log');
   const labels = [[{ name: 'type:request' }, { name: 'type:task' }]];
-  const behavior = JSON.stringify({ version, mode, labels });
+  const enterpriseLabels = [[
+    { name: 'type:request' },
+    { name: 'type:epic' },
+    { name: 'type:task' },
+    { name: 'type:bug' },
+    { name: 'type:spike' },
+  ]];
+  const behavior = JSON.stringify({ version, mode, labels, enterpriseLabels, requireApiHostname });
   const script = `#!/usr/bin/env node
 import { appendFileSync } from 'node:fs';
 const behavior = ${behavior};
@@ -79,13 +87,19 @@ if (args[0] === '--version') {
     console.error('not logged in');
     process.exitCode = 1;
   }
-} else if (args[0] === 'api') {
+  } else if (args[0] === 'api') {
   if (behavior.mode === 'forbidden') {
     console.error('HTTP 403 Forbidden');
     process.exitCode = 1;
   } else if (behavior.mode === 'rate-limited') {
     console.error('HTTP 429 rate limit exceeded\\nRetry-After: 120\\nX-RateLimit-Reset: 1893456000');
     process.exitCode = 1;
+  } else if (behavior.requireApiHostname && !(args[2] === '--hostname' && args[3] === 'github.com')) {
+    if (args[1]?.endsWith('/labels?per_page=100')) {
+      console.log(JSON.stringify(behavior.enterpriseLabels));
+    } else {
+      console.log(JSON.stringify({ full_name: args[1]?.replace(/^repos\\//, '') }));
+    }
   } else if (args[1]?.endsWith('/labels?per_page=100')) {
     console.log(JSON.stringify(behavior.labels));
   } else {
@@ -213,6 +227,33 @@ test('local-only preflight skips gh and reports missing labels without mutation 
     ['api', 'repos/example/project/labels?per_page=100'],
   ]);
   assert.equal(commands.some((args) => args.includes('--method') || args.includes('POST')), false);
+});
+
+test('GitHub API reads pin github.com despite an ambient GH_HOST override', async (t) => {
+  const fixture = await makeGhFixture(t, { requireApiHostname: true });
+  const diagnostics = await withPath(fixture.env.PATH, () =>
+    githubPreflight('example/project', {
+      type: {
+        request: 'type:request',
+        epic: 'type:epic',
+        task: 'type:task',
+        bug: 'type:bug',
+        spike: 'type:spike',
+      },
+    }, false), {
+      MOCK_GH_LOG: fixture.log,
+      GH_HOST: 'enterprise.example.invalid',
+    });
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0].code, 'labels-missing');
+  assert.deepEqual(diagnostics[0].labels, ['type:epic', 'type:bug', 'type:spike']);
+  const commands = (await readFile(fixture.log, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  const apiCommands = commands.filter((args) => args[0] === 'api');
+  assert.equal(apiCommands.length, 2);
+  for (const args of apiCommands) {
+    assert.match(args[1], /^repos\/example\/project/);
+    assert.deepEqual(args.slice(2, 4), ['--hostname', 'github.com']);
+  }
 });
 
 test('native registry version and shape incompatibilities are explicit in an isolated runtime copy', async (t) => {
