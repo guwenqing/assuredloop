@@ -11,9 +11,11 @@ const installedRoot = fileURLToPath(new URL('..', import.meta.url));
 const plans = new WeakMap();
 
 function render(content, bindings) {
-  const result = content.replace(/\{\{([a-z_]+)\}\}/g, (original, key) => Object.hasOwn(bindings, key) ? bindings[key] : original);
+  const parts = content.split(/(\r\n|\n|\r)/);
+  const result = [];
   let inTemplate = false;
-  for (const line of result.split('\n')) {
+  for (let index = 0; index < parts.length; index += 2) {
+    const line = parts[index];
     const marker = line.trim();
     if (marker === '<!-- assuredloop:template:start -->') {
       if (inTemplate) fail('binding-invalid', 'Reusable template regions cannot be nested.');
@@ -21,12 +23,16 @@ function render(content, bindings) {
     } else if (marker === '<!-- assuredloop:template:end -->') {
       if (!inTemplate) fail('binding-invalid', 'Reusable template end has no matching start.');
       inTemplate = false;
-    } else if (!inTemplate && line.includes('{{')) {
+    }
+    const unresolved = line.replace(/\{\{([a-z_]+)\}\}/g, (original, key) => Object.hasOwn(bindings, key) ? '' : original);
+    if (!inTemplate && unresolved.includes('{{')) {
       fail('binding-invalid', 'Required template bindings remain unresolved outside a declared reusable example.');
     }
+    const rendered = line.replace(/\{\{([a-z_]+)\}\}/g, (original, key) => Object.hasOwn(bindings, key) ? bindings[key] : original);
+    result.push(rendered, parts[index + 1] ?? '');
   }
   if (inTemplate) fail('binding-invalid', 'Reusable template region has no matching end.');
-  return result;
+  return result.join('');
 }
 
 async function validateTarget(targetRoot, config) {

@@ -381,3 +381,65 @@ test('template markers never exempt placeholders in target configuration', async
     'binding-invalid',
   );
 });
+
+test('binding data cannot manufacture a template start marker', async (t) => {
+  const { packageFixture, target, config } = await makeScenario(t);
+  const markerRoot = '<!-- assuredloop:template:start -->';
+  const contextRoot = path.join(target.root, markerRoot);
+  await mkdir(contextRoot, { recursive: true });
+  await writeFile(path.join(contextRoot, 'config.yaml'), 'schema: spec-driven\n');
+  config.repository.openspec_root = markerRoot;
+  await writeFile(path.join(packageFixture.root, 'skills/assuredloop-adopt/SKILL.md'), [
+    '# Guidance',
+    '{{openspec_root}}',
+    'Unknown={{misspelled_binding}}',
+    '<!-- assuredloop:template:end -->',
+  ].join('\n') + '\n');
+  await expectCode(
+    () => planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true }),
+    'binding-invalid',
+  );
+});
+
+test('binding data cannot close a source-declared template region', async (t) => {
+  const { packageFixture, target, config } = await makeScenario(t);
+  const markerRoot = '<!-- assuredloop:template:end -->';
+  const contextRoot = path.join(target.root, markerRoot);
+  await mkdir(contextRoot, { recursive: true });
+  await writeFile(path.join(contextRoot, 'config.yaml'), 'schema: spec-driven\n');
+  config.repository.openspec_root = markerRoot;
+  await writeFile(path.join(packageFixture.root, 'skills/assuredloop-adopt/SKILL.md'), [
+    '<!-- assuredloop:template:start -->',
+    '{{openspec_root}}',
+    '{"change":"{{change}}"}',
+    '<!-- assuredloop:template:end -->',
+  ].join('\n') + '\n');
+  const plan = await planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true });
+  const skill = plannedFile(plan, '.gemini/skills/assuredloop-adopt/SKILL.md').content;
+  assert.equal(skill.split('<!-- assuredloop:template:end -->').length - 1, 2);
+  assert.match(skill, /\{"change":"\{\{change\}\}"\}/);
+});
+
+test('template rendering preserves CRLF delimiters while resolving bindings', async (t) => {
+  const { packageFixture, target, config } = await makeScenario(t);
+  const source = [
+    '# Guidance',
+    'repository={{repository}}',
+    '<!-- assuredloop:template:start -->',
+    'Reusable example, not completed target data',
+    '{"openspec":"{{openspec_root}}","change":"{{change}}"}',
+    '<!-- assuredloop:template:end -->',
+  ].join('\r\n') + '\r\n';
+  await writeFile(path.join(packageFixture.root, 'skills/assuredloop-adopt/SKILL.md'), source);
+  const plan = await planInitialization({ targetRoot: target.root, config, packageRoot: packageFixture.root, localOnly: true });
+  const skill = plannedFile(plan, '.gemini/skills/assuredloop-adopt/SKILL.md').content;
+  const expected = [
+    '# Guidance',
+    'repository=example/adoption-consumer',
+    '<!-- assuredloop:template:start -->',
+    'Reusable example, not completed target data',
+    '{"openspec":"openspec","change":"{{change}}"}',
+    '<!-- assuredloop:template:end -->',
+  ].join('\r\n') + '\r\n';
+  assert.equal(skill, expected);
+});
