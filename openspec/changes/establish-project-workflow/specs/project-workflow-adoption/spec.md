@@ -78,6 +78,8 @@ The minimum SHALL support self-use in one repo with explicit project policy and 
 
 All executable tooling scripts authored for this extension SHALL run on Node.js, matching the upstream runtime. Reusable scripts, Skills and templates SHALL resolve target identity, paths, Issue references and conventions from explicit inputs, target configuration or native context, without baked-in consumer data. Skill destinations SHALL follow the target's selected native tool configuration rather than fixed Codex/Claude roots. Initialization SHALL honor upstream ownership markers, preserve unrelated content, and stop on unresolved compatibility or co-tenancy conflicts. Missing target bindings SHALL cause a clear error, not a fallback to this repo.
 
+Installed guidance SHALL use resolved target references or explicit placeholders and SHALL NOT treat the framework source repository as the consumer's project. Unresolved required target-binding placeholders SHALL block completion of the generated handoff artifact, while placeholders in reusable templates/examples remain explicitly templates rather than completed target data.
+
 #### Scenario: A different repository adopts the workflow
 - **WHEN** a target has a different directory, GitHub identity, Issue numbers and configured label names from AssuredLoop Base
 - **THEN** the same scripts and Skills operate on that target through its bindings without source edits, copied source-project work data or unintended access to the framework's Issues
@@ -85,6 +87,10 @@ All executable tooling scripts authored for this extension SHALL run on Node.js,
 #### Scenario: Target binding is incomplete
 - **WHEN** a work operation lacks the required target context
 - **THEN** it reports the missing binding and does not guess this project's repository, paths or Issue identifiers
+
+#### Scenario: Generated handoff still contains a required placeholder
+- **WHEN** an allegedly complete handoff leaves a required target reference unresolved
+- **THEN** completion is rejected without substituting framework-instance data; a reusable template is not misreported as a completed handoff
 
 #### Scenario: Consumer selects another native agent tool
 - **WHEN** a consumer selects a supported tool with a different Skill root or a shared-root ownership marker

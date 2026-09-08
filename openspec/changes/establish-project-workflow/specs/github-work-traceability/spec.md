@@ -46,6 +46,8 @@ Each PR SHALL identify its work Issue, scope, applicable plan or no-Spec rationa
 
 The workflow SHALL distinguish implemented delivery, research completion and cancellation. Closing an Issue as completed SHALL require the evidence appropriate to its assigned outcome and resolution of applicable review findings. Missing required evidence or inconsistent status SHALL be reported as an error. Cancellation SHALL carry a reason and SHALL NOT count as delivered requirements. A parent SHALL NOT qualify as complete by counting unsupported child closures.
 
+Delivery evidence SHALL match the assigned outcome and agreed destination in the existing Issue/plan context. A Task assigned a staging outcome can complete that outcome, but intermediate merges SHALL NOT establish required final integration or parent delivery. Squash delivery SHALL be traceable through the final PR and resulting merge commit without requiring intermediate commit ancestry. Unresolved final-destination context SHALL be clarified before overall completion, not replaced by a blanket ban on feature branches.
+
 #### Scenario: Closed development task lacks delivery evidence
 - **WHEN** an Issue is marked completed but its required deliverable or verification record is absent
 - **THEN** validation reports an unsupported completion and parent completion cannot rely on it
@@ -57,6 +59,10 @@ The workflow SHALL distinguish implemented delivery, research completion and can
 #### Scenario: Scope is cancelled
 - **WHEN** work is cancelled rather than delivered
 - **THEN** its reason remains traceable and parent review assesses any remaining requirement gap instead of counting cancellation as delivery
+
+#### Scenario: Staged delivery is mistaken for final integration
+- **WHEN** work requires an agreed final destination but evidence shows only intermediate feature-branch merges
+- **THEN** final delivery remains incomplete even if stage-specific Tasks legitimately completed their assigned outcomes
 
 ### Requirement: Follow-ups preserve historical delivery records
 

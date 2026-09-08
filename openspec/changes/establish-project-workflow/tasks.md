@@ -4,17 +4,17 @@ Checked planning items mean this PR contains those candidate contributions, not 
 
 ## 0. Planning and handoff
 
-Work Issue: [#2](https://github.com/guwenqing/assuredloop-base/issues/2). Basis: [Proposal](proposal.md), [Design](design.md), [owner B4 acceptance](https://github.com/guwenqing/assuredloop-base/pull/5#issuecomment-5576464303), [AL review being disposed](https://github.com/guwenqing/assuredloop-base/pull/5#issuecomment-5576373146). PR #5 remains draft for AL Reviewer re-review; this package has no implementation authority.
+Work Issue: [#2](https://github.com/guwenqing/assuredloop-base/issues/2). Basis: [Proposal](proposal.md), [Design](design.md), [owner B4 acceptance](https://github.com/guwenqing/assuredloop-base/pull/5#issuecomment-5576464303), [AL r2 review being disposed](https://github.com/guwenqing/assuredloop-base/pull/5#issuecomment-5576944911). PR #5 remains draft for AL Reviewer r3; this package has no implementation authority.
 
-- [x] 0.1 Deliver the refined Proposal and its recorded six-item owner acceptance relative to 55e73cc; verify the Origin points to the accepted expansion and the acceptance comment preserves no-merge/no-implementation limits.
-- [x] 0.2 Deliver the seven Specs and Design correction candidate; verify native strict validation, local reference checks and a B1-B4/M1-M12 disposition mapping, with external re-review explicitly still pending.
-- [x] 0.3 Deliver scoped work packages and linked handoff records for #6-#10; verify structured references, task coverage, activity/discipline separation and acyclic dependencies without claiming those tasks started.
+- [x] 0.1 Deliver the refined Proposal and repointed workflow-goals Origin in this candidate; supporting evidence is the external six-item owner acceptance, whose no-merge/no-implementation limits remain intact.
+- [x] 0.2 Deliver the seven Specs and Design correction candidate; verify native strict validation and local references, with the external r2 disposition comment as supporting evidence and AL r3 still pending.
+- [x] 0.3 Deliver the versioned scoped task decomposition and repo-side Issue references; verify the external handoff records' structured refs, coverage, selectors and acyclic dependencies without treating them as files in the candidate or claiming work started.
 
 ## 1. Project adoption and record contracts
 
-Work Issue: [#6](https://github.com/guwenqing/assuredloop-base/issues/6). Basis: [adoption](specs/project-workflow-adoption/spec.md), [traceability](specs/github-work-traceability/spec.md), [record and tool decisions](design.md#4-minimal-structured-relationships-not-a-second-task-database).
+Work Issue: [#6](https://github.com/guwenqing/assuredloop-base/issues/6). Depends on package 0. Basis: [adoption](specs/project-workflow-adoption/spec.md), [traceability](specs/github-work-traceability/spec.md), [record and tool decisions](design.md#4-minimal-structured-relationships-not-a-second-task-database).
 
-- [ ] 1.1 Deliver described JSON Schemas/examples for config, structured RepoRef/PlanRef, authoritative activity selectors, review policy, activation, self-change decisions and acceptance manifests; verify positive/negative field, alias, exclusion and bootstrap cases.
+- [ ] 1.1 Deliver described JSON Schemas/examples for config including project.bootstrap and named label/review mappings, structured RepoRef/PlanRef, destination-bound PR evidence, activity selectors, activation and manifests; verify authorized bootstrap/negative inputs and distinct tagged self-change-decision versus Evidence-comment shapes without inherited or invented fields.
 - [ ] 1.2 Deliver target/repository binding and prerequisite preflight for initialization; verify missing/invalid bindings and tool/version conditions are explicit and never default to this consumer's data.
 - [ ] 1.3 Deliver idempotent initialization and conflict-safe file planning; verify repeat runs, unrelated-file preservation, upstream ownership-marker preservation and overlap failures.
 - [ ] 1.4 Deliver pinned dependency/tool selection and non-mutating preview boundaries; verify no implicit remote writes, login, publication or prerequisite installation occurs.
@@ -37,12 +37,12 @@ Work Issue: [#7](https://github.com/guwenqing/assuredloop-base/issues/7). Depend
 Work Issue: [#8](https://github.com/guwenqing/assuredloop-base/issues/8). Depends on package 1; integrate package 2 guidance when available. Basis: [checks and trust boundary](specs/review-and-validation/spec.md), [record relationships](specs/github-work-traceability/spec.md), [tools/context design](design.md#5-small-local-tools-and-explicit-trust-boundaries).
 
 - [ ] 3.1 Deliver read-only native/Git/GitHub adapters; verify structured local/offline refs, pagination, allowed-repository bounds, command/path/symlink rejection, and absent/old/unauthenticated/denied/rate-limited `gh` as tool-unavailable rather than record-unavailable.
-- [ ] 3.2 Deliver record/link/status checks; verify missing basis, stage-appropriate planning inputs, legitimate no-Spec/research/cancellation cases and unsupported closed work.
-- [ ] 3.3 Deliver review-evidence checks; verify missing/equal producer/reviewer declarations, disallowed or unresolved model identity/depth, stale heads and mutable work-context drift, without claiming string comparisons prove independence.
-- [ ] 3.4 Deliver trusted-base activation/policy resolution; verify candidate pointer/schema/config weakening and stale merge-base selection cannot bypass current policy, and missing base/bootstrap inputs yield policy-unavailable.
+- [ ] 3.2 Deliver record/link/status checks; verify missing basis, stage-appropriate planning inputs, legitimate no-Spec/research/cancellation cases, scoped staging completion and rejection of staging evidence misrepresented as required final integration.
+- [ ] 3.3 Deliver review-evidence checks; verify missing/equal producer/reviewer declarations, disallowed/unresolved model identity/depth, stale head/base/destination/policy evidence and mutable context drift without claiming string comparisons prove independence.
+- [ ] 3.4 Deliver destination-scoped activation/bootstrap-policy resolution; verify accepted activation/bootstrap positive paths, missing/unresolved inputs, suspended/invalid activation without fallback, candidate weakening/stale merge-base rejection, legitimate feature staging then independently assessed final squash integration, and retarget/base changes invalidating old results even at unchanged head.
 - [ ] 3.5 Deliver depth-1, byte-bounded paginated reviewer packets; verify reference inventories/counts, outside-depth/over-budget/unavailable distinctions, explicit expansion and all closeout roots without silent truncation.
 - [ ] 3.6 Deliver synchronization coverage checks around native outputs; verify omitted deltas, scenario loss, inbound heading repair, stale base and open-own-closeout versus delivered prerequisite semantics.
-- [ ] 3.7 Deliver acceptance-manifest generation/checking; verify comment-body digests, structured file evidence, planning-delivery inclusion, later edits/deletion and no self-referential future merge/approval claims.
+- [ ] 3.7 Deliver acceptance-manifest generation/checking; verify the recorded raw-comment endpoint/body/encoding representation, cross-client reproducibility, CRLF/LF and changed-body faults, separate typed decision capture, file evidence, planning inclusion and no future merge/approval claims.
 
 ## 4. Integrated adoption, activation and governed self-use
 
@@ -50,8 +50,8 @@ Work Issue: [#9](https://github.com/guwenqing/assuredloop-base/issues/9). Depend
 
 - [ ] 4.1 Verify the complete packed CLI in a distinct consumer fixture, including inspect/check, tool-root selection, separated framework/consumer contracts and unavailable environment outcomes; record integration evidence and return defects to the owning package.
 - [ ] 4.2 Run fresh-agent work-guidance trials with declared context only, including follow-up/no-Spec, same-reviewer, scope-boundary and closeout faults; obtain independent usable-base assessment before activation.
-- [ ] 4.3 Deliver the owner-authorized activation record through the defined trusted bootstrap path; verify future work resolves it from the accepted base and cannot select a weaker candidate pointer.
-- [ ] 4.4 Record and verify the self-change decision at the end of trials: either a separately scoped/delivered genuine improvement, or a reasoned owner-approved alternative with independent review. If closeout is the named alternative, hand its demonstration verification to package 5 without claiming it already ran; if no path is accepted, report a not-accepted outcome to the owner rather than wait indefinitely.
+- [ ] 4.3 Deliver the owner-authorized activation record using accepted project.bootstrap at its agreed delivery destination; verify later PRs resolve their destination's pre-change policy, and staged or candidate pointers cannot self-authorize final adoption.
+- [ ] 4.4 Record and validate the distinct tagged self-change-decision at the end of trials: either a separately scoped/delivered improvement, or a reasoned owner-approved alternative with independent review. It must satisfy the decision schema, not borrow Evidence-comment head/scope/result. For closeout alternatives hand demonstration verification to package 5 without claiming it ran; for not-accepted return to the owner rather than wait indefinitely.
 
 ## 5. Owner-led closeout
 

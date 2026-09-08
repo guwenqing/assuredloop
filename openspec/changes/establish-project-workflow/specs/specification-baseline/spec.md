@@ -68,6 +68,8 @@ Final formal requirements, decisions and necessary repo relationships SHALL be v
 
 The closeout candidate SHALL include a versioned manifest identifying accepted delivery Issue/PR references, evidence comment identifiers, assessed revisions, results, scope and captured-content digests, including planning delivery. It SHALL move with the archived change and SHALL be checked against captured source evidence before acceptance. Full logs SHALL remain external. The manifest SHALL NOT claim that its own future merge or post-merge review already happened. Later changed or unavailable source evidence SHALL be reported as drift or unavailability, not silently accepted; a digest SHALL NOT be claimed to reconstruct missing content or authenticate a human decision.
 
+Each digest SHALL identify its reproducible source representation, including the adapter endpoint/field and decoding/encoding rules. Typed self-change decisions SHALL retain their decision fields and discriminator in separate decision entries rather than be converted into a delivery head/result. A valid decision's integrity SHALL NOT prove its selected work has been performed.
+
 #### Scenario: An accepted evidence comment changes later
 - **WHEN** a fetched comment differs from the body captured by the committed manifest
 - **THEN** revalidation reports evidence drift while preserving the prior recorded summary and digest at its Git revision
@@ -75,3 +77,7 @@ The closeout candidate SHALL include a versioned manifest identifying accepted d
 #### Scenario: Captured evidence disappears
 - **WHEN** a manifest reference can no longer be fetched
 - **THEN** the prior fixity record remains readable but the source is reported unavailable and no complete revalidation PASS is claimed
+
+#### Scenario: A verifier uses a different comment rendering
+- **WHEN** one client displays rendered text or normalizes line endings instead of the recorded raw body representation
+- **THEN** verification reacquires the specified field/representation for hashing rather than treating a display transformation as evidence drift or silently changing the digest rule
