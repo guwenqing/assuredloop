@@ -7,7 +7,7 @@ description: Independently assess original scope and current artifacts, consolid
 
 Consumer: {{repository}}. Product context: {{openspec_root}}. Framework: {{package_name}}@{{package_version}}.
 
-Resolve the selected installation through the package README. Read the scoped Issue/PR, original request and accepted basis, current candidate/destination, relevant artifacts and actual evidence. Use the review-and-validation, traceability and self-evolution contracts, templates/review-request.md and review-result.md. The producer's summary is context, not the truth to assume.
+Resolve the selected installation through the package README. Read the scoped Issue/PR, original request and accepted basis, current candidate/destination, relevant artifacts and actual evidence. Use contracts/review-and-validation/spec.md, contracts/github-work-traceability/spec.md and contracts/workflow-self-evolution/spec.md, plus templates/review-request.md and templates/review-result.md. The producer's summary is context, not the truth to assume.
 
 Authoritative entry in that installation: contracts/review-and-validation/spec.md. Shared record/format instructions are in templates/README.md.
 

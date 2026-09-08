@@ -7,7 +7,7 @@ description: Assess aggregate delivery and synchronize, review, archive and clos
 
 Consumer: {{repository}}. Product context: {{openspec_root}}. Framework: {{package_name}}@{{package_version}}.
 
-This work belongs to the explicitly assigned change/Epic closeout owner, with an independent acceptance reviewer. Resolve the selected installation through the package README. Read the whole accepted delta/plan, current baseline, prerequisite Issues/PRs and their evidence, applicable destination policy, and verified current owner instructions. Use the specification-baseline, self-evolution and traceability contracts plus templates/closeout-summary.md.
+This work belongs to the explicitly assigned change/Epic closeout owner, with an independent acceptance reviewer. Resolve the selected installation through the package README. Read the whole accepted delta/plan, current baseline, prerequisite Issues/PRs and their evidence, applicable destination policy, and verified current owner instructions. Use contracts/specification-baseline/spec.md, contracts/workflow-self-evolution/spec.md and contracts/github-work-traceability/spec.md, plus templates/closeout-summary.md.
 
 Authoritative entry in that installation: contracts/specification-baseline/spec.md. Shared record/format instructions are in templates/README.md.
 

@@ -312,6 +312,7 @@ test('local initialization installs all namespaced guidance in Gemini and Codex 
 test('fresh-agent guidance fixtures are sanitized original inputs without embedded verdicts', async () => {
   const expectedCases = [
     'implementation-only-no-active-change',
+    'triage-incomplete-request',
     'legitimate-no-spec',
     'unjustified-no-spec',
     'active-plan-addition',

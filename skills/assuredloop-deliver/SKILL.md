@@ -7,7 +7,7 @@ description: Deliver an explicitly assigned Issue through scoped implementation,
 
 Consumer: {{repository}}. Product context: {{openspec_root}}. Framework: {{package_name}}@{{package_version}}.
 
-Resolve the selected installation and consumer context through the package README. Read the assigned Issue, original request, applicable consumer requirements/Design, plan items or justified no-Spec basis, dependencies and current authorization. Use the traceability, review-and-validation and self-evolution contracts and templates/README.md.
+Resolve the selected installation and consumer context through the package README. Read the assigned Issue, original request, applicable consumer requirements/Design, plan items or justified no-Spec basis, dependencies and current authorization. Use contracts/github-work-traceability/spec.md, contracts/review-and-validation/spec.md and contracts/workflow-self-evolution/spec.md, with templates/README.md.
 
 Authoritative entry in that installation: contracts/review-and-validation/spec.md. Shared record/format instructions are in templates/README.md.
 
