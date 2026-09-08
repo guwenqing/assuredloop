@@ -1,0 +1,41 @@
+{
+  "activity": "deliver",
+  "request": "example/consumer#1",
+  "change": "example-change",
+  "basis": [
+    {
+      "repository": "example/consumer",
+      "revision": "0123456789abcdef0123456789abcdef01234567",
+      "path": "openspec/changes/example-change/specs/project-workflow-adoption/spec.md"
+    },
+    {
+      "repository": "example/consumer",
+      "revision": "0123456789abcdef0123456789abcdef01234567",
+      "path": "openspec/changes/example-change/design.md",
+      "anchor": "5-small-local-tools-and-explicit-trust-boundaries"
+    }
+  ],
+  "plan_items": [
+    {
+      "repository": "example/consumer",
+      "revision": "0123456789abcdef0123456789abcdef01234567",
+      "path": "openspec/changes/example-change/tasks.md",
+      "items": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "1.5",
+        "1.6",
+        "1.7"
+      ]
+    }
+  ],
+  "depends_on": [
+    "example/consumer#2"
+  ],
+  "prior_work": [
+    "example/consumer#5"
+  ],
+  "split_rationale": "The adoption package is independently deliverable before work guidance and read-only checks."
+}

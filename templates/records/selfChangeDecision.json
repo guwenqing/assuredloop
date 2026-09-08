@@ -1,0 +1,18 @@
+{
+  "record_type": "self-change-decision",
+  "selection": "improvement",
+  "work": "example/consumer#11",
+  "rationale": "A bounded validator improvement was identified during the initial trial and can be governed as a separate work item.",
+  "authorized_by": "example-owner",
+  "evidence": [
+    {
+      "repository": "example/consumer",
+      "comment_id": 101
+    },
+    {
+      "repository": "example/consumer",
+      "revision": "0123456789abcdef0123456789abcdef01234567",
+      "path": "openspec/changes/example-change/design.md"
+    }
+  ]
+}

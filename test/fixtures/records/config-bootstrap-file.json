@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "project": {
+    "workflow": {
+      "name": "assuredloop-workflow",
+      "version": "0.1.0",
+      "integrity": "sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "source_ref": {
+        "repository": "example/framework",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "path": "openspec/changes/establish-project-workflow/specs"
+      },
+      "contracts_path": "contracts"
+    },
+    "review": {
+      "depth": "full-scope",
+      "internal": {
+        "allowed_models": ["model-alpha"]
+      },
+      "excluded_models": [],
+      "context": {
+        "max_inline_bytes": 1
+      }
+    },
+    "bootstrap": {
+      "policy_ref": {
+        "repository": "example/framework",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "path": "openspec/changes/establish-project-workflow/design.md"
+      },
+      "policy_acceptance": {
+        "repository": "example/framework",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "path": "openspec/changes/establish-project-workflow/design.md"
+      },
+      "proposal_acceptance": {
+        "repository": "example/consumer",
+        "comment_id": 123456789
+      },
+      "authorized_by": "example-owner"
+    }
+  },
+  "repository": {
+    "name": "example/consumer",
+    "openspec_root": "openspec",
+    "tools": ["codex"],
+    "labels": {
+      "type": {
+        "request": "type:request",
+        "epic": "type:epic",
+        "task": "type:task",
+        "bug": "type:bug",
+        "spike": "type:spike"
+      }
+    }
+  }
+}

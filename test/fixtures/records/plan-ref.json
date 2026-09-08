@@ -1,0 +1,6 @@
+{
+  "repository": "example/framework",
+  "revision": "0123456789abcdef0123456789abcdef01234567",
+  "path": "openspec/changes/establish-project-workflow/tasks.md",
+  "items": ["1.1", "1.2", "1.3"]
+}

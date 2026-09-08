@@ -1,0 +1,10 @@
+{
+  "repository": "example/consumer",
+  "revision": "0123456789abcdef0123456789abcdef01234567",
+  "path": "openspec/changes/example-change/tasks.md",
+  "items": [
+    "1.1",
+    "1.2",
+    "1.3"
+  ]
+}

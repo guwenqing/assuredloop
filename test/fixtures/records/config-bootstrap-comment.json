@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "project": {
+    "workflow": {
+      "name": "assuredloop-workflow",
+      "version": "0.1.0",
+      "integrity": "sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "source_ref": {
+        "repository": "example/framework",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "path": "openspec/changes/establish-project-workflow/specs"
+      },
+      "contracts_path": "contracts"
+    },
+    "review": {
+      "depth": "full-scope",
+      "internal": {
+        "allowed_models": ["model-alpha", "model-beta"]
+      },
+      "excluded_models": ["model-excluded"],
+      "model_aliases": {
+        "primary": "model-alpha"
+      },
+      "context": {
+        "max_inline_bytes": 65536
+      }
+    },
+    "bootstrap": {
+      "policy_ref": {
+        "repository": "example/framework",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "path": "openspec/changes/establish-project-workflow/design.md",
+        "anchor": "5-small-local-tools-and-explicit-trust-boundaries"
+      },
+      "policy_acceptance": {
+        "repository": "example/consumer",
+        "comment_id": 123456789
+      },
+      "proposal_acceptance": {
+        "repository": "example/framework",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "path": "openspec/changes/establish-project-workflow/proposal.md"
+      },
+      "authorized_by": "example-owner"
+    },
+    "extensions": {
+      "acme:policy": {
+        "enabled": true
+      }
+    }
+  },
+  "repository": {
+    "name": "example/consumer",
+    "openspec_root": "openspec",
+    "tools": ["codex"],
+    "labels": {
+      "type": {
+        "request": "type:request",
+        "epic": "type:epic",
+        "task": "type:task",
+        "bug": "type:bug",
+        "spike": "type:spike"
+      },
+      "discipline": {
+        "adopt": "discipline:development",
+        "triage": "discipline:architecture",
+        "plan": "discipline:architecture",
+        "research": "discipline:architecture",
+        "deliver": "discipline:development",
+        "review": "discipline:architecture",
+        "closeout": "discipline:architecture"
+      }
+    },
+    "allowed_reference_repositories": ["other/allowed"]
+  }
+}

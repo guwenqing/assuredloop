@@ -1,6 +1,6 @@
 All executable items below, including generated helpers, obey [independent test authorship, genuine RED/GREEN and controlled-fault checks](specs/review-and-validation/spec.md#requirement-verify-code-with-independent-test-first-evidence). Test authors and implementation producers are different agents; producer review is also independent. This obligation applies uniformly, not only where a task mentions tests. Non-code items use artifact checks and semantic review without fabricated runtime RED/GREEN.
 
-Checked planning items mean this PR contains those candidate contributions, not that AL Reviewer accepted the revision or that it may merge. All implementation items remain unchecked. Checklist granularity supports honest partial delivery within the same work Issue; it does not require a separate Issue or PR for every line.
+Checked items record candidate contributions for their linked work Issues, not proof of review, merge or Issue completion; consult the revision-specific GitHub evidence. Package 0 retains its planning-stage contribution wording. Checklist granularity supports honest partial delivery within the same work Issue; it does not require a separate Issue or PR for every line.
 
 ## 0. Planning and handoff
 
@@ -14,13 +14,13 @@ Work Issue: [#2](https://github.com/guwenqing/assuredloop-base/issues/2). Basis:
 
 Work Issue: [#6](https://github.com/guwenqing/assuredloop-base/issues/6). Depends on package 0. Basis: [adoption](specs/project-workflow-adoption/spec.md), [traceability](specs/github-work-traceability/spec.md), [record and tool decisions](design.md#4-minimal-structured-relationships-not-a-second-task-database).
 
-- [ ] 1.1 Deliver described JSON Schemas/examples for config including project.bootstrap with required policy_ref, policy_acceptance, proposal_acceptance and authorized_by, named label/review mappings, RepoRef/PlanRef, PR evidence, activity selectors, activation and manifests with per-delivery audit base_ref/base_sha/policy_ref/policy_mode; verify complete bootstrap/acceptance-ref types, missing-field/wrong-type negatives, mixed-policy audit records and distinct decision/Evidence-comment shapes.
-- [ ] 1.2 Deliver target/repository binding and prerequisite preflight for initialization; verify missing/invalid bindings and tool/version conditions are explicit and never default to this consumer's data.
-- [ ] 1.3 Deliver idempotent initialization and conflict-safe file planning; verify repeat runs, unrelated-file preservation, upstream ownership-marker preservation and overlap failures.
-- [ ] 1.4 Deliver pinned dependency/tool selection and non-mutating preview boundaries; verify no implicit remote writes, login, publication or prerequisite installation occurs.
-- [ ] 1.5 Deliver framework-contract generation with an explicit source RepoRef/root; verify both reviewed bootstrap delta roots and integrated canonical roots, exact asset equality and revision/version metadata without a second authored rule source.
-- [ ] 1.6 Deliver the `assuredloop` npm binary and package allowlist; verify tarball installation and init/help/version without a source checkout, exclusion of consumer data/logs, and version-binding mismatch handling. Package 3 owns inspect/check fixture tests; package 4 owns end-to-end tests through the packed CLI.
-- [ ] 1.7 Deliver native tool-root resolution and parameterized adoption guidance; verify a different repository, path, Issue/label set and Cursor/Gemini tool configuration work without source edits, while marker co-tenancy and registry compatibility failures are explicit.
+- [x] 1.1 Deliver described JSON Schemas/examples for config including project.bootstrap with required policy_ref, policy_acceptance, proposal_acceptance and authorized_by, named label/review mappings, RepoRef/PlanRef, PR evidence, activity selectors, activation and manifests with per-delivery audit base_ref/base_sha/policy_ref/policy_mode; verify complete bootstrap/acceptance-ref types, missing-field/wrong-type negatives, mixed-policy audit records and distinct decision/Evidence-comment shapes.
+- [x] 1.2 Deliver target/repository binding and prerequisite preflight for initialization; verify missing/invalid bindings and tool/version conditions are explicit and never default to this consumer's data.
+- [x] 1.3 Deliver idempotent initialization and conflict-safe file planning; verify repeat runs, unrelated-file preservation, upstream ownership-marker preservation and overlap failures.
+- [x] 1.4 Deliver pinned dependency/tool selection and non-mutating preview boundaries; verify no implicit remote writes, login, publication or prerequisite installation occurs.
+- [x] 1.5 Deliver framework-contract generation with an explicit source RepoRef/root; verify both reviewed bootstrap delta roots and integrated canonical roots, exact asset equality and revision/version metadata without a second authored rule source.
+- [x] 1.6 Deliver the `assuredloop` npm binary and package allowlist; verify tarball installation and init/help/version without a source checkout, exclusion of consumer data/logs, and version-binding mismatch handling. Package 3 owns inspect/check fixture tests; package 4 owns end-to-end tests through the packed CLI.
+- [x] 1.7 Deliver native tool-root resolution and parameterized adoption guidance; verify a different repository, path, Issue/label set and Cursor/Gemini tool configuration work without source edits, while marker co-tenancy and registry compatibility failures are explicit.
 
 ## 2. Work-category Skills and handoff templates
 
