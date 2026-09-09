@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "project": {
+    "workflow": {
+      "name": "assuredloop-base",
+      "version": "0.1.0",
+      "integrity": "sha512-HbLmHKGVMm3p0R6CTrkvZi16jYB+VGHst5f06Qr5KnWMTqVQ3awvBxaPgYnWjgNvfuIpKG+825eD7pp1bwBmkw==",
+      "source_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
+        "path": "openspec/changes/establish-project-workflow/specs"
+      },
+      "contracts_path": "contracts"
+    },
+    "review": {
+      "depth": "full-scope",
+      "internal": {
+        "allowed_models": [
+          "gpt-6-astra"
+        ]
+      },
+      "excluded_models": [],
+      "context": {
+        "max_inline_bytes": 65536
+      }
+    },
+    "bootstrap": {
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
+        "path": "openspec/changes/establish-project-workflow/specs/review-and-validation/spec.md"
+      },
+      "policy_acceptance": {
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5601168268
+      },
+      "proposal_acceptance": {
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5578205455
+      },
+      "authorized_by": "Wenqing"
+    }
+  },
+  "repository": {
+    "name": "guwenqing/assuredloop-base",
+    "openspec_root": "openspec",
+    "tools": [
+      "codex"
+    ],
+    "labels": {
+      "type": {
+        "request": "type:request",
+        "epic": "type:epic",
+        "task": "type:task",
+        "bug": "type:bug",
+        "spike": "type:spike",
+        "architecture-task": "type:architecture-task"
+      }
+    }
+  }
+}
