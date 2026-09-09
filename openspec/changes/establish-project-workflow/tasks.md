@@ -58,11 +58,11 @@ Work Issue: [#9](https://github.com/guwenqing/assuredloop-base/issues/9). Depend
 
 Work Issue: [#10](https://github.com/guwenqing/assuredloop-base/issues/10). Depends on packages 0-4 and 6 and, when selected, delivery of the separate improvement. An approved closeout-alternative decision from 4.4 is a handoff input, not a circular prerequisite that closeout is already complete. Basis: [closeout contract](specs/specification-baseline/spec.md#requirement-owner-led-closeout-verifies-the-integrated-specification), [fixity](specs/specification-baseline/spec.md#requirement-closeout-preserves-acceptance-evidence-fixity), [closeout design](design.md#8-closeout-is-a-normal-reviewed-delivery).
 
-- [ ] 5.1 Deliver the aggregate requirement/delivery assessment, including planning package 0 and any delegated alternative self-change demonstration; verify independent assessment of actual evidence and return unresolved acceptance gaps to responsible work.
-- [ ] 5.2 Deliver the synchronized canonical Specs and repaired current inbound anchors; verify full-delta coverage, preserved scenarios/links and native validation before staging archive.
-- [ ] 5.3 Deliver regenerated release contract assets and the reviewed activation/bootstrap-binding transition; verify source/version/integrity metadata and installed-package resolution without stale active-change paths.
+- [x] 5.1 Deliver the aggregate requirement/delivery assessment, including planning package 0 and any delegated alternative self-change demonstration; verify independent assessment of actual evidence and return unresolved acceptance gaps to responsible work.
+- [x] 5.2 Deliver the synchronized canonical Specs and repaired current inbound anchors; verify full-delta coverage, preserved scenarios/links and native validation before staging archive.
+- [x] 5.3 Deliver regenerated release contract assets and the reviewed activation/bootstrap-binding transition; verify source/version/integrity metadata and installed-package resolution without stale active-change paths.
 - [ ] 5.4 Deliver the versioned acceptance-manifest candidate and archive move; verify source identity, results/digests and per-delivery base/policy audit metadata, distinguish closeout_policy_ref from historical entries, and report incomplete provenance or later drift/unavailability without committing full logs.
-- [ ] 5.5 Deliver the closeout acceptance package and operational handoff; verify GitHub retains the pending final review, authorized merge, post-merge confirmation and Issue/Epic closure obligations, none marked done prematurely in this native checklist.
+- [x] 5.5 Deliver the closeout acceptance package and operational handoff; verify GitHub retains the pending final review, authorized merge, post-merge confirmation and Issue/Epic closure obligations, none marked done prematurely in this native checklist.
 
 ## 6. Formal Architecture Task and classification migration
 
