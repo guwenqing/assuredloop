@@ -11,6 +11,7 @@ import {
   firstEvidenceRecord,
   firstPrRecord,
   issueRecord,
+  categoryMapping,
   issueSnapshot,
   primaryBasis,
   pullSnapshot,
@@ -79,6 +80,7 @@ function mixedCaseWorkInputs() {
   evidence.pr = mixedCaseRecordPull;
   return {
     work: mixedCaseRecordIssue,
+    categoryMapping,
     issue: issueSnapshot({ number: 32, body: contextBody(issue) }),
     pulls: [pullSnapshot({ number: 42, body: contextBody(pullRecord) })],
     evidence: [evidenceEntry(evidence)],
@@ -175,6 +177,7 @@ test('distinct repositories and issue numbers remain binding errors', async () =
   for (const work of [wrongRepositoryWork, wrongNumberWork]) {
     const result = await checkWorkRecords({
       work,
+      categoryMapping,
       issue: issueSnapshot({ number: 42 }),
       pulls: [],
       evidence: [],

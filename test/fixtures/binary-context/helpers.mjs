@@ -38,9 +38,10 @@ export function bodyFor(record) {
   return `Fixture source context.\n\n## Workflow context\n\n\`\`\`json\n${JSON.stringify(record, null, 2)}\n\`\`\`\n`;
 }
 
-export function issueSnapshot(record, number = 42) {
+export function issueSnapshot(record, number = 42, labels = [{ name: 'type:task' }]) {
   return {
     number,
+    labels,
     repository_url: `https://api.github.com/repos/${repository}`,
     state: 'open',
     body: bodyFor(record),

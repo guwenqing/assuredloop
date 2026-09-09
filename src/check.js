@@ -93,15 +93,11 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
     if (selected.issue.pull_request && !issueRefs.length) add('pr-record-invalid', 'Selected PR has no valid structured Issue mapping.');
     for (const issueRef of issueRefs) {
       const bundle = issueRef === work ? selected : await trace.bundleAt(issueRef);
-      if (!selected.pulls.length && !record && bundle.issue.state === 'open') {
-        const names = Array.isArray(bundle.issue.labels) ? bundle.issue.labels.map((label) => (typeof label === 'string' ? label : label?.name)?.toLowerCase()) : [];
-        const mapping = result.policy?.config?.repository?.labels?.type || {};
-        const routed = ['task', 'bug', 'spike'].some((kind) => typeof mapping[kind] === 'string' && names.includes(mapping[kind].toLowerCase()));
-        const intake = await parseWorkRecord({ body: bundle.issue.body ?? '', kind: routed ? 'issue' : 'roughRequest', allowMissing: !routed });
-        result.records.push({ ...intake, context: { issue: bundle.issue, evidence: bundle.evidence } });
+      if (bundle.classification?.exception) {
+        const intake = await parseWorkRecord({ body: bundle.issue.body ?? '', kind: 'roughRequest', allowMissing: true });
+        result.records.push({ ...intake, context: { issue: bundle.issue, evidence: bundle.evidence, classification: bundle.classification } });
         for (const finding of intake.findings) add(finding.code, finding.message);
-        if (routed) add('record-context-required', 'The configured Task/Bug/Spike label requires a routed Workflow context record.');
-        else {
+        if (bundle.classification.exception === 'rough-request') {
           if (result.status === 'pass') result.status = 'incomplete';
           result.findings.push({ code: 'rough-intake-context', message: 'Open rough intake has no routed work record; current policy is inspection context, not task acceptance.' });
         }

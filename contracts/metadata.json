@@ -5,18 +5,18 @@
   "basis": "bootstrap",
   "source_ref": {
     "repository": "guwenqing/assuredloop-base",
-    "revision": "530c6fc4d0e0caeb715f0da9a22cc933ecd27a93",
+    "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
     "path": "openspec/changes/establish-project-workflow/specs"
   },
   "contracts_path": "contracts",
   "files": [
     {
       "path": "github-work-traceability/spec.md",
-      "sha256": "49511ef30ded72533918cd8dc79fea454a084fd111687ca8b10f5fcab5a0b16c"
+      "sha256": "88e8100e49a8630edbefba7bf497c38b04dc86178f2de1a6ef31940304704905"
     },
     {
       "path": "project-workflow-adoption/spec.md",
-      "sha256": "f06b05232646a46a724b37e79abf606b58f93544f64dd2117673b20c3800c0c9"
+      "sha256": "3e093e4bf6d39a0b58682a41aefe605bdedf46d8a77bc3156e13ab37598ac98c"
     },
     {
       "path": "review-and-validation/spec.md",
@@ -28,7 +28,7 @@
     },
     {
       "path": "work-intake-and-planning/spec.md",
-      "sha256": "b30d1dd92781de6f9da3c0717b20a21268e448c0de77f5c8459ec819f0ae513c"
+      "sha256": "05528d0bf42956a6c453667eacd86fde5cf2ae0e070ffb747dfec3266655ec09"
     },
     {
       "path": "workflow-goals/spec.md",

@@ -8,6 +8,7 @@ import { establishAcquisition } from './acquisition.js';
 import { buildReviewPacket } from './review-packet.js';
 import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
+import { classifyIssue } from './classification.js';
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -66,6 +67,25 @@ export async function createTrace({ targetRoot, work }) {
       ref: structuredClone(ref), body, kind: parsed.kind, state: parsed.state, captured_at: new Date().toISOString(), findings: parsed.findings,
     });
     return parsed;
+  }
+
+  async function classificationAt(ref, issue, record) {
+    if (issue.pull_request) return null;
+    authorize(ref);
+    let classification;
+    try {
+      const { mapping, provenance } = await acquisition.classificationConfig(ref);
+      classification = classifyIssue(issue, record, mapping, provenance);
+    } catch (error) {
+      classification = classifyIssue(issue, record, null);
+      classification.discrepancies = [{ code: error.code || 'category-config-unavailable', message: error.message,
+        severity: 'unavailable', details: error.details }];
+    }
+    for (const finding of classification.discrepancies) {
+      const qualified = { ...finding, source: ref };
+      if (!findings.some((entry) => isDeepStrictEqual(entry, qualified))) findings.push(qualified);
+    }
+    return classification;
   }
 
   async function issueAt(ref) {
@@ -166,7 +186,9 @@ export async function createTrace({ targetRoot, work }) {
       if (pr !== ref) entries.push(...await commentsAt(pr));
     }
     const evidence = [...new Map(entries.filter((entry) => validateRecord('evidence', entry.record).valid).map((entry) => [key(entry.ref), entry])).values()];
-    const bundle = { issue, pulls: related, evidence, unresolvedRelations };
+    const parsed = await sourceRecord(issue.body, ref, { expectedKind: issue.pull_request ? 'pr' : 'issue', allowMissing: !issue.pull_request });
+    const classification = await classificationAt(ref, issue, parsed.record);
+    const bundle = { issue, pulls: related, evidence, unresolvedRelations, ...(classification ? { classification } : {}) };
     bundles.set(bundleKey, bundle);
     return bundle;
   }
@@ -187,13 +209,15 @@ export async function createTrace({ targetRoot, work }) {
       const issue = await issueAt(ref);
       const parsed = await sourceRecord(issue.body, ref, { expectedKind: issue.pull_request ? 'pr' : 'issue', allowMissing: !issue.pull_request });
       const record = parsed.record;
+      const classification = await classificationAt(ref, issue, record);
       references = recordReferences(record);
+      if (classification?.config_ref) references.push(classification.config_ref);
       const entries = await commentsAt(ref);
       references.push(...entries.map((entry) => entry.ref));
       const pull = issue.pull_request ? await pullAt(ref) : null;
       if (pull && pull.body !== issue.body) fail('context-source-stale', 'PR body changed between its Issue and PR source reads.');
       const { body, ...facts } = issueFacts(issue);
-      content = `${JSON.stringify({ issue: { ...facts, ...(body === null ? { body: null } : {}) }, ...(pull ? { pull: publicBundle({ issue, pulls: [pull] }).pulls[0] } : {}),
+      content = `${JSON.stringify({ issue: { ...facts, ...(body === null ? { body: null } : {}) }, ...(classification ? { classification } : {}), ...(pull ? { pull: publicBundle({ issue, pulls: [pull] }).pulls[0] } : {}),
         ...(ref === normalizeWork(work) ? { acquisition: acquisition.context } : {}) })}\n\n${body ?? ''}`;
     } else if (Object.hasOwn(ref, 'comment_id')) {
       const comment = await adapter.readComment(ref);
@@ -220,11 +244,10 @@ export async function createTrace({ targetRoot, work }) {
   acquisition = await establishAcquisition({ targetRoot, work, issue: primaryIssue, pull: primaryPull, initialAdapter: adapter });
   adapter = acquisition.adapter;
   sourceCache.set(key(acquisition.source.source.ref), { content: acquisition.source.content, references: [] });
-  const primaryLabels = (primaryIssue.labels || []).map((label) => (typeof label === 'string' ? label : label?.name)?.toLowerCase());
-  const primaryRouted = acquisition.routedIssueLabels.some((label) => primaryLabels.includes(label.toLowerCase()));
-  await sourceRecord(primaryIssue.body, normalizeWork(work), {
-    expectedKind: primaryIssue.pull_request ? 'pr' : 'issue', allowMissing: !primaryIssue.pull_request && !primaryRouted,
+  const primaryRecord = await sourceRecord(primaryIssue.body, normalizeWork(work), {
+    expectedKind: primaryIssue.pull_request ? 'pr' : 'issue', allowMissing: !primaryIssue.pull_request,
   });
+  await classificationAt(normalizeWork(work), primaryIssue, primaryRecord.record);
 
   return {
     repository, findings, issueAt, pullAt, bundleAt, load,
@@ -439,6 +462,8 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     };
     result.packet = await buildReviewPacket({ roots: [...new Map(normalizedRoots.map((ref) => [key(ref), ref])).values()], load: loadPacketSource, maxInlineBytes: budget, cursor,
       expand: expand.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref), envelope: result });
+    const staleSources = await trace.recheckWorkSources();
+    if (staleSources.length) fail('context-source-stale', 'Issue or comment sources changed during inspection.', staleSources);
     await trace.recheckAcquisition();
   } catch (error) {
     result.status = 'unavailable';

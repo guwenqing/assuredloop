@@ -58,6 +58,7 @@ export function makeReviewConfig(policyRevision, { mutate } = {}) {
         type: {
           request: 'type:request',
           epic: 'type:epic',
+          'architecture-task': 'type:architecture-task',
           task: 'type:task',
           bug: 'type:bug',
           spike: 'type:spike',

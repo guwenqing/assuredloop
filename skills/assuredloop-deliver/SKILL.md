@@ -11,6 +11,8 @@ Resolve the selected installation and consumer context through the package READM
 
 Authoritative entry in that installation: contracts/review-and-validation/spec.md. Shared record/format instructions are in templates/README.md.
 
+Assigned implementation uses Task/deliver, or Bug/deliver when restoring accepted behavior; document-only implementation is still delivery work. Apply the consumer category/activity contract in templates/README.md; classification describes the outcome, not the assignee.
+
 ## Confirm scope before editing
 
 Inspect repository instructions, status and existing solutions. Preserve unrelated work and effective signing policy. Limit edits to the assigned outcome; follow explicitly supplied ordering and verify prerequisite delivery rather than trusting a closed label.
