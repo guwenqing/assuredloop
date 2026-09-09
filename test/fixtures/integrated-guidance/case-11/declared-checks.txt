@@ -1,0 +1,16 @@
+declared_evidence: simulation handoff snapshot; the coordinator's post-reconciliation run is recorded separately under ignored local preparation data
+repository: northstar-labs/harbor-notes
+head: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+command: node --test test/export/calendar.csv.test.js
+exit_code: 0
+output:
+TAP version 13
+ok 1 - formats the same UTC date using the requested locale
+ok 2 - keeps event order and default locale in the CSV
+1..2
+# tests 2
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
