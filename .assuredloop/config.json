@@ -4,7 +4,7 @@
     "workflow": {
       "name": "assuredloop-base",
       "version": "0.1.0",
-      "integrity": "sha512-yDBr9PlnVkySh12tg3atsOIaOanN3Q6SFpRcC6n6fIOdPC/P3FnMTPKPEOSA82UDc9wZpe6l5Zt5mm/ncq6idw==",
+      "integrity": "sha512-RFMcV6NxiIJIiIUTKjdFl38tOj2sV3xmVdnj8c4x9IqP+0P0lVFqaDzppo7+58iQgnsr4n+hKwW2o1uf9Li/vg==",
       "source_ref": {
         "repository": "guwenqing/assuredloop-base",
         "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
@@ -32,7 +32,7 @@
       },
       "policy_acceptance": {
         "repository": "guwenqing/assuredloop-base",
-        "comment_id": 5604626096
+        "comment_id": 5605339950
       },
       "proposal_acceptance": {
         "repository": "guwenqing/assuredloop-base",
