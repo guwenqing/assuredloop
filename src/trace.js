@@ -48,6 +48,9 @@ export async function createTrace({ targetRoot, work }) {
   const invalidSources = new Map();
   const findings = [];
 
+  const sourceKey = (ref) => typeof ref === 'string' && issues.has(ref) && !issues.get(ref).pull_request
+    ? key({ issue_context: ref, scope: acquisition.scopeKey }) : key(ref);
+
   function authorize(ref) {
     if (acquisition && !installedAssets.has(key(ref))) acquisition.authorize(ref);
   }
@@ -129,7 +132,10 @@ export async function createTrace({ targetRoot, work }) {
       const record = await structuredBody(pull.body, { allowPlain: false });
       if (validateRecord('pr', record).valid) {
         for (const assigned of record.issues.map(normalizeWork)) {
-          sourceCache.delete(key(assigned));
+          for (const cached of sourceCache.keys()) {
+            const source = JSON.parse(cached);
+            if (source === assigned || source?.issue_context === assigned) sourceCache.delete(cached);
+          }
           for (const cached of bundles.keys()) if (cached.endsWith(`:${assigned}`)) bundles.delete(cached);
         }
       }
@@ -217,8 +223,8 @@ export async function createTrace({ targetRoot, work }) {
   async function load(ref, { expectedKind } = {}) {
     if (typeof ref === 'string') ref = normalizeWork(ref);
     authorize(ref);
-    if (sourceCache.has(key(ref))) {
-      const cached = copySource(sourceCache.get(key(ref)));
+    if (sourceCache.has(sourceKey(ref))) {
+      const cached = copySource(sourceCache.get(sourceKey(ref)));
       if (expectedKind) {
         const parsed = await sourceRecord(cached.content, ref, { allowPlain: true, expectedKind });
         return { ...cached, record_state: parsed.state, record_kind: parsed.kind };
@@ -256,7 +262,7 @@ export async function createTrace({ targetRoot, work }) {
     const parsed = references ? null : await sourceRecord(content, ref, { allowPlain: true, expectedKind });
     const result = { content, references: references || (parsed.state === 'valid' ? recordReferences(parsed.record) : []),
       ...(parsed ? { record_state: parsed.state, record_kind: parsed.kind } : {}) };
-    sourceCache.set(key(ref), result);
+    sourceCache.set(sourceKey(ref), result);
     return copySource(result);
   }
 
@@ -290,13 +296,22 @@ export async function createTrace({ targetRoot, work }) {
       authorize(owner);
       return withinPolicyScope(pull, () => load(ref));
     },
-    cacheSource: (ref, value) => sourceCache.set(key(ref), value),
+    cacheSource: (ref, value) => sourceCache.set(sourceKey(ref), value),
     get adapter() { return adapter; },
     async recheckWorkSources() {
       const changed = [];
       for (const [ref, original] of issues) {
         const observed = await adapter.readIssue(ref);
         if (!isDeepStrictEqual(issueFacts(original), issueFacts(observed))) changed.push({ code: 'context-source-stale', message: `${ref}: Issue identity, body or state changed during the assessment.` });
+      }
+      for (const ref of pulls.keys()) {
+        try { authorize(ref); }
+        catch (error) { if (error.code === 'reference-out-of-scope') continue; throw error; }
+        const observed = await adapter.readPull(ref);
+        const identity = workIdentity(ref);
+        if (observed?.number !== identity.number || observed?.base?.repo?.full_name?.toLowerCase() !== identity.repository ||
+            observed?.body !== pulls.get(ref).body) changed.push({ code: 'context-source-stale',
+          message: `${ref}: PR identity or body used for assignment classification changed during the assessment.` });
       }
       const seen = new Set();
       for (const [serialized, original] of sourceCache) {
