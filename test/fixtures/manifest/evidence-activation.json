@@ -1,0 +1,34 @@
+{
+  "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "scope": "Activation delivery — raw fixity π 💾",
+  "result": "pass",
+  "evidence": [
+    {
+      "repository": "example/consumer",
+      "comment_id": 901
+    }
+  ],
+  "pr": "example/consumer#42",
+  "base_ref": "release",
+  "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "policy_ref": {
+    "repository": "example/consumer",
+    "revision": "cccccccccccccccccccccccccccccccccccccccc",
+    "path": "openspec/specs/policy.md",
+    "anchor": "requirement-policy"
+  },
+  "contract_package": {
+    "name": "assuredloop-workflow",
+    "version": "0.1.0",
+    "integrity": "sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "source_ref": {
+      "repository": "example/consumer",
+      "revision": "1212121212121212121212121212121212121212",
+      "path": "contracts/specs"
+    },
+    "contracts_path": "contracts"
+  },
+  "config_digest": "1212121212121212121212121212121212121212121212121212121212121212",
+  "activation_digest": "3434343434343434343434343434343434343434343434343434343434343434",
+  "policy_mode": "activation"
+}

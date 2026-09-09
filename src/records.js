@@ -14,6 +14,9 @@ ajv.addFormat('utc-timestamp', {
 ajv.addSchema(schema);
 const validators = new Map();
 
+export const hasReviewDeclarations = (record) => record && typeof record === 'object' &&
+  ['producer_session', 'reviewer_session', 'reviewer_model', 'review_depth'].some((field) => Object.hasOwn(record, field));
+
 export function validateRecord(kind, value) {
   if (!Object.hasOwn(schema.$defs, kind)) {
     return { valid: false, errors: [{ message: `Unsupported record kind: ${kind}` }] };
@@ -24,4 +27,35 @@ export function validateRecord(kind, value) {
   const validate = validators.get(kind);
   const valid = validate(value);
   return { valid, errors: valid ? [] : structuredClone(validate.errors) };
+}
+
+export function collectRecordReferences(value) {
+  const result = new Map();
+  const add = (ref) => result.set(JSON.stringify(ref), structuredClone(ref));
+  function visit(node, item) {
+    if (item === undefined || item === null || !node) return;
+    if (node.$ref) {
+      const name = node.$ref.split('/').at(-1);
+      if (name === 'source' && validateRecord('source', item).valid) {
+        add(item.kind === 'git-blob' ? item.ref : { repository: item.repository, comment_id: item.comment_id });
+        return;
+      }
+      if (['work', 'repoRef', 'commentRef', 'evidenceRef', 'planRef'].includes(name)) {
+        if (validateRecord(name, item).valid) {
+          if (name === 'planRef') { const { items, ...ref } = item; add(ref); }
+          else add(item);
+        }
+        return;
+      }
+      visit(schema.$defs[name], item);
+      return;
+    }
+    for (const variant of [...(node.anyOf || []), ...(node.oneOf || []), ...(node.allOf || [])]) visit(variant, item);
+    if (Array.isArray(item)) for (const entry of item) visit(node.items, entry);
+    else if (typeof item === 'object') for (const [field, shape] of Object.entries(node.properties || {})) visit(shape, item[field]);
+  }
+  for (const kind of ['issue', 'pr', 'evidence', 'config', 'activation', 'manifest', 'selfChangeDecision']) {
+    if (validateRecord(kind, value).valid) visit(schema.$defs[kind], value);
+  }
+  return [...result.values()];
 }

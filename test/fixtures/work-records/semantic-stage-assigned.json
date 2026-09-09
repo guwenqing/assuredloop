@@ -1,0 +1,28 @@
+{
+  "case": "legitimately-stage-assigned-task",
+  "description": "The assigned outcome explicitly names an intermediate integration destination and its bounded verification.",
+  "issue": {
+    "number": 61,
+    "state": "open",
+    "state_reason": null,
+    "body": "The worker is assigned to prepare the records contribution for the integration branch. The final release destination is handled by a later owner-led task."
+  },
+  "pulls": [
+    {
+      "number": 71,
+      "state": "open",
+      "merged": false,
+      "head": {"sha": "7777777777777777777777777777777777777777", "ref": "feature/records-stage"},
+      "base": {"sha": "8888888888888888888888888888888888888888", "ref": "integration"}
+    }
+  ],
+  "evidence": [
+    {
+      "ref": {"repository": "example/consumer", "comment_id": 501},
+      "record": {
+        "scope": "The contribution is checked against the integration destination.",
+        "result": "pass"
+      }
+    }
+  ]
+}

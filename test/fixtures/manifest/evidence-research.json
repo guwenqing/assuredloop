@@ -1,0 +1,12 @@
+{
+  "head": null,
+  "no_head_reason": "The bounded research used an external service and has no Git revision.",
+  "scope": "Planning research delivery",
+  "result": "inconclusive",
+  "evidence": [
+    {
+      "repository": "example/consumer",
+      "comment_id": 903
+    }
+  ]
+}

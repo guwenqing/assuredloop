@@ -1,0 +1,5 @@
+Historical delivery assessment
+
+The source note describes a small package of trace checks and says that the recorded
+assessment covered only the package named in the note. It does not claim an archive,
+activation, or repository-wide result.

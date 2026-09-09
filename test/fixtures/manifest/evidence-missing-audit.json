@@ -1,0 +1,11 @@
+{
+  "head": "2222222222222222222222222222222222222222",
+  "scope": "Evidence with incomplete historical audit data",
+  "result": "pass",
+  "evidence": [
+    {
+      "repository": "example/consumer",
+      "comment_id": 904
+    }
+  ]
+}
