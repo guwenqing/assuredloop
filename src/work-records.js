@@ -39,7 +39,7 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
   if (issue?.number !== identity.number || (issue.repository_url && issue.repository_url.toLowerCase() !== `https://api.github.com/repos/${identity.repository}`)) {
     add('work-identity-invalid', 'Issue identity differs from the explicitly selected work.'); return result;
   }
-  const parsed = await parseWorkRecord({ body: issue.body, kind: 'issue' });
+  const parsed = await parseWorkRecord({ body: issue.body ?? '', kind: 'issue' });
   classification ??= classifyIssue(issue, parsed.record, categoryMapping);
   result.context.classification = structuredClone(classification);
   for (const finding of classification.discrepancies) add(finding.code, finding.message, finding.severity, finding.details);

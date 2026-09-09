@@ -150,3 +150,83 @@ test('completed routed prerequisite missing Workflow context cannot become verif
     assertCategoryFailure(await withDependency(bundle, foreignRepository), 'record-context-required', { nested: true });
   }
 });
+
+const optionalContextCases = [
+  { name: 'open Request', labels: [mapping.request], exception: 'rough-request' },
+  { name: 'unlabeled rough intake', labels: [], exception: 'rough-request' },
+  { name: 'container Epic', labels: [mapping.epic], exception: 'epic-container' },
+];
+const absentBodies = [
+  { name: 'empty text', value: '' },
+  { name: 'null', value: null },
+  { name: 'undefined', value: undefined },
+  { name: 'omitted', omitted: true },
+];
+
+for (const context of optionalContextCases) {
+  for (const body of absentBodies) {
+    test(`${context.name} permits ${body.name} body without changing the captured source`, async () => {
+      for (const acquired of [false, true]) {
+        const input = inputs({ labels: context.labels });
+        if (body.omitted) delete input.issue.body;
+        else input.issue.body = body.value;
+        if (acquired) {
+          input.classification = classifyIssue(input.issue, null, input.categoryMapping);
+          delete input.categoryMapping;
+        }
+        const originalIssue = structuredClone(input.issue);
+        const result = await checkWorkRecords(input);
+        assertValid(result);
+        assert.equal(result.context.classification.exception, context.exception);
+        assert.deepEqual(result.context.issue, originalIssue, 'absence is preserved as acquired source data');
+        assert.deepEqual(input.issue, originalIssue, 'validation does not mutate the caller’s Issue');
+      }
+    });
+  }
+}
+
+test('optional-context categories still reject malformed explicit Workflow context', async () => {
+  for (const context of optionalContextCases) {
+    for (const body of [
+      '## Workflow context\nThe required JSON block is missing.\n',
+      '## Workflow context\n\n```json\n{"activity":\n```\n',
+      '## Workflow context\n\n```json\n{}\n```\n',
+    ]) {
+      for (const acquired of [false, true]) {
+        const input = inputs({ labels: context.labels });
+        input.issue.body = body;
+        if (acquired) {
+          input.classification = classifyIssue(input.issue, null, input.categoryMapping);
+          delete input.categoryMapping;
+        }
+        const result = await checkWorkRecords(input);
+        assert.equal(result.status, 'invalid', `${context.name} must not exempt malformed explicit context`);
+        assert.ok(result.findings.some((finding) =>
+          ['record-context-invalid', 'record-schema-invalid'].includes(finding.code)), JSON.stringify(result.findings));
+      }
+    }
+  }
+});
+
+test('optional-context categories reject unsupported nontext bodies instead of converting them to absence', async () => {
+  for (const context of optionalContextCases) {
+    for (const body of [0, false, {}, []]) {
+      const input = inputs({ labels: context.labels });
+      input.issue.body = body;
+      const result = await checkWorkRecords(input);
+      assert.equal(result.status, 'invalid');
+      assert.ok(result.findings.some((finding) => finding.code === 'record-context-invalid'));
+    }
+  }
+});
+
+test('routed executable categories still require context for every supported absent body representation', async () => {
+  for (const category of ['architecture-task', 'task', 'bug', 'spike']) {
+    for (const body of absentBodies) {
+      const input = inputs({ labels: [mapping[category]] });
+      if (body.omitted) delete input.issue.body;
+      else input.issue.body = body.value;
+      assertCategoryFailure(await checkWorkRecords(input), 'record-context-required');
+    }
+  }
+});
