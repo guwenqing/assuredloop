@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-09T15:52:56.277Z",
+  "closeout_policy_ref": {
+    "repository": "guwenqing/assuredloop-base",
+    "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
+    "path": "openspec/changes/establish-project-workflow/specs/review-and-validation/spec.md"
+  },
+  "deliveries": [
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#2"
+      ],
+      "prs": [
+        "guwenqing/assuredloop-base#5"
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5578164107,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "reviewed_head": "530c6fc4d0e0caeb715f0da9a22cc933ecd27a93",
+      "result": "pass",
+      "scope": "Issue #2 original planning contribution 0.1–0.3: refined Proposal, Design, seven Specs and versioned task decomposition at the exact reviewed head. Planning/handoff review only; no implementation, policy adoption or activation.",
+      "base_ref": "main",
+      "base_sha": "21a48e3c137c8f15d059ca42ec75cca43bbb9f1f",
+      "policy_ref": null,
+      "policy_mode": null,
+      "content_sha256": "ccb9432f9e7461dd51a4c407c26090df75d5eaa679e0b5b7567dce15ed6b3cdc"
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#6"
+      ],
+      "prs": [
+        "guwenqing/assuredloop-base#11"
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5579146673,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "reviewed_head": "69561f1dbb318f694ff83c45895de6fbe01d10fe",
+      "result": "pass",
+      "scope": "Issue #6 items 1.1–1.7: reusable adoption CLI, record contracts/schemas, native tool-root and package/distribution contribution. Final external review at 69561f1 with AL11-F1–F7 resolved; actual delivery remains separately evidenced.",
+      "base_ref": "main",
+      "base_sha": "9679304d2cbbc44f00eff3c848f2275c413a6173",
+      "policy_ref": null,
+      "policy_mode": null,
+      "content_sha256": "931247d5cef91654f0033c01edb3fbacb01c228f022a2a0c80020458a7fa1df8"
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#7"
+      ],
+      "prs": [
+        "guwenqing/assuredloop-base#12"
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5581430808,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "reviewed_head": "0aa6f2d942056fddbefcb6210415695de6b19204",
+      "result": "pass",
+      "scope": "Issue #7 items 2.1–2.5: scoped work-category guidance and creation/handoff behavior; final renewal at 0aa6f2d resolves AL12-F1/F2, including the separately executed case21 triage control.",
+      "base_ref": "main",
+      "base_sha": "82d4f940800a8faa7a93815ad7dd01500ceefaac",
+      "policy_ref": null,
+      "policy_mode": null,
+      "content_sha256": "8570da94b12f1350cfad67c28440ab478bc44488cf5db99c6043d3ba13643812"
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#8"
+      ],
+      "prs": [
+        "guwenqing/assuredloop-base#13"
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5593889787,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "reviewed_head": "67496bf53e9cbbf4f42709edcf3a18af1eeb909b",
+      "result": "pass",
+      "scope": "Issue #8 items 3.1–3.7: read-only trace/inspection/check, policy and reviewer-context implementation at 67496bf5, with final consolidated PASS and its explicit source, test-precision and evidence-loss limitations.",
+      "base_ref": "main",
+      "base_sha": "f43c9394a6c946508a618a5c3199792dab3b27d1",
+      "policy_ref": null,
+      "policy_mode": null,
+      "content_sha256": "e64d5076824de83ca5d0c6493d3aba6bf4d651e5c3dfdd49cbb7690531344f8e"
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#2"
+      ],
+      "prs": [
+        "guwenqing/assuredloop-base#15"
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5595110807,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "reviewed_head": "803c3263562d6aa4ea518360416c3b064c5753d7",
+      "result": "pass",
+      "scope": "Issue #2 amendment 0.4: six-file planning refinement for Architecture Task categories, activity compatibility, discipline removal/migration and #14/#9 ordering, at 803c326. Separate planning acceptance; not #14 implementation/migration.",
+      "base_ref": "main",
+      "base_sha": "48d26b8aa454fedfcb1b0ab2ea5ac14471736bf9",
+      "policy_ref": null,
+      "policy_mode": null,
+      "content_sha256": "f68e92daded32828e7abac06e7d05f0ae9375e3830896e23cc341ecece66e77c"
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#14"
+      ],
+      "prs": [
+        "guwenqing/assuredloop-base#16"
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5597012239,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "reviewed_head": "acf3afcb24b543abb41fdd1cc80102384143de3b",
+      "result": "delivered",
+      "scope": "Issue #14 items 6.1–6.4: actual delivery of the final approved acf3afc candidate and completed scoped category/label migration, with exact tree/parent/signature and preservation claims. This source reports delivery, not a fresh external review of acf3afc.",
+      "base_ref": "main",
+      "base_sha": "f5c528723e24e11162a637b3e679f4896a5c024b",
+      "policy_ref": null,
+      "policy_mode": null,
+      "content_sha256": "fa946da47393534a01c4e8c2aee68832b54521a914c3eb0b3d2bb4fe763a2071"
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#9"
+      ],
+      "prs": [
+        "guwenqing/assuredloop-base#17"
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5601694683,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "reviewed_head": "229875e714d83a566619b2d1ade6609374c06626",
+      "result": "pass",
+      "scope": "Issue #9 integrated verification and initial config/bootstrap contribution: all 63 PR17 paths at 229875e, including preserved v1 history, additive v2 inputs, packed tests, candidate marks and nine setup additions. Native/manual first-establishment semantic PASS; no formal CLI PASS or activation delivery.",
+      "base_ref": "main",
+      "base_sha": "1e4a06a32b3b1870b49ca916456cef3389bd86d9",
+      "policy_ref": null,
+      "policy_mode": null,
+      "content_sha256": "1ba3a39d83eceb8d5a805ca8d0c533b265ffb86177246dff2380cf0bb930aa36"
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#9"
+      ],
+      "reviewed_head": "050dd6d15067bbd86a885a8d8f968b92bc833855",
+      "result": "pass",
+      "scope": "PR18 full current external semantic review of the activation checkpoint and native 4.3/4.4 candidate contributions under delivered d0acea bootstrap, including finite E2 source adequacy, verified E3 presentation and canonical 4.4 handoff. Component-check success is not a generic full CLI PASS, merge approval or operational delivery.",
+      "base_ref": "main",
+      "base_sha": "d0acea19dbb0559851c01f53ca561d9ac2a03ee1",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
+        "path": "openspec/changes/establish-project-workflow/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "bootstrap",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5603414672,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "8b77b4637fe3c35bfd10b166094e69e704e6f4368f54ab8aa44000be52096663",
+      "prs": [
+        "guwenqing/assuredloop-base#18"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "record_type": "self-change-decision",
+      "selection": "closeout-alternative",
+      "work": "guwenqing/assuredloop-base#10",
+      "rationale": "The refreshed bounded thirteen-case guidance assessment and packed integration found no required product improvement. Rather than invent cosmetic work, use the already required Architecture Task #10 to exercise the adopted workflow on a real post-activation change: aggregate acceptance, current-Spec synchronization, contract/package binding transition and reviewed closeout. Its independent review must verify that the work actually followed the activated pre-change policy before any final minimum/Epic acceptance. This selection transfers demonstration verification; it neither claims the demonstration ran nor releases the separate archive/final-closure hold.",
+      "authorized_by": "Wenqing",
+      "evidence": [
+        {
+          "repository": "guwenqing/assuredloop-base",
+          "comment_id": 5601168268
+        },
+        {
+          "repository": "guwenqing/assuredloop-base",
+          "comment_id": 5597828925
+        },
+        {
+          "repository": "guwenqing/assuredloop-base",
+          "comment_id": 5601273661
+        }
+      ],
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5602547857,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "993a8a7bf06256a9e17662c873748852111a495545f86c4391202e126defabce"
+    }
+  ]
+}

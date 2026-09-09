@@ -1,6 +1,8 @@
 # AssuredLoop Base
 
-Local workflow extensions built on OpenSpec. The package provides record contracts, explicit project initialization, work-category guidance and a private, packable Node.js CLI. It does not activate a consumer workflow or install CI/review providers. The accepted change remains under `openspec/changes/establish-project-workflow/`; overall acceptance and closeout are separate work.
+Local workflow extensions built on OpenSpec. The package provides record contracts, explicit project initialization, work-category guidance and a private, packable Node.js CLI. It does not activate a consumer workflow or install CI/review providers.
+
+Source checkouts maintain this repository's current product specification at `openspec/specs/workflow-goals/spec.md`, with linked capability and behavior requirements. Installed consumers start at the [versioned Workflow Goals](contracts/workflow-goals/spec.md). `contracts/` contains generated copies, not a second authored specification. Active changes remain under `openspec/changes/` in the source checkout; synchronization alone does not establish overall acceptance or completed closeout.
 
 ## Local use
 
@@ -92,4 +94,4 @@ The JavaScript record API is `validateRecord(kind, value)` from `src/records.js`
 
 ## Verification
 
-Run the independently authored, scoped Node tests with `npm test`. The PR records test-first failures, passing reruns, controlled product faults and independent reviews. Runtime and package fixtures use distinct temporary consumer repositories; no fixture config is a real activation record. Keep execution logs in ignored `local-data/` and Issue/PR comments.
+Run the independently authored, scoped Node tests with `npm test`. This framework's Git-source comparison tests also need their pinned source commits. For a shallow or single-branch source clone, follow the retained-ref acquisition instructions in that source checkout's `.assuredloop/README.md` before running those tests. Installed consumers do not need the framework's Git history. The PR records test-first failures, passing reruns, controlled product faults and independent reviews. Runtime and package fixtures use distinct temporary consumer repositories; no fixture config is a real activation record. Keep execution logs in ignored `local-data/` and Issue/PR comments.

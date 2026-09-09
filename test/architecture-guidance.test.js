@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,8 +13,18 @@ import { validateRecord } from '../src/records.js';
 
 const execFile = promisify(execFileCallback);
 const root = fileURLToPath(new URL('..', import.meta.url));
-const acceptedRevision = 'f5c528723e24e11162a637b3e679f4896a5c024b';
-const acceptedSourcePath = 'openspec/changes/establish-project-workflow/specs';
+const bootstrapSourceRef = {
+  repository: 'guwenqing/assuredloop-base',
+  revision: 'f5c528723e24e11162a637b3e679f4896a5c024b',
+  path: 'openspec/changes/establish-project-workflow/specs',
+};
+const canonicalSourcePath = 'openspec/specs';
+const contractFiles = [
+  'github-work-traceability/spec.md', 'project-workflow-adoption/spec.md',
+  'review-and-validation/spec.md', 'specification-baseline/spec.md',
+  'work-intake-and-planning/spec.md', 'workflow-goals/spec.md',
+  'workflow-self-evolution/spec.md',
+];
 const categories = ['request', 'epic', 'architecture-task', 'task', 'bug', 'spike'];
 const read = (file) => readFile(path.join(root, file), 'utf8');
 
@@ -93,28 +104,78 @@ test('migration guidance preserves cancellation and evidence within explicit sco
   assert.match(migration, /does not[^.]*rewrite historical Git revisions\/review records/i);
 });
 
-test('shipped contracts exactly reproduce the accepted Architecture Task amendment via the generator', async (t) => {
+test('frozen Architecture Task bootstrap fixture reproduces its immutable source via the generator', async (t) => {
+  const output = await mkdtemp(path.join(os.tmpdir(), 'assuredloop-architecture-bootstrap-'));
+  t.after(() => rm(output, { recursive: true, force: true }));
+  const generated = await generateContracts({
+    sourceRoot: root, sourceRef: bootstrapSourceRef, outputRoot: path.join(output, 'contracts'),
+    packageName: 'assuredloop-base', packageVersion: '0.1.0', basis: 'bootstrap',
+  });
+  const files = [];
+  for (const file of contractFiles) {
+    const { stdout: acceptedBytes } = await execFile('git', [
+      'show', `${bootstrapSourceRef.revision}:${bootstrapSourceRef.path}/${file}`,
+    ], { cwd: root, encoding: 'buffer' });
+    assert.deepEqual(await readFile(path.join(output, 'contracts', file)), acceptedBytes,
+      `${file} differs from the frozen bootstrap source`);
+    files.push({ path: file, sha256: createHash('sha256').update(acceptedBytes).digest('hex') });
+  }
+  assert.deepEqual(generated, {
+    schema_version: 1, name: 'assuredloop-base', version: '0.1.0', basis: 'bootstrap',
+    source_ref: bootstrapSourceRef, contracts_path: 'contracts', files,
+  });
+  assert.deepEqual(await verifyContracts(output), generated);
+});
+
+test('shipped contracts regenerate from a full pinned canonical source revision', async (t) => {
   const metadata = await verifyContracts(root);
-  assert.equal(metadata.source_ref.revision, acceptedRevision);
-  assert.equal(metadata.source_ref.path, acceptedSourcePath);
-  assert.equal(metadata.basis, 'bootstrap', 'the accepted source is still the native active change');
+  assert.equal(metadata.basis, 'canonical');
+  assert.equal(metadata.source_ref.path, canonicalSourcePath);
+  const { stdout: revision } = await execFile('git', [
+    'rev-parse', '--verify', `${metadata.source_ref.revision}^{commit}`,
+  ], { cwd: root });
+  assert.equal(metadata.source_ref.revision, revision.trim());
   const packageJson = JSON.parse(await read('package.json'));
   assert.equal(metadata.name, packageJson.name);
   assert.equal(metadata.version, packageJson.version);
-  const output = await mkdtemp(path.join(os.tmpdir(), 'assuredloop-architecture-contracts-'));
+  assert.deepEqual(metadata.files.map((file) => file.path), contractFiles);
+  const output = await mkdtemp(path.join(os.tmpdir(), 'assuredloop-architecture-canonical-'));
   t.after(() => rm(output, { recursive: true, force: true }));
   const generated = await generateContracts({
     sourceRoot: root, sourceRef: metadata.source_ref, outputRoot: path.join(output, 'contracts'),
-    packageName: packageJson.name, packageVersion: packageJson.version, basis: 'bootstrap',
+    packageName: packageJson.name, packageVersion: packageJson.version, basis: 'canonical',
   });
-  assert.deepEqual(generated, metadata, 'metadata must match actual generation from the accepted commit');
+  assert.deepEqual(generated, metadata, 'shipped metadata must match canonical generation');
   assert.deepEqual(await verifyContracts(output), metadata);
-  for (const file of metadata.files) {
-    const { stdout: acceptedBytes } = await execFile('git', [
-      'show', `${acceptedRevision}:${acceptedSourcePath}/${file.path}`,
+  for (const file of contractFiles) {
+    assert.deepEqual(await readFile(path.join(output, 'contracts', file)),
+      await readFile(path.join(root, 'contracts', file)));
+  }
+});
+
+test('shipped contract bodies cover canonical capabilities and equal pinned Git blobs and current Specs', async () => {
+  const metadata = await verifyContracts(root);
+  const entries = await readdir(path.join(root, canonicalSourcePath), { recursive: true, withFileTypes: true });
+  const currentFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .map((entry) => path.relative(path.join(root, canonicalSourcePath), path.join(entry.parentPath, entry.name)))
+    .sort();
+  assert.deepEqual(currentFiles, contractFiles);
+  assert.deepEqual(metadata.files.map((file) => file.path), currentFiles);
+  for (const file of currentFiles) {
+    const canonicalBytes = await readFile(path.join(root, canonicalSourcePath, file));
+    const shippedBytes = await readFile(path.join(root, 'contracts', file));
+    const { stdout: pinnedBytes } = await execFile('git', [
+      'show', `${metadata.source_ref.revision}:${canonicalSourcePath}/${file}`,
     ], { cwd: root, encoding: 'buffer' });
-    const shippedBytes = await readFile(path.join(root, 'contracts', file.path));
-    assert.deepEqual(shippedBytes, acceptedBytes, `${file.path} differs from the accepted immutable source`);
-    assert.deepEqual(await readFile(path.join(output, 'contracts', file.path)), shippedBytes);
+    assert.deepEqual(shippedBytes, pinnedBytes, `${file} differs from the pinned canonical Git blob`);
+    assert.deepEqual(shippedBytes, canonicalBytes, `${file} differs from current canonical content`);
+    const body = shippedBytes.toString('utf8');
+    assert.match(body, /^# .+/m, `${file} needs its capability title`);
+    assert.match(body, /^## Purpose$/m, `${file} needs its canonical Purpose`);
+    assert.match(body, /^## Requirements$/m, `${file} needs canonical Requirements`);
+    assert.match(body, /^### Requirement: .+/m, `${file} needs requirement bodies`);
+    assert.match(body, /^#### Scenario: .+/m, `${file} needs scenario bodies`);
+    assert.doesNotMatch(body, /^## (?:ADDED|MODIFIED|REMOVED|RENAMED) Requirements$/m,
+      `${file} must not ship active-change operation headings`);
   }
 });

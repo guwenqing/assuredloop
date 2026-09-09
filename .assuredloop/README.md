@@ -1,12 +1,24 @@
 # AssuredLoop consumer setup
 
-The versioned consumer binding is `config.json`; its fixed policy and acceptance references identify the applicable bootstrap basis. An activation file is a separate checkpoint. Read the current destination's records before assessing a change to these files. Installing configuration and Skills alone does not establish whole-project adoption or complete traceability.
+The versioned consumer binding is `config.json`; its fixed policy and acceptance references identify the applicable bootstrap basis. `activation.json` selects the current active checkpoint. Read the current destination's records before assessing a change to these files: a proposed binding cannot govern its own adoption. Installing configuration and Skills alone does not establish whole-project adoption or complete traceability.
 
 ## Locate the selected runtime
 
-This consumer's initial local package is `assuredloop-base@0.1.0`, built from repository `guwenqing/assuredloop-base` at code commit `1e4a06a32b3b1870b49ca916456cef3389bd86d9`. The exact tarball SRI is retained in `config.json` as `project.workflow.integrity`. Its `source_ref` separately identifies the generated framework-contract source; that field is not the code-build revision.
+This consumer's selected local package is `assuredloop-base@0.1.0`, built from repository `guwenqing/assuredloop-base` at code/assets commit `29f2a59daf15f4f154297580296bff71e8f9a9f8`. The exact tarball SRI is retained in `config.json` as `project.workflow.integrity`. Its `source_ref` separately identifies canonical framework-contract source `9dfe8524072aec0f896dd7bacb345d7ed6471aac:openspec/specs`; that field is not the code-build revision. Package name/version alone cannot distinguish it from the initial bootstrap artifact.
 
-No registry release is assumed. To recover the initial artifact without private session context, export that fixed Git tree into a separate build directory and run `npm pack --ignore-scripts --json` there. Compare the reported integrity with the versioned binding before selecting the result. Install the matching tarball into an explicitly chosen local runtime directory with lifecycle scripts disabled; retain the installation lock and compare dependency versions with `package-lock.json` from that same fixed code commit (1e4a06a32b3b1870b49ca916456cef3389bd86d9). Report a mismatch for review before selecting a different environment. Never infer acceptance merely because the package name/version matches. If the fixed source, matching artifact or prerequisites cannot be obtained, report the missing installation context.
+No registry release is assumed. The annotated source-retention tag `assuredloop-base-0.1.0-canonical-build` points to that exact build commit; the canonical source commit is its ancestor. Preserve this tag while this binding or its historical evidence requires those objects. It is not a release or approval marker. Squash delivery and later working-branch removal do not replace this retained ref with a main-ancestry assumption.
+
+For a shallow source clone, first obtain its full history with `git fetch --unshallow origin`. Then, or for a single-branch/no-tags clone, fetch the retained ref explicitly:
+
+```sh
+git fetch origin tag assuredloop-base-0.1.0-canonical-build
+git rev-parse 'refs/tags/assuredloop-base-0.1.0-canonical-build^{commit}'
+git cat-file -t 9dfe8524072aec0f896dd7bacb345d7ed6471aac
+```
+
+Require the resolved tag commit to equal `29f2a59daf15f4f154297580296bff71e8f9a9f8` and the second object to be a commit before using them. Do not force a conflicting tag or trust its name alone. These are explicit read/acquisition steps, not an automatic network operation in a validator. An ordinary full clone obtains the retained tag and history; Git-source comparison tests need those objects, whereas an installed consumer uses the verified packaged contracts without a framework checkout.
+
+To recover the selected artifact, export that fixed Git tree into a separate build directory and run `npm pack --ignore-scripts --json` there. Compare the reported integrity with the versioned binding before selecting the result. Install the matching tarball into an explicitly chosen local runtime directory with lifecycle scripts disabled; retain the installation lock and compare dependency versions and integrity entries with `package-lock.json` from that same fixed code/assets commit (29f2a59daf15f4f154297580296bff71e8f9a9f8). Report a mismatch for review before selecting a different environment. Never infer acceptance merely because the package name/version matches. If the retained ref, fixed source, matching artifact or prerequisites cannot be obtained, report the missing installation context.
 
 Resolve the chosen installation's `node_modules/.bin/assuredloop` symlink to its owning package root. Read its README, `contracts/metadata.json`, schemas and templates. Keep the framework's packaged contracts separate from this consumer's native `openspec/` work. Generated namespaced discovery Skills come from the selected package; do not edit their copies as an independent rule source.
 
@@ -29,3 +41,5 @@ The owner-arranged Claude Opus external review remains separate and unchanged. F
 ## Checkpoint ordering
 
 Initialization and accepted bootstrap are distinct from activation. The initial config/bootstrap must be reviewed, owner-authorized and delivered in the destination before a later activation candidate can use it. Usable-base evidence and the separate owner-authorized activation record remain required. A later self-change decision and its applicable demonstration/handoff remain separate from activation and overall closeout. The consumer choices above do not themselves accept the entire fixed policy/package proposal or authorize activation, merge, archive or parent closure.
+
+The [canonical binding transition and retained-source disposition](https://github.com/guwenqing/assuredloop-base/pull/20#issuecomment-5605339950) is governed by the pre-change active checkpoint and is subject to its stated independent-review and delivery conditions. The new checkpoint timestamp records candidate preparation, not an actual merge time. Until delivery, the destination's existing initial package remains authoritative: recover it from fixed code commit `1e4a06a32b3b1870b49ca916456cef3389bd86d9` and compare against the binding in that destination's config. The [initial activation delivery](https://github.com/guwenqing/assuredloop-base/pull/18#issuecomment-5604005268) and prior authorization remain historical evidence; they do not by themselves accept this new package. An archive/final-closure hold is separate from this binding transition.
