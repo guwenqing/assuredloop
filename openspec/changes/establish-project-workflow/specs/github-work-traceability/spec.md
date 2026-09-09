@@ -8,7 +8,7 @@ Keep requests, formal planning and actual delivery connected while using GitHub 
 
 The workflow SHALL let a worker or reviewer starting from an Issue or PR resolve the originating request, responsible work item, relevant current specification or active change, and applicable requirement and decision references. Legitimate absence of a relevant Spec SHALL be represented explicitly with a reason. Parent membership alone SHALL NOT count as requirement-level traceability. Review records SHALL identify the revision and work context they assessed.
 
-Machine-authoritative basis and plan references SHALL carry repository, immutable revision and normalized path as structured fields, with the applicable heading or task identifiers, rather than require parsing arbitrary display URLs. The work-guidance selector SHALL have one authoritative representation; optional display/discipline labels SHALL NOT select a different workflow implicitly.
+Machine-authoritative basis and plan references SHALL carry repository, immutable revision and normalized path as structured fields, with the applicable heading or task identifiers, rather than require parsing arbitrary display URLs. JSON `activity` SHALL be the single work-guidance selector, checked against the formal category under the requirement below rather than overridden by another selector.
 
 #### Scenario: Reviewer starts at a delivery PR
 - **WHEN** a reviewer follows a PR's work reference
@@ -17,6 +17,32 @@ Machine-authoritative basis and plan references SHALL carry repository, immutabl
 #### Scenario: Epic link hides missing requirement context
 - **WHEN** an implementation Issue links its parent Epic but omits the required scoped basis
 - **THEN** the missing basis is reported rather than treating the parent link as sufficient
+
+### Requirement: Work categories and activities are formally consistent
+
+Configured category labels SHALL distinguish Request, Epic, Architecture Task, Task, Bug and Spike. Their default names SHALL be `type:request`, `type:epic`, `type:architecture-task`, `type:task`, `type:bug` and `type:spike`; consumers SHALL be able to map different label names without changing tool source. All mappings SHALL be present, nonempty and case-insensitively distinct. The former `discipline` field and display-label mechanism SHALL be removed, not retained as optional behavior.
+
+Routed executable Issues SHALL carry exactly one configured category and its compatible activity: Request/triage, Architecture Task/plan or closeout, Task/adopt or deliver or review, Bug/deliver, Spike/research. Unrelated labels SHALL NOT count as categories. A rough incoming request before triage MAY omit its category and context; an Epic serving only as a container MAY omit executable context. Neither exception SHALL waive context for another routed category or permit an incompatible executable record. Missing, multiple or incompatible category/activity declarations SHALL be errors, not display warnings. Context tooling SHALL expose the labels, resolved category, activity, applicable rule and discrepancies to review; it SHALL NOT certify that a valid declaration truthfully describes the work.
+
+#### Scenario: Planning and closeout are distinct from ordinary delivery
+- **WHEN** independently assigned work develops a formal design or performs aggregate change closeout
+- **THEN** its category is Architecture Task and its activity is respectively plan or closeout, regardless of who performs it
+
+#### Scenario: Declared category contradicts the selected work
+- **WHEN** an Issue declares Task/plan, Architecture Task/deliver, multiple configured categories, or a routed activity without its required category
+- **THEN** validation reports a classification error and review receives the conflicting declarations rather than an unqualified valid result
+
+#### Scenario: A Bug and a documentation delivery use existing guidance
+- **WHEN** one Issue restores accepted behavior and another implements accepted documentation requirements
+- **THEN** Bug/deliver and Task/deliver remain valid, without creating architecture work solely from the executor's title or file type
+
+#### Scenario: Intake or a container has no executable record
+- **WHEN** an unrouted incoming request or non-executable Epic has no Workflow context
+- **THEN** its stage-appropriate absence is allowed, but an Architecture Task missing context or an Epic carrying a deliver activity is not exempt
+
+#### Scenario: Consumer labels differ from the defaults
+- **WHEN** a consumer maps Architecture Task and the other categories to distinct custom names
+- **THEN** acquisition and validation apply the same category/activity rules through those mappings, while conflicting mapped names are rejected
 
 ### Requirement: Separate planning content from operational status
 
