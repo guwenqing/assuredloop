@@ -350,23 +350,31 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     const policies = [];
     for (const pull of bundle.pulls) {
       const pr = `${trace.repository}#${pull.number}`;
-      policies.push(await trace.withPolicyScope(pull, async () => {
-        const policy = await resolvePolicy({ adapter: trace.adapter, work: pr });
-        trace.cacheSources(policy.sources || []);
-        const refs = recordReferences(await structuredBody(pull.body, { allowPlain: false }));
-        for (const entry of bundle.evidence.filter((item) => item.record.pr?.toLowerCase() === pr)) refs.push(...entry.record.evidence);
-        for (const ref of new Map(refs.map((value) => [key(value), value])).values()) {
-          try { await trace.load(ref); }
-          catch (error) {
-            if (!['reference-out-of-scope', 'record-unavailable', 'tool-unavailable', 'path-unsafe'].includes(error.code)) throw error;
-            trace.findings.push({ code: error.code, severity: 'unavailable', source: ref, assessment: pr,
-              message: `${pr}: required source could not be acquired in this assessment: ${error.message}` });
+      try {
+        policies.push(await trace.withPolicyScope(pull, async () => {
+          const policy = await resolvePolicy({ adapter: trace.adapter, work: pr });
+          trace.cacheSources(policy.sources || []);
+          const refs = recordReferences(await structuredBody(pull.body, { allowPlain: false }));
+          for (const entry of bundle.evidence.filter((item) => item.record.pr?.toLowerCase() === pr)) refs.push(...entry.record.evidence);
+          for (const ref of new Map(refs.map((value) => [key(value), value])).values()) {
+            try { await trace.load(ref); }
+            catch (error) {
+              if (!['reference-out-of-scope', 'record-unavailable', 'tool-unavailable', 'path-unsafe'].includes(error.code)) throw error;
+              trace.findings.push({ code: error.code, severity: 'unavailable', source: ref, assessment: pr,
+                message: `${pr}: required source could not be acquired in this assessment: ${error.message}` });
+            }
           }
-        }
-        return policy;
-      }));
+          return policy;
+        }));
+      } catch (error) {
+        if (error.code !== 'secondary-acquisition-unavailable') throw error;
+        policies.push({ status: 'unavailable', assessment: { pr }, sources: [],
+          findings: [{ code: error.code, message: error.message, details: error.details }] });
+      }
     }
-    if (!policies.length) policies.push(await currentTracePolicy(trace));
+    if (!policies.length || (!bundle.issue.pull_request && !policies.some((policy) => policy.status === 'available'))) {
+      policies.push(await currentTracePolicy(trace));
+    }
     result.policy = { status: policies[0].status, mode: policies[0].mode, policy_ref: policies[0].policy_ref };
     result.context.current = policies[0]?.current;
     for (const policy of policies) {
@@ -434,6 +442,7 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     await trace.recheckAcquisition();
   } catch (error) {
     result.status = 'unavailable';
+    delete result.packet;
     result.findings.push({ code: error.code || 'inspection-unavailable', message: error.message, details: error.details });
   }
   if (Buffer.byteLength(JSON.stringify(result), 'utf8') + 1 > budget) return { operation: 'inspect', status: 'unavailable', findings: [{ code: 'packet-limit' }] };

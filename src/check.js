@@ -13,6 +13,12 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
     result.findings.push({ code, message, details });
     if (status === 'invalid' || result.status === 'pass') result.status = status;
   };
+  const acquisitionFailure = (error) => {
+    if (error.code !== 'secondary-acquisition-unavailable') throw error;
+    add(error.code, error.message, 'unavailable', error.details);
+    result.policies.push({ status: 'unavailable', assessment: { pr: error.details.work }, sources: [],
+      findings: [{ code: error.code, message: error.message, details: error.details }] });
+  };
   try {
     trace = await createTrace({ targetRoot, work });
     const selected = await trace.bundleAt(work);
@@ -50,8 +56,8 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
       if (!assessments.some((entry) => hasReviewDeclarations(entry.record))) add('review-evidence-missing', `${pr} has no structured review assessment evidence.`);
       for (const entry of assessments.length ? assessments : [null]) {
         const historical = pull.merged === true && entry;
-        await trace.bindPolicyScope(pull);
         try {
+          await trace.bindPolicyScope(pull);
           const policy = historical
             ? await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record })
             : await resolvePolicy({ adapter: trace.adapter, work: pr });
@@ -78,7 +84,8 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
               catch (error) { add('evidence-source-unavailable', error.message, 'unavailable', { ref, cause: error.code }); }
             }
           }
-        } finally { trace.resetScope(); }
+        } catch (error) { acquisitionFailure(error); }
+        finally { trace.resetScope(); }
       }
     }
     const record = await structuredBody(selected.issue.body, { allowPlain: false });
@@ -130,8 +137,8 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
         for (const entry of bundle.evidence.filter((item) => item.record.pr)) {
           const pull = bundle.pulls.find((item) => entry.record.pr.toLowerCase() === `${trace.repository}#${item.number}`);
           if (!pull?.merged) continue;
-          await trace.bindPolicyScope(pull);
           try {
+            await trace.bindPolicyScope(pull);
             const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record });
             result.policies.push(policy);
             if (policy.status !== 'available') add('prerequisite-policy-unavailable', `${dependency}: recorded policy could not be reconstructed.`, policy.status === 'invalid' ? 'invalid' : 'unavailable', policy.findings);
@@ -143,7 +150,8 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
                 else add('prerequisite-review-invalid', `${dependency}: ${finding.message}`, 'invalid', finding);
               }
             }
-          } finally { trace.resetScope(); }
+          } catch (error) { acquisitionFailure(error); }
+          finally { trace.resetScope(); }
         }
       }
       trace.resetScope();

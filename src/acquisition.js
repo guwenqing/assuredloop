@@ -60,16 +60,26 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
     async narrow(candidate) {
       const name = candidate.base.repo.full_name.toLowerCase();
       const pr = `${name}#${candidate.number}`;
-      const observed = await reader.readPull(pr);
-      if (observed?.number !== candidate.number || observed?.base?.repo?.full_name?.toLowerCase() !== name) fail('binding-invalid', 'Secondary PR identity changed.');
-      const currentRevision = await reader.readBranchHead({ repository: name, branch: observed.base.ref });
-      const scoped = await configAt(reader, name, currentRevision);
-      const allowed = new Set([repository, ...[...scoped.allowed].filter((value) => ceiling.has(value))]);
-      active = { reader: await makeReader(allowed), allowed };
-      const item = { work: pr, config_ref: scoped.ref, config_digest: digest(scoped.bytes),
-        allowed_repositories: [...allowed].sort(), denied_by_ceiling: [...scoped.allowed].filter((value) => !ceiling.has(value)).sort() };
-      if (!contexts.some((entry) => isDeepStrictEqual(entry, item))) contexts.push(item);
-      return item;
+      let branch = candidate.base.ref, currentRevision;
+      try {
+        const observed = await reader.readPull(pr);
+        if (observed?.number !== candidate.number || observed?.base?.repo?.full_name?.toLowerCase() !== name) fail('binding-invalid', 'Secondary PR identity changed.');
+        branch = observed.base.ref;
+        currentRevision = await reader.readBranchHead({ repository: name, branch });
+        const scoped = await configAt(reader, name, currentRevision);
+        const allowed = new Set([repository, ...[...scoped.allowed].filter((value) => ceiling.has(value))]);
+        active = { reader: await makeReader(allowed), allowed };
+        const item = { work: pr, config_ref: scoped.ref, config_digest: digest(scoped.bytes),
+          allowed_repositories: [...allowed].sort(), denied_by_ceiling: [...scoped.allowed].filter((value) => !ceiling.has(value)).sort() };
+        if (!contexts.some((entry) => isDeepStrictEqual(entry, item))) contexts.push(item);
+        return item;
+      } catch (error) {
+        fail('secondary-acquisition-unavailable', `${pr}: current destination context is unavailable: ${error.message}`, {
+          work: pr, repository: name, branch,
+          ...(currentRevision ? { config_ref: { repository: name, revision: currentRevision, path: '.assuredloop/config.json' } } : {}),
+          cause: error.code || 'invalid-source', cause_details: error.details,
+        });
+      }
     },
     async within(candidate, action) {
       const previous = active;
