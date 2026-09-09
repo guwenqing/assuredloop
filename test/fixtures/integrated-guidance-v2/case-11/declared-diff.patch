@@ -1,0 +1,47 @@
+diff --git a/src/export/calendar.csv.js b/src/export/calendar.csv.js
+index 62cbcd1..89327bf 100644
+--- a/src/export/calendar.csv.js
++++ b/src/export/calendar.csv.js
+@@ -1,8 +1,13 @@
+-export function formatCalendarDate(value) {
+-  return new Date(value).toISOString().slice(0, 10);
++export function formatCalendarDate(value, locale = 'en-CA') {
++  return new Intl.DateTimeFormat(locale, {
++    year: 'numeric',
++    month: '2-digit',
++    day: '2-digit',
++    timeZone: 'UTC'
++  }).format(new Date(value));
+ }
+ 
+-export function exportCalendarCsv(events) {
+-  const rows = events.map((event) => `${formatCalendarDate(event.date)},${event.title}`);
++export function exportCalendarCsv(events, locale = 'en-CA') {
++  const rows = events.map((event) => `${formatCalendarDate(event.date, locale)},${event.title}`);
+   return ['date,title', ...rows].join('\n');
+ }
+diff --git a/test/export/calendar.csv.test.js b/test/export/calendar.csv.test.js
+index 8695093..dc96dd4 100644
+--- a/test/export/calendar.csv.test.js
++++ b/test/export/calendar.csv.test.js
+@@ -1,8 +1,17 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+-import { exportCalendarCsv } from '../../src/export/calendar.csv.js';
++import { exportCalendarCsv, formatCalendarDate } from '../../src/export/calendar.csv.js';
++
++test('formats the same UTC date using the requested locale', () => {
++  const value = '2026-03-08T15:00:00.000Z';
++  assert.equal(formatCalendarDate(value, 'en-CA'), '2026-03-08');
++  assert.equal(formatCalendarDate(value, 'en-US'), '03/08/2026');
++});
+ 
+ test('keeps event order and default locale in the CSV', () => {
+-  const csv = exportCalendarCsv([{ date: '2026-03-08T15:00:00.000Z', title: 'First' }]);
+-  assert.equal(csv, 'date,title\n2026-03-08,First');
++  const csv = exportCalendarCsv([
++    { date: '2026-03-08T15:00:00.000Z', title: 'First' },
++    { date: '2026-03-09T15:00:00.000Z', title: 'Second' }
++  ]);
++  assert.equal(csv, 'date,title\n2026-03-08,First\n2026-03-09,Second');
+ });

@@ -147,6 +147,18 @@ test('packed inspect and check use the installed package against a consumer fixt
   assert.equal(checked.data?.status, 'pass');
   assert.equal(checked.data?.policy?.mode, 'bootstrap');
   assert.equal(checked.data?.policy?.activation, null);
+  const classification = checked.data?.records?.find((record) => record.work === workIssue)?.context?.classification;
+  assert.deepEqual(classification?.labels, [checkFixture.config.repository.labels.type.task]);
+  assert.equal(classification?.category, 'task');
+  assert.equal(classification?.activity, 'deliver');
+  assert.deepEqual(classification?.discrepancies, []);
+  assert.match(classification?.rule?.basis, /work-categories-and-activities-are-formally-consistent/);
+  assert.deepEqual(classification?.config_ref, {
+    repository: 'example/consumer',
+    revision: checkFixture.revision,
+    path: '.assuredloop/config.json',
+  });
+  assert.equal(classification?.config_digest, checkFixture.configDigest);
   assert.match(findingText(checked.data), /semantic-authorization-review-required/);
   assert.match(findingText(checked.data), /not-active/);
   const checkCommands = await commandLog(checkFixture);
