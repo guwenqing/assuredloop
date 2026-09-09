@@ -143,6 +143,7 @@ export async function makeReviewKindCliFixture(t) {
       body: replaceEvidenceModel(entry.body),
     })));
   }
+  scenario.records['issues/comments/101'].body = replaceEvidenceModel(scenario.records['issues/comments/101'].body);
   await writeFile(scenarioPath, `${JSON.stringify(scenario)}\n`);
   return fixture;
 }

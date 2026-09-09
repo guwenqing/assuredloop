@@ -8,7 +8,7 @@ import { establishAcquisition } from './acquisition.js';
 import { buildReviewPacket } from './review-packet.js';
 import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
-import { classifyIssue } from './classification.js';
+import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -73,14 +73,28 @@ export async function createTrace({ targetRoot, work }) {
     if (issue.pull_request) return null;
     authorize(ref);
     let classification;
+    const retainConfig = (source) => {
+      if (!source) return;
+      let retained;
+      try { retained = { content: decode(source.bytes), references: [] }; }
+      catch { retained = { bytes: Buffer.from(source.bytes), disposition: 'unavailable', reason: 'non-text-source', references: [] }; }
+      sourceCache.set(key(source.ref), retained);
+    };
     try {
-      const { mapping, provenance } = await acquisition.classificationConfig(ref);
+      const { mapping, provenance, source } = await acquisition.classificationConfig(ref);
+      retainConfig(source);
       classification = classifyIssue(issue, record, mapping, provenance);
     } catch (error) {
-      classification = classifyIssue(issue, record, null);
+      retainConfig(error.classification?.source);
+      classification = classifyIssue(issue, record, null, error.classification?.provenance);
       classification.discrepancies = [{ code: error.code || 'category-config-unavailable', message: error.message,
         severity: 'unavailable', details: error.details }];
     }
+    const permittedPulls = [...pulls.entries()].filter(([pr]) => {
+      try { authorize(pr); return true; }
+      catch (error) { if (error.code === 'reference-out-of-scope') return false; throw error; }
+    }).map(([, pull]) => pull);
+    classification = withExecutionAssignments(classification, await mappedPullAssignments(ref, permittedPulls));
     for (const finding of classification.discrepancies) {
       const qualified = { ...finding, source: ref };
       if (!findings.some((entry) => isDeepStrictEqual(entry, qualified))) findings.push(qualified);
@@ -112,6 +126,13 @@ export async function createTrace({ targetRoot, work }) {
       if (!['open', 'closed'].includes(pull.state) || typeof pull.merged !== 'boolean') fail('record-unavailable', 'GitHub PR state/merged metadata is missing or unsupported.');
       if (pull.body != null && typeof pull.body !== 'string') fail('record-unavailable', 'GitHub PR body representation is unsupported.');
       pulls.set(ref, pull);
+      const record = await structuredBody(pull.body, { allowPlain: false });
+      if (validateRecord('pr', record).valid) {
+        for (const assigned of record.issues.map(normalizeWork)) {
+          sourceCache.delete(key(assigned));
+          for (const cached of bundles.keys()) if (cached.endsWith(`:${assigned}`)) bundles.delete(cached);
+        }
+      }
     }
     return pulls.get(ref);
   }

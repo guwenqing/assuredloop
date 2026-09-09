@@ -1,3 +1,6 @@
+import { readSourceRecord } from './source-record.js';
+import { validateRecord } from './records.js';
+
 const activities = {
   request: ['triage'],
   epic: [],
@@ -6,6 +9,31 @@ const activities = {
   bug: ['deliver'],
   spike: ['research'],
 };
+
+export async function mappedPullAssignments(work, pulls) {
+  const assignments = [];
+  for (const pull of pulls) {
+    const ref = `${pull?.base?.repo?.full_name}#${pull?.number}`.toLowerCase();
+    if (!validateRecord('work', ref).valid) continue;
+    let parsed;
+    try { parsed = await readSourceRecord(pull.body, { expectedKind: 'pr' }); }
+    catch { continue; }
+    if (parsed.state === 'valid' && parsed.record.issues.some((issue) => issue.toLowerCase() === work.toLowerCase())) assignments.push(ref);
+  }
+  return [...new Set(assignments)];
+}
+
+export function withExecutionAssignments(classification, assignments) {
+  if (!assignments.length) return classification;
+  const result = structuredClone(classification);
+  result.assigned_prs = assignments;
+  if (result.exception) {
+    result.exception = null;
+    result.discrepancies.push({ code: 'record-context-required', severity: 'error',
+      message: 'An explicit PR work assignment requires Workflow context; the rough-intake/container exception does not apply.' });
+  }
+  return result;
+}
 
 export function classifyIssue(issue, record, mapping, provenance = {}) {
   const labels = (Array.isArray(issue.labels) ? issue.labels : []).map((label) => typeof label === 'string' ? label : label?.name).filter((label) => typeof label === 'string');

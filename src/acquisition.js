@@ -9,12 +9,16 @@ const tuple = (pull) => [pull?.number, pull?.head?.sha, pull?.base?.sha, pull?.b
 
 export async function establishAcquisition({ targetRoot, work, issue, pull, initialAdapter }) {
   const { repository } = workIdentity(work);
-  async function configAt(reader, name, revision) {
-    const ref = { repository: name, revision, path: '.assuredloop/config.json' };
-    const bytes = await reader.readBlob(ref);
+  function parseConfig(bytes, name) {
     const config = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     const validation = validateRecord('config', config);
     if (!validation.valid || config.repository.name.toLowerCase() !== name) fail('policy-unavailable', 'Current acquisition configuration is invalid.', validation.errors);
+    return config;
+  }
+  async function configAt(reader, name, revision) {
+    const ref = { repository: name, revision, path: '.assuredloop/config.json' };
+    const bytes = await reader.readBlob(ref);
+    const config = parseConfig(bytes, name);
     return { ref, bytes, config, allowed: new Set([name, ...(config.repository.allowed_reference_repositories || []).map((value) => value.toLowerCase())]) };
   }
   let branch, revision;
@@ -56,17 +60,33 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
       if (name === repository) return { mapping: primary.config.repository.labels.type,
         provenance: { repository, branch, revision, config_ref: primary.ref, config_digest: digest(primary.bytes) } };
       const cacheKey = `${this.scopeKey}:${name}`;
-      if (!classifications.has(cacheKey)) {
-        const metadata = await active.reader.readRepository(name);
-        const branch = metadata.default_branch;
-        if (typeof branch !== 'string' || !branch) fail('category-config-unavailable', 'Foreign Issue repository has no current default branch.', { repository: name });
-        const revision = await active.reader.readBranchHead({ repository: name, branch });
-        const config = await configAt(active.reader, name, revision);
-        classifications.set(cacheKey, { ...config, repository: name, branch, revision, allowed: new Set(active.allowed) });
+      let selected = classifications.get(cacheKey);
+      const provenance = selected?.provenance ?? { repository: name };
+      try {
+        if (!selected) {
+          const metadata = await active.reader.readRepository(name);
+          const branch = metadata.default_branch;
+          if (typeof branch !== 'string' || !branch) fail('category-config-unavailable', 'Foreign Issue repository has no current default branch.', { repository: name });
+          provenance.branch = branch;
+          const revision = await active.reader.readBranchHead({ repository: name, branch });
+          provenance.revision = revision;
+          const ref = { repository: name, revision, path: '.assuredloop/config.json' };
+          provenance.config_ref = ref;
+          const bytes = await active.reader.readBlob(ref);
+          provenance.config_digest = digest(bytes);
+          selected = { ref, bytes, repository: name, branch, revision, provenance, allowed: new Set(active.allowed) };
+          classifications.set(cacheKey, selected);
+          try { selected.config = parseConfig(bytes, name); }
+          catch (error) { selected.error = error; }
+        }
+        if (selected.error) throw selected.error;
+        return { mapping: selected.config.repository.labels.type, provenance,
+          source: { ref: selected.ref, bytes: selected.bytes } };
+      } catch (error) {
+        error.classification = { provenance,
+          ...(selected ? { source: { ref: selected.ref, bytes: selected.bytes } } : {}) };
+        throw error;
       }
-      const selected = classifications.get(cacheKey);
-      return { mapping: selected.config.repository.labels.type, provenance: { repository: name, branch: selected.branch,
-        revision: selected.revision, config_ref: selected.ref, config_digest: digest(selected.bytes) } };
     },
     source: { source: { kind: 'git-blob', ref: primary.ref }, content: primary.bytes.toString('utf8'), content_sha256: digest(primary.bytes) },
     get adapter() { return active.reader; },
@@ -113,8 +133,8 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
         const metadata = await scopedReader.readRepository(selected.repository);
         const revision = await scopedReader.readBranchHead({ repository: selected.repository, branch: selected.branch });
         if (metadata.default_branch !== selected.branch || revision !== selected.revision) fail('acquisition-context-stale', 'Foreign Issue classification default branch or revision changed.', { repository: selected.repository });
-        const current = await configAt(scopedReader, selected.repository, revision);
-        if (digest(current.bytes) !== digest(selected.bytes)) fail('acquisition-context-stale', 'Foreign Issue classification configuration changed.', { config_ref: selected.ref });
+        const current = await scopedReader.readBlob(selected.ref);
+        if (digest(current) !== digest(selected.bytes)) fail('acquisition-context-stale', 'Foreign Issue classification configuration changed.', { config_ref: selected.ref });
       }
       if (issue.pull_request) {
         const observed = await reader.readPull(work);

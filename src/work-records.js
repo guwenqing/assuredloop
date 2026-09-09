@@ -4,7 +4,7 @@ import { workIdentity } from './read-adapter.js';
 import { loadNativeRuntime } from './native-runtime.js';
 import { checkAnchor } from './policy.js';
 import { checkTaskAssociations } from './task-associations.js';
-import { classifyIssue } from './classification.js';
+import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
 export { checkTaskAssociations } from './task-associations.js';
 
 export async function parseWorkRecord({ body, kind, allowMissing = false } = {}) {
@@ -41,6 +41,7 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
   }
   const parsed = await parseWorkRecord({ body: issue.body ?? '', kind: 'issue' });
   classification ??= classifyIssue(issue, parsed.record, categoryMapping);
+  classification = withExecutionAssignments(classification, await mappedPullAssignments(work, pulls));
   result.context.classification = structuredClone(classification);
   for (const finding of classification.discrepancies) add(finding.code, finding.message, finding.severity, finding.details);
   if (classification.exception && parsed.findings.every((finding) => finding.code === 'record-context-missing')) return result;
