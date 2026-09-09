@@ -60,6 +60,10 @@ An authorized migration SHALL inventory affected Issues, establish replacement c
 - **WHEN** configuration contains the legacy discipline mapping
 - **THEN** validation rejects that field and guidance identifies the explicit configuration/classification update needed, without mutating the repository or GitHub
 
+#### Scenario: A historical cancelled Issue lacks structured context
+- **WHEN** the new classification requires context that the old cancelled Issue never recorded
+- **THEN** authorized migration preserves the original cancellation and prose, adds only facts supported by resolvable historical sources, and reports unresolved required facts as incomplete migration rather than fabricating delivery or silently exempting the Issue
+
 #### Scenario: An Issue appeared after the initial inventory
 - **WHEN** the migration's fresh inventory reveals another Issue using an obsolete label
 - **THEN** its current work context is reconciled and verified before label removal rather than assuming the initial Issue list was exhaustive
