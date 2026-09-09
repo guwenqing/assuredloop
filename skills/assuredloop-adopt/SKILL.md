@@ -13,7 +13,7 @@ Read the selected installation's `schemas/workflow.schema.json` (`config` and `c
 
 Use the existing OpenSpec initialization when native context or integrations are missing. AssuredLoop supplements it and does not run prerequisite installers, log in to accounts or modify upstream Skills. Prerequisites are Node.js >=20.19.0, Git, pinned OpenSpec 1.12.0 and, for GitHub checks, authenticated gh >=2.88.0 with access to the bound repository. Different native tools select different roots; incompatible registry versions/shapes and unresolved shared-root ownership are reported rather than guessed.
 
-Before routed work, the adopting owner or explicitly authorized agent must provision missing configured category labels or confirm mappings to existing labels. Initialization only reports this prerequisite. It does not create labels or claim that a syntactically valid owner/review declaration proves acceptance.
+Before routed work, the adopting owner or explicitly authorized agent must provision missing configured category labels or confirm mappings to existing labels. Supply all six distinct mappings under the category/activity contract in templates/README.md, including Architecture Task for planning/closeout. Assigned adoption uses Task/adopt. Legacy discipline configuration is invalid; use templates/category-migration.md for a separately authorized migration, preserving current records and historical evidence. Initialization only reports label prerequisites. It does not create labels or claim that a syntactically valid owner/review declaration proves acceptance.
 
 ## Preview, apply and verify
 

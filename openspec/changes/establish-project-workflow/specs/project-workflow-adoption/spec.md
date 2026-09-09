@@ -46,6 +46,28 @@ The applicable formats, required fields, references, statuses and completion evi
 - **WHEN** a change adds a required association
 - **THEN** review checks that the authoritative rule, creation guidance, applicable validation and affected templates agree before that rule is accepted as usable
 
+### Requirement: Migrate replaced classifications without erasing evidence
+
+When adopting the Architecture Task refinement, current contracts, configuration, templates, Skills, validation and reviewer-context behavior SHALL agree on the [formal category contract](../github-work-traceability/spec.md#requirement-work-categories-and-activities-are-formally-consistent). Guidance SHALL explain creation and reclassification through that contract. Legacy `discipline` configuration SHALL be reported as invalid with a correction path, not silently accepted or altered. Read-only checks SHALL remain read-only; remote migration SHALL require scoped authorization.
+
+An authorized migration SHALL inventory affected Issues, establish replacement category labels, reconcile classifications against work context and verify them before removing obsolete labels. It SHALL preserve Issue identity, state/resolution, ownership, work relations and historical evidence except for explicitly scoped current-work updates. It SHALL NOT reopen cancelled work, infer delivery from relabeling, delete unrelated labels, or rewrite immutable historical revisions or published audit records. Migration evidence SHALL remain in GitHub comments. Current-reference searches SHALL distinguish removed operational use from intentional migration instructions and historical evidence.
+
+#### Scenario: A closed planning Issue has the former display label
+- **WHEN** migration replaces its former Task plus architecture display classification
+- **THEN** it receives the formal Architecture Task category without changing its closed state, resolution, relationships or prior delivery evidence
+
+#### Scenario: A consumer still has the removed field
+- **WHEN** configuration contains the legacy discipline mapping
+- **THEN** validation rejects that field and guidance identifies the explicit configuration/classification update needed, without mutating the repository or GitHub
+
+#### Scenario: A historical cancelled Issue lacks structured context
+- **WHEN** the new classification requires context that the old cancelled Issue never recorded
+- **THEN** authorized migration preserves the original cancellation and prose, adds only facts supported by resolvable historical sources, and reports unresolved required facts as incomplete migration rather than fabricating delivery or silently exempting the Issue
+
+#### Scenario: An Issue appeared after the initial inventory
+- **WHEN** the migration's fresh inventory reveals another Issue using an obsolete label
+- **THEN** its current work context is reconciled and verified before label removal rather than assuming the initial Issue list was exhaustive
+
 ### Requirement: Scripts remain governed execution helpers
 
 If a script assists traceable work, the relevant Skill SHALL explain when and how to invoke it, its intended inputs and side effects, expected output, and interpretation of failure or incomplete results. A script SHALL NOT replace the work-category guidance or expand the executor's authority. A successful exit code SHALL NOT be represented as semantic acceptance.

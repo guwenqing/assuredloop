@@ -5,6 +5,7 @@ import * as workRecords from '../src/work-records.js';
 import {
   contextBody,
   issueRecord,
+  categoryMapping,
   issueSnapshot,
   issueWork,
   primaryBasis,
@@ -86,6 +87,7 @@ test('checkWorkRecords rejects a canonical PlanRef assignment that disagrees wit
   const issue = issueSnapshot({ body: contextBody(record), number: 32 });
   const result = await workRecords.checkWorkRecords({
     work: issueWork,
+    categoryMapping,
     issue,
     pulls: [],
     evidence: [],

@@ -193,7 +193,8 @@ export async function resolveHistoricalPolicy({ adapter, record, packageRoot = i
   const historicalPull = { ...pull, base: { ...pull.base, sha: record.base_sha } };
   const result = await resolvePolicySnapshot({ adapter, work: record.pr, packageRoot, historicalPull });
   result.context = { ...context, merge_commit_sha: pull.merge_commit_sha };
-  if (result.status === 'available') {
+  const reconstructed = result.status === 'available';
+  if (reconstructed) {
     for (const [field, actual] of Object.entries({ policy_ref: result.policy_ref, contract_package: result.contract_package,
       config_digest: result.config_digest, activation_digest: result.activation_digest, policy_mode: result.mode })) {
       if (!isDeepStrictEqual(record[field], actual)) {
@@ -201,8 +202,17 @@ export async function resolveHistoricalPolicy({ adapter, record, packageRoot = i
         result.findings.push({ code: 'historical-policy-mismatch', message: `Recorded ${field} differs from the reconstructed historical policy.` });
       }
     }
+  } else {
+    for (const field of ['config_digest', 'activation_digest']) {
+      if (result[field] !== null && result[field] !== record[field]) {
+        result.status = 'invalid';
+        result.findings.push({ code: 'historical-policy-mismatch', message: `Recorded ${field} differs from the acquired historical source bytes, independently of policy reconstruction.` });
+      }
+    }
   }
-  result.findings.push({ code: 'historical-assessment-only', message: 'Reconstructed recorded pre-merge policy for a merged PR. This is not current merge authority, authenticated review or proof of the full assigned outcome.' });
+  result.findings.push({ code: 'historical-assessment-only', message: reconstructed
+    ? 'Reconstructed recorded pre-merge policy for a merged PR. This is not current merge authority, authenticated review or proof of the full assigned outcome.'
+    : 'Historical pre-merge policy could not be reconstructed by this runtime. Acquired sources and the recorded assessment are retained; unsupported configuration or package binding does not revoke historical acceptance or supply verified delivery.' });
   return result;
 }
 

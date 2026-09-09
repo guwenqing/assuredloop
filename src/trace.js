@@ -8,6 +8,7 @@ import { establishAcquisition } from './acquisition.js';
 import { buildReviewPacket } from './review-packet.js';
 import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
+import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -47,6 +48,9 @@ export async function createTrace({ targetRoot, work }) {
   const invalidSources = new Map();
   const findings = [];
 
+  const sourceKey = (ref) => typeof ref === 'string' && issues.has(ref) && !issues.get(ref).pull_request
+    ? key({ issue_context: ref, scope: acquisition.scopeKey }) : key(ref);
+
   function authorize(ref) {
     if (acquisition && !installedAssets.has(key(ref))) acquisition.authorize(ref);
   }
@@ -66,6 +70,39 @@ export async function createTrace({ targetRoot, work }) {
       ref: structuredClone(ref), body, kind: parsed.kind, state: parsed.state, captured_at: new Date().toISOString(), findings: parsed.findings,
     });
     return parsed;
+  }
+
+  async function classificationAt(ref, issue, record) {
+    if (issue.pull_request) return null;
+    authorize(ref);
+    let classification;
+    const retainConfig = (source) => {
+      if (!source) return;
+      let retained;
+      try { retained = { content: decode(source.bytes), references: [] }; }
+      catch { retained = { bytes: Buffer.from(source.bytes), disposition: 'unavailable', reason: 'non-text-source', references: [] }; }
+      sourceCache.set(key(source.ref), retained);
+    };
+    try {
+      const { mapping, provenance, source } = await acquisition.classificationConfig(ref);
+      retainConfig(source);
+      classification = classifyIssue(issue, record, mapping, provenance);
+    } catch (error) {
+      retainConfig(error.classification?.source);
+      classification = classifyIssue(issue, record, null, error.classification?.provenance);
+      classification.discrepancies = [{ code: error.code || 'category-config-unavailable', message: error.message,
+        severity: 'unavailable', details: error.details }];
+    }
+    const permittedPulls = [...pulls.entries()].filter(([pr]) => {
+      try { authorize(pr); return true; }
+      catch (error) { if (error.code === 'reference-out-of-scope') return false; throw error; }
+    }).map(([, pull]) => pull);
+    classification = withExecutionAssignments(classification, await mappedPullAssignments(ref, permittedPulls));
+    for (const finding of classification.discrepancies) {
+      const qualified = { ...finding, source: ref };
+      if (!findings.some((entry) => isDeepStrictEqual(entry, qualified))) findings.push(qualified);
+    }
+    return classification;
   }
 
   async function issueAt(ref) {
@@ -92,6 +129,16 @@ export async function createTrace({ targetRoot, work }) {
       if (!['open', 'closed'].includes(pull.state) || typeof pull.merged !== 'boolean') fail('record-unavailable', 'GitHub PR state/merged metadata is missing or unsupported.');
       if (pull.body != null && typeof pull.body !== 'string') fail('record-unavailable', 'GitHub PR body representation is unsupported.');
       pulls.set(ref, pull);
+      const record = await structuredBody(pull.body, { allowPlain: false });
+      if (validateRecord('pr', record).valid) {
+        for (const assigned of record.issues.map(normalizeWork)) {
+          for (const cached of sourceCache.keys()) {
+            const source = JSON.parse(cached);
+            if (source === assigned || source?.issue_context === assigned) sourceCache.delete(cached);
+          }
+          for (const cached of bundles.keys()) if (cached.endsWith(`:${assigned}`)) bundles.delete(cached);
+        }
+      }
     }
     return pulls.get(ref);
   }
@@ -166,7 +213,9 @@ export async function createTrace({ targetRoot, work }) {
       if (pr !== ref) entries.push(...await commentsAt(pr));
     }
     const evidence = [...new Map(entries.filter((entry) => validateRecord('evidence', entry.record).valid).map((entry) => [key(entry.ref), entry])).values()];
-    const bundle = { issue, pulls: related, evidence, unresolvedRelations };
+    const parsed = await sourceRecord(issue.body, ref, { expectedKind: issue.pull_request ? 'pr' : 'issue', allowMissing: !issue.pull_request });
+    const classification = await classificationAt(ref, issue, parsed.record);
+    const bundle = { issue, pulls: related, evidence, unresolvedRelations, ...(classification ? { classification } : {}) };
     bundles.set(bundleKey, bundle);
     return bundle;
   }
@@ -174,8 +223,8 @@ export async function createTrace({ targetRoot, work }) {
   async function load(ref, { expectedKind } = {}) {
     if (typeof ref === 'string') ref = normalizeWork(ref);
     authorize(ref);
-    if (sourceCache.has(key(ref))) {
-      const cached = copySource(sourceCache.get(key(ref)));
+    if (sourceCache.has(sourceKey(ref))) {
+      const cached = copySource(sourceCache.get(sourceKey(ref)));
       if (expectedKind) {
         const parsed = await sourceRecord(cached.content, ref, { allowPlain: true, expectedKind });
         return { ...cached, record_state: parsed.state, record_kind: parsed.kind };
@@ -187,13 +236,15 @@ export async function createTrace({ targetRoot, work }) {
       const issue = await issueAt(ref);
       const parsed = await sourceRecord(issue.body, ref, { expectedKind: issue.pull_request ? 'pr' : 'issue', allowMissing: !issue.pull_request });
       const record = parsed.record;
+      const classification = await classificationAt(ref, issue, record);
       references = recordReferences(record);
+      if (classification?.config_ref) references.push(classification.config_ref);
       const entries = await commentsAt(ref);
       references.push(...entries.map((entry) => entry.ref));
       const pull = issue.pull_request ? await pullAt(ref) : null;
       if (pull && pull.body !== issue.body) fail('context-source-stale', 'PR body changed between its Issue and PR source reads.');
       const { body, ...facts } = issueFacts(issue);
-      content = `${JSON.stringify({ issue: { ...facts, ...(body === null ? { body: null } : {}) }, ...(pull ? { pull: publicBundle({ issue, pulls: [pull] }).pulls[0] } : {}),
+      content = `${JSON.stringify({ issue: { ...facts, ...(body === null ? { body: null } : {}) }, ...(classification ? { classification } : {}), ...(pull ? { pull: publicBundle({ issue, pulls: [pull] }).pulls[0] } : {}),
         ...(ref === normalizeWork(work) ? { acquisition: acquisition.context } : {}) })}\n\n${body ?? ''}`;
     } else if (Object.hasOwn(ref, 'comment_id')) {
       const comment = await adapter.readComment(ref);
@@ -211,7 +262,7 @@ export async function createTrace({ targetRoot, work }) {
     const parsed = references ? null : await sourceRecord(content, ref, { allowPlain: true, expectedKind });
     const result = { content, references: references || (parsed.state === 'valid' ? recordReferences(parsed.record) : []),
       ...(parsed ? { record_state: parsed.state, record_kind: parsed.kind } : {}) };
-    sourceCache.set(key(ref), result);
+    sourceCache.set(sourceKey(ref), result);
     return copySource(result);
   }
 
@@ -220,11 +271,10 @@ export async function createTrace({ targetRoot, work }) {
   acquisition = await establishAcquisition({ targetRoot, work, issue: primaryIssue, pull: primaryPull, initialAdapter: adapter });
   adapter = acquisition.adapter;
   sourceCache.set(key(acquisition.source.source.ref), { content: acquisition.source.content, references: [] });
-  const primaryLabels = (primaryIssue.labels || []).map((label) => (typeof label === 'string' ? label : label?.name)?.toLowerCase());
-  const primaryRouted = acquisition.routedIssueLabels.some((label) => primaryLabels.includes(label.toLowerCase()));
-  await sourceRecord(primaryIssue.body, normalizeWork(work), {
-    expectedKind: primaryIssue.pull_request ? 'pr' : 'issue', allowMissing: !primaryIssue.pull_request && !primaryRouted,
+  const primaryRecord = await sourceRecord(primaryIssue.body, normalizeWork(work), {
+    expectedKind: primaryIssue.pull_request ? 'pr' : 'issue', allowMissing: !primaryIssue.pull_request,
   });
+  await classificationAt(normalizeWork(work), primaryIssue, primaryRecord.record);
 
   return {
     repository, findings, issueAt, pullAt, bundleAt, load,
@@ -246,13 +296,22 @@ export async function createTrace({ targetRoot, work }) {
       authorize(owner);
       return withinPolicyScope(pull, () => load(ref));
     },
-    cacheSource: (ref, value) => sourceCache.set(key(ref), value),
+    cacheSource: (ref, value) => sourceCache.set(sourceKey(ref), value),
     get adapter() { return adapter; },
     async recheckWorkSources() {
       const changed = [];
       for (const [ref, original] of issues) {
         const observed = await adapter.readIssue(ref);
         if (!isDeepStrictEqual(issueFacts(original), issueFacts(observed))) changed.push({ code: 'context-source-stale', message: `${ref}: Issue identity, body or state changed during the assessment.` });
+      }
+      for (const ref of pulls.keys()) {
+        try { authorize(ref); }
+        catch (error) { if (error.code === 'reference-out-of-scope') continue; throw error; }
+        const observed = await adapter.readPull(ref);
+        const identity = workIdentity(ref);
+        if (observed?.number !== identity.number || observed?.base?.repo?.full_name?.toLowerCase() !== identity.repository ||
+            observed?.body !== pulls.get(ref).body) changed.push({ code: 'context-source-stale',
+          message: `${ref}: PR identity or body used for assignment classification changed during the assessment.` });
       }
       const seen = new Set();
       for (const [serialized, original] of sourceCache) {
@@ -439,6 +498,8 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     };
     result.packet = await buildReviewPacket({ roots: [...new Map(normalizedRoots.map((ref) => [key(ref), ref])).values()], load: loadPacketSource, maxInlineBytes: budget, cursor,
       expand: expand.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref), envelope: result });
+    const staleSources = await trace.recheckWorkSources();
+    if (staleSources.length) fail('context-source-stale', 'Issue or comment sources changed during inspection.', staleSources);
     await trace.recheckAcquisition();
   } catch (error) {
     result.status = 'unavailable';

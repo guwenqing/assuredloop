@@ -16,6 +16,7 @@ import {
   firstPullWork,
   issueBody,
   issueRecord,
+  categoryMapping,
   issueSnapshot,
   issueWork,
   noSpecIssueRecord,
@@ -158,6 +159,7 @@ function handoffInputs(overrides = {}) {
   const workResolver = makeWorkResolver();
   return {
     work: issueWork,
+    categoryMapping,
     issue: issueSnapshot(),
     pulls: [firstPull, secondPull],
     evidence: [
@@ -592,7 +594,7 @@ test('planning may retain a future PlanRef while handoff reports its unavailable
   const planningResolver = makeSourceResolver({ missing: ['openspec/changes/future/tasks.md'] });
   const planning = await module.checkWorkRecords({
     ...handoffInputs({
-      issue: issueSnapshot({ body: bodyFor(futureRecord) }),
+      issue: issueSnapshot({ body: bodyFor(futureRecord), labels: [{ name: 'type:architecture-task' }] }),
       pulls: [],
       evidence: [],
     }),
@@ -606,7 +608,7 @@ test('planning may retain a future PlanRef while handoff reports its unavailable
   const handoffResolver = makeSourceResolver({ missing: ['openspec/changes/future/tasks.md'] });
   const handoff = await module.checkWorkRecords({
     ...handoffInputs({
-      issue: issueSnapshot({ body: bodyFor(futureRecord) }),
+      issue: issueSnapshot({ body: bodyFor(futureRecord), labels: [{ name: 'type:architecture-task' }] }),
       pulls: [],
       evidence: [],
     }),
@@ -791,7 +793,8 @@ test('research completion uses findings, limits, and review without inventing an
   });
   const result = await module.checkWorkRecords({
     work: workRef(35),
-    issue: issueSnapshot({ number: 35, body: researchBody, state: 'closed', state_reason: 'completed' }),
+    categoryMapping,
+    issue: issueSnapshot({ number: 35, body: researchBody, labels: [{ name: 'type:spike' }], state: 'closed', state_reason: 'completed' }),
     pulls: [],
     evidence: [evidenceEntry(researchRecord, { repository, comment_id: 405 })],
     phase: 'closeout',
@@ -811,6 +814,7 @@ test('cancellation is non-delivery and retains the prose explanation for semanti
   const cancelledRecord = clone(noSpecIssueRecord);
   const result = await module.checkWorkRecords({
     work: issueWork,
+    categoryMapping,
     issue: issueSnapshot({
       body: cancellationIssueBody,
       state: 'closed',
@@ -828,6 +832,7 @@ test('cancellation is non-delivery and retains the prose explanation for semanti
 
   const missingExplanation = await module.checkWorkRecords({
     work: issueWork,
+    categoryMapping,
     issue: issueSnapshot({
       body: bodyFor(cancelledRecord, { assignment: '', plan: '' }),
       state: 'closed',
@@ -880,7 +885,8 @@ test('an open closeout Issue and its own open PR are allowed during pre-merge ha
   });
   const result = await module.checkWorkRecords({
     work: workRef(70),
-    issue: issueSnapshot({ number: 70, body: closeoutBody, state: 'open' }),
+    categoryMapping,
+    issue: issueSnapshot({ number: 70, body: closeoutBody, labels: [{ name: 'type:architecture-task' }], state: 'open' }),
     pulls: [ownPull],
     evidence: [],
     phase: 'handoff',

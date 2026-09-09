@@ -58,6 +58,7 @@ export function makeReviewConfig(policyRevision, { mutate } = {}) {
         type: {
           request: 'type:request',
           epic: 'type:epic',
+          'architecture-task': 'type:architecture-task',
           task: 'type:task',
           bug: 'type:bug',
           spike: 'type:spike',
@@ -142,6 +143,7 @@ export async function makeReviewKindCliFixture(t) {
       body: replaceEvidenceModel(entry.body),
     })));
   }
+  scenario.records['issues/comments/101'].body = replaceEvidenceModel(scenario.records['issues/comments/101'].body);
   await writeFile(scenarioPath, `${JSON.stringify(scenario)}\n`);
   return fixture;
 }

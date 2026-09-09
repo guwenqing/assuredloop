@@ -107,6 +107,7 @@ function configFor(revision, metadata, {
         type: {
           request: 'type:request',
           epic: 'type:epic',
+          'architecture-task': 'type:architecture-task',
           task: 'type:task',
           bug: 'type:bug',
           spike: 'type:spike',
@@ -159,7 +160,7 @@ function pullRecord(revision, issues, items) {
   };
 }
 
-function evidenceRecord(revision, head, pr, baseSha, configDigest, policyRevision = revision, reviewerModel = 'gpt-6-astra') {
+function evidenceRecord(metadata, revision, head, pr, baseSha, configDigest, policyRevision = revision, reviewerModel = 'gpt-6-astra') {
   return {
     head,
     scope: pr === closeoutPull
@@ -174,16 +175,7 @@ function evidenceRecord(revision, head, pr, baseSha, configDigest, policyRevisio
     base_ref: 'main',
     base_sha: baseSha,
     policy_ref: repoRef(policyRevision, policyPath, 'closeout-policy'),
-    contract_package: packageBinding({
-      name: 'assuredloop-base',
-      version: '0.1.0',
-      source_ref: {
-        repository: 'guwenqing/assuredloop-base',
-        revision: '530c6fc4d0e0caeb715f0da9a22cc933ecd27a93',
-        path: 'openspec/changes/establish-project-workflow/specs',
-      },
-      contracts_path: 'contracts',
-    }),
+    contract_package: packageBinding(metadata),
     config_digest: configDigest,
     activation_digest: null,
     policy_mode: 'bootstrap',
@@ -339,7 +331,7 @@ export async function makeCloseoutFixture(t, options = {}) {
 
   const prerequisiteBaseRevision = historicalReview ? historicalPolicyRevision : baseRevision;
   const prerequisiteEvidenceDigest = historicalDigestMismatch ? '0'.repeat(64) : (historicalReview ? historicalConfigDigest : configDigest);
-  const prerequisiteEvidence = evidenceRecord(prerequisiteBaseRevision, prerequisiteHead, prerequisitePull,
+  const prerequisiteEvidence = evidenceRecord(metadata, prerequisiteBaseRevision, prerequisiteHead, prerequisitePull,
     prerequisiteBaseRevision, prerequisiteEvidenceDigest, initialRevision);
   const prerequisiteEvidenceBody = JSON.stringify(prerequisiteEvidence, null, 2);
   const archive = options.archive === true;
@@ -375,7 +367,7 @@ export async function makeCloseoutFixture(t, options = {}) {
   if (options.syncVariant === 'missing-delta') await removeValue(target.root, deltaPath);
   if (options.syncVariant === 'missing-manifest') await removeValue(target.root, manifestPath);
   const candidateRevision = await commit(target.root, 'prepare closeout candidate');
-  const closeoutEvidence = evidenceRecord(baseRevision, candidateRevision, closeoutPull, baseRevision, configDigest, initialRevision);
+  const closeoutEvidence = evidenceRecord(metadata, baseRevision, candidateRevision, closeoutPull, baseRevision, configDigest, initialRevision);
   const closeoutEvidenceBody = JSON.stringify(closeoutEvidence, null, 2);
 
   let remoteDestinationRevision = baseRevision;
@@ -385,7 +377,7 @@ export async function makeCloseoutFixture(t, options = {}) {
   }
 
   const destinationRevision = (await git(target.root, ['rev-parse', 'HEAD'])).stdout.trim();
-  const staleEvidence = evidenceRecord(baseRevision, prerequisiteHead, prerequisitePull, baseRevision, configDigest, initialRevision);
+  const staleEvidence = evidenceRecord(metadata, baseRevision, prerequisiteHead, prerequisitePull, baseRevision, configDigest, initialRevision);
   const staleEvidenceBody = JSON.stringify(staleEvidence, null, 2);
   const driftEvidenceBody = JSON.stringify({ ...staleEvidence, scope: 'Changed after the manifest was captured.' }, null, 2);
   const drift = options.fixityDrift;
@@ -396,6 +388,7 @@ export async function makeCloseoutFixture(t, options = {}) {
       [`issues/${closeoutIssue.split('#')[1]}`]: {
         number: 90,
         title: 'Owner-led closeout',
+        labels: [{ name: config.repository.labels.type['architecture-task'] }],
         body: bodyFor(issueRecord(baseRevision, { missingPrerequisite: options.missingPrerequisite })),
         state: 'open',
         state_reason: null,
@@ -404,6 +397,7 @@ export async function makeCloseoutFixture(t, options = {}) {
       [`issues/${prerequisiteIssue.split('#')[1]}`]: {
         number: 80,
         title: 'Delivered prerequisite',
+        labels: [{ name: config.repository.labels.type.task }],
         body: bodyFor(prerequisiteIssueRecord(prerequisiteBaseRevision)),
         state: 'closed',
         state_reason: 'completed',
@@ -420,6 +414,7 @@ export async function makeCloseoutFixture(t, options = {}) {
       [`issues/82`]: {
         number: 82,
         title: 'Native child context only',
+        labels: [{ name: config.repository.labels.type.task }],
         body: bodyFor(nativeChildIssueRecord(baseRevision), 'A parent/sub-Issue child retained for closeout context only.'),
         state: 'open',
         state_reason: null,

@@ -26,7 +26,23 @@ export function validateRecord(kind, value) {
   }
   const validate = validators.get(kind);
   const valid = validate(value);
-  return { valid, errors: valid ? [] : structuredClone(validate.errors) };
+  const errors = valid ? [] : structuredClone(validate.errors);
+  if (kind === 'config') {
+    const labels = value?.repository?.labels;
+    if (labels && Object.hasOwn(labels, 'discipline')) errors.push({
+      instancePath: '/repository/labels/discipline',
+      message: 'Remove repository.labels.discipline and migrate the six repository.labels.type mappings, including architecture-task; reconcile Issue categories against their activities before removing obsolete labels.',
+    });
+    const seen = new Map();
+    for (const [category, label] of Object.entries(labels?.type || {})) {
+      if (typeof label !== 'string') continue;
+      const normalized = label.toLowerCase();
+      if (seen.has(normalized)) errors.push({ instancePath: `/repository/labels/type/${category}`,
+        message: `Category label conflicts with ${seen.get(normalized)} under case-insensitive matching.` });
+      seen.set(normalized, category);
+    }
+  }
+  return { valid: errors.length === 0, errors };
 }
 
 export function collectRecordReferences(value) {

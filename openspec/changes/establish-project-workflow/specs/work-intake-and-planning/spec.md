@@ -6,7 +6,7 @@ Turn incoming requests into proportionate, explicitly owned work without treatin
 
 ### Requirement: Preserve and triage the incoming request
 
-The workflow SHALL accept a rough request as a GitHub Issue and guide initial exploration before assigning an execution route. Triage SHALL preserve the original request, distinguish confirmed context from assumptions and open questions, record the routing rationale, and identify the next responsible owner. A route, work selector or discipline label SHALL NOT imply implementation authorization.
+The workflow SHALL accept a rough request as a GitHub Issue and guide initial exploration before assigning an execution route. Triage SHALL preserve the original request, distinguish confirmed context from assumptions and open questions, record the routing rationale, and identify the next responsible owner. A route, work selector or category label SHALL NOT imply implementation authorization.
 
 #### Scenario: Request is incomplete
 - **WHEN** the incoming Issue omits information needed to choose a responsible next step
@@ -21,6 +21,8 @@ The workflow SHALL accept a rough request as a GitHub Issue and guide initial ex
 The workflow SHALL route work requiring new or materially changed agreement through deeper exploration and an OpenSpec Proposal. Planning/design work and implementation work SHALL use distinct, independently assignable Issues with identified owners, inputs and expected outputs. Planning SHALL NOT authorize business-code edits. Task decomposition SHALL connect implementation work to relevant requirements and decisions, not only to an Epic parent.
 
 For Epic work, an explicit planning Task SHALL remain separate from the parent request's overall delivery and cover continuous exploration, Proposal, Specs, Design, decomposition and handoff. Artifact stages, additional PRs and review rounds SHALL NOT by themselves require new Issues or complete that Task. Further splits SHALL identify meaningful separately assignable outcomes or responsibilities and their relationship to existing work, with the rationale available for review.
+
+Planning/design/decomposition and owner-led aggregate closeout SHALL use the formal Architecture Task category, with `plan` and `closeout` guidance respectively. Ordinary delivery SHALL remain Task work and restoring accepted behavior SHALL remain Bug work. Classification SHALL describe the assigned outcome rather than the person's role or whether the edited files are code or documentation. These types SHALL follow the [category/activity contract](../github-work-traceability/spec.md#requirement-work-categories-and-activities-are-formally-consistent), not an optional display distinction.
 
 #### Scenario: Request needs a new capability
 - **WHEN** triage identifies clear work that changes accepted requirements

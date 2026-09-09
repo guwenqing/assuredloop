@@ -20,7 +20,7 @@ Authoritative entry in that installation: contracts/work-intake-and-planning/spe
 5. New or materially changed agreement goes to separately owned formal planning. A clear but oversized goal normally needs a bounded Spike to recommend decomposition; explain any alternative. Research does not automatically create the recommended requests.
 6. Additions to an active change go to its responsible planning owner for scope/impact assessment and plan reconciliation. Necessary bounded refinements can remain inside the accepted outcome; material expansion needs the actual owner/human decision. Do not create a ticket to silently enlarge the agreement.
 
-Use the consumer's configured category labels. JSON activity, not a discipline label or job title, selects guidance. Missing label provisioning returns to the adopting owner or authorized agent; do not silently change GitHub settings.
+Use the consumer's configured category labels and the category/activity contract in templates/README.md. Request/triage describes intake; Architecture Task/plan describes formal planning, Task/deliver implementation, Bug/deliver restoration, and Spike/research uncertainty reduction. Epic is a container with no executable activity. JSON activity selects guidance; labels describe the work, not a job title. Missing label provisioning returns to the adopting owner or authorized agent; do not silently change GitHub settings.
 
 ## Record and hand off
 

@@ -14,6 +14,27 @@ Keep GitHub parent/sub-issue membership separate from depends_on. Membership rec
 
 Resolve every required SOURCE scaffold slot before presenting the output as complete. Missing bindings, unresolved refs or an unjustified exemption must remain explicit blockers or draft limitations. Do not mistake brace text inside supplied quoted evidence for a new slot, or use a reusable-example declaration to exempt actual Workflow context. Validate the actual work object, not the illustrative template. The Skill example-marker convention applies only to authored reusable guidance.
 
+## Classify the assigned work
+
+Use the consumer's six `repository.labels.type` mappings. Each must be nonempty and distinct under case-insensitive label matching. Their keys and default names are `request`/`type:request`, `epic`/`type:epic`, `architecture-task`/`type:architecture-task`, `task`/`type:task`, `bug`/`type:bug` and `spike`/`type:spike`. Different consumer label names are supported; unrelated labels do not count as categories.
+
+| Category | Compatible activity |
+| --- | --- |
+| Request | `triage` |
+| Epic | None; a container for separately assigned work |
+| Architecture Task | `plan`, `closeout` |
+| Task | `adopt`, `deliver`, `review` |
+| Bug | `deliver` |
+| Spike | `research` |
+
+Require exactly one configured category for a routed Issue and check its activity against this contract. JSON `activity` remains the sole guidance selector. A rough incoming Request may omit category/context before triage; a non-executable Epic may omit context. Neither exception allows Architecture Task, Task, Bug or Spike to omit context, or an Epic to carry an executable activity. Missing, conflicting or incompatible declarations are errors.
+
+A known explicit PR work assignment requires Workflow context; a missing Issue-side backlink does not restore an exception. Assign an Epic's contribution to its work child. An unrelated prose mention, or a PR whose authoritative `issues` list names only other work, does not establish an assignment to this Issue.
+
+Classify the outcome, not the assignee or file extension: a docs-only implementation is Task/deliver; formal design is Architecture Task/plan; a separately assigned review is Task/review. An ordinary review comment needs no separate Issue. A valid pair is a declaration for semantic review, not proof that it truthfully describes the work.
+
+For creation or reclassification, provision the configured label through the adopting owner or explicitly authorized agent, resolve the current work context, and verify the resulting label/activity pair. The former `repository.labels.discipline` mapping is invalid; remove it and reconcile the six category mappings through the [migration procedure](category-migration.md). Read-only initialization, inspection and checks do not migrate records or create labels.
+
 ## State, scope and evidence
 
 GitHub holds assignment, progress, findings and delivery status; native OpenSpec files hold formal scope and task definitions. Reference numbered items and fixed requirement/decision refs rather than copying task bodies. Use qualified work refs and structured RepoRef/PlanRef fields, not machine authority inferred from arbitrary URLs.

@@ -4,6 +4,7 @@ import { workIdentity } from './read-adapter.js';
 import { loadNativeRuntime } from './native-runtime.js';
 import { checkAnchor } from './policy.js';
 import { checkTaskAssociations } from './task-associations.js';
+import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
 export { checkTaskAssociations } from './task-associations.js';
 
 export async function parseWorkRecord({ body, kind, allowMissing = false } = {}) {
@@ -24,7 +25,7 @@ export async function parseWorkRecord({ body, kind, allowMissing = false } = {})
 const planKey = (ref, item) => `${ref.repository.toLowerCase()}:${ref.path}#${item}`;
 const plans = (record) => new Set((record?.plan_items || []).flatMap((ref) => ref.items.map((item) => planKey(ref, item))));
 
-export async function checkWorkRecords({ work, issue, pulls = [], evidence = [], phase = 'handoff', resolveRef, resolveWork, _stack = [] } = {}) {
+export async function checkWorkRecords({ work, issue, pulls = [], evidence = [], classification, categoryMapping, phase = 'handoff', resolveRef, resolveWork, _stack = [] } = {}) {
   const result = { status: 'valid', findings: [], context: { work, phase, issue: structuredClone(issue), pulls: structuredClone(pulls), evidence: structuredClone(evidence), references: [], prerequisites: [] } };
   const add = (code, message, severity = 'error', details) => {
     result.findings.push({ code, message, severity, details });
@@ -38,7 +39,12 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
   if (issue?.number !== identity.number || (issue.repository_url && issue.repository_url.toLowerCase() !== `https://api.github.com/repos/${identity.repository}`)) {
     add('work-identity-invalid', 'Issue identity differs from the explicitly selected work.'); return result;
   }
-  const parsed = await parseWorkRecord({ body: issue.body, kind: 'issue' });
+  const parsed = await parseWorkRecord({ body: issue.body ?? '', kind: 'issue' });
+  classification ??= classifyIssue(issue, parsed.record, categoryMapping);
+  classification = withExecutionAssignments(classification, await mappedPullAssignments(work, pulls));
+  result.context.classification = structuredClone(classification);
+  for (const finding of classification.discrepancies) add(finding.code, finding.message, finding.severity, finding.details);
+  if (classification.exception && parsed.findings.every((finding) => finding.code === 'record-context-missing')) return result;
   for (const finding of parsed.findings) add(finding.code, finding.message, 'error', finding.details);
   if (!parsed.record || parsed.findings.length) return result;
   const record = parsed.record;
@@ -157,7 +163,9 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
         if (bundle?.issue?.state !== 'closed' || bundle.issue.state_reason !== 'completed') {
           add('prerequisite-undelivered', 'Explicit prerequisite is open, cancelled or not completed.', 'error', { dependency }); continue;
         }
-        const checked = await checkWorkRecords({ work: dependency, ...bundle, phase: 'closeout', resolveRef, resolveWork, _stack: [..._stack, work] });
+        const checked = await checkWorkRecords({ work: dependency,
+          ...(workIdentity(dependency).repository === identity.repository ? { categoryMapping } : {}),
+          ...bundle, phase: 'closeout', resolveRef, resolveWork, _stack: [..._stack, work] });
         if (checked.status !== 'valid') add('prerequisite-unverified', 'Prerequisite delivery lacks required formal evidence.', checked.status === 'unavailable' ? 'unavailable' : 'error', { dependency, findings: checked.findings });
       } catch (error) { add('prerequisite-unavailable', error.message, 'unavailable', { dependency, cause: error.code }); }
     }

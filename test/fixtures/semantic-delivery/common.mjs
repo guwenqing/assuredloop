@@ -1,3 +1,5 @@
+import { categoryMapping } from '../work-records/helpers.mjs';
+
 export const repository = 'example/consumer';
 export const frameworkRepository = 'example/framework';
 export const revision = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -104,6 +106,7 @@ export function makeCase({ issueNumber, pullNumber, issueAssignment, issuePlan }
   const issue = {
     number: issueNumber,
     title: 'Delivery boundary assessment',
+    labels: [{ name: 'type:task' }],
     body: bodyFor(issueRecord, issueAssignment, issuePlan),
     state: 'closed',
     state_reason: 'completed',
@@ -137,6 +140,7 @@ export function makeCase({ issueNumber, pullNumber, issueAssignment, issuePlan }
   };
   return {
     work,
+    categoryMapping,
     issue,
     pulls: [pull],
     evidence: [{ ref: commentRef(700 + issueNumber), record: evidenceRecord }],

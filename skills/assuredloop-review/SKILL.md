@@ -11,6 +11,8 @@ Resolve the selected installation through the package README. Read the scoped Is
 
 Authoritative entry in that installation: contracts/review-and-validation/spec.md. Shared record/format instructions are in templates/README.md.
 
+A separately assigned review uses Task/review; ordinary review comments do not require their own Issue. Apply the consumer category/activity contract in templates/README.md; classification describes the outcome, not the assignee.
+
 ## Establish independent and applicable coverage
 
 Find matching prior reviews before repeating work. Reuse coverage only when its exact subject, scope and relevant head/base/policy/work context still apply; explain reuse and assess changed parts in the original full scope. Expand omitted references when needed. Missing, outside-depth and over-budget context are different conditions; none proves irrelevance.
