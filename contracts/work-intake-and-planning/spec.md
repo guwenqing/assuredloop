@@ -1,8 +1,10 @@
+# Work Intake and Planning Specification
+
 ## Purpose
 
 Turn incoming requests into proportionate, explicitly owned work without treating uncertainty as permission to implement. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-work-is-traceable-and-proportionate). Its requirements and scenarios below define L3 behavior.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Preserve and triage the incoming request
 

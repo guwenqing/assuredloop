@@ -1,8 +1,10 @@
+# Review and Validation Specification
+
 ## Purpose
 
 Use formal checks to expose missing or inconsistent evidence and give independent reviewers a focused basis for judgment. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-shared-facts-support-human-and-machine-judgment). Its requirements and scenarios below define L3 behavior.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Separate mechanical findings from semantic judgment
 

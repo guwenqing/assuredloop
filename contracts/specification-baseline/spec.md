@@ -1,8 +1,10 @@
+# Specification Baseline Specification
+
 ## Purpose
 
 Keep a readable current requirement set in addition to the history of individual changes. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-shared-facts-support-human-and-machine-judgment). Its requirements and scenarios below define L3 behavior.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Keep current requirements distinct from change history
 

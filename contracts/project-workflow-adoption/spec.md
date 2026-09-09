@@ -1,8 +1,10 @@
+# Project Workflow Adoption Specification
+
 ## Purpose
 
 Let an executor adopt and use the workflow through practical work-category guidance while reusing OpenSpec. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-reuse-supports-governed-evolution). Its requirements and scenarios below define L3 behavior.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Reuse native workflow behavior and extend demonstrated gaps
 

@@ -1,8 +1,10 @@
+# Workflow Self-Evolution Specification
+
 ## Purpose
 
 Make the minimum workflow govern later changes to itself after an explicit, verified activation. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-reuse-supports-governed-evolution). Its requirements and scenarios below define L3 behavior.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Bootstrap has an explicit activation boundary
 
