@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "state": "active",
+  "policy_ref": {
+    "repository": "guwenqing/assuredloop-base",
+    "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
+    "path": "openspec/changes/establish-project-workflow/specs/review-and-validation/spec.md"
+  },
+  "contract_package": {
+    "name": "assuredloop-base",
+    "version": "0.1.0",
+    "integrity": "sha512-HbLmHKGVMm3p0R6CTrkvZi16jYB+VGHst5f06Qr5KnWMTqVQ3awvBxaPgYnWjgNvfuIpKG+825eD7pp1bwBmkw==",
+    "source_ref": {
+      "repository": "guwenqing/assuredloop-base",
+      "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
+      "path": "openspec/changes/establish-project-workflow/specs"
+    },
+    "contracts_path": "contracts"
+  },
+  "activated_at": "2026-09-09T12:26:20Z",
+  "authorized_by": "Wenqing",
+  "evidence": [
+    {
+      "repository": "guwenqing/assuredloop-base",
+      "comment_id": 5601168268
+    },
+    {
+      "repository": "guwenqing/assuredloop-base",
+      "revision": "d0acea19dbb0559851c01f53ca561d9ac2a03ee1",
+      "path": ".assuredloop/config.json"
+    },
+    {
+      "repository": "guwenqing/assuredloop-base",
+      "comment_id": 5601770950
+    },
+    {
+      "repository": "guwenqing/assuredloop-base",
+      "comment_id": 5597828925
+    }
+  ]
+}
