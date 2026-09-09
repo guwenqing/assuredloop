@@ -1,0 +1,9 @@
+{
+  "source_ref": {
+    "repository": "guwenqing/assuredloop-base",
+    "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
+    "path": "test/fixtures/records/config-bootstrap-comment.json"
+  },
+  "content_sha256": "a484162d4163f3080866cfdafe61a94943a0d7f0ebd4e6ff8f5aed9b49dffc24",
+  "purpose": "Exact immutable legacy-shaped test bytes, not an actual activated consumer record. The adapter supplies them in a simulated historical consumer snapshot; their fields and original digest are never migrated."
+}
