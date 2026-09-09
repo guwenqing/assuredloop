@@ -1,6 +1,8 @@
 # AssuredLoop Base
 
-Local workflow extensions built on OpenSpec. The package provides record contracts, explicit project initialization, work-category guidance and a private, packable Node.js CLI. It does not activate a consumer workflow or install CI/review providers. The accepted change remains under `openspec/changes/establish-project-workflow/`; overall acceptance and closeout are separate work.
+Local workflow extensions built on OpenSpec. The package provides record contracts, explicit project initialization, work-category guidance and a private, packable Node.js CLI. It does not activate a consumer workflow or install CI/review providers.
+
+This repository's current product specification starts at [Workflow Goals](openspec/specs/workflow-goals/spec.md), with linked capability and behavior requirements. `contracts/` contains generated versioned copies for installed consumers, not a second authored specification. Active changes remain under `openspec/changes/`; synchronization alone does not establish overall acceptance or completed closeout.
 
 ## Local use
 
