@@ -29,7 +29,7 @@ Use the consumer's six `repository.labels.type` mappings. Each must be nonempty 
 
 Require exactly one configured category for a routed Issue and check its activity against this contract. JSON `activity` remains the sole guidance selector. A rough incoming Request may omit category/context before triage; a non-executable Epic may omit context. Neither exception allows Architecture Task, Task, Bug or Spike to omit context, or an Epic to carry an executable activity. Missing, conflicting or incompatible declarations are errors.
 
-A known explicit PR work assignment requires Workflow context; a missing Issue-side backlink does not restore an exception. Assign an Epic's contribution to its work child. An unrelated prose mention or non-reciprocal PR mapping remains context, not an execution assignment.
+A known explicit PR work assignment requires Workflow context; a missing Issue-side backlink does not restore an exception. Assign an Epic's contribution to its work child. An unrelated prose mention, or a PR whose authoritative `issues` list names only other work, does not establish an assignment to this Issue.
 
 Classify the outcome, not the assignee or file extension: a docs-only implementation is Task/deliver; formal design is Architecture Task/plan; a separately assigned review is Task/review. An ordinary review comment needs no separate Issue. A valid pair is a declaration for semantic review, not proof that it truthfully describes the work.
 
