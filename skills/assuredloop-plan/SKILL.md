@@ -11,11 +11,13 @@ Resolve the selected installation through the package README. Read the source re
 
 Authoritative entry in that installation: contracts/work-intake-and-planning/spec.md. Shared record/format instructions are in templates/README.md.
 
+Use Architecture Task/plan under the category/activity contract in templates/README.md. The parent Epic remains a non-executable container; implementation and standalone review use their own compatible categories/activities.
+
 ## Develop one coherent plan
 
 Use native OpenSpec exploration, status/instructions and Proposal/Spec/Design/task operations where they already fit. Do not fork its parser or create another requirements database. Reuse an applicable active change; later work must not edit archived plans merely to register a new ticket.
 
-Keep the parent Epic's overall delivery distinct from the planning Task. The planning Task normally covers continuing exploration, Proposal, Specs, Design, decomposition and handoff, even across several PRs or review rounds. Proposal merge alone does not finish it while Design or handoff is still owed. Split only for a meaningful independently assignable outcome or responsibility, with a recorded rationale.
+Keep the parent Epic's overall delivery distinct from the planning Architecture Task. The planning Architecture Task normally covers continuing exploration, Proposal, Specs, Design, decomposition and handoff, even across several PRs or review rounds. Proposal merge alone does not finish it while Design or handoff is still owed. Split only for a meaningful independently assignable outcome or responsibility, with a recorded rationale.
 
 State the accepted outcome, constraints and deferred work. Keep goals, capabilities and concrete behavior readable through native requirements/scenarios and ordinary references; do not invent a layer engine. Review Proposal commitments against Specs, and Specs against Design/tasks for omissions, contradictions and unsupported additions. New or materially changed Proposals need the required human acceptance before their changes merge; file existence and structural validation are not that acceptance.
 
@@ -31,4 +33,4 @@ Use native parent/sub-issue associations for ownership relationships. Add depend
 
 Run native strict validation and applicable link/artifact checks. Obtain independent full-scope review under the accepted policy, including the task-to-Issue map, coverage, dependency cycles, owner/readiness clarity and scope boundaries. Use templates/work-pr.md and review-request.md; dispose findings and refresh stale context before authorized delivery.
 
-A reviewed, accepted planning handoff can complete the planning Task. Leave the parent open for implementation and closeout. Checked candidate contributions do not predeclare their own merge, Issue closure or overall acceptance. Send the next owner the fixed plan/basis, ordered or dependency-scoped assignment, actual readiness and pending decisions.
+A reviewed, accepted planning handoff can complete the planning Architecture Task. Leave the parent open for implementation and closeout. Checked candidate contributions do not predeclare their own merge, Issue closure or overall acceptance. Send the next owner the fixed plan/basis, ordered or dependency-scoped assignment, actual readiness and pending decisions.

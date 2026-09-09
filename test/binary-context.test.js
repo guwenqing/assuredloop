@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { categoryMapping } from './fixtures/work-records/helpers.mjs';
+
 import { createTrace } from '../src/trace.js';
 import { buildReviewPacket } from '../src/review-packet.js';
 import { checkWorkRecords } from '../src/work-records.js';
@@ -71,10 +73,11 @@ test('generic basis references verify raw binary acquisition while retaining sem
     activity: 'research',
     request: work,
     basis: [fixture.binaryRef],
-  });
+  }, 42, [{ name: 'type:spike' }]);
 
   const result = await checkWorkRecords({
     work,
+    categoryMapping,
     issue,
     phase: 'handoff',
     resolveRef: trace.load,
@@ -103,6 +106,7 @@ test('PlanRef binary sources stay unavailable and never fabricate native task pa
 
   const result = await checkWorkRecords({
     work,
+    categoryMapping,
     issue,
     phase: 'handoff',
     resolveRef: trace.load,
@@ -126,10 +130,11 @@ test('heading anchors require text and report binary acquisition as unavailable'
     activity: 'research',
     request: work,
     basis: [fixture.anchoredBinaryRef],
-  });
+  }, 42, [{ name: 'type:spike' }]);
 
   const result = await checkWorkRecords({
     work,
+    categoryMapping,
     issue,
     phase: 'handoff',
     resolveRef: trace.load,

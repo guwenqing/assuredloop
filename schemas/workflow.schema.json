@@ -316,11 +316,11 @@
             },
             "labels": {
               "type": "object",
-              "description": "Configured category and optional display labels.",
+              "description": "Configured work categories; labels do not replace the activity selector.",
               "properties": {
                 "type": {
                   "type": "object",
-                  "description": "Category label mapping.",
+                  "description": "All six category labels are required and case-insensitively distinct.",
                   "properties": {
                     "request": {
                       "$ref": "#/$defs/text",
@@ -329,6 +329,10 @@
                     "epic": {
                       "$ref": "#/$defs/text",
                       "default": "type:epic"
+                    },
+                    "architecture-task": {
+                      "$ref": "#/$defs/text",
+                      "default": "type:architecture-task"
                     },
                     "task": {
                       "$ref": "#/$defs/text",
@@ -346,39 +350,11 @@
                   "required": [
                     "request",
                     "epic",
+                    "architecture-task",
                     "task",
                     "bug",
                     "spike"
                   ],
-                  "additionalProperties": false
-                },
-                "discipline": {
-                  "type": "object",
-                  "description": "Display labels do not select guidance.",
-                  "properties": {
-                    "adopt": {
-                      "$ref": "#/$defs/text"
-                    },
-                    "triage": {
-                      "$ref": "#/$defs/text"
-                    },
-                    "plan": {
-                      "$ref": "#/$defs/text"
-                    },
-                    "research": {
-                      "$ref": "#/$defs/text"
-                    },
-                    "deliver": {
-                      "$ref": "#/$defs/text"
-                    },
-                    "review": {
-                      "$ref": "#/$defs/text"
-                    },
-                    "closeout": {
-                      "$ref": "#/$defs/text"
-                    }
-                  },
-                  "required": [],
                   "additionalProperties": false
                 }
               },

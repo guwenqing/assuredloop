@@ -77,6 +77,7 @@ function configFor(revision, metadata, options = {}) {
         type: {
           request: 'type:request',
           epic: 'type:epic',
+          'architecture-task': 'type:architecture-task',
           task: 'type:task',
           bug: 'type:bug',
           spike: 'type:spike',
@@ -138,10 +139,11 @@ async function makeGhFixture(t, scenario) {
   };
 }
 
-function issueSnapshot(number, body, { state = 'open', stateReason = null } = {}) {
+function issueSnapshot(number, body, { state = 'open', stateReason = null, labels = [] } = {}) {
   return {
     number,
     title: `Non-PR fixture #${number}`,
+    labels,
     body,
     state,
     state_reason: stateReason,
@@ -221,12 +223,12 @@ export async function makeNonPrFixture(t, options = {}) {
     'issues/62/timeline': [[]],
     'issues/63/timeline': [[]],
   };
-  addIssueRecords(records, 60, bodyFor(researchRecord, 'A bounded research spike with explicit limitations.'), { state: 'closed', stateReason: 'completed' });
+  addIssueRecords(records, 60, bodyFor(researchRecord, 'A bounded research spike with explicit limitations.'), { state: 'closed', stateReason: 'completed', labels: [{ name: validConfig.repository.labels.type.spike }] });
   addIssueRecords(records, 61, bodyFor(cancellationRecord, options.cancelRationale === false
     ? 'This work was cancelled before implementation.'
-    : 'Cancellation rationale: superseded by the owner-selected current-context path.'), { state: 'closed', stateReason: 'not_planned' });
+    : 'Cancellation rationale: superseded by the owner-selected current-context path.'), { state: 'closed', stateReason: 'not_planned', labels: [{ name: validConfig.repository.labels.type.task }] });
   addIssueRecords(records, 62, bodyFor(null, 'A rough incoming request awaiting triage.'), { state: 'open', stateReason: null });
-  addIssueRecords(records, 63, bodyFor(noSpecRecord, 'A closed no-Spec implementation request.'), { state: 'closed', stateReason: 'completed' });
+  addIssueRecords(records, 63, bodyFor(noSpecRecord, 'A closed no-Spec implementation request.'), { state: 'closed', stateReason: 'completed', labels: [{ name: validConfig.repository.labels.type.task }] });
   addComment(records, 60, 601, JSON.stringify(researchEvidence, null, 2));
   addComment(records, 61, 611, JSON.stringify(cancellationEvidence, null, 2));
   records['issues/62/comments'] = [[]];

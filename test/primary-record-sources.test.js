@@ -150,15 +150,24 @@ test('a configured Task without formal context is distinct from an unclassified 
   const routedFixture = await makeRoutedTaskMissingFixture(t);
   const routedResult = await runCli(['check', '--target', routedFixture.root, '--work', routedFixture.work], routedFixture.env);
   const routed = outputOf(routedResult);
-  assert.notEqual(routed.status, 'pass');
+  assert.notEqual(routedResult.exitCode, 0);
+  assert.equal(routed.status, 'invalid');
   assert.match(findingText(routed), /record-context-missing|record-context-required/);
   assert.doesNotMatch(findingText(routed), /rough-intake-context/);
-  assert.deepEqual(routed.records?.[0]?.context?.issue?.labels, [{ name: routedFixture.taskLabel }]);
-  assert.equal(routed.records?.[0]?.context?.issue?.body, routedFixture.body);
-  const routedSource = invalidSourcesOf(routed).find((source) => sourceRefMatches(source.ref, routedFixture.work));
-  assert.ok(routedSource, 'a routed Task missing its required formal context retains its source');
-  assert.equal(routedSource.body, routedFixture.body);
-  assert.ok(routedSource.findings?.some((finding) => finding.code === 'record-context-missing'));
+  const routedRecord = routed.records?.find((record) => record.work === routedFixture.work);
+  assert.ok(routedRecord, 'a routed Task missing its required formal context retains its identified work record');
+  assert.equal(routedRecord.status, 'invalid');
+  assert.equal(routedRecord.context.work, routedFixture.work);
+  const [routedRepository, routedNumber] = routedFixture.work.split('#');
+  assert.equal(routedRecord.context.issue.number, Number(routedNumber));
+  assert.equal(routedRecord.context.issue.repository_url, `https://api.github.com/repos/${routedRepository}`);
+  assert.deepEqual(routedRecord.context.issue.labels, [{ name: routedFixture.taskLabel }]);
+  assert.equal(routedRecord.context.issue.body, routedFixture.body, 'the work record retains the exact raw Issue body');
+  assert.equal(routedRecord.context.classification.category, 'task');
+  assert.equal(routedRecord.context.classification.exception, null);
+  assert.ok(routedRecord.findings.some((finding) => finding.code === 'record-context-missing' && finding.severity === 'error'));
+  assert.ok(routedRecord.context.classification.discrepancies.some((finding) =>
+    finding.code === 'record-context-required' && finding.severity === 'error'));
 
   const roughFixture = await makeRoughRequestFixture(t);
   const roughResult = await runCli(['check', '--target', roughFixture.root, '--work', roughFixture.work], roughFixture.env);

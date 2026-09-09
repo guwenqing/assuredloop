@@ -11,6 +11,8 @@ This work belongs to the explicitly assigned change/Epic closeout owner, with an
 
 Authoritative entry in that installation: contracts/specification-baseline/spec.md. Shared record/format instructions are in templates/README.md.
 
+Assigned aggregate closeout uses Architecture Task/closeout. Apply the consumer category/activity contract in templates/README.md; classification describes the outcome, not the assignee.
+
 ## Establish completeness and authority
 
 Assess every accepted requirement and contribution, including planning and any assigned self-change demonstration. Closed child Issues and checked boxes are inputs, not proof. Return missing/incorrect outcomes to responsible work; material agreement changes need the actual planning/human decision. A typed self-change choice is not evidence that its selected work ran.

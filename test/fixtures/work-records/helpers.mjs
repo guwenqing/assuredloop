@@ -1,3 +1,12 @@
+export const categoryMapping = {
+  request: 'type:request',
+  epic: 'type:epic',
+  'architecture-task': 'type:architecture-task',
+  task: 'type:task',
+  bug: 'type:bug',
+  spike: 'type:spike',
+};
+
 export const repository = 'example/consumer';
 export const frameworkRepository = 'example/framework';
 export const revision = '0123456789abcdef0123456789abcdef01234567';
@@ -218,10 +227,12 @@ export function issueSnapshot({
   state = 'open',
   state_reason = null,
   repositoryName = repository,
+  labels = [{ name: 'type:task' }],
 } = {}) {
   return {
     number,
     title: 'Record lifecycle delivery Task',
+    labels,
     body,
     state,
     state_reason,

@@ -173,6 +173,7 @@ test('reusable Markdown templates are present by work category and defer field a
   const expectedMarkdown = [
     'README.md',
     'agent-instructions.md',
+    'category-migration.md',
     'closeout-summary.md',
     'evidence-comment.md',
     'research-report.md',

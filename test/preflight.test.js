@@ -71,6 +71,7 @@ async function makeGhFixture(t, {
     ? [[
       { name: 'TYPE:REQUEST' },
       { name: 'Type:Epic' },
+      { name: 'TYPE:ARCHITECTURE-TASK' },
       { name: 'type:TASK' },
       { name: 'Type:Bug' },
       { name: 'TYPE:SPIKE' },
@@ -79,6 +80,7 @@ async function makeGhFixture(t, {
   const enterpriseLabels = [[
     { name: 'type:request' },
     { name: 'type:epic' },
+    { name: 'type:architecture-task' },
     { name: 'type:task' },
     { name: 'type:bug' },
     { name: 'type:spike' },
@@ -220,6 +222,7 @@ test('local-only preflight skips gh and reports missing labels without mutation 
       type: {
         request: 'type:request',
         epic: 'type:epic',
+        'architecture-task': 'type:architecture-task',
         task: 'type:task',
         bug: 'type:bug',
         spike: 'type:spike',
@@ -227,7 +230,7 @@ test('local-only preflight skips gh and reports missing labels without mutation 
     }, false), { MOCK_GH_LOG: fixture.log });
   assert.equal(diagnostics.length, 1);
   assert.equal(diagnostics[0].code, 'labels-missing');
-  assert.deepEqual(diagnostics[0].labels, ['type:epic', 'type:bug', 'type:spike']);
+  assert.deepEqual(diagnostics[0].labels, ['type:epic', 'type:architecture-task', 'type:bug', 'type:spike']);
   const commands = (await readFile(fixture.log, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   assert.deepEqual(commands.map((args) => args.slice(0, 2)), [
     ['--version'],
@@ -245,6 +248,7 @@ test('GitHub API reads pin github.com despite an ambient GH_HOST override', asyn
       type: {
         request: 'type:request',
         epic: 'type:epic',
+        'architecture-task': 'type:architecture-task',
         task: 'type:task',
         bug: 'type:bug',
         spike: 'type:spike',
@@ -255,7 +259,7 @@ test('GitHub API reads pin github.com despite an ambient GH_HOST override', asyn
     });
   assert.equal(diagnostics.length, 1);
   assert.equal(diagnostics[0].code, 'labels-missing');
-  assert.deepEqual(diagnostics[0].labels, ['type:epic', 'type:bug', 'type:spike']);
+  assert.deepEqual(diagnostics[0].labels, ['type:epic', 'type:architecture-task', 'type:bug', 'type:spike']);
   const commands = (await readFile(fixture.log, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   const apiCommands = commands.filter((args) => args[0] === 'api');
   assert.equal(apiCommands.length, 2);
@@ -272,6 +276,7 @@ test('GitHub label identity comparison is case-insensitive', async (t) => {
       type: {
         request: 'Type:Request',
         epic: 'TYPE:EPIC',
+        'architecture-task': 'Type:Architecture-Task',
         task: 'Type:Task',
         bug: 'TYPE:BUG',
         spike: 'type:spike',

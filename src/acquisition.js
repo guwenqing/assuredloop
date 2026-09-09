@@ -9,11 +9,16 @@ const tuple = (pull) => [pull?.number, pull?.head?.sha, pull?.base?.sha, pull?.b
 
 export async function establishAcquisition({ targetRoot, work, issue, pull, initialAdapter }) {
   const { repository } = workIdentity(work);
+  function parseConfig(bytes, name) {
+    const config = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+    const validation = validateRecord('config', config);
+    if (!validation.valid || config.repository.name.toLowerCase() !== name) fail('policy-unavailable', 'Current acquisition configuration is invalid.', validation.errors);
+    return config;
+  }
   async function configAt(reader, name, revision) {
     const ref = { repository: name, revision, path: '.assuredloop/config.json' };
     const bytes = await reader.readBlob(ref);
-    const config = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    if (!validateRecord('config', config).valid || config.repository.name.toLowerCase() !== name) fail('policy-unavailable', 'Current acquisition configuration is invalid.');
+    const config = parseConfig(bytes, name);
     return { ref, bytes, config, allowed: new Set([name, ...(config.repository.allowed_reference_repositories || []).map((value) => value.toLowerCase())]) };
   }
   let branch, revision;
@@ -43,12 +48,46 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
   const reader = await makeReader(ceiling);
   let active = { reader, allowed: ceiling };
   const contexts = [];
+  const classifications = new Map();
   const context = { kind: issue.pull_request ? 'pr-destination' : 'repository-default', work, repository, branch, revision,
     config_ref: primary.ref, config_digest: digest(primary.bytes), allowed_repositories: [...ceiling].sort() };
 
   return {
     context, contexts,
-    routedIssueLabels: ['task', 'bug', 'spike'].map((kind) => primary.config.repository.labels?.type?.[kind]).filter((label) => typeof label === 'string'),
+    async classificationConfig(work) {
+      this.authorize(work);
+      const name = workIdentity(work).repository;
+      if (name === repository) return { mapping: primary.config.repository.labels.type,
+        provenance: { repository, branch, revision, config_ref: primary.ref, config_digest: digest(primary.bytes) } };
+      const cacheKey = `${this.scopeKey}:${name}`;
+      let selected = classifications.get(cacheKey);
+      const provenance = selected?.provenance ?? { repository: name };
+      try {
+        if (!selected) {
+          const metadata = await active.reader.readRepository(name);
+          const branch = metadata.default_branch;
+          if (typeof branch !== 'string' || !branch) fail('category-config-unavailable', 'Foreign Issue repository has no current default branch.', { repository: name });
+          provenance.branch = branch;
+          const revision = await active.reader.readBranchHead({ repository: name, branch });
+          provenance.revision = revision;
+          const ref = { repository: name, revision, path: '.assuredloop/config.json' };
+          provenance.config_ref = ref;
+          const bytes = await active.reader.readBlob(ref);
+          provenance.config_digest = digest(bytes);
+          selected = { ref, bytes, repository: name, branch, revision, provenance, allowed: new Set(active.allowed) };
+          classifications.set(cacheKey, selected);
+          try { selected.config = parseConfig(bytes, name); }
+          catch (error) { selected.error = error; }
+        }
+        if (selected.error) throw selected.error;
+        return { mapping: selected.config.repository.labels.type, provenance,
+          source: { ref: selected.ref, bytes: selected.bytes } };
+      } catch (error) {
+        error.classification = { provenance,
+          ...(selected ? { source: { ref: selected.ref, bytes: selected.bytes } } : {}) };
+        throw error;
+      }
+    },
     source: { source: { kind: 'git-blob', ref: primary.ref }, content: primary.bytes.toString('utf8'), content_sha256: digest(primary.bytes) },
     get adapter() { return active.reader; },
     get scopeKey() { return [...active.allowed].sort().join(','); },
@@ -87,6 +126,16 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
       finally { active = previous; }
     },
     async recheck() {
+      for (const selected of classifications.values()) {
+        this.authorize(selected.ref);
+        const allowed = new Set([...selected.allowed].filter((name) => active.allowed.has(name)));
+        const scopedReader = await makeReader(allowed);
+        const metadata = await scopedReader.readRepository(selected.repository);
+        const revision = await scopedReader.readBranchHead({ repository: selected.repository, branch: selected.branch });
+        if (metadata.default_branch !== selected.branch || revision !== selected.revision) fail('acquisition-context-stale', 'Foreign Issue classification default branch or revision changed.', { repository: selected.repository });
+        const current = await scopedReader.readBlob(selected.ref);
+        if (digest(current) !== digest(selected.bytes)) fail('acquisition-context-stale', 'Foreign Issue classification configuration changed.', { config_ref: selected.ref });
+      }
       if (issue.pull_request) {
         const observed = await reader.readPull(work);
         if (!isDeepStrictEqual(tuple(pull), tuple(observed))) fail('acquisition-context-stale', 'The current primary PR changed during acquisition.');

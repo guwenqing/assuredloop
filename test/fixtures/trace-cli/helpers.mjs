@@ -71,6 +71,7 @@ function configFor(revision, metadata, { bootstrap = true } = {}) {
         type: {
           request: 'type:request',
           epic: 'type:epic',
+          'architecture-task': 'type:architecture-task',
           task: 'type:task',
           bug: 'type:bug',
           spike: 'type:spike',
@@ -100,7 +101,7 @@ function pullRecord(revision) {
   };
 }
 
-function evidenceRecord(revision, configDigest, { policyRevision = revision, baseRef = 'main', baseSha = revision, reviewerSession = 'trace-reviewer' } = {}) {
+function evidenceRecord(metadata, revision, configDigest, { policyRevision = revision, baseRef = 'main', baseSha = revision, reviewerSession = 'trace-reviewer' } = {}) {
   return {
     head,
     scope: 'Read-only trace checks and reviewer context',
@@ -113,16 +114,7 @@ function evidenceRecord(revision, configDigest, { policyRevision = revision, bas
     base_ref: baseRef,
     base_sha: baseSha,
     policy_ref: repoRef(policyRevision, 'openspec/changes/trace-cli/design.md', '5-small-local-tools-and-explicit-trust-boundaries'),
-    contract_package: packageBinding({
-      name: 'assuredloop-base',
-      version: '0.1.0',
-      source_ref: {
-        repository: 'guwenqing/assuredloop-base',
-        revision: '530c6fc4d0e0caeb715f0da9a22cc933ecd27a93',
-        path: 'openspec/changes/establish-project-workflow/specs',
-      },
-      contracts_path: 'contracts',
-    }),
+    contract_package: packageBinding(metadata),
     config_digest: configDigest,
     activation_digest: null,
     policy_mode: 'bootstrap',
@@ -197,7 +189,7 @@ export async function makeTraceFixture(t, options = {}) {
   const configDigest = sha256(configBytes);
   const issue = issueRecord(revision);
   const pull = pullRecord(revision);
-  const reviewEvidence = evidenceRecord(revision, configDigest, {
+  const reviewEvidence = evidenceRecord(metadata, revision, configDigest, {
     policyRevision: initialRevision,
     baseRef: options.evidenceBaseRef ?? options.baseRef ?? 'main',
     baseSha: options.baseSha ?? revision,
@@ -228,6 +220,7 @@ export async function makeTraceFixture(t, options = {}) {
     [`issues/${issueRef.number}`]: {
       number: issueRef.number,
       title: 'Trace checks',
+      labels: [{ name: config.repository.labels.type.task }],
       body: issueBody,
       state: 'open',
       state_reason: null,

@@ -263,6 +263,7 @@ test('initialization honors a custom OpenSpec root and category label mapping', 
   config.repository.labels.type = {
     request: 'work-request',
     epic: 'work-epic',
+    'architecture-task': 'work-architecture-task',
     task: 'work-task',
     bug: 'work-bug',
     spike: 'work-spike',
