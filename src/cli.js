@@ -13,7 +13,7 @@ try {
     invokedPath: process.argv[1], modulePath: fileURLToPath(import.meta.url),
   });
   if (!args.length || args[0] === '--help' || args[0] === 'help') {
-    console.log(`assuredloop ${pkg.version}\n\ninit --target ABS_ROOT --config ABS_JSON [--apply] [--local-only]\n  Preview explicit local adoption; --apply writes the listed files.\ninspect --target ABS_ROOT --work OWNER/REPO#N\n  [--max-inline-bytes N] [--cursor TOKEN] [--expand REF]\n  [--delta-ref JSON_REPO_REF] [--manifest-ref JSON_REPO_REF]\n  Read a paginated reviewer packet. REF is a qualified work or structured reference JSON.\ncheck --target ABS_ROOT --work OWNER/REPO#N [--local-only]\n  Return a complete non-paginated diagnostic; use inspect for bounded reviewer context. Local-only results are incomplete.\n  Closeout: [--delta-ref JSON_REPO_REF] [--manifest-ref JSON_REPO_REF]\ngenerate-contracts --source-root ABS_ROOT --repository OWNER/REPO --revision FULL_SHA\n  --specs-path REL_PATH --out ABS_DIRECTORY --basis bootstrap|canonical\n--version\n\nInspect/check are read-only. Formal success does not grant merge permission or prove semantic completion. Initialization is not activation.\nNon-PR work uses GitHub's current default branch for current-context inspection only. This adapter convention does not reconstruct past policy or restrict PR delivery destinations.\nActual npm package-root links select linked-development with toolkit_verification: not-performed. Consumer policy/source/review checks remain required; ordinary bin shims and direct source keep existing checks.\nAccepted routing checks declared review_kind/review_tool and independent primary/additional coverage. Legacy roles remain unresolved; explicit on-request obligations still require semantic review.`);
+    console.log(`assuredloop ${pkg.version}\n\ninit --target ABS_ROOT --config ABS_JSON [--apply] [--local-only | --provision-labels]\n  Preview explicit adoption; --apply writes the listed files.\n  --provision-labels previews missing mapped labels; add --apply to create only those still missing.\n  Partial effects return exit 1; read outcomes and retry from a new preview.\ninspect --target ABS_ROOT --work OWNER/REPO#N\n  [--max-inline-bytes N] [--cursor TOKEN] [--expand REF]\n  [--delta-ref JSON_REPO_REF] [--manifest-ref JSON_REPO_REF]\n  Read a paginated reviewer packet. REF is a qualified work or structured reference JSON.\ncheck --target ABS_ROOT --work OWNER/REPO#N [--local-only]\n  Return a complete non-paginated diagnostic; use inspect for bounded reviewer context. Local-only results are incomplete.\n  Closeout: [--delta-ref JSON_REPO_REF] [--manifest-ref JSON_REPO_REF]\ngenerate-contracts --source-root ABS_ROOT --repository OWNER/REPO --revision FULL_SHA\n  --specs-path REL_PATH --out ABS_DIRECTORY --basis bootstrap|canonical\n--version\n\nInspect/check are read-only. Formal success does not grant merge permission or prove semantic completion. Initialization is not activation.\nNon-PR work uses GitHub's current default branch for current-context inspection only. This adapter convention does not reconstruct past policy or restrict PR delivery destinations.\nActual npm package-root links select linked-development with toolkit_verification: not-performed. Consumer policy/source/review checks remain required; ordinary bin shims and direct source keep existing checks.\nAccepted routing checks declared review_kind/review_tool and independent primary/additional coverage. Legacy roles remain unresolved; explicit on-request obligations still require semantic review.`);
   } else if (args[0] === '--version') {
     console.log(pkg.version);
   } else if (args[0] === 'inspect') {
@@ -45,12 +45,15 @@ try {
     const { values } = parseArgs({ args: args.slice(1), options: {
       target: { type: 'string' }, config: { type: 'string' }, apply: { type: 'boolean', default: false },
       'local-only': { type: 'boolean', default: false },
+      'provision-labels': { type: 'boolean', default: false },
     } });
     if (!values.target || !values.config) throw Object.assign(new Error('init requires --target and --config.'), { code: 'binding-invalid' });
     const { planInitialization, applyInitialization } = await import('./adoption.js');
     const config = JSON.parse(await readFile(values.config, 'utf8'));
-    const plan = await planInitialization({ targetRoot: values.target, config, localOnly: values['local-only'], runtime });
-    console.log(JSON.stringify(values.apply ? await applyInitialization(plan) : plan, null, 2));
+    const plan = await planInitialization({ targetRoot: values.target, config, localOnly: values['local-only'], provisionLabels: values['provision-labels'], runtime });
+    const result = values.apply ? await applyInitialization(plan) : plan;
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status === 'partial') process.exitCode = 1;
   } else if (args[0] === 'generate-contracts') {
     const { values } = parseArgs({ args: args.slice(1), options: Object.fromEntries(
       ['source-root', 'repository', 'revision', 'specs-path', 'out', 'basis'].map((key) => [key, { type: 'string' }])) });
