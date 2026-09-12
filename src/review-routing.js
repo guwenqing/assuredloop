@@ -30,16 +30,20 @@ export async function checkReviewObligations({ entries, policy, current }) {
       reviewer_model: record.reviewer_model, review_tool: record.review_tool });
   }
   const sessions = new Set();
-  for (const kind of ['internal', 'external']) {
-    for (const candidate of candidates[kind]) {
-      if (sessions.has(candidate.reviewer_session)) {
-        result.findings.push({ code: 'review-session-duplicate', severity: 'review', source: candidate.source,
-          message: 'A reviewer session cannot count twice or discharge both primary and additional obligations.' });
-        continue;
-      }
-      sessions.add(candidate.reviewer_session);
-      result.qualified[kind].push(candidate);
+  const primary = candidates.internal.find((item) => candidates.external.some((extra) => extra.reviewer_session !== item.reviewer_session))
+    ?? candidates.internal[0];
+  if (primary) {
+    sessions.add(primary.reviewer_session);
+    result.qualified.internal.push(primary);
+  }
+  for (const candidate of candidates.external) {
+    if (sessions.has(candidate.reviewer_session)) {
+      result.findings.push({ code: 'review-session-duplicate', severity: 'review', source: candidate.source,
+        message: 'A reviewer session cannot count twice or discharge both primary and additional obligations.' });
+      continue;
     }
+    sessions.add(candidate.reviewer_session);
+    result.qualified.external.push(candidate);
   }
   if (!result.qualified.internal.length) result.findings.push({ code: 'review-primary-missing', message: 'A qualifying primary review is required and missing.' });
   if (routing.additional === 'required' && !result.qualified.external.length) result.findings.push({ code: 'review-additional-missing', message: 'Required independent additional review is missing.' });

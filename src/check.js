@@ -34,7 +34,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
       const policy = result.policy?.status === 'available' ? result.policy : await currentTracePolicy(trace);
       return verifyInitialBootstrap({ adapter: trace.adapter, record: entry.record, verificationPolicy: policy });
     };
-    const verifyEvidence = async (entry) => {
+    const verifyEvidence = async (entry, { evidence }) => {
       const pull = await trace.pullAt(entry.record.pr);
       return trace.withPolicyScope(pull, async () => {
         const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime });
@@ -54,6 +54,13 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
           config_digest: policy.config_digest, activation_digest: policy.activation_digest };
         const assessment = (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current });
         for (const ref of entry.record.evidence) await trace.load(ref);
+        if (policy.config.project.review.routing) {
+          const entries = evidence.filter((item) => item.record.pr?.toLowerCase() === entry.record.pr.toLowerCase());
+          const routing = await checkReviewObligations({ entries, policy, current });
+          findings.push({ code: 'historical-review-routing', severity: 'review',
+            message: 'Original review obligations use all acquired contribution evidence under the recorded historical policy.', details: routing });
+          if (routing.status !== 'satisfied') return { valid: false, findings: [...findings, ...assessment, ...routing.findings] };
+        }
         return { valid: assessment.every((finding) => finding.severity === 'review'), findings: [...findings, ...assessment] };
       });
     };

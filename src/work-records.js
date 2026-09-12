@@ -175,7 +175,7 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
       const { pull } = match;
       if (verifyEvidence && pull.merged) {
         try {
-          const verified = await verifyEvidence(entry);
+          const verified = await verifyEvidence(entry, { evidence });
           if (!verified?.valid) { add('historical-evidence-unverified', 'Original policy/review or delivered commit could not be verified.', 'error', verified?.findings); continue; }
           for (const finding of (verified.findings || []).filter((item) => item.severity === 'review')) {
             add(finding.code, finding.message, 'review', { ...finding.details, pr: assessment.pr, source: entry.ref });
