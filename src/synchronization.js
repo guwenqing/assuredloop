@@ -7,6 +7,8 @@ import { validateRecord } from './records.js';
 import { loadNativeRuntime } from './native-runtime.js';
 import { checkAnchor } from './policy.js';
 import { maskCodeSpans } from './markdown.js';
+import { isInformalNotePath } from './informal-notes.js';
+import { readSourceRecord } from './source-record.js';
 
 const decode = (bytes) => new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
 
@@ -146,6 +148,12 @@ export async function checkSynchronization({ repository, baseRevision, headRevis
     }
     for (const [file, bytes] of candidate) {
       if (!file.endsWith('.md')) continue;
+      if (isInformalNotePath(file, openspecRoot)) {
+        const record = await readSourceRecord(decode(bytes), { allowPlain: true });
+        if (record.state === 'context') continue;
+        // An authoritative record remains formal even when placed inside notes.
+        for (const item of record.findings) finding(item.code, `${file}: ${item.message}`);
+      }
       const lines = decode(bytes).split(/\r?\n/);
       const mask = runtime.buildCodeFenceMask(lines);
       const text = maskCodeSpans(lines.map((line, index) => mask[index] ? '' : line).join('\n'));

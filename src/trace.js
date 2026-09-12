@@ -12,6 +12,7 @@ import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
 import { isLinkedRuntime, runtimeContext } from './runtime.js';
 import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
+import { isInformalNotePath } from './informal-notes.js';
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -48,11 +49,18 @@ export async function createTrace({ targetRoot, work, runtime }) {
   const { repository } = workIdentity(work);
   let adapter = await createReadAdapter({ targetRoot, repository });
   let acquisition;
+  let openspecRoot;
   const issues = new Map(), pulls = new Map(), comments = new Map(), bundles = new Map();
   const sourceCache = new Map();
   const installedAssets = new Set();
   const invalidSources = new Map();
   const findings = [];
+
+  function sourceContext(ref, source) {
+    const nativeRoot = ref?.repository?.toLowerCase() === repository ? openspecRoot : undefined;
+    return isInformalNotePath(ref?.path, nativeRoot) && !source.record_kind
+      ? { ...source, context_kind: 'informal' } : source;
+  }
 
   const sourceKey = (ref) => typeof ref === 'string' && issues.has(ref) && !issues.get(ref).pull_request
     ? key({ issue_context: ref, scope: acquisition.scopeKey }) : key(ref);
@@ -233,9 +241,9 @@ export async function createTrace({ targetRoot, work, runtime }) {
       const cached = copySource(sourceCache.get(sourceKey(ref)));
       if (expectedKind) {
         const parsed = await sourceRecord(cached.content, ref, { allowPlain: true, expectedKind });
-        return { ...cached, record_state: parsed.state, record_kind: parsed.kind };
+        return sourceContext(ref, { ...cached, record_state: parsed.state, record_kind: parsed.kind });
       }
-      return cached;
+      return sourceContext(ref, cached);
     }
     let content, references;
     if (typeof ref === 'string') {
@@ -262,19 +270,20 @@ export async function createTrace({ targetRoot, work, runtime }) {
       catch {
         const result = { bytes: Buffer.from(bytes), disposition: 'unavailable', reason: 'non-text-source' };
         sourceCache.set(key(ref), result);
-        return copySource(result);
+        return sourceContext(ref, copySource(result));
       }
     }
     const parsed = references ? null : await sourceRecord(content, ref, { allowPlain: true, expectedKind });
     const result = { content, references: references || (parsed.state === 'valid' ? recordReferences(parsed.record, { runtime }) : []),
       ...(parsed ? { record_state: parsed.state, record_kind: parsed.kind } : {}) };
     sourceCache.set(sourceKey(ref), result);
-    return copySource(result);
+    return sourceContext(ref, copySource(result));
   }
 
   const primaryIssue = await issueAt(work);
   const primaryPull = primaryIssue.pull_request ? await pullAt(work) : null;
   acquisition = await establishAcquisition({ targetRoot, work, issue: primaryIssue, pull: primaryPull, initialAdapter: adapter });
+  openspecRoot = JSON.parse(acquisition.source.content).repository.openspec_root;
   adapter = acquisition.adapter;
   sourceCache.set(key(acquisition.source.source.ref), { content: acquisition.source.content, references: [] });
   const primaryRecord = await sourceRecord(primaryIssue.body, normalizeWork(work), {
