@@ -25,7 +25,7 @@ None. Reuse the existing capability boundaries and work categories.
 
 Extend `project.review`, Evidence routing declarations and initialization's explicit write path where needed; update the existing adoption/planning/review Skills, shared templates, README and focused tests. Reuse native tool identifiers and existing `gh` access checks. Brownfield understanding remains human/AI work, not an automatic code-to-requirement generator or a repository-wide semantic validator. Source code remains evidence, not automatic intent.
 
-Use [continuous planning #22](https://github.com/guwenqing/assuredloop-base/issues/22) and [aggregate closeout #24](https://github.com/guwenqing/assuredloop-base/issues/24) under [Epic #21](https://github.com/guwenqing/assuredloop-base/issues/21); implementation is separately assigned by coherent outcome. This Proposal does not expand artifact PR #26 or the archived initial minimum.
+Use [continuous planning #22](https://github.com/guwenqing/assuredloop-base/issues/22) and [aggregate closeout #24](https://github.com/guwenqing/assuredloop-base/issues/24) under [Epic #21](https://github.com/guwenqing/assuredloop-base/issues/21); implementation is separately assigned by coherent outcome. This Proposal does not expand the linked-runtime exclusion in PR #26 or the archived initial minimum.
 
 ## Boundaries and acceptance
 
