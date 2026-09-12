@@ -4,9 +4,9 @@ Work Issue: [Planning #22](https://github.com/guwenqing/assuredloop-base/issues/
 
 This change is one contribution to the shared planning task, not its whole completion. Basis: [Proposal](proposal.md), [Design](design.md), and the three capability deltas. Checkboxes describe actual candidate contributions, never future review/merge/closure.
 
-- [ ] 1.1 Complete the original-request-to-Spec/Design mapping and fixed work associations; verify native strict validation, all requirement/scenario coverage and absence of fabricated old policy or new Architecture Tasks.
-- [ ] 1.2 Obtain independent full-scope design review and dispose findings; obtain owner acceptance of this Proposal and the specific temporary manual planning-delivery assessment, if needed before PR-prerequisite support exists.
-- [ ] 1.3 Deliver the authorized plan contribution, verify actual squash/review/acceptance evidence and publish immutable handoff refs for #36/#24; keep #22 open while other assigned planning remains.
+- [x] 1.1 Complete the original-request-to-Spec/Design mapping and fixed work associations; verify native strict validation, all requirement/scenario coverage and absence of fabricated old policy or new Architecture Tasks.
+- [x] 1.2 Obtain independent full-scope design review and dispose findings; obtain owner acceptance of this Proposal and the specific temporary manual planning-delivery assessment, if needed before PR-prerequisite support exists.
+- [x] 1.3 Deliver the authorized plan contribution, verify actual squash/review/acceptance evidence and publish immutable handoff refs for #36/#24; keep #22 open while other assigned planning remains.
 
 ## 2. First-adoption and contribution verification
 
@@ -20,7 +20,7 @@ Readiness requires this specific plan's accepted delivery, not closure of #22. A
 - [x] 2.4 Dispatch Issue and PR prerequisites by actual acquired kind and preserve one scoped cycle graph; verify open umbrella planning plus delivered contribution, whole-Issue dependency, missing/unrelated/cancelled/stale PR, permission denial and manifest Issue/PR inventory matching without synthetic Issue states.
 - [x] 2.5 Reuse the pinned native skip marker for accepted zero-delta closeout; verify identical complete Spec bytes/inventory (including empty baseline), invalid/absent/custom-schema markers, contradictory deltas/retirement and changed/added/removed Specs, while normal native deltas still work.
 - [x] 2.6 Add independent RED cases and implement per-PR change selection under a batch closeout Issue using existing selectors/refs; run unchanged tests GREEN for valid assignments, ambiguous/unassigned/conflicting selectors and legacy single-change use. Update existing guidance/templates and independently trial record creation and partial-versus-whole completion without private context or extra closeout tickets.
-- [ ] 2.7 Run relevant controlled faults against absence, review, prerequisite-kind and skip checks, restore and rerun the same tests GREEN; obtain one independent eligible review, resolve findings, then verify actual authorized merge before closing #36. No default final-architect gate or routine additional provider.
+- [x] 2.7 Run relevant controlled faults against absence, review, prerequisite-kind and skip checks, restore and rerun the same tests GREEN; obtain one independent eligible review, resolve findings, then verify actual authorized merge before closing #36. No default final-architect gate or routine additional provider.
 
 ## 3. Aggregate feedback acceptance contribution
 

@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-12T22:23:12.645Z",
+  "closeout_policy_ref": {
+    "repository": "guwenqing/assuredloop-base",
+    "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+    "path": "openspec/specs/review-and-validation/spec.md"
+  },
+  "deliveries": [
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#22"
+      ],
+      "reviewed_head": "9ff956c1c0a87c8de474f58f7a0b21607ff6d700",
+      "result": "pass",
+      "scope": "Actual approved planning delivery in squash a2cacbb29e5b90625184b87f89afd0c6e5030bd6; exact authored change trees match reviewed head; actual integration parent 8fce8d955d3180015b12e6278b081b4dda286268. Planning and handoff evidence only, no runtime implementation or archive.",
+      "base_ref": "main",
+      "base_sha": "dbc389ffc2b43044fb55c5c496109f51981630aa",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5647857095,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "9ca111f1082aec7c0622dee760e11483ed4c7167c26aba85cfe8a904a72e1862",
+      "prs": [
+        "guwenqing/assuredloop-base#26"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#22"
+      ],
+      "reviewed_head": "b5c589e638f180646d5fb29974f98c936bf6ffe1",
+      "result": "pass",
+      "scope": "Actual approved planning delivery in squash 8fce8d955d3180015b12e6278b081b4dda286268; exact authored change trees match reviewed head; actual integration parent 7af1bab0c8f4d01034b2893ed4eee73b170852b4. Planning and handoff evidence only, no runtime implementation or archive.",
+      "base_ref": "main",
+      "base_sha": "dbc389ffc2b43044fb55c5c496109f51981630aa",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5647857005,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "0fcf7400eaf65e59b89d4dd38ab149801f44dff52f4049ed659f65d81a5ef386",
+      "prs": [
+        "guwenqing/assuredloop-base#42"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#27"
+      ],
+      "reviewed_head": "719b1cdd19d84db3d1af4f8777aa9f04e99151cf",
+      "result": "pass",
+      "scope": "Actual squash delivery and post-merge verification of Bug27: delivered tree/files match the independently reviewed and tested candidate. Final linked diagnostic remains invalid with explicit reviewed disposition.",
+      "base_ref": "main",
+      "base_sha": "ba051f5b1a6f5ab4899740afa5de28e536c9cbb5",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5647471139,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "9650a2a161ba4dd8b47916d0cda996beab22bd61b69e92412eb91c6c8c7c5714",
+      "prs": [
+        "guwenqing/assuredloop-base#31"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#32"
+      ],
+      "reviewed_head": "64de27ed7d5dd1960e2f42c01d789ab4e7cc2caa",
+      "result": "delivered",
+      "scope": "Actual Task32 local ownership-guidance delivery and post-merge verification; no additional approval gate for other producers.",
+      "base_ref": "main",
+      "base_sha": "2eb4a1f383e19e6082fc50dbd9a8f8e549e6548b",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5647514296,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "2d87ebc16a00bbd1d968d248e3063f00740989b6f69b0415231a6e8b165285bb",
+      "prs": [
+        "guwenqing/assuredloop-base#33"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#34"
+      ],
+      "reviewed_head": "504cd87c4002d52d39f2f78c6b4af67cea82bca0",
+      "result": "pass",
+      "scope": "Actual Task34 documentation delivery and post-merge tree/parent/file verification. Per-change planning/readiness and duplicate history boundaries independently accepted; final CLI invalid fact retained with named historical-source disposition.",
+      "base_ref": "main",
+      "base_sha": "2c83d9bc3a52ddb088490bcd2b168507c0ab50d3",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5647660557,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "4303b12c4c1f826db64666a8fb54bcece2fa0aab4b93b71b8a968910aba9f4fb",
+      "prs": [
+        "guwenqing/assuredloop-base#35"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#40"
+      ],
+      "reviewed_head": "18e543923b4bff74d5ad840c89a4a7906c8981a9",
+      "result": "pass",
+      "scope": "Actual Task40 documentation delivery: fetched merged commit, verified parent/entire-tree equality and exact three-file contribution; current independent review accepted and intake refreshed.",
+      "base_ref": "main",
+      "base_sha": "dbc389ffc2b43044fb55c5c496109f51981630aa",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5647792685,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "4e1d1a0a4688e384ebc8f759ec4d90c42f8b50c782f2ddd1e1d1b786df32d7bb",
+      "prs": [
+        "guwenqing/assuredloop-base#41"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#36"
+      ],
+      "reviewed_head": "c63d201429e99618e5ecd4241cd07b018b20318d",
+      "result": "pass",
+      "scope": "Issue36 complete assigned implementation delivery, tasks2.1–2.7: independent test-first/fault verification, resolved review, actual squash parent and full delivered-tree equality verified. Aggregate canonical synchronization and remaining batch are excluded.",
+      "base_ref": "main",
+      "base_sha": "a2cacbb29e5b90625184b87f89afd0c6e5030bd6",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5648189774,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "0be60bd3cc768ba304ba33d84b3e4d3c798edc03dcde753d80caf9821381c1b3",
+      "prs": [
+        "guwenqing/assuredloop-base#44"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#23"
+      ],
+      "reviewed_head": "5871985dfeed2ba993b59499a7dca18a1455c03c",
+      "result": "pass",
+      "scope": "Issue23 complete assigned delivery tasks2.1–2.4: independently authored RED/GREEN and controlled faults, actual npm-link trials, full-scope independent review, fresh linked CLI pass, actual squash parent and whole-tree equality verified.",
+      "base_ref": "main",
+      "base_sha": "05da7851de9fadffe8e5e4450608c17c58f55937",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5648372517,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "71cfaa684c55d5700617517d5f649f4ef9d821456eef8ff9165c5059a4c8b065",
+      "prs": [
+        "guwenqing/assuredloop-base#45"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#37"
+      ],
+      "reviewed_head": "486a48e7fdb51f1b773339a7ae686d078e373818",
+      "result": "pass",
+      "scope": "Issue37 complete assigned tasks2.1–2.3: consumer review routing, authorized lifecycle corrections, independent tests/faults/reassessment, actual linked check pass, actual squash parent/full-tree equality verified.",
+      "base_ref": "main",
+      "base_sha": "bf2e59cdfbeea619b6ccfb39f07ae9f9c2f1676d",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5648770314,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "965f41e4c607ef5ed34787bb9c9e25921c54903fe2ccee6105fe180a8e8a4741",
+      "prs": [
+        "guwenqing/assuredloop-base#46"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#38"
+      ],
+      "reviewed_head": "a5b1a5b154756dfedb22a09839e75a8aaeb505d2",
+      "result": "pass",
+      "scope": "Issue38 complete assigned tasks3.1–3.3: opt-in mapped-label provisioning, independent tests/faults/review, actual linked check and actual squash parent/full-tree equality verified.",
+      "base_ref": "main",
+      "base_sha": "25820e1bb9c2fc1840c4bb708f9030eb5f7749d4",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5648923883,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "af2b06374bd2b7bfa2909adb3a95c588e302c0ff808718cb88cb9c1ba985357f",
+      "prs": [
+        "guwenqing/assuredloop-base#49"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#39"
+      ],
+      "reviewed_head": "c29a7b0bc20a541ae03ebb090e35f9a665329a2b",
+      "result": "pass",
+      "scope": "Issue39 complete assigned tasks4.1–4.4: bounded Brownfield guidance and informal notes, independent tests/faults/fresh trial/review, actual linked check, actual squash parent/full-tree equality verified.",
+      "base_ref": "main",
+      "base_sha": "6b0803db8d49b5f383f9f300d5b01efda029521a",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+        "path": "openspec/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5649022672,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "2565114bf432f615c3e1ecc421f15dac1716513089daffde8d8a372e1754d55a",
+      "prs": [
+        "guwenqing/assuredloop-base#50"
+      ]
+    }
+  ],
+  "decisions": []
+}
