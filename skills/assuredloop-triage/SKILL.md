@@ -22,6 +22,8 @@ Authoritative entry in that installation: contracts/work-intake-and-planning/spe
 
 Use the consumer's configured category labels and the category/activity contract in templates/README.md. Request/triage describes intake; Architecture Task/plan describes formal planning, Task/deliver implementation, Bug/deliver restoration, and Spike/research uncertainty reduction. Epic is a container with no executable activity. JSON activity selects guidance; labels describe the work, not a job title. Missing label provisioning returns to the adopting owner or authorized agent; do not silently change GitHub settings.
 
+Reuse the existing continuous planning responsibility when it can own the request's bounded changes. A separate Proposal, PR, artifact stage or review round alone is not a split rationale; an independently assignable outcome or responsibility is. Apply templates/README.md's consolidation guidance to existing duplicates without merging planning and implementation ownership or imposing a ticket quota.
+
 ## Record and hand off
 
 Use templates/work-issue.md and the appropriate schema/record example to enrich routed work. Keep task definitions in native planning artifacts and assignment/progress in GitHub. Supply resolvable requirement/decision refs and plan items when applicable, dependencies, intended outcome, discoverable responsibility, verification obligations and route rationale. Do not duplicate the full formal task body.

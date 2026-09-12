@@ -1,6 +1,6 @@
 ---
 name: assuredloop-plan
-description: Develop an agreed OpenSpec change and linked work decomposition through a continuous planning task and explicit implementation handoff.
+description: Develop agreed OpenSpec changes and linked work decomposition through continuous planning and explicit implementation handoffs.
 ---
 
 # Plan and decompose work
@@ -19,6 +19,8 @@ Use native OpenSpec exploration, status/instructions and Proposal/Spec/Design/ta
 
 Keep the parent Epic's overall delivery distinct from the planning Architecture Task. The planning Architecture Task normally covers continuing exploration, Proposal, Specs, Design, decomposition and handoff, even across several PRs or review rounds. Proposal merge alone does not finish it while Design or handoff is still owed. Split only for a meaningful independently assignable outcome or responsibility, with a recorded rationale.
 
+One continuous planning Issue may cover several explicitly bounded native changes when their ownership, scope and readiness remain clear. A new change, artifact stage or review round does not by itself justify another Issue. Keep each change's agreement, plan references and acceptance distinct; use the consolidation guidance in templates/README.md when existing tickets duplicate the same responsibility.
+
 State the accepted outcome, constraints and deferred work. Keep goals, capabilities and concrete behavior readable through native requirements/scenarios and ordinary references; do not invent a layer engine. Review Proposal commitments against Specs, and Specs against Design/tasks for omissions, contradictions and unsupported additions. New or materially changed Proposals need the required human acceptance before their changes merge; file existence and structural validation are not that acceptance.
 
 When development brings an active-plan addition, assess it against the accepted outcome, reconcile affected artifacts and refs, and return material scope changes to the actual decision owner. Do not reopen completed planning for routine implementation, or hide an expansion in another Issue.
@@ -31,6 +33,8 @@ Implementation is separately assignable from planning. Define developer outcomes
 
 Use native parent/sub-issue associations for ownership relationships. Add depends_on only for an established execution prerequisite, not automatically for a parent or handoff owner. A research child contributing to unfinished planning must not be blocked on that parent's final completion merely because it is a child. Reconcile the new work's actual plan-item mapping before final handoff rather than copying the parent's entire assignment or inventing a future revision.
 
+Hand off a ready change through its fixed, reviewed and accepted planning delivery and scoped implementation assignment, even when the continuous planning Issue still owes other changes. Do not make that Issue's full closure an artificial prerequisite; explicitly verify the actual required planning delivery and its evidence. Follow the current prerequisite-checking limits in templates/README.md rather than claiming machine verification of a PR dependency. Undelivered or unaccepted planning remains unready.
+
 Run native strict validation and applicable link/artifact checks. Obtain independent full-scope review under the accepted policy, including the task-to-Issue map, coverage, dependency cycles, owner/readiness clarity and scope boundaries. Use templates/work-pr.md and review-request.md; dispose findings and refresh stale context before authorized delivery.
 
-A reviewed, accepted planning handoff can complete the planning Architecture Task. Leave the parent open for implementation and closeout. Checked candidate contributions do not predeclare their own merge, Issue closure or overall acceptance. Send the next owner the fixed plan/basis, ordered or dependency-scoped assignment, actual readiness and pending decisions.
+A reviewed, accepted planning handoff can complete the planning Architecture Task only when its entire assigned planning outcome is delivered. A multi-change planning Issue remains open while any assigned planning or handoff is still owed. Leave the parent open for implementation and closeout. Checked candidate contributions do not predeclare their own merge, Issue closure or overall acceptance. Send the next owner the fixed plan/basis, ordered or dependency-scoped assignment, actual readiness and pending decisions.
