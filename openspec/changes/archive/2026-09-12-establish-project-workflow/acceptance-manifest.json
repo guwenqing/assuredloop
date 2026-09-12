@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "captured_at": "2026-09-09T15:52:56.277Z",
+  "captured_at": "2026-09-12T16:12:38.966Z",
   "closeout_policy_ref": {
     "repository": "guwenqing/assuredloop-base",
-    "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
-    "path": "openspec/changes/establish-project-workflow/specs/review-and-validation/spec.md"
+    "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+    "path": "openspec/specs/review-and-validation/spec.md"
   },
   "deliveries": [
     {
@@ -225,6 +225,37 @@
       "content_sha256": "8b77b4637fe3c35bfd10b166094e69e704e6f4368f54ab8aa44000be52096663",
       "prs": [
         "guwenqing/assuredloop-base#18"
+      ]
+    },
+    {
+      "issues": [
+        "guwenqing/assuredloop-base#10"
+      ],
+      "reviewed_head": "3b34c08239986b1cca0b342261acb337d12af5cc",
+      "result": "pass",
+      "scope": "Full-scope PR20 external coverage through initial d504 assessment plus affected 3b34 renewal of durable source/build acquisition, installed navigation and replacement package/SRI/config/activation/conditional authority. Unchanged original44requirements/107scenarios, manifest-source judgments and unrelated coverage explicitly retained. No final approval, CLI PASS, actual merge, completed demonstration or archive acceptance.",
+      "base_ref": "main",
+      "base_sha": "fbe5882c1bc9d55e54b54f69ad4555d067a0e9c8",
+      "policy_ref": {
+        "repository": "guwenqing/assuredloop-base",
+        "revision": "f5c528723e24e11162a637b3e679f4896a5c024b",
+        "path": "openspec/changes/establish-project-workflow/specs/review-and-validation/spec.md"
+      },
+      "policy_mode": "activation",
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "guwenqing/assuredloop-base",
+        "comment_id": 5605502332,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "9c59f765081dc643fb3876902588a2a2d3e24d55b9fe9b1af911b07347a77e52",
+      "prs": [
+        "guwenqing/assuredloop-base#20"
       ]
     }
   ],
