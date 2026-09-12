@@ -52,6 +52,10 @@ The initial guarantee SHALL be lock provenance and installed metadata consistenc
 - **WHEN** artifact bytes can be compared but no explicit usable dependency lock is available
 - **THEN** the artifact result remains visible and dependency verification is reported as incomplete, without fabricating provenance or fetching a lock
 
+#### Scenario: Competing lock changes the native expected tree
+- **WHEN** the selected dependency root contains npm-shrinkwrap.json, whether initially or introduced after capture, even if native installed and expected listings agree
+- **THEN** dependency verification reports unsupported/incomplete coverage rather than attributing that tree to a retained package-lock.json; a stable control with only the supported package-lock uses that exact retained lock as its expected-tree basis
+
 #### Scenario: Dependency bytes change without metadata changing
 - **WHEN** a dependency implementation file changes while its observed package identity metadata remains unchanged
 - **THEN** the report does not claim this metadata-only check authenticates dependency contents; its declared coverage explicitly excludes that claim
