@@ -7,7 +7,7 @@ description: Develop agreed OpenSpec changes and linked work decomposition throu
 
 Consumer: {{repository}}. Product context: {{openspec_root}}. Framework: {{package_name}}@{{package_version}}.
 
-Resolve the selected installation through the package README. Read the source request, triage rationale, existing planning ownership, current consumer Specs/active changes and owner decisions. Use contracts/work-intake-and-planning/spec.md, contracts/specification-baseline/spec.md, contracts/review-and-validation/spec.md and contracts/github-work-traceability/spec.md, with templates/README.md.
+Resolve the selected installation through the package README. Read the source Issue's entire body and all comment pages, triage rationale, existing planning ownership, current consumer Specs/active changes and owner decisions. Apply templates/README.md's reading-scope guidance before routing or transferring scope, and refresh the discussion before consequential handoff or closure. Use contracts/work-intake-and-planning/spec.md, contracts/specification-baseline/spec.md, contracts/review-and-validation/spec.md and contracts/github-work-traceability/spec.md, with templates/README.md.
 
 Authoritative entry in that installation: contracts/work-intake-and-planning/spec.md. Shared record/format instructions are in templates/README.md.
 
