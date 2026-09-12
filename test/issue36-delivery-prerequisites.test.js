@@ -33,6 +33,14 @@ test('issue36 delivery: actual PR contribution qualifies while canonical owner a
   assert.equal(f.contribution.issue.state_reason, undefined, 'PR fixture has no synthetic Issue state_reason');
 });
 
+test('issue36 delivery: PR contribution accepts matching review stored only on its canonical owner', async () => {
+  const f = fixture();
+  f.contribution.evidence = [];
+  const result = await checkWorkRecords(f.input);
+  assert.equal(result.status, 'valid', text(result.findings));
+  assert.ok(f.calls.includes(prerequisiteWork));
+});
+
 test('issue36 delivery: whole Issue dependency is incomplete after only its first planning contribution', async () => {
   const f = fixture();
   setRecord(f, { ...f.record, depends_on: [prerequisiteWork] });
@@ -67,7 +75,7 @@ for (const variant of ['unmerged', 'cancelled', 'missing', 'unrelated', 'foreign
     }
     if (variant === 'stale-head') evidence.head = 'a'.repeat(40);
     if (variant === 'stale-base-ref') evidence.base_ref = 'other';
-    if (variant === 'missing-review') f.contribution.evidence = [];
+    if (variant === 'missing-review') { f.contribution.evidence = []; f.owner.evidence = []; }
     if (variant === 'revise-review') evidence.result = 'revise';
     if (variant === 'same-session') evidence.reviewer_session = evidence.producer_session;
     const result = await checkWorkRecords(f.input);

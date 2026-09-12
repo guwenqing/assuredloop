@@ -215,6 +215,7 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
           ...(workIdentity(dependency).repository === identity.repository ? { categoryMapping } : {}),
           ...bundle, phase: 'closeout', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack: [..._stack, work] });
         result.context.prerequisites.at(-1).assessment = checked.context;
+        for (const finding of checked.findings.filter((item) => item.severity === 'review')) add(finding.code, finding.message, 'review', { dependency, ...finding.details });
         if (checked.status !== 'valid') add('prerequisite-unverified', 'Prerequisite delivery lacks required formal evidence.', checked.status === 'unavailable' ? 'unavailable' : 'error', { dependency, findings: checked.findings });
       } catch (error) { add('prerequisite-unavailable', error.message, 'unavailable', { dependency, cause: error.code }); }
     }
