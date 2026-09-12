@@ -9,7 +9,7 @@ Start from the intended consumer repository and an explicitly selected installed
 
 ## Prepare the binding
 
-Read the selected installation's `schemas/workflow.schema.json` (`config` and `contractPackage`) and `templates/records/config.json`. Examples are illustrative, not accepted policy. Set the consumer's GitHub identity, repository-relative OpenSpec root, selected native tool IDs and labels. Set explicit review eligibility/exclusions and the workflow package version, installation integrity and immutable source reference. Resolve framework rules from the installation's `contracts/metadata.json` and generated files; resolve product requirements from the consumer's own OpenSpec context. Never copy the framework's Specs into the consumer baseline.
+Read the selected installation's `schemas/workflow.schema.json` (`config` and `contractPackage`) and `templates/records/config.json`. Examples are illustrative, not accepted policy. Set the consumer's GitHub identity, repository-relative OpenSpec root, selected native tool IDs and labels. Set explicit review eligibility/exclusions and the workflow package version, installation integrity and immutable source reference. For nonlinked installations, resolve framework rules from `contracts/metadata.json` and generated files. For actual npm-linked development, obtain accepted framework policy from its fixed permitted source; mutable local contracts do not attest those bytes. Resolve product requirements from the consumer's own OpenSpec context. Never copy the framework's Specs into the consumer baseline.
 
 Use the existing OpenSpec initialization when native context or integrations are missing. AssuredLoop supplements it and does not run prerequisite installers, log in to accounts or modify upstream Skills. Prerequisites are Node.js >=20.19.0, Git, pinned OpenSpec 1.12.0 and, for GitHub checks, authenticated gh >=2.88.0 with access to the bound repository. Different native tools select different roots; incompatible registry versions/shapes and unresolved shared-root ownership are reported rather than guessed.
 
@@ -17,13 +17,15 @@ Before routed work, the adopting owner or explicitly authorized agent must provi
 
 ## Preview, apply and verify
 
-Save the agreed configuration to an explicitly named JSON input file. From the pinned installation, run:
+Save the agreed configuration to an explicitly named JSON input file. For an explicitly selected development checkout, run `npm link` before invoking `assuredloop`, including in a pipeline using linked development. For trials, use the README's isolated-prefix sequence and invoke that prefix's executable explicitly; bare `assuredloop` may select an existing global link. The following command assumes PATH already selects the intended installation:
 
 ```text
 assuredloop init --target /absolute/consumer/root --config /absolute/config.json
 ```
 
-Inspect the proposed file list and diagnostics. The default is read-only preview. Use `--local-only` when remote access is intentionally unavailable; it reports skipped GitHub checks and cannot establish complete pre-merge validation. Resolve invalid bindings, package-version mismatches, unknown tools and file/co-tenancy conflicts before applying. Preserve user files and upstream `.openspec-target` ownership markers; do not remove conflicting files to force success.
+Inspect the proposed file list and diagnostics. The default is read-only preview. Use `--local-only` when remote access is intentionally unavailable; it reports skipped GitHub checks and cannot establish complete pre-merge validation. Resolve invalid consumer bindings, nonlinked package-version mismatches, unknown tools and file/co-tenancy conflicts before applying. Preserve user files and upstream `.openspec-target` ownership markers; do not remove conflicting files to force success.
+
+Actual npm-linked operations report `linked-development` with `toolkit_verification: not-performed` once. Do not request toolkit archive/SRI/source/Git-cleanliness/dependency checks or a capture/re-pin exemption. Preserve the consumer's declared package binding, required input/path/native checks, fixed policy and applicable human/review decisions. Ordinary executable shims into installed packages and direct-source invocation retain existing checks.
 
 After the preview matches the authorized adoption scope, repeat with `--apply`. Only the target `.assuredloop/config.json` and namespaced AssuredLoop discovery assets are eligible. Verify a repeat preview is unchanged, native/user Skills and product Specs are preserved, required installation bindings are resolved, and the target configuration points to the intended package. Explicitly declared reusable examples may retain later-work tokens; see the selected package's README section on authoring reusable Skill examples for the marker convention and its limits. Actual target configuration is never exempted. Installed copies are generated from this packaged source; change the source through governed work rather than editing discovery copies independently.
 

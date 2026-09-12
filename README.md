@@ -8,11 +8,20 @@ Source checkouts maintain this repository's current product specification at `op
 
 Use Node.js >=20.19.0 and Git. Install the pinned dependencies with `npm ci`. OpenSpec 1.12.0 supplies native planning and tool discovery; GitHub operations additionally need gh >=2.88.0 with access to the selected repository. Initialization never installs prerequisites or signs in for you.
 
-```text
-node src/cli.js --help
-node src/cli.js --version
-node src/cli.js init --target /absolute/consumer --config /absolute/config.json --local-only
+For a development trial, select the checkout and an isolated npm prefix explicitly:
+
+```sh
+set -e
+trial_prefix=/absolute/isolated-trial-prefix
+cd /absolute/selected-development-checkout
+npm_config_prefix="$trial_prefix" npm link
+"$trial_prefix/bin/assuredloop" --help
+"$trial_prefix/bin/assuredloop" init --target /absolute/trial-consumer --config /absolute/trial-config.json --local-only
 ```
+
+The successful `npm link` step precedes invocation, including in a pipeline using linked development. Invoke the isolated prefix's executable explicitly; bare `assuredloop` can select an existing global link through PATH. For ordinary use, invoke the already selected installation's executable. Actual local/global package-root links select linked development; ordinary executable symlinks into installed packages retain installed behavior. Direct `node src/cli.js` remains direct-source use.
+
+Linked init/inspect/check report one operation-level `runtime: {mode: "linked-development", toolkit_verification: "not-performed"}` observation. They omit toolkit archive, source, dependency, Git-cleanliness and packaged-contract integrity checks; no capture, re-pin or waiver flag is needed. Required executable inputs, native API compatibility, consumer bindings, accepted policy, source permissions, review and freshness checks still apply. The declared consumer `contract_package` stays unchanged. Its package-source declaration alone does not request a toolkit provenance read; the same reference explicitly listed as basis, policy or evidence still requires normal acquisition. Fixed policy comes from its permitted immutable Git source; mutable linked contracts cannot supply those authoritative bytes. Unavailable fixed sources remain unavailable.
 
 Create the input from the illustrative `templates/records/config.json` and the descriptions in `schemas/workflow.schema.json`. Select your own repository, OpenSpec root, tools, label mappings and accepted review choices. Do not use example identities or evidence as real authorization. The default command previews eligible changes; repeat with `--apply` only after reviewing that preview. Existing conflicting files cause an error rather than being overwritten. `--local-only` explicitly skips remote checks and is not delivery acceptance.
 
@@ -30,7 +39,7 @@ PR assessments use their actual destination and pre-change Git objects. Delivere
 
 Historical reconstruction is limited to configurations and package bindings supported by the selected runtime. A legacy five-category/discipline configuration is unsupported here: the comparison remains unavailable with its acquired source bytes, references and digest retained. This does not revoke historical acceptance, declare evidence corrupt or establish a policy mismatch. Current-format synthetic historical tests do not prove cross-version compatibility. Verification may require a separately selected trusted matching historical tool/package; this release does not negotiate, retrieve or execute one automatically, and setting the API's `packageRoot` alone does not change its runtime schema. Never execute code identified only by an untrusted record or widen today's acquisition scope. A required prerequisite or closeout assessment that cannot be verified remains incomplete and returns to its responsible owner.
 
-Acquisition has one current permission ceiling per request. A directly selected PR uses its actual current destination configuration; an Issue-root request uses the repository's live default-branch configuration, even when several PRs are linked. Secondary assessments can narrow that ceiling and cannot widen it through historical coordinates, prerequisites or linked-PR ordering. Scope checks precede cached returns and physical reads, and the primary context/configuration is rechecked for freshness. Derived context retains the primary source and assessment restrictions. A forbidden historical reference remains a coverage gap until a current binding change is explicitly authorized. Verified installed contract assets remain readable through their exact package binding; that does not authorize remote access to their source repository. Incidental denied timeline relations stay in the inventory without replacing the permitted local assessment; required denied sources remain unresolved obligations.
+Acquisition has one current permission ceiling per request. A directly selected PR uses its actual current destination configuration; an Issue-root request uses the repository's live default-branch configuration, even when several PRs are linked. Secondary assessments can narrow that ceiling and cannot widen it through historical coordinates, prerequisites or linked-PR ordering. Scope checks precede cached returns and physical reads, and the primary context/configuration is rechecked for freshness. Derived context retains the primary source and assessment restrictions. A forbidden historical reference remains a coverage gap until a current binding change is explicitly authorized. In nonlinked mode, verified installed contract assets remain readable through their exact package binding; that does not authorize remote access to their source repository. Linked mode uses the existing permitted Git reader for those fixed sources and grants no additional source access. Incidental denied timeline relations stay in the inventory without replacing the permitted local assessment; required denied sources remain unresolved obligations.
 
 `classification.assigned_prs` is optional derived reviewer context listing the currently permitted PR mappings observed for that Issue. Author actual Workflow context from the shared record schema; these observations alone do not establish assignment authority.
 
@@ -52,9 +61,9 @@ For genuinely unstructured historical reports, a `deliveries` input can supply t
 
 ## Resolve guidance and context
 
-Use the explicitly selected package installation, not whichever source checkout happens to be the working directory. For an installed CLI, follow the executable's symlink and locate its owning `package.json`; a project dependency can also be located through the package manager. Verify package name/version and `contracts/metadata.json` against the target's workflow pin and the actual installation evidence. If the location or binding is unavailable, request the selected installation context instead of silently choosing another package. Framework-maintenance work may explicitly select its source checkout through the current handoff; that is not consumer policy adoption.
+Use the explicitly selected package installation, not whichever source checkout happens to be the working directory. For an installed CLI, follow the executable's symlink and locate its owning `package.json`; a project dependency can also be located through the package manager. For nonlinked installations, verify package name/version and `contracts/metadata.json` against the target's workflow pin and actual installation evidence. For actual npm-linked use, retain the runtime observation and read the consumer's accepted fixed requirements through permitted source references; do not audit or relabel mutable toolkit assets as that fixed policy. If the location or binding is unavailable, request the selected installation context instead of silently choosing another package. Framework-maintenance work may explicitly select its source checkout through the current handoff; that is not consumer policy adoption.
 
-Paths such as `schemas/`, `templates/` and `contracts/` in the guidance are relative to that verified package root. Consumer requirements are relative to the explicitly selected target and its configured OpenSpec root. Record the resolved locations in the current work context. Do not inject framework contracts into consumer product Specs or use the framework's historical Issues as consumer work.
+Paths such as `schemas/`, `templates/` and `contracts/` in the guidance are relative to that selected package root. Consumer requirements are relative to the explicitly selected target and its configured OpenSpec root. Record the resolved locations in the current work context. Do not inject framework contracts into consumer product Specs or use the framework's historical Issues as consumer work.
 
 The schema's activity selector identifies the relevant work guidance; this table is a navigation index, not a role assignment or additional policy source:
 

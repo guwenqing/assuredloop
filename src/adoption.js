@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { fail, git, optionalRead, relativePath, repositoryIdentity, repositoryRoot, safePath } from './files.js';
 import { validateRecord } from './records.js';
 import { verifyContracts } from './contracts.js';
+import { isLinkedRuntime, runtimeContext } from './runtime.js';
 import { githubPreflight, skillRoots } from './native.js';
 
 const installedRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -53,7 +54,7 @@ async function checkFile(targetRoot, file) {
   return existing === null ? 'create' : 'unchanged';
 }
 
-export async function planInitialization({ targetRoot, config, packageRoot = installedRoot, localOnly = false } = {}) {
+export async function planInitialization({ targetRoot, config, packageRoot = installedRoot, localOnly = false, runtime } = {}) {
   const [major, minor] = process.versions.node.split('.').map(Number);
   if (major < 20 || (major === 20 && minor < 19)) fail('tool-unavailable', 'Node.js >=20.19.0 is required.', { reason: 'unsupported-version' });
   if (config?.repository?.openspec_root !== undefined) relativePath(config.repository.openspec_root);
@@ -61,13 +62,15 @@ export async function planInitialization({ targetRoot, config, packageRoot = ins
   if (!validation.valid) fail('binding-invalid', 'Explicit target configuration is missing or invalid.', validation.errors);
   if (JSON.stringify(config).includes('{{')) fail('binding-invalid', 'Unresolved placeholder in target configuration.');
   const actualRoot = await validateTarget(targetRoot, config);
-  const metadata = await verifyContracts(packageRoot);
-  const packageJson = JSON.parse(await readFile(await safePath(packageRoot, 'package.json'), 'utf8'));
   const binding = config.project.workflow;
-  if (binding.name !== metadata.name || binding.version !== metadata.version ||
-      packageJson.name !== binding.name || packageJson.version !== binding.version ||
-      binding.contracts_path !== metadata.contracts_path || !isDeepStrictEqual(binding.source_ref, metadata.source_ref)) {
-    fail('version-mismatch', 'Selected installation and target contract pin differ. Select an explicitly compatible package.');
+  if (!isLinkedRuntime(runtime)) {
+    const metadata = await verifyContracts(packageRoot);
+    const packageJson = JSON.parse(await readFile(await safePath(packageRoot, 'package.json'), 'utf8'));
+    if (binding.name !== metadata.name || binding.version !== metadata.version ||
+        packageJson.name !== binding.name || packageJson.version !== binding.version ||
+        binding.contracts_path !== metadata.contracts_path || !isDeepStrictEqual(binding.source_ref, metadata.source_ref)) {
+      fail('version-mismatch', 'Selected installation and target contract pin differ. Select an explicitly compatible package.');
+    }
   }
   const roots = await skillRoots(actualRoot, config.repository.tools);
   const diagnostics = await githubPreflight(config.repository.name, config.repository.labels, localOnly);
@@ -84,7 +87,7 @@ export async function planInitialization({ targetRoot, config, packageRoot = ins
   }
   if (!sources.length) fail('compatibility-error', 'No reusable Skill assets are installed.');
   for (const file of files) file.action = await checkFile(actualRoot, file);
-  const plan = { status: 'preview', targetRoot: path.resolve(targetRoot), files, diagnostics };
+  const plan = { ...runtimeContext(runtime), status: 'preview', targetRoot: path.resolve(targetRoot), files, diagnostics };
   plans.set(plan, { root: actualRoot, snapshot: structuredClone(plan), config: structuredClone(config) });
   return plan;
 }

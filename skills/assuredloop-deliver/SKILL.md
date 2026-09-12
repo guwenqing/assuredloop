@@ -9,7 +9,7 @@ Consumer: {{repository}}. Product context: {{openspec_root}}. Framework: {{packa
 
 Resolve the selected installation and consumer context through the package README. Read the assigned Issue, original request, applicable consumer requirements/Design, plan items or justified no-Spec basis, dependencies and current authorization. Use contracts/github-work-traceability/spec.md, contracts/review-and-validation/spec.md and contracts/workflow-self-evolution/spec.md, with templates/README.md.
 
-Authoritative entry in that installation: contracts/review-and-validation/spec.md. Shared record/format instructions are in templates/README.md.
+Authoritative entry in that installation: contracts/review-and-validation/spec.md. Shared record/format instructions are in templates/README.md. In actual npm-linked development, use the accepted fixed policy source under current read permissions; local mutable contracts cannot stand in for it. Retain the single operation runtime observation (`linked-development`, `toolkit_verification: not-performed`) without requesting toolkit self-audit/capture or a re-pin. Consumer requirement, test, approval, review, source and freshness obligations remain in force.
 
 Assigned implementation uses Task/deliver, or Bug/deliver when restoring accepted behavior; document-only implementation is still delivery work. Apply the consumer category/activity contract in templates/README.md; classification describes the outcome, not the assignee.
 
