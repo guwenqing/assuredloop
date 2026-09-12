@@ -177,6 +177,9 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
         try {
           const verified = await verifyEvidence(entry);
           if (!verified?.valid) { add('historical-evidence-unverified', 'Original policy/review or delivered commit could not be verified.', 'error', verified?.findings); continue; }
+          for (const finding of (verified.findings || []).filter((item) => item.severity === 'review')) {
+            add(finding.code, finding.message, 'review', { ...finding.details, pr: assessment.pr, source: entry.ref });
+          }
         } catch (error) { add('historical-evidence-unavailable', error.message, 'unavailable', { cause: error.code }); continue; }
       }
       if (assessment.head !== pull.head.sha || assessment.base_ref !== pull.base.ref || (!pull.merged && assessment.base_sha !== pull.base.sha)) {

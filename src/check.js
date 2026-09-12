@@ -44,7 +44,8 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
         // advance. Retain that distinction; only initial bootstrap requires the
         // exact recorded sole parent and whole reviewed tree.
         if (merge.parents[0].sha !== entry.record.base_sha) findings.push({ code: 'historical-integration-review-required', severity: 'review',
-          message: 'The actual integration parent differs from the recorded review base. Review the explicit freshness/disposition and delivered contribution; historical audit fields remain unchanged.' });
+          message: 'The actual integration parent differs from the recorded review base. Review the explicit freshness/disposition and delivered contribution; historical audit fields remain unchanged.',
+          details: { recorded_base_sha: entry.record.base_sha, integration_parent_sha: merge.parents[0].sha, merge_sha: merge.sha } });
         const current = { ...policy.assessment, policy_ref: policy.policy_ref, contract_package: policy.contract_package,
           config_digest: policy.config_digest, activation_digest: policy.activation_digest };
         const assessment = (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current });
