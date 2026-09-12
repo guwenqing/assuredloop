@@ -24,3 +24,5 @@ Reference the actual report/results in evidence, not only the requirement that m
 Obtain applicable independent review of whether the evidence answers the assigned questions. Publish the research result through the authorized work record, verify that outcome, and close only the Spike's research scope when its obligations are satisfied.
 
 Return the conclusion and proposed decisions to the human/authorized decision owner. Closing a Spike does not create successor Requests, launch implementation or accept a new Proposal. Recommended work remains a recommendation until the owner actually chooses and authorizes it.
+
+Apply templates/README.md's proportionate coordination and scoped-continuation guidance. An explicit owner instruction may already authorize the next bounded activity independently of the Spike result; preserve that authority rather than asking for a generic continuation again. Otherwise return the research outcome without inventing successor authority. Required human acceptance of a new/material Proposal remains separate.

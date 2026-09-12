@@ -51,7 +51,7 @@ Read the return recipient from the explicit CURRENT work handoff. Do not infer a
 
 A producer_session declaration identifies the producer for independence checks. It is a return recipient only when the current handoff explicitly designates that session for return; its name or producer role alone does not supply that instruction.
 
-Send the outcome URL, exact revision, verdict, concise findings/limits and required next action through the available authorized communication mechanism. Distinguish requested/queued sending from confirmed delivery. Missing tools or unconfirmed receipt must be reported honestly; do not build a provider, dispatcher, routing schema or recurring retry loop. Review PASS remains separate from any required final approval and merge.
+Send one consolidated outcome with the URL, exact revision, verdict, concise findings/limits and required next action to the explicit author through the available authorized communication mechanism. Follow templates/README.md's proportionate coordination guidance: no routine progress relays, copy-to-coordinator requirement or acknowledgement loop. Distinguish requested/queued sending from confirmed delivery. Missing tools or unconfirmed receipt must be reported honestly; do not build a provider, dispatcher, routing schema or recurring retry loop. Review PASS remains separate from any required final approval and merge.
 
 Illustrative current-handoff examples, not completed target data:
 <!-- assuredloop:template:start -->
