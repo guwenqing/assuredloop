@@ -19,6 +19,10 @@ Find matching prior reviews before repeating work. Reuse coverage only when its 
 
 Resolve accepted policy from the destination's current pre-change state, including exact model eligibility, exclusions/aliases, review depth and explicit owner decisions. Missing policy, unresolved identities or excluded models are not cured by guessing tiers. An excluded model needs the actual scoped owner override. Explicit initial manual bootstrap directions must be evidenced and labelled, not converted into an invented activation record.
 
+When accepted `project.review.routing` is present, declare `review_kind: internal` for the primary assessment or `external` for an additional assessment, and `review_tool` as the actual native tool ID. Internal evidence must match `routing.primary_tool` and the exact internal model allowlist. The primary tool must be selected in `repository.tools`; an additional tool need only be supported by the pinned native registry, with no local discovery installation or executable check. Unknown/unsupported IDs cannot discharge obligations; unavailable registry means qualification is unavailable. Never infer tool identity from a model name or transport channel.
+
+`additional: required` needs both primary and at least one independent additional passing assessment for the exact candidate/policy. The same model/tool is allowed, but one session cannot count as both reviews or be the producer. Preserve exclusions and aliases for both roles. `on-request` normally needs only primary; retain the source and scope of any explicit work-specific additional request in the handoff and assess its completion manually. Mechanical checks do not infer requests from arbitrary prose. Legacy evidence under policy without routing retains its unresolved-role notice and original obligations; do not invent missing tool/role values or tighten historical acceptance retroactively.
+
 The reviewer must be a different real agent/session from the producer and must not implement the subject being reviewed. Missing/equal session declarations are invalid; distinct strings alone do not prove independence. Record actual model/session/depth and what you inspected. Report unavailable policy/evidence and withhold qualifying acceptance when required inputs cannot be resolved.
 
 ## Assess and consolidate
@@ -37,7 +41,7 @@ Give findings stable identifiers, concrete impact, tight file/line or artifact r
 
 ## Publish and return, including clean results
 
-Publish the consolidated review to the authorized PR/work record and verify the resulting URL/body/revision. Keep prior verdicts as history. A clean result still needs publication and return; if an applicable review was reused, say so and link it.
+Publish the consolidated review to the authorized PR/work record and verify the resulting URL/body/revision. Keep prior verdicts as history. Retain their original source, revision, verdict and findings; noncurrent records cannot supply current review credit. Inspect the author’s linked dispositions and explicitly assess earlier findings in the applicable reassessment. A head advance or newer PASS does not itself resolve them. Link prior reviews and dispositions through existing Evidence references; do not overwrite history or infer last-comment-wins. A clean result still needs publication and return; if an applicable review was reused, say so and link it.
 
 A blocked or incomplete assessment is also an outcome. When the publication location and permission are established, publish the truthful diagnostic/limitations and return the missing-input request rather than waiting for a PASS before giving feedback. Do not fabricate a qualifying evidence envelope. If publication itself is unavailable or unauthorized, retain the draft and report that limitation through the currently authorized return channel.
 

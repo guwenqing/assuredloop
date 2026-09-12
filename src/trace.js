@@ -1,11 +1,13 @@
 import { createReadAdapter, workIdentity } from './read-adapter.js';
 import { fail, relativePath } from './files.js';
 import { validateRecord, collectRecordReferences } from './records.js';
-import { resolvePolicy, resolveCurrentPolicy } from './policy.js';
+import { resolvePolicy, resolveCurrentPolicy, resolveHistoricalPolicy } from './policy.js';
 import { readRecordBody } from './record-body.js';
 import { readSourceRecord } from './source-record.js';
 import { establishAcquisition } from './acquisition.js';
 import { buildReviewPacket } from './review-packet.js';
+import { checkReviewObligations } from './review-routing.js';
+import { reviewEvidenceApplicability } from './review-evidence.js';
 import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
 import { isLinkedRuntime, runtimeContext } from './runtime.js';
@@ -444,6 +446,45 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
       result.findings.push(...policy.findings);
       if (policy.status !== 'available') result.status = policy.status === 'invalid' ? 'invalid' : 'unavailable';
       trace.cacheSources(policy.sources || []);
+    }
+    if (bundle.pulls.length) { result.review_routing = []; result.review_evidence = []; }
+    for (const pull of bundle.pulls) {
+      const pr = `${trace.repository}#${pull.number}`;
+      const entries = bundle.evidence.filter((entry) => entry.record.pr?.toLowerCase() === pr);
+      const routingPolicies = new Map();
+      for (const entry of entries.filter((entry) => validateRecord('evidence', entry.record).valid)) {
+        let policy = policies.find((policy) => policy.assessment?.pr === pr);
+        if (pull.merged) {
+          const applicability = reviewEvidenceApplicability({ entry, pr, pull });
+          if (applicability.applicability === 'noncurrent') {
+            await trace.withPolicyScope(pull, () => trace.adapter.readCommit({ repository: trace.repository, revision: entry.record.head }));
+            result.review_evidence.push(applicability);
+            continue;
+          }
+          policy = await trace.withPolicyScope(pull, () => resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime }));
+          trace.cacheSources(policy.sources || []);
+          routingPolicies.set(JSON.stringify([policy.assessment, policy.config_digest, policy.activation_digest]), policy);
+        }
+        if (policy?.status === 'available') {
+          const current = { ...policy.assessment, policy_ref: policy.policy_ref, contract_package: policy.contract_package,
+            config_digest: policy.config_digest, activation_digest: policy.activation_digest };
+          const applicability = reviewEvidenceApplicability({ entry, pr, pull, policy, current });
+          if (applicability.applicability === 'noncurrent') await trace.withPolicyScope(pull, () =>
+            trace.adapter.readCommit({ repository: trace.repository, revision: entry.record.head }));
+          result.review_evidence.push(applicability);
+        }
+      }
+      if (!pull.merged) {
+        const policy = policies.find((policy) => policy.assessment?.pr === pr);
+        if (policy) routingPolicies.set(pr, policy);
+      }
+      for (const policy of routingPolicies.values()) {
+        const current = { pr, head: pull.head.sha, base_sha: pull.base.sha, ...policy.assessment,
+          policy_ref: policy.policy_ref, contract_package: policy.contract_package,
+          config_digest: policy.config_digest, activation_digest: policy.activation_digest };
+        const routing = await checkReviewObligations({ entries, policy, current });
+        result.review_routing.push(routing);
+      }
     }
     const budgets = policies.filter((policy) => policy.status === 'available').map((policy) => policy.config.project.review.context?.max_inline_bytes ?? 65536);
     budget = Math.min(...budgets, maxInlineBytes ?? 65536);

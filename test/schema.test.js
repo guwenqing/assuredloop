@@ -72,6 +72,7 @@ test('every readable record template validates through its declared record kind'
     ['activation.json', 'activation'],
     ['config.json', 'config'],
     ['evidence.json', 'evidence'],
+    ['initialBootstrapVerification.json', 'initialBootstrapVerification'],
     ['issue.json', 'issue'],
     ['manifest.json', 'manifest'],
     ['planRef.json', 'planRef'],

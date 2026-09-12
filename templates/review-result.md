@@ -6,6 +6,7 @@ Reusable draft report scaffold. Read templates/README.md and contracts/review-an
 
 {{verdict_exact_head_destination_scope_and_policy}}
 {{actual_reviewer_model_session_depth_and_independence}}
+{{declared_review_kind_tool_and_obligation_coverage_under_accepted_policy}}
 {{original_basis_and_prior_coverage_used_or_refreshed}}
 
 ## Findings and consolidation

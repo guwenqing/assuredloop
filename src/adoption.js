@@ -6,7 +6,7 @@ import { fail, git, optionalRead, relativePath, repositoryIdentity, repositoryRo
 import { validateRecord } from './records.js';
 import { verifyContracts } from './contracts.js';
 import { isLinkedRuntime, runtimeContext } from './runtime.js';
-import { githubPreflight, skillRoots } from './native.js';
+import { githubPreflight, skillRoots, reviewRouting } from './native.js';
 
 const installedRoot = fileURLToPath(new URL('..', import.meta.url));
 const plans = new WeakMap();
@@ -61,6 +61,8 @@ export async function planInitialization({ targetRoot, config, packageRoot = ins
   const validation = validateRecord('config', config);
   if (!validation.valid) fail('binding-invalid', 'Explicit target configuration is missing or invalid.', validation.errors);
   if (JSON.stringify(config).includes('{{')) fail('binding-invalid', 'Unresolved placeholder in target configuration.');
+  const routing = await reviewRouting(config);
+  if (['invalid', 'unavailable'].includes(routing.status)) fail('binding-invalid', routing.findings.map((item) => item.message).join(' '), routing.findings);
   const actualRoot = await validateTarget(targetRoot, config);
   const binding = config.project.workflow;
   if (!isLinkedRuntime(runtime)) {
@@ -74,6 +76,7 @@ export async function planInitialization({ targetRoot, config, packageRoot = ins
   }
   const roots = await skillRoots(actualRoot, config.repository.tools);
   const diagnostics = await githubPreflight(config.repository.name, config.repository.labels, localOnly);
+  diagnostics.push(...routing.findings);
   diagnostics.push({ code: 'not-active', message: 'Initialization is not policy acceptance or activation; package integrity is a supplied binding, not publisher authentication.' });
   const files = [{ path: '.assuredloop/config.json', content: `${JSON.stringify(config, null, 2)}\n` }];
   const bindings = { repository: config.repository.name, openspec_root: config.repository.openspec_root,

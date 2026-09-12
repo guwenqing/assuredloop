@@ -8,6 +8,7 @@ import { verifyContracts } from './contracts.js';
 import { isLinkedRuntime } from './runtime.js';
 import { workIdentity } from './read-adapter.js';
 import { loadNativeRuntime } from './native-runtime.js';
+import { reviewRouting } from './native.js';
 
 const installedRoot = fileURLToPath(new URL('..', import.meta.url));
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -104,6 +105,9 @@ async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPul
     result.config = JSON.parse(configSource.content);
     field = 'config';
     requireShape('config', result.config, 'config');
+    result.review_routing = await reviewRouting(result.config);
+    result.findings.push(...result.review_routing.findings);
+    if (['invalid', 'unavailable'].includes(result.review_routing.status)) fail('policy-unavailable', result.review_routing.findings.map((item) => item.message).join(' '));
     if (result.config.repository.name.toLowerCase() !== identity.repository) fail('binding-invalid', 'Destination config repository differs from actual PR identity.');
     allowed = new Set([identity.repository, ...(result.config.repository.allowed_reference_repositories || []).map((name) => name.toLowerCase())]);
     field = 'project.workflow package binding';
@@ -193,6 +197,9 @@ export async function resolveHistoricalPolicy({ adapter, record, packageRoot = i
   if (pull.head?.sha !== record.head || pull.base.ref !== record.base_ref) {
     return reject('invalid', 'historical-tuple-mismatch', 'Recorded head or destination base ref differs from the actual merged PR.');
   }
+  if (record.base_sha === record.head) {
+    return reject('invalid', 'historical-tuple-mismatch', 'The reviewed candidate cannot also be its own recorded pre-change base.');
+  }
   const historicalPull = { ...pull, base: { ...pull.base, sha: record.base_sha } };
   const result = await resolvePolicySnapshot({ adapter, work: record.pr, packageRoot, historicalPull, runtime });
   result.context = { ...context, merge_commit_sha: pull.merge_commit_sha };
@@ -232,17 +239,29 @@ export function checkReviewEvidence({ record, policy, current = {}, reviewKind }
 export function checkReviewerEligibility({ record, policy, reviewKind } = {}) {
   const findings = [];
   const add = (code, message) => findings.push({ code, message });
+  const review = policy?.config?.project?.review;
+  const routing = review?.routing;
+  const specialized = record.record_type === 'initial-bootstrap-verification' && validateRecord('initialBootstrapVerification', record).valid;
+  const routedEvidence = routing && !specialized;
+  if (routedEvidence) {
+    reviewKind = record.review_kind;
+    if (!['internal', 'external'].includes(reviewKind)) add('review-kind-missing', 'Accepted routing requires an explicit source review_kind.');
+    if (typeof record.review_tool !== 'string' || !record.review_tool.trim()) add('review-tool-missing', 'Accepted routing requires an explicit source review_tool.');
+    if (!policy.config.repository?.tools?.includes(routing.primary_tool)) add('review-primary-tool-unselected', 'The primary review tool must be selected in repository.tools.');
+    if (reviewKind === 'internal' && record.review_tool !== routing.primary_tool) add('review-tool-mismatch', 'Primary review tool does not match accepted routing.primary_tool.');
+  }
   const knownKind = ['internal', 'external'].includes(reviewKind);
   findings.push({ code: knownKind ? 'review-kind-declared' : 'review-kind-unresolved', severity: 'review',
     review_kind: knownKind ? reviewKind : null,
-    message: knownKind
-      ? `Caller-selected ${reviewKind} comparison only. Source assessment must establish the role; external comparison does not satisfy an internal review obligation.`
-      : 'Review role is unresolved. Shared constraints are checked, but this record is not automatically credited to an internal or external review obligation.' });
+    message: routedEvidence
+      ? 'Source-declared review role under accepted routing; declarations do not prove execution or independence.'
+      : knownKind
+        ? `Caller-selected ${reviewKind} comparison only. Source assessment must establish the role; external comparison does not satisfy an internal review obligation.`
+        : 'Review role is unresolved. Shared constraints are checked, but this record is not automatically credited to an internal or external review obligation.' });
   if (!record.producer_session || !record.reviewer_session || record.producer_session === record.reviewer_session) {
     add('review-independence-invalid', 'Nonempty different producer/reviewer session declarations are required.');
   }
   if (record.review_depth !== 'full-scope') add('review-depth-invalid', 'Review depth must declare full-scope.');
-  const review = policy?.config?.project?.review;
   if (policy?.status !== 'available' || !validateRecord('review', review).valid) {
     add('review-policy-unavailable', 'Accepted destination review policy is unavailable.');
     return findings;

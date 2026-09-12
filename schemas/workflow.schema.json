@@ -249,6 +249,25 @@
             "max_inline_bytes"
           ],
           "additionalProperties": false
+        },
+        "routing": {
+          "type": "object",
+          "properties": {
+            "primary_tool": {
+              "$ref": "#/$defs/text"
+            },
+            "additional": {
+              "enum": [
+                "on-request",
+                "required"
+              ]
+            }
+          },
+          "required": [
+            "primary_tool",
+            "additional"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -598,6 +617,15 @@
             "bootstrap",
             "activation"
           ]
+        },
+        "review_kind": {
+          "enum": [
+            "internal",
+            "external"
+          ]
+        },
+        "review_tool": {
+          "$ref": "#/$defs/text"
         }
       },
       "required": [
@@ -937,6 +965,36 @@
                 "type": "null"
               }
             }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "review_kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "producer_session",
+              "reviewer_session",
+              "reviewer_model",
+              "review_depth"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "review_tool"
+            ]
+          },
+          "then": {
+            "required": [
+              "producer_session",
+              "reviewer_session",
+              "reviewer_model",
+              "review_depth"
+            ]
           }
         }
       ]

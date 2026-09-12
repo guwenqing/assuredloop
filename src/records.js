@@ -15,7 +15,7 @@ ajv.addSchema(schema);
 const validators = new Map();
 
 export const hasReviewDeclarations = (record) => record && typeof record === 'object' &&
-  ['producer_session', 'reviewer_session', 'reviewer_model', 'review_depth'].some((field) => Object.hasOwn(record, field));
+  ['producer_session', 'reviewer_session', 'reviewer_model', 'review_depth', 'review_kind', 'review_tool'].some((field) => Object.hasOwn(record, field));
 
 export function validateRecord(kind, value) {
   if (!Object.hasOwn(schema.$defs, kind)) {
