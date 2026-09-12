@@ -61,7 +61,7 @@ Work Issue: [#10](https://github.com/guwenqing/assuredloop-base/issues/10). Depe
 - [x] 5.1 Deliver the aggregate requirement/delivery assessment, including planning package 0 and any delegated alternative self-change demonstration; verify independent assessment of actual evidence and return unresolved acceptance gaps to responsible work.
 - [x] 5.2 Deliver the synchronized canonical Specs and repaired current inbound anchors; verify full-delta coverage, preserved scenarios/links and native validation before staging archive.
 - [x] 5.3 Deliver regenerated release contract assets and the reviewed activation/bootstrap-binding transition; verify source/version/integrity metadata and installed-package resolution without stale active-change paths.
-- [ ] 5.4 Deliver the versioned acceptance-manifest candidate and archive move; verify source identity, results/digests and per-delivery base/policy audit metadata, distinguish closeout_policy_ref from historical entries, and report incomplete provenance or later drift/unavailability without committing full logs.
+- [x] 5.4 Deliver the versioned acceptance-manifest candidate and archive move; verify source identity, results/digests and per-delivery base/policy audit metadata, distinguish closeout_policy_ref from historical entries, and report incomplete provenance or later drift/unavailability without committing full logs.
 - [x] 5.5 Deliver the closeout acceptance package and operational handoff; verify GitHub retains the pending final review, authorized merge, post-merge confirmation and Issue/Epic closure obligations, none marked done prematurely in this native checklist.
 
 ## 6. Formal Architecture Task and classification migration
