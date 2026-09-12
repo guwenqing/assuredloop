@@ -45,13 +45,14 @@ export function validateRecord(kind, value) {
   return { valid: errors.length === 0, errors };
 }
 
-export function collectRecordReferences(value) {
+export function collectRecordReferences(value, { includePackageSources = true } = {}) {
   const result = new Map();
   const add = (ref) => result.set(JSON.stringify(ref), structuredClone(ref));
   function visit(node, item) {
     if (item === undefined || item === null || !node) return;
     if (node.$ref) {
       const name = node.$ref.split('/').at(-1);
+      if (name === 'contractPackage' && !includePackageSources) return;
       if (name === 'source' && validateRecord('source', item).valid) {
         add(item.kind === 'git-blob' ? item.ref : { repository: item.repository, comment_id: item.comment_id });
         return;

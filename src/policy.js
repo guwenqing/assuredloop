@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { fail, safePath } from './files.js';
 import { validateRecord } from './records.js';
 import { verifyContracts } from './contracts.js';
+import { isLinkedRuntime } from './runtime.js';
 import { workIdentity } from './read-adapter.js';
 import { loadNativeRuntime } from './native-runtime.js';
 
@@ -44,11 +45,11 @@ export async function checkAnchor(ref, text) {
   if (!found) fail('record-unavailable', `Heading anchor is unavailable: ${ref.anchor}`);
 }
 
-export async function resolvePolicy({ adapter, work, packageRoot = installedRoot } = {}) {
-  return resolvePolicySnapshot({ adapter, work, packageRoot });
+export async function resolvePolicy({ adapter, work, packageRoot = installedRoot, runtime } = {}) {
+  return resolvePolicySnapshot({ adapter, work, packageRoot, runtime });
 }
 
-async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPull, currentContext }) {
+async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPull, currentContext, runtime }) {
   const result = { status: 'unavailable', mode: null, config: null, activation: null, policy_ref: null,
     contract_package: null, config_digest: null, activation_digest: null, sources: [], findings: [] };
   let field = 'destination';
@@ -106,12 +107,14 @@ async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPul
     if (result.config.repository.name.toLowerCase() !== identity.repository) fail('binding-invalid', 'Destination config repository differs from actual PR identity.');
     allowed = new Set([identity.repository, ...(result.config.repository.allowed_reference_repositories || []).map((name) => name.toLowerCase())]);
     field = 'project.workflow package binding';
-    metadata = await verifyContracts(packageRoot);
-    const pkg = JSON.parse(await readFile(await safePath(packageRoot, 'package.json'), 'utf8'));
     const binding = result.config.project.workflow;
-    if (binding.name !== pkg.name || binding.version !== pkg.version || binding.name !== metadata.name ||
-        binding.version !== metadata.version || binding.contracts_path !== metadata.contracts_path ||
-        !isDeepStrictEqual(binding.source_ref, metadata.source_ref)) fail('policy-unavailable', 'Selected package and destination project.workflow binding differ.');
+    if (!isLinkedRuntime(runtime)) {
+      metadata = await verifyContracts(packageRoot);
+      const pkg = JSON.parse(await readFile(await safePath(packageRoot, 'package.json'), 'utf8'));
+      if (binding.name !== pkg.name || binding.version !== pkg.version || binding.name !== metadata.name ||
+          binding.version !== metadata.version || binding.contracts_path !== metadata.contracts_path ||
+          !isDeepStrictEqual(binding.source_ref, metadata.source_ref)) fail('policy-unavailable', 'Selected package and destination project.workflow binding differ.');
+    }
     result.contract_package = structuredClone(binding);
 
     const activationSource = await source(refAtBase('.assuredloop/activation.json'), 'activation', true);
@@ -147,7 +150,7 @@ async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPul
   return result;
 }
 
-export async function resolveCurrentPolicy({ adapter, repository, packageRoot = installedRoot, prepareSnapshot } = {}) {
+export async function resolveCurrentPolicy({ adapter, repository, packageRoot = installedRoot, prepareSnapshot, runtime } = {}) {
   let current;
   try {
     const info = await adapter.readRepository(repository);
@@ -156,7 +159,7 @@ export async function resolveCurrentPolicy({ adapter, repository, packageRoot = 
     const revision = await adapter.readBranchHead({ repository, branch });
     current = { repository, branch, revision, fetched_at: new Date().toISOString(), comparison: 'current-policy-only' };
     if (prepareSnapshot) adapter = await prepareSnapshot({ repository, revision });
-    const result = await resolvePolicySnapshot({ adapter, packageRoot, currentContext: current });
+    const result = await resolvePolicySnapshot({ adapter, packageRoot, currentContext: current, runtime });
     result.current = current;
     const fresh = await adapter.readRepository(repository);
     const observed = await adapter.readBranchHead({ repository, branch });
@@ -171,7 +174,7 @@ export async function resolveCurrentPolicy({ adapter, repository, packageRoot = 
   }
 }
 
-export async function resolveHistoricalPolicy({ adapter, record, packageRoot = installedRoot } = {}) {
+export async function resolveHistoricalPolicy({ adapter, record, packageRoot = installedRoot, runtime } = {}) {
   const context = { historical: true, pr: record?.pr, base_sha: record?.base_sha, live_authority: false };
   const reject = (status, code, message) => ({ status, context, findings: [{ code, message }] });
   const shape = validateRecord('evidence', record);
@@ -191,7 +194,7 @@ export async function resolveHistoricalPolicy({ adapter, record, packageRoot = i
     return reject('invalid', 'historical-tuple-mismatch', 'Recorded head or destination base ref differs from the actual merged PR.');
   }
   const historicalPull = { ...pull, base: { ...pull.base, sha: record.base_sha } };
-  const result = await resolvePolicySnapshot({ adapter, work: record.pr, packageRoot, historicalPull });
+  const result = await resolvePolicySnapshot({ adapter, work: record.pr, packageRoot, historicalPull, runtime });
   result.context = { ...context, merge_commit_sha: pull.merge_commit_sha };
   const reconstructed = result.status === 'available';
   if (reconstructed) {

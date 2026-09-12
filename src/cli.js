@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { resolveRuntime, runtimeContext } from './runtime.js';
 
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const args = process.argv.slice(2);
+let runtime;
 
 try {
+  if (['init', 'inspect', 'check'].includes(args[0])) runtime = await resolveRuntime({
+    invokedPath: process.argv[1], modulePath: fileURLToPath(import.meta.url),
+  });
   if (!args.length || args[0] === '--help' || args[0] === 'help') {
-    console.log(`assuredloop ${pkg.version}\n\ninit --target ABS_ROOT --config ABS_JSON [--apply] [--local-only]\n  Preview explicit local adoption; --apply writes the listed files.\ninspect --target ABS_ROOT --work OWNER/REPO#N\n  [--max-inline-bytes N] [--cursor TOKEN] [--expand REF]\n  [--delta-ref JSON_REPO_REF] [--manifest-ref JSON_REPO_REF]\n  Read a paginated reviewer packet. REF is a qualified work or structured reference JSON.\ncheck --target ABS_ROOT --work OWNER/REPO#N [--local-only]\n  Return a complete non-paginated diagnostic; use inspect for bounded reviewer context. Local-only results are incomplete.\n  Closeout: [--delta-ref JSON_REPO_REF] [--manifest-ref JSON_REPO_REF]\ngenerate-contracts --source-root ABS_ROOT --repository OWNER/REPO --revision FULL_SHA\n  --specs-path REL_PATH --out ABS_DIRECTORY --basis bootstrap|canonical\n--version\n\nInspect/check are read-only. Formal success does not grant merge permission or prove semantic completion. Initialization is not activation.\nNon-PR work uses GitHub's current default branch for current-context inspection only. This adapter convention does not reconstruct past policy or restrict PR delivery destinations.\nReview role remains unresolved in CLI checks; reviewers establish internal/external obligation coverage from the original sources.`);
+    console.log(`assuredloop ${pkg.version}\n\ninit --target ABS_ROOT --config ABS_JSON [--apply] [--local-only]\n  Preview explicit local adoption; --apply writes the listed files.\ninspect --target ABS_ROOT --work OWNER/REPO#N\n  [--max-inline-bytes N] [--cursor TOKEN] [--expand REF]\n  [--delta-ref JSON_REPO_REF] [--manifest-ref JSON_REPO_REF]\n  Read a paginated reviewer packet. REF is a qualified work or structured reference JSON.\ncheck --target ABS_ROOT --work OWNER/REPO#N [--local-only]\n  Return a complete non-paginated diagnostic; use inspect for bounded reviewer context. Local-only results are incomplete.\n  Closeout: [--delta-ref JSON_REPO_REF] [--manifest-ref JSON_REPO_REF]\ngenerate-contracts --source-root ABS_ROOT --repository OWNER/REPO --revision FULL_SHA\n  --specs-path REL_PATH --out ABS_DIRECTORY --basis bootstrap|canonical\n--version\n\nInspect/check are read-only. Formal success does not grant merge permission or prove semantic completion. Initialization is not activation.\nNon-PR work uses GitHub's current default branch for current-context inspection only. This adapter convention does not reconstruct past policy or restrict PR delivery destinations.\nActual npm package-root links select linked-development with toolkit_verification: not-performed. Consumer policy/source/review checks remain required; ordinary bin shims and direct source keep existing checks.\nReview role remains unresolved in CLI checks; reviewers establish internal/external obligation coverage from the original sources.`);
   } else if (args[0] === '--version') {
     console.log(pkg.version);
   } else if (args[0] === 'inspect') {
@@ -17,7 +23,7 @@ try {
       'delta-ref': { type: 'string' }, 'manifest-ref': { type: 'string' },
     } });
     const { inspectWork } = await import('./trace.js');
-    const result = await inspectWork({ targetRoot: values.target, work: values.work,
+    const result = await inspectWork({ targetRoot: values.target, work: values.work, runtime,
       maxInlineBytes: values['max-inline-bytes'] === undefined ? undefined : Number(values['max-inline-bytes']),
       cursor: values.cursor, expand: (values.expand || []).map((ref) => ref.startsWith('{') ? JSON.parse(ref) : ref),
       deltaRef: values['delta-ref'] ? JSON.parse(values['delta-ref']) : undefined,
@@ -30,7 +36,7 @@ try {
       'delta-ref': { type: 'string' }, 'manifest-ref': { type: 'string' },
     } });
     const { checkWork } = await import('./check.js');
-    const result = await checkWork({ targetRoot: values.target, work: values.work, localOnly: values['local-only'],
+    const result = await checkWork({ targetRoot: values.target, work: values.work, runtime, localOnly: values['local-only'],
       deltaRef: values['delta-ref'] ? JSON.parse(values['delta-ref']) : undefined,
       manifestRef: values['manifest-ref'] ? JSON.parse(values['manifest-ref']) : undefined });
     console.log(JSON.stringify(result, null, 2));
@@ -43,7 +49,7 @@ try {
     if (!values.target || !values.config) throw Object.assign(new Error('init requires --target and --config.'), { code: 'binding-invalid' });
     const { planInitialization, applyInitialization } = await import('./adoption.js');
     const config = JSON.parse(await readFile(values.config, 'utf8'));
-    const plan = await planInitialization({ targetRoot: values.target, config, localOnly: values['local-only'] });
+    const plan = await planInitialization({ targetRoot: values.target, config, localOnly: values['local-only'], runtime });
     console.log(JSON.stringify(values.apply ? await applyInitialization(plan) : plan, null, 2));
   } else if (args[0] === 'generate-contracts') {
     const { values } = parseArgs({ args: args.slice(1), options: Object.fromEntries(
@@ -57,6 +63,6 @@ try {
     throw Object.assign(new Error(`Unknown command: ${args[0]}`), { code: 'command-unavailable' });
   }
 } catch (error) {
-  console.log(JSON.stringify({ status: 'error', code: error.code || 'operation-failed', message: error.message, details: error.details }));
+  console.log(JSON.stringify({ ...runtimeContext(runtime), status: 'error', code: error.code || 'operation-failed', message: error.message, details: error.details }));
   process.exitCode = 1;
 }

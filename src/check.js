@@ -6,9 +6,10 @@ import { checkWorkRecords, parseWorkRecord } from './work-records.js';
 import { resolvePolicy, resolveHistoricalPolicy, checkReviewEvidence, checkEvidenceContext } from './policy.js';
 import { isDeepStrictEqual } from 'node:util';
 import { verifyInitialBootstrap } from './initial-bootstrap.js';
+import { runtimeContext } from './runtime.js';
 
-async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
-  const result = { operation: 'check', mode: 'live', status: 'pass', work, findings: [], policies: [], records: [] };
+async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
+  const result = { ...runtimeContext(runtime), operation: 'check', mode: 'live', status: 'pass', work, findings: [], policies: [], records: [] };
   let trace;
   const add = (code, message, status = 'invalid', details) => {
     result.findings.push({ code, message, details });
@@ -21,7 +22,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
       findings: [{ code: error.code, message: error.message, details: error.details }] });
   };
   try {
-    trace = await createTrace({ targetRoot, work });
+    trace = await createTrace({ targetRoot, work, runtime });
     const selected = await trace.bundleAt(work);
     result.repository = trace.repository;
     result.context = publicBundle(selected);
@@ -33,7 +34,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
     const verifyEvidence = async (entry) => {
       const pull = await trace.pullAt(entry.record.pr);
       return trace.withPolicyScope(pull, async () => {
-        const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record });
+        const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime });
         const findings = [...policy.findings];
         if (policy.status !== 'available') return { valid: false, findings };
         const { repository } = workIdentity(entry.record.pr);
@@ -92,8 +93,8 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
         try {
           await trace.bindPolicyScope(pull);
           const policy = historical
-            ? await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record })
-            : await resolvePolicy({ adapter: trace.adapter, work: pr });
+            ? await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime })
+            : await resolvePolicy({ adapter: trace.adapter, work: pr, runtime });
           result.policies.push(policy);
           result.policy ??= policy;
           result.assessment ??= policy.assessment;
@@ -137,7 +138,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
         continue;
       }
       const parsed = await parseWorkRecord({ body: bundle.issue.body, kind: 'issue' });
-      for (const ref of recordReferences(parsed.record)) {
+      for (const ref of recordReferences(parsed.record, { runtime })) {
         try { await trace.load(ref); }
         catch (error) { add('reference-unavailable', error.message, 'unavailable', { ref, cause: error.code }); }
       }
@@ -169,7 +170,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
           if (!pull?.merged) continue;
           try {
             await trace.bindPolicyScope(pull);
-            const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record });
+            const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime });
             result.policies.push(policy);
             if (policy.status !== 'available') add('prerequisite-policy-unavailable', `${dependency}: recorded policy could not be reconstructed.`, policy.status === 'invalid' ? 'invalid' : 'unavailable', policy.findings);
             else {
@@ -214,13 +215,13 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
   return result;
 }
 
-export async function checkWork({ targetRoot, work, localOnly = false, deltaRef, manifestRef } = {}) {
-  if (!localOnly) return liveCheck({ targetRoot, work, deltaRef, manifestRef });
+export async function checkWork({ targetRoot, work, localOnly = false, deltaRef, manifestRef, runtime } = {}) {
+  if (!localOnly) return liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime });
   const { repository } = workIdentity(work);
   const adapter = await createReadAdapter({ targetRoot, repository, localOnly });
   const revision = await git(adapter.targetRoot, ['rev-parse', 'HEAD']);
   return {
-    operation: 'check', mode: 'local-only', status: 'incomplete', repository, work, revision,
+    ...runtimeContext(runtime), operation: 'check', mode: 'local-only', status: 'incomplete', repository, work, revision,
     findings: [
       { code: 'github-skipped', message: 'GitHub records and live destination freshness were not read.' },
       { code: 'policy-unavailable', message: 'A local snapshot does not establish the actual PR destination or its governing policy.' },

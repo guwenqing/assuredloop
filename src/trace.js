@@ -8,6 +8,7 @@ import { establishAcquisition } from './acquisition.js';
 import { buildReviewPacket } from './review-packet.js';
 import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
+import { isLinkedRuntime, runtimeContext } from './runtime.js';
 import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
 
 function canonical(value) {
@@ -37,9 +38,11 @@ export async function structuredBody(body, { allowPlain = true } = {}) {
   }
 }
 
-export const recordReferences = (value) => collectRecordReferences(value).map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref);
+export const recordReferences = (value, { runtime } = {}) => collectRecordReferences(value, {
+  includePackageSources: !isLinkedRuntime(runtime),
+}).map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref);
 
-export async function createTrace({ targetRoot, work }) {
+export async function createTrace({ targetRoot, work, runtime }) {
   const { repository } = workIdentity(work);
   let adapter = await createReadAdapter({ targetRoot, repository });
   let acquisition;
@@ -156,7 +159,7 @@ export async function createTrace({ targetRoot, work }) {
         if (!validateRecord('commentRef', source).valid || typeof row.body !== 'string') fail('record-unavailable', 'Comment inventory contains an unsupported identity/body.');
         const parsed = await sourceRecord(row.body, source, { allowPlain: true, discoverEvidence: true });
         const record = parsed.record;
-        sourceCache.set(key(source), { content: row.body, references: parsed.state === 'valid' ? recordReferences(record) : [], record_state: parsed.state, record_kind: parsed.kind });
+        sourceCache.set(key(source), { content: row.body, references: parsed.state === 'valid' ? recordReferences(record, { runtime }) : [], record_state: parsed.state, record_kind: parsed.kind });
         entries.push({ ref: source, record, body: row.body });
       }
       comments.set(ref, entries);
@@ -238,7 +241,7 @@ export async function createTrace({ targetRoot, work }) {
       const parsed = await sourceRecord(issue.body, ref, { expectedKind: issue.pull_request ? 'pr' : 'issue', allowMissing: !issue.pull_request });
       const record = parsed.record;
       const classification = await classificationAt(ref, issue, record);
-      references = recordReferences(record);
+      references = recordReferences(record, { runtime });
       if (classification?.config_ref) references.push(classification.config_ref);
       const entries = await commentsAt(ref);
       references.push(...entries.map((entry) => entry.ref));
@@ -261,7 +264,7 @@ export async function createTrace({ targetRoot, work }) {
       }
     }
     const parsed = references ? null : await sourceRecord(content, ref, { allowPlain: true, expectedKind });
-    const result = { content, references: references || (parsed.state === 'valid' ? recordReferences(parsed.record) : []),
+    const result = { content, references: references || (parsed.state === 'valid' ? recordReferences(parsed.record, { runtime }) : []),
       ...(parsed ? { record_state: parsed.state, record_kind: parsed.kind } : {}) };
     sourceCache.set(sourceKey(ref), result);
     return copySource(result);
@@ -278,7 +281,7 @@ export async function createTrace({ targetRoot, work }) {
   await classificationAt(normalizeWork(work), primaryIssue, primaryRecord.record);
 
   return {
-    repository, findings, issueAt, pullAt, bundleAt, load,
+    repository, runtime, findings, issueAt, pullAt, bundleAt, load,
     acquisitionContext: () => structuredClone({ primary: acquisition.context, secondary: acquisition.contexts }),
     invalidSourceContext: () => [...invalidSources.values()].map((source) => {
       try { authorize(source.ref); return structuredClone(source); }
@@ -392,16 +395,16 @@ export function publicBundle(bundle) {
 
 export async function currentTracePolicy(trace) {
   trace.resetScope();
-  const policy = await resolveCurrentPolicy({ adapter: trace.adapter, repository: trace.repository });
+  const policy = await resolveCurrentPolicy({ adapter: trace.adapter, repository: trace.repository, runtime: trace.runtime });
   await trace.recheckAcquisition();
   return policy;
 }
 
-export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = null, expand = [], deltaRef, manifestRef } = {}) {
-  const result = { operation: 'inspect', mode: 'live', status: 'pass', work, findings: [] };
+export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = null, expand = [], deltaRef, manifestRef, runtime } = {}) {
+  const result = { ...runtimeContext(runtime), operation: 'inspect', mode: 'live', status: 'pass', work, findings: [] };
   let budget = maxInlineBytes ?? 65536;
   try {
-    const trace = await createTrace({ targetRoot, work });
+    const trace = await createTrace({ targetRoot, work, runtime });
     const bundle = await trace.bundleAt(work);
     result.repository = trace.repository;
     result.context = publicBundle(bundle);
@@ -412,10 +415,10 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
       const pr = `${trace.repository}#${pull.number}`;
       try {
         policies.push(await trace.withPolicyScope(pull, async () => {
-          const policy = await resolvePolicy({ adapter: trace.adapter, work: pr });
+          const policy = await resolvePolicy({ adapter: trace.adapter, work: pr, runtime: trace.runtime });
           trace.cacheSources(policy.sources || []);
-          const refs = recordReferences(await structuredBody(pull.body, { allowPlain: false }));
-          for (const entry of bundle.evidence.filter((item) => item.record.pr?.toLowerCase() === pr)) refs.push(...recordReferences(entry.record));
+          const refs = recordReferences(await structuredBody(pull.body, { allowPlain: false }), { runtime });
+          for (const entry of bundle.evidence.filter((item) => item.record.pr?.toLowerCase() === pr)) refs.push(...recordReferences(entry.record, { runtime }));
           for (const ref of new Map(refs.map((value) => [key(value), value])).values()) {
             try { await trace.load(ref); }
             catch (error) {
@@ -482,8 +485,8 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
         assessment_acquisition: trace.acquisitionContext().secondary.filter((entry) => entry.work === pr) })}`,
         references: [...source.references, ...changedRoots] });
     }
-    const declaredRoots = recordReferences(await structuredBody(bundle.issue.body, { allowPlain: false }));
-    for (const pull of bundle.pulls) declaredRoots.push(...recordReferences(await structuredBody(pull.body, { allowPlain: false })));
+    const declaredRoots = recordReferences(await structuredBody(bundle.issue.body, { allowPlain: false }), { runtime });
+    for (const pull of bundle.pulls) declaredRoots.push(...recordReferences(await structuredBody(pull.body, { allowPlain: false }), { runtime }));
     const roots = [...(closeout?.roots || []), work, ...bundle.pulls.map((pull) => `${trace.repository}#${pull.number}`), ...(bundle.unresolvedRelations || []),
       ...bundle.evidence.map((entry) => entry.ref), trace.acquisitionSource.source.ref, ...policyRoots, ...changedRoots, ...declaredRoots];
     const normalizedRoots = roots.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref);
@@ -507,6 +510,6 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     delete result.packet;
     result.findings.push({ code: error.code || 'inspection-unavailable', message: error.message, details: error.details });
   }
-  if (Buffer.byteLength(JSON.stringify(result), 'utf8') + 1 > budget) return { operation: 'inspect', status: 'unavailable', findings: [{ code: 'packet-limit' }] };
+  if (Buffer.byteLength(JSON.stringify(result), 'utf8') + 1 > budget) return { ...runtimeContext(runtime), operation: 'inspect', status: 'unavailable', findings: [{ code: 'packet-limit' }] };
   return result;
 }
