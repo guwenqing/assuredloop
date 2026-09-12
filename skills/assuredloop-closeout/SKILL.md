@@ -13,6 +13,8 @@ Authoritative entry in that installation: contracts/specification-baseline/spec.
 
 Assigned aggregate closeout uses Architecture Task/closeout. Apply the consumer category/activity contract in templates/README.md; classification describes the outcome, not the assignee.
 
+One aggregate closeout Issue may cover an explicitly assigned batch of changes; a separate native change does not alone require another closeout Issue. Identify every included change and retain its complete delta, delivery evidence, synchronization and acceptance obligations. Track partial contributions separately and close the aggregate Issue only when its full assigned batch is complete. Use templates/README.md when consolidating duplicate closeout responsibility.
+
 ## Establish completeness and authority
 
 Assess every accepted requirement and contribution, including planning and any assigned self-change demonstration. Closed child Issues and checked boxes are inputs, not proof. Return missing/incorrect outcomes to responsible work; material agreement changes need the actual planning/human decision. A typed self-change choice is not evidence that its selected work ran.
