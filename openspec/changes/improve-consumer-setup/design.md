@@ -1,0 +1,62 @@
+## Context
+
+See [Proposal](proposal.md) and the four owner requests retained on [Epic #21](https://github.com/guwenqing/assuredloop-base/issues/21). At main `2c83d9bc3a52ddb088490bcd2b168507c0ab50d3`, the config has explicit model allowlists but no routing policy; `githubPreflight` reports missing labels; initialization has a guarded in-memory preview/apply boundary; the native tool registry already supplies supported tool IDs/Skill roots. `synchronization.js` scans Markdown links beyond current Specs, so the notes convention must be recognized, not merely declared exempt in prose.
+
+## Goals / Non-Goals
+
+Keep setup choices project-owned and source-guided. Add only one small routing block, explicit label operations and coherent guidance, not a role framework or universal organization chart. Brownfield work produces an owner-reviewed current definition for selected scope, not inferred intent for every file. Informal notes are optional Git content, not a new formalization target.
+
+## Decisions
+
+### 1. Explicit review routing supplements existing model policy
+
+Add optional `project.review.routing` with required `primary_tool` (native tool ID) and `additional` (`on-request` or `required`). Existing `internal.allowed_models`, exclusions and aliases remain authoritative for primary model eligibility. `primary_tool` must be among the target's selected supported native tools. Do not derive tool from model/vendor strings. When adopting from scratch, guidance fills this block: use the sole selected tool as the proposed default, or ask for the explicit primary choice when several are selected. Eligible model identities come from the owner's actual selected setup, not a hardcoded Astra default or undocumented model discovery. Record the choice before generating an allegedly complete config.
+
+Default `additional: on-request` means one separate primary reviewer is sufficient; an explicit work-specific additional-review request remains a handoff obligation with its source. `required` means both primary and at least one independent additional assessment are needed for that scoped change. Additional assessment may use the same or another tool; it must identify the actual independent session and model, satisfy exclusions, and cannot be the producer or the same reviewing session counted twice. No automatic provider call or subscription is added. More elaborate per-risk routing remains a future extension, not seven invented change classes.
+
+Add optional Evidence fields `review_kind: internal|external` and `review_tool` using the existing record. These labels mean primary versus additional work obligations, not vendors or mandatory separate bots. When accepted routing is configured, new qualifying reviews must declare them; older evidence assessed under old policy retains the existing unresolved-role notice. Require primary tool match and exact internal model eligibility for declared internal evidence; external evidence satisfies only the additional obligation. Trace acquisition provides all current qualifying source records to the obligation check, rather than letting one caller-selected role claim both. An actual explicit on-request additional-review obligation is recorded and assessed in work handoff/review evidence; the initial mechanical implementation does not infer that request from arbitrary prose, and reports its semantic assessment boundary.
+
+When `routing` is absent, preserve old policy/check behavior and report routing not configured rather than guess a tool or silently tighten historical obligations. New config/record keys remain rejected by old tools; choosing an upgraded package and accepting the new config is a normal self-change under the pre-change policy, not an automatic schema migration. The existing `project.review` namespace is reused; no parallel policy file is introduced.
+
+### 2. Opt-in label provisioning is a narrow init write path
+
+Extend the existing invocation with `init --target ABS --config ABS --provision-labels`, preserving preview by default and requiring the existing `--apply` to write. No provisioning flag means current read-only remote preflight behavior. Reject `--local-only` combined with provisioning because remote effects cannot be previewed or verified honestly.
+
+The initialization plan includes an explicit ordered list of missing mapped labels and the exact repository/config digest used to derive it. Preview checks access and existing labels but writes nothing. Apply revalidates the same real target, selected package, config, Skill roots, file conflicts and fresh remote label inventory before writes. Existing case-insensitive matches are retained unchanged. Create only still-missing requested labels with stable neutral default metadata; do not alter present colors/descriptions, rename labels, delete obsolete ones, change repository settings, classify Issues or touch credentials.
+
+Use the existing `gh` executable and known repository endpoint with safe serialized JSON. No shell command derived from a record. Apply reports per-operation actual outcomes and reads back created labels. If a label appears concurrently, confirm it exists and skip duplicate creation; wrong repository/permissions or conflicting local preview abort without further writes. If a later action fails after some creates, report partial effects and the remaining plan; no destructive rollback and no complete-init claim. Retrying uses a new preview of the remaining operations, not replaying a stale list. Keep full execution logs out of Git and distinguish label availability from bootstrap acceptance.
+
+### 3. Brownfield is a guided baseline decision, not another scanner
+
+Extend the existing adoption Skill to establish whether the requested outcome is tool installation only or adoption of existing project scope. For Brownfield, the executor and owner select the repository/area and important behavior boundaries. Reuse existing current Specs/design rather than starting a duplicate tree. Inventory source anchors from relevant tracked code, tests, docs and external decisions that the owner actually supplied. Work incrementally by meaningful area; do not read unrelated secrets, require a whole-repo prompt or assume filenames establish complete coverage.
+
+The candidate native change explains observed behavior, intended requirements, conflicts, unknowns, coverage and explicit exclusions in its existing Proposal/Design. Its product Spec deltas provide readable L1 purpose, L2 capabilities and concrete L3 requirements/scenarios through normal native links, not a layer engine. Owners decide intent where code and docs conflict; independent review checks evidence, false completeness and traceable anchors. Synchronize accepted product requirements through native OpenSpec only after the scoped adoption outcome is reviewed; record baseline adoption as observed/documented scope, not new feature implementation or executed behavior tests.
+
+No new Brownfield CLI or universal manifest is required for version one. Native file/requirement validation and explicit source refs already cover structure; semantic reconstruction is guided human/AI work. A trial uses a synthetic existing small repo with code/tests/docs disagreement and one unexamined area. A fresh executor must preserve the disagreement and coverage boundary, propose a usable current definition and avoid modifying code merely to make the description look coherent. Normal subsequent changes use that accepted current baseline. Large or fundamentally uncertain intent returns to a bounded Spike/human decision; the guidance does not pretend every project can be fully adopted in one pass.
+
+### 4. One optional informal notes surface
+
+Use `.assuredloop/notes/future-work.md` for concise gap/idea notes when a consumer needs them. Do not create an empty placeholder during every init. No mandatory template, IDs, states, review logs or duplicated backlog. A short visible heading says informal, potentially obsolete and not accepted work. Useful source links and rationale can be written without an enforced format. Preserve existing content rather than normalize every old note.
+
+Default formal synchronization/link scanning excludes `.assuredloop/notes/` from source-consistency obligations, while current Specs, config and formal work records retain all existing checks. This is one explicit conventional path, not a general user-controlled exclusion glob or a way to hide formal files. Explicitly referenced notes can be acquired under normal permissions and presented as informal context; a reviewer must reject using them as an accepted requirement or approval source. Do not globally change record parsing to ignore errors in unrelated templates or submitted Evidence.
+
+The package excludes consumer notes like other instance data. Execution logs remain ignored local data/comments; source inventories and accepted requirements remain in their formal artifacts. A feature selected from a note enters normal intake/planning. The note may link to the resulting work as useful context but maintaining that backlink is not a required consistency check.
+
+### 5. Separate coherent developer outcomes, not architecture tickets per artifact
+
+One continuous planning Issue (#22) owns this Proposal and the other bounded feedback plans; no new Architecture Task per capability or revision. Three developer outcomes are useful here because routing, label writes and Brownfield/notes guidance have distinct verification and side-effect boundaries. Their code is still under normal independent test-first/unit/functional/fault discipline where executable. Guidance-only parts use independent fresh-executor trials and artifact checks, not invented runtime RED/GREEN.
+
+Review routing tests cover one-tool default, multi-tool missing choice, custom eligible models, same-tool separate sessions, duplicate sessions, missing primary/additional review, undeclared/mismatched tools, exclusions, aliases, legacy policy and candidate self-authorization. Label tests cover preview zero writes, exact additive writes, custom mappings, conflicts, races, permissions, partial failure and retry without deletion. Notes tests prove stale informal references do not fail formal sync while the same broken link in a formal Spec still fails; an explicit note cannot grant acceptance. Brownfield trials test intent conflicts, source traceability and partial scope without inventing claims about real users.
+
+No update is made to generated discovery copies, external consumer configuration or package pins implicitly. Each developer owns their authorized merge after independent review and checks; arch consultation is for significant uncertainty or scoped involvement, not another default gate.
+
+## Risks / Trade-offs
+
+- New routing declarations could turn into a provider scheduler: keep them as policy/context/checks and current explicit handoffs; no background bot installation.
+- Label provisioning cannot be atomic across GitHub and disk: surface each effect and stop safely on failure instead of claiming a transaction or deleting user data.
+- A Brownfield summary could hide unknowns: owner-selected boundaries, source anchors and conflict/coverage review are required; no automatic intended-behavior inference.
+- Informal notes could become a loophole: only the fixed note surface is exempt from default consistency, never current Specs/config or explicit submitted work evidence; keep semantic misuse reviewable.
+
+## Migration Plan
+
+Deliver owner-accepted planning under #22, retaining separate implementation outcomes. Existing configs keep old behavior until reviewed upgrade; new initialization guidance records explicit routing. New runtime helpers are verified against isolated consumers and actual packed CLI assets, without live remote writes during tests. #24 verifies each delivered requirement, native current-Spec synchronization and package/contract version selection. The two feedback Proposals both add to specification-baseline, so closeout synchronizes sequentially against the actual then-current baseline and verifies combined requirements without dropping the other change's additions. Rollback selects the prior accepted package; any labels already created remain ordinary user data and are not automatically deleted.
