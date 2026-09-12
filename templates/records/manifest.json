@@ -67,6 +67,134 @@
         }
       },
       "content_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+    },
+    {
+      "issues": [
+        "example/consumer#2"
+      ],
+      "prs": [
+        "example/consumer#4"
+      ],
+      "reviewed_head": "1111111111111111111111111111111111111111",
+      "result": "pass",
+      "scope": "Initial bootstrap assigned planning contribution",
+      "base_ref": "main",
+      "base_sha": "2222222222222222222222222222222222222222",
+      "policy_ref": null,
+      "policy_mode": null,
+      "source": {
+        "kind": "github-issue-comment",
+        "repository": "example/consumer",
+        "comment_id": 204,
+        "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+        "api_version": "2022-11-28",
+        "media_type": "application/vnd.github.raw+json",
+        "field": "body",
+        "encoding": "utf-8",
+        "normalization": "none"
+      },
+      "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "initial_bootstrap": {
+        "verification": {
+          "record_type": "initial-bootstrap-verification",
+          "pr": "example/consumer#4",
+          "head": "1111111111111111111111111111111111111111",
+          "base_ref": "main",
+          "base_sha": "2222222222222222222222222222222222222222",
+          "merge_sha": "3333333333333333333333333333333333333333",
+          "bootstrap_ref": {
+            "repository": "example/consumer",
+            "revision": "3333333333333333333333333333333333333333",
+            "path": ".assuredloop/config.json"
+          },
+          "sources": [
+            {
+              "purpose": "policy-acceptance",
+              "source": {
+                "kind": "github-issue-comment",
+                "repository": "example/consumer",
+                "comment_id": 201,
+                "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+                "api_version": "2022-11-28",
+                "media_type": "application/vnd.github.raw+json",
+                "field": "body",
+                "encoding": "utf-8",
+                "normalization": "none"
+              },
+              "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            {
+              "purpose": "proposal-acceptance",
+              "source": {
+                "kind": "github-issue-comment",
+                "repository": "example/consumer",
+                "comment_id": 202,
+                "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+                "api_version": "2022-11-28",
+                "media_type": "application/vnd.github.raw+json",
+                "field": "body",
+                "encoding": "utf-8",
+                "normalization": "none"
+              },
+              "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            {
+              "purpose": "review",
+              "source": {
+                "kind": "github-issue-comment",
+                "repository": "example/consumer",
+                "comment_id": 203,
+                "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+                "api_version": "2022-11-28",
+                "media_type": "application/vnd.github.raw+json",
+                "field": "body",
+                "encoding": "utf-8",
+                "normalization": "none"
+              },
+              "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            {
+              "purpose": "delivery",
+              "source": {
+                "kind": "github-issue-comment",
+                "repository": "example/consumer",
+                "comment_id": 204,
+                "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+                "api_version": "2022-11-28",
+                "media_type": "application/vnd.github.raw+json",
+                "field": "body",
+                "encoding": "utf-8",
+                "normalization": "none"
+              },
+              "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ],
+          "verified_at": "2026-09-12T18:00:00Z",
+          "verification_policy_ref": {
+            "repository": "example/consumer",
+            "revision": "4444444444444444444444444444444444444444",
+            "path": "policy/current.md"
+          },
+          "scope": "Initial bootstrap assigned planning contribution",
+          "result": "pass",
+          "producer_session": "example-later-producer",
+          "reviewer_session": "example-later-reviewer",
+          "reviewer_model": "gpt-6-astra",
+          "review_depth": "full-scope"
+        },
+        "source": {
+          "kind": "github-issue-comment",
+          "repository": "example/consumer",
+          "comment_id": 205,
+          "endpoint": "GET /repos/{owner}/{repo}/issues/comments/{id}",
+          "api_version": "2022-11-28",
+          "media_type": "application/vnd.github.raw+json",
+          "field": "body",
+          "encoding": "utf-8",
+          "normalization": "none"
+        },
+        "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
     }
   ],
   "decisions": [

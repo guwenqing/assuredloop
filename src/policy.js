@@ -222,6 +222,13 @@ export function checkReviewEvidence({ record, policy, current = {}, reviewKind }
   const shape = validateRecord('evidence', record);
   if (!shape.valid) findings.push({ code: 'review-evidence-invalid', message: 'Review evidence shape is invalid.', details: shape.errors });
   if (!record || typeof record !== 'object') return findings;
+  return [...findings, ...checkReviewerEligibility({ record, policy, reviewKind }),
+    ...checkEvidenceContext({ record, policy, current, code: 'review-evidence-stale' })];
+}
+
+export function checkReviewerEligibility({ record, policy, reviewKind } = {}) {
+  const findings = [];
+  const add = (code, message) => findings.push({ code, message });
   const knownKind = ['internal', 'external'].includes(reviewKind);
   findings.push({ code: knownKind ? 'review-kind-declared' : 'review-kind-unresolved', severity: 'review',
     review_kind: knownKind ? reviewKind : null,
@@ -252,7 +259,7 @@ export function checkReviewEvidence({ record, policy, current = {}, reviewKind }
     if (exclusions.has(model)) add('review-model-excluded', `Excluded reviewer model: ${model}; a separately assessed scoped owner override is required.`);
     if (reviewKind === 'internal' && !review.internal.allowed_models.includes(model)) add('review-model-ineligible', 'Reviewer model is not in the exact internal allowlist.');
   }
-  return [...findings, ...checkEvidenceContext({ record, policy, current, code: 'review-evidence-stale' })];
+  return findings;
 }
 
 export function checkEvidenceContext({ record, policy, current = {}, code = 'evidence-tuple-stale' }) {

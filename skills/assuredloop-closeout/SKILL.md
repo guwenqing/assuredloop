@@ -15,6 +15,8 @@ Assigned aggregate closeout uses Architecture Task/closeout. Apply the consumer 
 
 One aggregate closeout Issue may cover an explicitly assigned batch of changes; a separate native change does not alone require another closeout Issue. Identify every included change and retain its complete delta, delivery evidence, synchronization and acceptance obligations. Track partial contributions separately and close the aggregate Issue only when its full assigned batch is complete. Use templates/README.md when consolidating duplicate closeout responsibility.
 
+For each batch contribution PR, select one assigned native change using the existing PR change and fixed closeout task refs; keep the aggregate Issue's complete assignments stable. Selection must resolve to the actual owner, canonical tasks and one accepted whole-change revision. Follow templates/README.md for ambiguous/conflicting selectors and cumulative completion.
+
 ## Establish completeness and authority
 
 Assess every accepted requirement and contribution, including planning and any assigned self-change demonstration. Closed child Issues and checked boxes are inputs, not proof. Return missing/incorrect outcomes to responsible work; material agreement changes need the actual planning/human decision. A typed self-change choice is not evidence that its selected work ran.
@@ -27,11 +29,15 @@ Normally, verified synchronization and the reviewed archive candidate are delive
 
 Use native OpenSpec synchronization to apply the entire accepted delta, preserving unaffected behavior/scenarios. Do not just copy ADDED/MODIFIED headings into current Specs. Check every capability, rename and removal; repair current inbound heading references and record the mapping. Preserve immutable historical links and archived plans. Missing evidence remains unavailable rather than silently redirected.
 
+For an accepted tooling-only change with native skip_specs declared in its fixed metadata, verify the complete baseline Spec path inventory and raw bytes are identical and still validate the native baseline and inbound links. Missing/false/invalid declarations or contradictory deltas/retirement intent cannot waive synchronization. The no-spec-change result still needs semantic review of the actual scope.
+
 Run native strict validation and inspect the synchronized diff against all deltas. Structural checks cannot prove correct meaning. Obtain independent review of cumulative completeness and preservation. A prior stage-specific review cannot replace final destination assessment, especially after retargeting or base/policy changes.
 
 For a framework release, regenerate read-only contracts from the verified integrated source revision, check exact bytes/source/version metadata and package installation, and perform the reviewed policy/package binding transition. Do not leave a delivered canonical binding pointing at an obsolete active-change directory. Keep consumer product Specs separate from framework assets.
 
 Prepare the acceptance manifest under its schema and the authoritative source-representation rules. Preserve every delivery's actual historical base/policy audit values separately from closeout_policy_ref; record missing audit values as explicit gaps, never reconstruct them from current state. Include planning and separate typed decisions. Hash the recorded raw Git bytes or precisely specified decoded comment body without normalization. A digest is fixity, not authentication or recovery of missing content. Full logs stay in collaboration records.
+
+Include actual PR prerequisites in delivery prs and Issue prerequisites in issues. Initial-bootstrap history remains inventoried with honest null historical policy values and a separate initial_bootstrap verification/source/hash under the invoking accepted policy; follow templates/README.md for capture and revalidation. Do not drop initial planning, backfill earlier policy or turn arbitrary audit gaps into verified absence.
 
 ## Review, deliver and verify
 

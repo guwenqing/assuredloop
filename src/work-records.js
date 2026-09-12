@@ -25,7 +25,7 @@ export async function parseWorkRecord({ body, kind, allowMissing = false } = {})
 const planKey = (ref, item) => `${ref.repository.toLowerCase()}:${ref.path}#${item}`;
 const plans = (record) => new Set((record?.plan_items || []).flatMap((ref) => ref.items.map((item) => planKey(ref, item))));
 
-export async function checkWorkRecords({ work, issue, pulls = [], evidence = [], classification, categoryMapping, phase = 'handoff', resolveRef, resolveWork, _stack = [] } = {}) {
+export async function checkWorkRecords({ work, issue, pulls = [], evidence = [], classification, categoryMapping, phase = 'handoff', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack = [], _contribution = false } = {}) {
   const result = { status: 'valid', findings: [], context: { work, phase, issue: structuredClone(issue), pulls: structuredClone(pulls), evidence: structuredClone(evidence), references: [], prerequisites: [] } };
   const add = (code, message, severity = 'error', details) => {
     result.findings.push({ code, message, severity, details });
@@ -38,6 +38,29 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
   if (_stack.includes(work)) { add('dependency-cycle', 'Explicit prerequisite references contain a cycle.'); return result; }
   if (issue?.number !== identity.number || (issue.repository_url && issue.repository_url.toLowerCase() !== `https://api.github.com/repos/${identity.repository}`)) {
     add('work-identity-invalid', 'Issue identity differs from the explicitly selected work.'); return result;
+  }
+  if (issue.pull_request) {
+    const pull = pulls.find((item) => item.number === identity.number && item.base?.repo?.full_name?.toLowerCase() === identity.repository);
+    const selected = await parseWorkRecord({ body: pull?.body, kind: 'pr' });
+    for (const finding of selected.findings) add(finding.code, finding.message, 'error', finding.details);
+    if (!selected.record || selected.findings.length) return result;
+    if (pull.merged !== true || !Number.isFinite(Date.parse(pull.merged_at)) || !validateRecord('sha', pull.merge_commit_sha).valid) add('prerequisite-undelivered', 'PR prerequisite needs its actual merged contribution and merge commit.');
+    for (const owner of selected.record.issues) {
+      try {
+        if (typeof resolveWork !== 'function') throw new Error('Canonical owning Issue resolver is unavailable.');
+        const bundle = await resolveWork(owner.toLowerCase());
+        if (bundle?.issue?.pull_request || (bundle?.issue?.state === 'closed' && bundle.issue.state_reason === 'not_planned')) {
+          add('pr-owner-invalid', 'A PR contribution must belong to an actual non-cancelled owning Issue.'); continue;
+        }
+        const scopedEvidence = [...new Map([...evidence, ...(bundle.evidence || []).filter((entry) => entry.record?.pr?.toLowerCase() === work)]
+          .map((entry) => [JSON.stringify(entry.ref), entry])).values()];
+        const checked = await checkWorkRecords({ work: owner, ...bundle, pulls: [pull], evidence: scopedEvidence, categoryMapping,
+          phase: 'handoff', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack: [..._stack, work], _contribution: true });
+        result.context.prerequisites.push({ work: owner, ...checked.context });
+        for (const finding of checked.findings) add(finding.code, finding.message, finding.severity, finding.details);
+      } catch (error) { add('prerequisite-unavailable', error.message, 'unavailable', { owner, cause: error.code }); }
+    }
+    return result;
   }
   const parsed = await parseWorkRecord({ body: issue.body ?? '', kind: 'issue' });
   classification ??= classifyIssue(issue, parsed.record, categoryMapping);
@@ -122,6 +145,22 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
   for (const entry of evidence) {
     if (!validateRecord('evidenceRef', entry.ref).valid) add('evidence-source-invalid', 'Evidence source identity is invalid.');
     const assessment = entry.record;
+    if (assessment?.record_type === 'initial-bootstrap-verification') {
+      const match = pullRecords.get(assessment.pr?.toLowerCase());
+      if (!validateRecord('initialBootstrapVerification', assessment).valid || !match ||
+          assessment.head !== match.pull.head.sha || assessment.base_ref !== match.pull.base.ref || assessment.merge_sha !== match.pull.merge_commit_sha || match.pull.merged !== true) {
+        add('initial-bootstrap-invalid', 'Tagged verification must match this actual merged contribution.'); continue;
+      }
+      try {
+        const verified = typeof verifyBootstrap === 'function' && await verifyBootstrap(entry);
+        if (!verified?.valid || verified.findings?.some((item) => item.severity !== 'review')) add('initial-bootstrap-unverified', 'Required source-backed verification did not qualify.', 'error', verified?.findings);
+        else {
+          for (const finding of verified.findings || []) add(finding.code, finding.message, 'review');
+          reviewed.add(assessment.pr.toLowerCase());
+        }
+      } catch (error) { add('initial-bootstrap-unavailable', error.message, 'unavailable', { cause: error.code }); }
+      continue;
+    }
     const shape = validateRecord('evidence', assessment);
     if (!shape.valid) { add('evidence-record-invalid', 'Evidence record shape is invalid.', 'error', shape.errors); continue; }
     if (assessment.reviewer_model !== undefined || assessment.reviewer_session !== undefined) {
@@ -134,18 +173,27 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
       const match = pullRecords.get(assessment.pr.toLowerCase());
       if (!match) { add('evidence-pr-mismatch', 'Evidence identifies an unrelated or unavailable PR.'); continue; }
       const { pull } = match;
+      if (verifyEvidence && pull.merged) {
+        try {
+          const verified = await verifyEvidence(entry);
+          if (!verified?.valid) { add('historical-evidence-unverified', 'Original policy/review or delivered commit could not be verified.', 'error', verified?.findings); continue; }
+          for (const finding of (verified.findings || []).filter((item) => item.severity === 'review')) {
+            add(finding.code, finding.message, 'review', { ...finding.details, pr: assessment.pr, source: entry.ref });
+          }
+        } catch (error) { add('historical-evidence-unavailable', error.message, 'unavailable', { cause: error.code }); continue; }
+      }
       if (assessment.head !== pull.head.sha || assessment.base_ref !== pull.base.ref || (!pull.merged && assessment.base_sha !== pull.base.sha)) {
         add('evidence-tuple-stale', 'Evidence does not match the PR head/destination assessment.');
       }
-      if (assessment.reviewer_session && assessment.producer_session && assessment.reviewer_session !== assessment.producer_session && assessment.review_depth === 'full-scope') reviewed.add(assessment.pr.toLowerCase());
+      if (assessment.result === 'pass' && assessment.reviewer_session && assessment.producer_session && assessment.reviewer_session !== assessment.producer_session && assessment.review_depth === 'full-scope') reviewed.add(assessment.pr.toLowerCase());
     }
   }
   const closed = issue.state === 'closed' && issue.state_reason !== 'not_planned';
-  if (closed && ['deliver', 'plan', 'closeout'].includes(record.activity)) {
+  if (_contribution || (closed && ['deliver', 'plan', 'closeout'].includes(record.activity))) {
     const merged = [...pullRecords.entries()].filter(([, { pull }]) => pull.merged && pull.merged_at && validateRecord('sha', pull.merge_commit_sha).valid);
     if (!merged.length) add('delivery-unsupported', 'A completed delivery needs an actual merged PR and resulting merge commit.');
     for (const [pr] of merged) if (!reviewed.has(pr)) add('delivery-review-missing', 'Required scoped review evidence is missing for a delivered PR.', 'error', { pr });
-    for (const item of assigned) if (!contributions.has(item)) {
+    for (const item of _contribution ? [] : assigned) if (!contributions.has(item)) {
       if (unverifiedContributions.has(item)) add('delivery-plan-unverified', 'Canonical assignment for a claimed contribution could not be verified.', 'unavailable', { item });
       else add('delivery-plan-uncovered', 'Completed Issue lacks a mapped merged contribution for an assigned task.', 'error', { item });
     }
@@ -160,12 +208,17 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
       try {
         const bundle = await resolveWork(dependency);
         result.context.prerequisites.push({ work: dependency, ...structuredClone(bundle) });
-        if (bundle?.issue?.state !== 'closed' || bundle.issue.state_reason !== 'completed') {
+        if ([..._stack, work].includes(dependency)) {
+          add('dependency-cycle', 'Explicit prerequisite references contain a cycle.', 'error', { dependency }); continue;
+        }
+        if (!bundle?.issue?.pull_request && (bundle?.issue?.state !== 'closed' || bundle.issue.state_reason !== 'completed')) {
           add('prerequisite-undelivered', 'Explicit prerequisite is open, cancelled or not completed.', 'error', { dependency }); continue;
         }
         const checked = await checkWorkRecords({ work: dependency,
           ...(workIdentity(dependency).repository === identity.repository ? { categoryMapping } : {}),
-          ...bundle, phase: 'closeout', resolveRef, resolveWork, _stack: [..._stack, work] });
+          ...bundle, phase: 'closeout', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack: [..._stack, work] });
+        result.context.prerequisites.at(-1).assessment = checked.context;
+        for (const finding of checked.findings.filter((item) => item.severity === 'review')) add(finding.code, finding.message, 'review', { dependency, ...finding.details });
         if (checked.status !== 'valid') add('prerequisite-unverified', 'Prerequisite delivery lacks required formal evidence.', checked.status === 'unavailable' ? 'unavailable' : 'error', { dependency, findings: checked.findings });
       } catch (error) { add('prerequisite-unavailable', error.message, 'unavailable', { dependency, cause: error.code }); }
     }

@@ -228,6 +228,16 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
       if (result?.ref !== `refs/heads/${branch}` || result?.object?.type !== 'commit' || !validateRecord('sha', result?.object?.sha).valid) unavailable();
       return result.object.sha;
     },
+    async readCommit({ repository: name, revision } = {}) {
+      const ref = { repository: scope(name), revision, path: '.' };
+      const commit = await withRemoteFallback(ref, async (root) => {
+        const raw = (await objectRead(root, ['cat-file', 'commit', revision])).toString('utf8').split('\n\n', 1)[0];
+        return { sha: revision, tree: { sha: /^tree ([a-f0-9]{40})$/m.exec(raw)?.[1] },
+          parents: [...raw.matchAll(/^parent ([a-f0-9]{40})$/gm)].map((match) => ({ sha: match[1] })) };
+      }, () => remoteObject(ref.repository, 'commits', revision));
+      if (commit.sha !== revision || !validateRecord('sha', commit.tree?.sha).valid || !Array.isArray(commit.parents) || commit.parents.some((parent) => !validateRecord('sha', parent.sha).valid)) unavailable();
+      return { sha: commit.sha, tree: { sha: commit.tree.sha }, parents: commit.parents.map(({ sha }) => ({ sha })) };
+    },
     async readBlob(ref) {
       return withRemoteFallback(ref, async (root) => {
         const entries = treeEntries(await objectRead(root, ['ls-tree', '-z', ref.revision, '--', ref.path]));

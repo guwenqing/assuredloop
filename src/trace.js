@@ -25,6 +25,7 @@ const normalizeWork = (ref) => {
   const { repository, number } = workIdentity(ref);
   return `${repository}#${number}`;
 };
+const assessmentRecord = (record) => validateRecord('evidence', record).valid || validateRecord('initialBootstrapVerification', record).valid;
 const issueFacts = (issue) => ({ number: issue.number, title: issue.title, repository_url: issue.repository_url, state: issue.state,
   state_reason: issue.state_reason, pull_request: Boolean(issue.pull_request), labels: issue.labels, body: issue.body });
 
@@ -174,7 +175,7 @@ export async function createTrace({ targetRoot, work }) {
     const required = new Set();
     if (issue.pull_request) { refs.add(ref); required.add(ref); }
     else {
-      for (const entry of entries) if (validateRecord('evidence', entry.record).valid && entry.record.pr) {
+      for (const entry of entries) if (assessmentRecord(entry.record) && entry.record.pr) {
         const pr = normalizeWork(entry.record.pr);
         refs.add(pr); required.add(pr);
       }
@@ -212,7 +213,7 @@ export async function createTrace({ targetRoot, work }) {
       related.push(pull);
       if (pr !== ref) entries.push(...await commentsAt(pr));
     }
-    const evidence = [...new Map(entries.filter((entry) => validateRecord('evidence', entry.record).valid).map((entry) => [key(entry.ref), entry])).values()];
+    const evidence = [...new Map(entries.filter((entry) => assessmentRecord(entry.record)).map((entry) => [key(entry.ref), entry])).values()];
     const parsed = await sourceRecord(issue.body, ref, { expectedKind: issue.pull_request ? 'pr' : 'issue', allowMissing: !issue.pull_request });
     const classification = await classificationAt(ref, issue, parsed.record);
     const bundle = { issue, pulls: related, evidence, unresolvedRelations, ...(classification ? { classification } : {}) };
@@ -357,7 +358,7 @@ export async function closeoutContext({ trace, bundle, policies, deltaRef, manif
   const { work, record } = records[0];
   const policy = policies.find((entry) => entry.assessment?.pr === `${trace.repository}#${bundle.pulls[0].number}`);
   if (policy?.status !== 'available') fail('closeout-policy-unavailable', 'Closeout requires the actual candidate destination policy.');
-  const result = await evaluateCloseout({ trace, record, pull: bundle.pulls[0], policy, deltaRef, manifestRef });
+  const result = await evaluateCloseout({ trace, work, record, pull: bundle.pulls[0], policy, deltaRef, manifestRef });
   trace.cacheSource(result.directory.ref, { content: result.directory.content, references: result.directory.references });
   const nativeRoots = [];
   const native = { parent: null, children: [], relation: 'membership-only' };
@@ -414,7 +415,7 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
           const policy = await resolvePolicy({ adapter: trace.adapter, work: pr });
           trace.cacheSources(policy.sources || []);
           const refs = recordReferences(await structuredBody(pull.body, { allowPlain: false }));
-          for (const entry of bundle.evidence.filter((item) => item.record.pr?.toLowerCase() === pr)) refs.push(...entry.record.evidence);
+          for (const entry of bundle.evidence.filter((item) => item.record.pr?.toLowerCase() === pr)) refs.push(...recordReferences(entry.record));
           for (const ref of new Map(refs.map((value) => [key(value), value])).values()) {
             try { await trace.load(ref); }
             catch (error) {

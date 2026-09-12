@@ -70,7 +70,7 @@ export function collectRecordReferences(value) {
     if (Array.isArray(item)) for (const entry of item) visit(node.items, entry);
     else if (typeof item === 'object') for (const [field, shape] of Object.entries(node.properties || {})) visit(shape, item[field]);
   }
-  for (const kind of ['issue', 'pr', 'evidence', 'config', 'activation', 'manifest', 'selfChangeDecision']) {
+  for (const kind of ['issue', 'pr', 'evidence', 'config', 'activation', 'manifest', 'selfChangeDecision', 'initialBootstrapVerification']) {
     if (validateRecord(kind, value).valid) visit(schema.$defs[kind], value);
   }
   return [...result.values()];

@@ -23,6 +23,8 @@ For a follow-up with no active change, omit the optional change field in actual 
 
 For a PR, resolve the actual destination's current pre-change config/policy and applicable owner decisions. Candidate config, a stale merge-base or a record's arbitrary ref cannot authorize itself. In explicitly authorized initial bootstrap work, follow the evidenced native/manual handoff and label its limitations; do not fabricate activation/configuration or silently waive unavailable policy.
 
+A prerequisite that names an actual merged PR covers that PR's canonical assigned contribution, even while its wider planning Issue remains open. An Issue prerequisite still requires the whole Issue. Inspect fixed acceptance, actual delivery, original applicable review and remaining owner scope. For initial no-prior-policy delivery, use the separately source-backed later bootstrap verification under current accepted policy described in templates/README.md; missing history does not become ordinary Evidence.
+
 ## Verify and implement
 
 For executable work the action order is: independent test author, observed behavioral RED, corresponding implementation, the same tests GREEN, relevant controlled faults, restoration/recheck, and independent review. Do not put implementation before the failing-test step in the concrete handoff plan.
