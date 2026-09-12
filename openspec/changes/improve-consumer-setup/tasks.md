@@ -28,9 +28,9 @@ Work Issue: [Delivery #38](https://github.com/guwenqing/assuredloop-base/issues/
 
 Work Issue: [Delivery #39](https://github.com/guwenqing/assuredloop-base/issues/39)
 
-- [ ] 4.1 Have an independent test author expose the current formal-scan failure on an obsolete note at the proposed conventional path, with a formal-Spec broken-link control; implement only the narrow distinction, rerun the same tests GREEN, test a misplaced formal artifact/misused note cannot grant acceptance, and restore after controlled exclusion faults.
-- [ ] 4.2 Extend existing adopt/plan guidance for owner-selected Brownfield scope, original-source anchors, intended/observed/conflicting facts and native current-baseline promotion; verify links and native compatibility without adding a new role/Skill or automatic code-to-Spec generator.
-- [ ] 4.3 Run an independent fresh-executor trial on a synthetic existing repo with conflicting code/docs/tests and an unexamined area; verify owner-decision requests, accepted-baseline path and honest coverage, plus optional future-note handling without mandatory schema/status/backlog or committed logs.
+- [x] 4.1 Have an independent test author expose the current formal-scan failure on an obsolete note at the proposed conventional path, with a formal-Spec broken-link control; implement only the narrow distinction, rerun the same tests GREEN, test a misplaced formal artifact/misused note cannot grant acceptance, and restore after controlled exclusion faults.
+- [x] 4.2 Extend existing adopt/plan guidance for owner-selected Brownfield scope, original-source anchors, intended/observed/conflicting facts and native current-baseline promotion; verify links and native compatibility without adding a new role/Skill or automatic code-to-Spec generator.
+- [x] 4.3 Run an independent fresh-executor trial on a synthetic existing repo with conflicting code/docs/tests and an unexamined area; verify owner-decision requests, accepted-baseline path and honest coverage, plus optional future-note handling without mandatory schema/status/backlog or committed logs.
 - [ ] 4.4 Verify complete affected guidance/package scope, privacy and unchanged formal checks, obtain independent review, dispose findings and verify actual authorized delivery before #39 completion.
 
 ## 5. Aggregate feedback acceptance contribution

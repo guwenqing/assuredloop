@@ -73,6 +73,7 @@ export async function buildReviewPacket({ roots, load, maxInlineBytes = 65536, c
       continue;
     }
     item.disposition = 'inlined'; item.content = loaded.content;
+    if (loaded.context_kind === 'informal') item.context_kind = 'informal';
     item.retrieved_at = new Date().toISOString();
     const references = (loaded.references || []).map(reference).sort((left, right) => key(left).localeCompare(key(right)));
     links.push({ ref: item.ref, references });
