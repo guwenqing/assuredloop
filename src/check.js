@@ -7,6 +7,7 @@ import { resolvePolicy, resolveHistoricalPolicy, checkReviewEvidence, checkEvide
 import { isDeepStrictEqual } from 'node:util';
 import { verifyInitialBootstrap } from './initial-bootstrap.js';
 import { runtimeContext } from './runtime.js';
+import { checkReviewObligations } from './review-routing.js';
 
 async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
   const result = { ...runtimeContext(runtime), operation: 'check', mode: 'live', status: 'pass', work, findings: [], policies: [], records: [] };
@@ -26,6 +27,8 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
     const selected = await trace.bundleAt(work);
     result.repository = trace.repository;
     result.context = publicBundle(selected);
+    result.context.evidence = selected.evidence.map(({ ref, record }) => ({ source: ref, record }));
+    result.review_routing = [];
     result.context.acquisition = trace.acquisitionContext();
     const verifyBootstrap = async (entry) => {
       const policy = result.policy?.status === 'available' ? result.policy : await currentTracePolicy(trace);
@@ -82,6 +85,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
     for (const pull of selected.pulls) {
       const pr = `${trace.repository}#${pull.number}`;
       const assessments = selected.evidence.filter((entry) => entry.record.pr?.toLowerCase() === pr);
+      const routingPolicies = new Map();
       if (!assessments.some((entry) => hasReviewDeclarations(entry.record))) add('review-evidence-missing', `${pr} has no structured review assessment evidence.`);
       for (const entry of assessments.length ? assessments : [null]) {
         if (entry?.record.record_type === 'initial-bootstrap-verification') {
@@ -96,6 +100,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
             ? await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime })
             : await resolvePolicy({ adapter: trace.adapter, work: pr, runtime });
           result.policies.push(policy);
+          routingPolicies.set(JSON.stringify([policy.assessment, policy.config_digest, policy.activation_digest]), policy);
           result.policy ??= policy;
           result.assessment ??= policy.assessment;
           result.findings.push(...policy.findings);
@@ -120,6 +125,20 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
           }
         } catch (error) { acquisitionFailure(error); }
         finally { trace.resetScope(); }
+      }
+      // A specialized verification alone still cannot bypass ordinary PR review.
+      if (!routingPolicies.size && !pull.merged) {
+        const policy = await trace.withPolicyScope(pull, () => resolvePolicy({ adapter: trace.adapter, work: pr, runtime }));
+        routingPolicies.set(pr, policy);
+      }
+      for (const policy of routingPolicies.values()) {
+        const current = { pr, head: pull.head.sha, base_sha: pull.base.sha, ...policy.assessment,
+          policy_ref: policy.policy_ref, contract_package: policy.contract_package,
+          config_digest: policy.config_digest, activation_digest: policy.activation_digest };
+        const routing = await checkReviewObligations({ entries: assessments, policy, current });
+        result.review_routing.push(routing);
+        if (routing.status === 'incomplete') add('review-obligations-incomplete', `${pr}: required review obligations are incomplete.`);
+        else if (routing.status === 'unavailable') add('review-routing-unavailable', `${pr}: review routing could not be established.`, 'unavailable');
       }
     }
     const record = await structuredBody(selected.issue.body, { allowPlain: false });

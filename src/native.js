@@ -26,6 +26,23 @@ export async function nativeTools() {
   }
 }
 
+export async function reviewRouting(config) {
+  const routing = config.project.review.routing;
+  if (!routing) return { status: 'not-configured', findings: [{ code: 'review-routing-not-configured', severity: 'review' }] };
+  const result = { ...routing, status: 'available', supported_tools: [], findings: [] };
+  try {
+    result.supported_tools = (await nativeTools()).filter((tool) => tool.available).map((tool) => tool.value);
+  } catch (error) {
+    return { ...result, status: 'unavailable', findings: [{ code: 'review-tool-registry-unavailable', severity: 'unavailable', message: error.message }] };
+  }
+  if (!config.repository.tools.includes(routing.primary_tool)) result.findings.push({ code: 'review-primary-tool-unselected',
+    message: 'The primary review tool must be selected in repository.tools.' });
+  if (!result.supported_tools.includes(routing.primary_tool)) result.findings.push({ code: 'review-tool-unsupported',
+    message: `Unsupported primary native review tool: ${routing.primary_tool}` });
+  if (result.findings.length) result.status = 'invalid';
+  return result;
+}
+
 export async function skillRoots(targetRoot, selected) {
   const registry = await nativeTools();
   const roots = new Map();

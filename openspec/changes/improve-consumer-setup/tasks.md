@@ -12,8 +12,8 @@ Basis: [Proposal](proposal.md), [Design](design.md), and the three capability de
 
 Work Issue: [Delivery #37](https://github.com/guwenqing/assuredloop-base/issues/37)
 
-- [ ] 2.1 Have an independent test author add observable RED cases for config/record/obligation behavior: single/multiple tools, explicit model choice, same-tool independent sessions, required primary/additional coverage, mismatched declarations, exclusions/aliases, legacy evidence and candidate-policy self-authorization.
-- [ ] 2.2 Implement only the accepted routing/config/record and context/check behavior, preserving current policy as authority and reporting work-specific on-request review's manual boundary; run the same tests GREEN without calling any external provider.
+- [x] 2.1 Have an independent test author add observable RED cases for config/record/obligation behavior: single/multiple tools, explicit model choice, same-tool independent sessions, required primary/additional coverage, mismatched declarations, exclusions/aliases, legacy evidence and candidate-policy self-authorization.
+- [x] 2.2 Implement only the accepted routing/config/record and context/check behavior, preserving current policy as authority and reporting work-specific on-request review's manual boundary; run the same tests GREEN without calling any external provider.
 - [ ] 2.3 Update existing setup/review/delivery guidance and examples, verify fresh-executor primary-tool choice and independently authored negative cases; run controlled missing-review/duplicate-session/tool-mismatch faults, restore GREEN, obtain independent review and verify actual developer-owned merge.
 
 ## 3. Explicit mapped-label provisioning

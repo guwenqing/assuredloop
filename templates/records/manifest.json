@@ -179,7 +179,7 @@
           "result": "pass",
           "producer_session": "example-later-producer",
           "reviewer_session": "example-later-reviewer",
-          "reviewer_model": "gpt-6-astra",
+          "reviewer_model": "example-review-model-a",
           "review_depth": "full-scope"
         },
         "source": {

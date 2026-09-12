@@ -12,6 +12,7 @@ Reusable draft context scaffold. Read templates/README.md and contracts/review-a
 ## Applicable policy and prior coverage
 
 {{accepted_policy_source_eligibility_depth_and_owner_conditions}}
+{{accepted_primary_tool_additional_policy_and_sourced_work_specific_requests}}
 {{matching_prior_review_or_reason_new_assessment_is_needed}}
 {{existing_findings_tests_fault_checks_and_limits}}
 
