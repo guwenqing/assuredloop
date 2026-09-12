@@ -6,7 +6,7 @@ Basis: [Proposal](proposal.md), [behavior delta](specs/artifact-provenance/spec.
 
 - [ ] 1.1 Preserve #21, establish the Epic and separately owned planning/development/closeout mapping, and complete the Proposal/Spec/Design; verify native strict validation and the actual Issue category/activity/parent relationships.
 - [ ] 1.2 Obtain full-scope independent design review, dispose every finding and secure required human Proposal acceptance; verify the exact reviewed revision and applicable destination policy without claiming planning scenarios ran.
-- [ ] 1.3 Deliver the authorized planning PR and bind #23/#24 to its real fixed requirement/decision/task refs; verify prerequisite relationships, ordered handoff and acknowledged developer receipt before implementation readiness. This completes the artifact-plan contribution, not other plans owned by #22; use this PR's accepted delivery as the implementation prerequisite rather than requiring umbrella #22 closure.
+- [ ] 1.3 Deliver the authorized planning PR and bind #23/#24 to its real fixed requirement/decision/task refs; verify prerequisite relationships, ordered handoff and acknowledged developer receipt before implementation readiness. This completes the artifact-plan contribution, not other plans owned by #22. The existing checker cannot verify this PR-specific prerequisite: require delivered support or explicit owner acceptance of the bounded manual assessment in Design migration step 1; do not fake umbrella #22 closure or claim an omitted edge was checked.
 
 ## 2. Explicit artifact helper and guided use
 
