@@ -13,7 +13,7 @@ Authoritative entry in that installation: contracts/work-intake-and-planning/spe
 
 ## Establish context and route
 
-1. Preserve the original request. Separate confirmed facts, assumptions and unresolved questions. Find the responsible owner and any existing work before opening a duplicate.
+1. Read and preserve the entire Issue body and every comment page before routing, splitting, transferring or closing work. Follow templates/README.md's reading-scope guidance for later additions, verified superseding decisions, unavailable pages and a fresh read before consequential handoff or closure. Separate confirmed facts, assumptions and unresolved questions. Find the responsible owner and any existing work before opening a duplicate.
 2. An incomplete request may remain a rough Request without a fabricated Workflow context. Ask for the specific missing decision or propose bounded research; a label or activity selector grants no implementation authority.
 3. For work that implements or restores an accepted requirement without changing constraints or material design decisions, route to a bounded Task/Bug. Reference that exact basis and relevant prior delivery. An active change is not required for a legitimate follow-up; do not create one merely to fill a field.
 4. For a claimed no-Spec case, actually inspect applicable current requirements and prior work. Record a nonempty no_spec_reason only when the absence is justified. An empty basis alone, a small diff or untouched Spec files does not establish an exemption. If the request changes an existing guarantee, return it to planning even when the patch would be one line.
