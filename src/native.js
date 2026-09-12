@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFile, fail, optionalRead, relativePath, safePath } from './files.js';
@@ -76,28 +77,51 @@ export async function githubAuthentication() {
   } catch { fail('tool-unavailable', 'GitHub authentication is required; initialize credentials explicitly.', { reason: 'authentication-required' }); }
 }
 
+async function githubApi(endpoint, extra = []) {
+  try { return (await execFile('gh', ['api', endpoint, '--hostname', 'github.com', ...extra], { maxBuffer: 4 * 1024 * 1024 })).stdout; }
+  catch (error) {
+    const message = String(error.stderr || error.message);
+    const reason = /rate.limit|HTTP 429/i.test(message) ? 'rate-limited' : /HTTP (403|404)/.test(message) ? 'insufficient-access' : 'transport-error';
+    const details = { reason };
+    if (reason === 'rate-limited') {
+      const retryAfter = /Retry-After:\s*(\d+)/i.exec(message);
+      const reset = /X-RateLimit-Reset:\s*(\d+)/i.exec(message);
+      if (retryAfter) details.retry_after_seconds = Number(retryAfter[1]);
+      if (reset && Number(reset[1]) <= 8640000000000) details.retry_at = new Date(Number(reset[1]) * 1000).toISOString();
+    }
+    fail('tool-unavailable', 'Could not inspect the explicitly bound GitHub repository.', details);
+  }
+}
+
+export async function githubLabelInventory(repository, { requireWrite = false } = {}) {
+  await githubAuthentication();
+  const remote = JSON.parse(await githubApi(`repos/${repository}`));
+  if (typeof remote.full_name !== 'string' || remote.full_name.toLowerCase() !== repository.toLowerCase()) fail('binding-invalid', 'Repository redirect/rename requires an explicit binding update.');
+  if (requireWrite && remote.permissions?.push === false && !remote.permissions.admin && !remote.permissions.maintain) {
+    fail('tool-unavailable', 'Repository write access is required to create labels.', { reason: 'insufficient-access' });
+  }
+  const pages = JSON.parse(await githubApi(`repos/${repository}/labels?per_page=100`, ['--paginate', '--slurp']));
+  if (!Array.isArray(pages) || pages.some((page) => !Array.isArray(page)) || pages.flat().some((label) => typeof label?.name !== 'string')) {
+    fail('tool-unavailable', 'GitHub returned an unsupported label inventory.', { reason: 'invalid-response' });
+  }
+  return { repository: remote.full_name, labels: pages.flat() };
+}
+
+export async function createGithubLabel(repository, operation) {
+  const temporary = await mkdtemp(path.join(tmpdir(), 'assuredloop-label-'));
+  try {
+    const input = path.join(temporary, 'request.json');
+    await writeFile(input, JSON.stringify(operation), { mode: 0o600 });
+    await githubApi(`repos/${repository}/labels`, ['--method', 'POST', '--input', input]);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+}
+
 export async function githubPreflight(repository, labels, localOnly) {
   if (localOnly) return [{ code: 'github-skipped', message: 'Local-only initialization: GitHub access, labels and live acceptance were not checked.' }];
-  await githubAuthentication();
-  async function api(endpoint, extra = []) {
-    try { return (await execFile('gh', ['api', endpoint, '--hostname', 'github.com', ...extra], { maxBuffer: 4 * 1024 * 1024 })).stdout; }
-    catch (error) {
-      const message = String(error.stderr || error.message);
-      const reason = /rate.limit|HTTP 429/i.test(message) ? 'rate-limited' : /HTTP (403|404)/.test(message) ? 'insufficient-access' : 'transport-error';
-      const details = { reason };
-      if (reason === 'rate-limited') {
-        const retryAfter = /Retry-After:\s*(\d+)/i.exec(message);
-        const reset = /X-RateLimit-Reset:\s*(\d+)/i.exec(message);
-        if (retryAfter) details.retry_after_seconds = Number(retryAfter[1]);
-        if (reset && Number(reset[1]) <= 8640000000000) details.retry_at = new Date(Number(reset[1]) * 1000).toISOString();
-      }
-      fail('tool-unavailable', 'Could not inspect the explicitly bound GitHub repository.', details);
-    }
-  }
-  const remote = JSON.parse(await api(`repos/${repository}`));
-  if (remote.full_name.toLowerCase() !== repository.toLowerCase()) fail('binding-invalid', 'Repository redirect/rename requires an explicit binding update.');
-  const pages = JSON.parse(await api(`repos/${repository}/labels?per_page=100`, ['--paginate', '--slurp']));
-  const existing = new Set(pages.flat().map((label) => label.name.toLowerCase()));
+  const inventory = await githubLabelInventory(repository);
+  const existing = new Set(inventory.labels.map((label) => label.name.toLowerCase()));
   const missing = Object.values(labels.type).filter((label) => !existing.has(label.toLowerCase()));
   return missing.length ? [{ code: 'labels-missing', labels: missing, message: 'Adopting owner must provision or map these labels before routed work.' }] : [];
 }

@@ -20,8 +20,8 @@ Work Issue: [Delivery #37](https://github.com/guwenqing/assuredloop-base/issues/
 
 Work Issue: [Delivery #38](https://github.com/guwenqing/assuredloop-base/issues/38)
 
-- [ ] 3.1 Have an independent test author create genuine RED unit/functional cases using isolated local targets and a fake GitHub boundary, covering preview no writes, exact additive apply, case-insensitive existing labels, custom mapping, binding/conflict/permission failures, races, partial writes and safe retry.
-- [ ] 3.2 Implement the opt-in init preview/apply path with exact serialized operations and per-effect readback; run unchanged tests GREEN and prove default init/inspect/check still make no remote mutations and local-only provisioning is rejected.
+- [x] 3.1 Have an independent test author create genuine RED unit/functional cases using isolated local targets and a fake GitHub boundary, covering preview no writes, exact additive apply, case-insensitive existing labels, custom mapping, binding/conflict/permission failures, races, partial writes and safe retry.
+- [x] 3.2 Implement the opt-in init preview/apply path with exact serialized operations and per-effect readback; run unchanged tests GREEN and prove default init/inspect/check still make no remote mutations and local-only provisioning is rejected.
 - [ ] 3.3 Update existing adoption guidance and CLI help, verify actual packed/linked command behavior against fixtures, run unintended-write/partial-success controlled faults and restoration, then obtain independent review and verify authorized developer-owned delivery.
 
 ## 4. Brownfield guidance and informal notes
