@@ -5,6 +5,7 @@ import { loadNativeRuntime } from './native-runtime.js';
 import { checkAnchor } from './policy.js';
 import { checkTaskAssociations } from './task-associations.js';
 import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
+import { reviewEvidenceApplicability } from './review-evidence.js';
 export { checkTaskAssociations } from './task-associations.js';
 
 export async function parseWorkRecord({ body, kind, allowMissing = false } = {}) {
@@ -177,13 +178,23 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
         try {
           const verified = await verifyEvidence(entry, { evidence });
           if (!verified?.valid) { add('historical-evidence-unverified', 'Original policy/review or delivered commit could not be verified.', 'error', verified?.findings); continue; }
+          if (verified.applicability?.applicability === 'noncurrent') {
+            result.context.review_evidence ??= [];
+            result.context.review_evidence.push(verified.applicability);
+            for (const finding of verified.findings || []) add(finding.code, finding.message, 'review', { source: entry.ref, pr: assessment.pr });
+            continue;
+          }
           for (const finding of (verified.findings || []).filter((item) => item.severity === 'review')) {
             add(finding.code, finding.message, 'review', { ...finding.details, pr: assessment.pr, source: entry.ref });
           }
         } catch (error) { add('historical-evidence-unavailable', error.message, 'unavailable', { cause: error.code }); continue; }
       }
-      if (assessment.head !== pull.head.sha || assessment.base_ref !== pull.base.ref || (!pull.merged && assessment.base_sha !== pull.base.sha)) {
-        add('evidence-tuple-stale', 'Evidence does not match the PR head/destination assessment.');
+      const applicability = reviewEvidenceApplicability({ entry, pr: assessment.pr, pull });
+      if (applicability.applicability === 'noncurrent') {
+        result.context.review_evidence ??= [];
+        result.context.review_evidence.push(applicability);
+        for (const finding of applicability.findings) add(finding.code, finding.message, 'review', { source: entry.ref, pr: assessment.pr });
+        continue;
       }
       if (assessment.result === 'pass' && assessment.reviewer_session && assessment.producer_session && assessment.reviewer_session !== assessment.producer_session && assessment.review_depth === 'full-scope') reviewed.add(assessment.pr.toLowerCase());
     }

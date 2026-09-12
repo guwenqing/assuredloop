@@ -41,7 +41,7 @@ Give findings stable identifiers, concrete impact, tight file/line or artifact r
 
 ## Publish and return, including clean results
 
-Publish the consolidated review to the authorized PR/work record and verify the resulting URL/body/revision. Keep prior verdicts as history. A clean result still needs publication and return; if an applicable review was reused, say so and link it.
+Publish the consolidated review to the authorized PR/work record and verify the resulting URL/body/revision. Keep prior verdicts as history. Retain their original source, revision, verdict and findings; noncurrent records cannot supply current review credit. Inspect the author’s linked dispositions and explicitly assess earlier findings in the applicable reassessment. A head advance or newer PASS does not itself resolve them. Link prior reviews and dispositions through existing Evidence references; do not overwrite history or infer last-comment-wins. A clean result still needs publication and return; if an applicable review was reused, say so and link it.
 
 A blocked or incomplete assessment is also an outcome. When the publication location and permission are established, publish the truthful diagnostic/limitations and return the missing-input request rather than waiting for a PASS before giving feedback. Do not fabricate a qualifying evidence envelope. If publication itself is unavailable or unauthorized, retain the draft and report that limitation through the currently authorized return channel.
 

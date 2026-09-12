@@ -8,6 +8,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { verifyInitialBootstrap } from './initial-bootstrap.js';
 import { runtimeContext } from './runtime.js';
 import { checkReviewObligations } from './review-routing.js';
+import { reviewEvidenceApplicability } from './review-evidence.js';
 
 async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
   const result = { ...runtimeContext(runtime), operation: 'check', mode: 'live', status: 'pass', work, findings: [], policies: [], records: [] };
@@ -29,14 +30,30 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
     result.context = publicBundle(selected);
     result.context.evidence = selected.evidence.map(({ ref, record }) => ({ source: ref, record }));
     result.review_routing = [];
+    if (selected.pulls.length) result.review_evidence = [];
     result.context.acquisition = trace.acquisitionContext();
     const verifyBootstrap = async (entry) => {
       const policy = result.policy?.status === 'available' ? result.policy : await currentTracePolicy(trace);
       return verifyInitialBootstrap({ adapter: trace.adapter, record: entry.record, verificationPolicy: policy });
     };
+    const retainedSources = async (entry) => {
+      const findings = [];
+      try { await trace.adapter.readCommit({ repository: workIdentity(entry.record.pr).repository, revision: entry.record.head }); }
+      catch (error) { findings.push({ code: 'evidence-source-unavailable', severity: 'unavailable', message: error.message, details: { head: entry.record.head, cause: error.code } }); }
+      for (const ref of recordReferences(entry.record, { runtime })) {
+        try { await trace.load(ref); }
+        catch (error) { findings.push({ code: 'evidence-source-unavailable', severity: 'unavailable', message: error.message, details: { ref, cause: error.code } }); }
+      }
+      return findings;
+    };
     const verifyEvidence = async (entry, { evidence }) => {
       const pull = await trace.pullAt(entry.record.pr);
       return trace.withPolicyScope(pull, async () => {
+        const applicability = reviewEvidenceApplicability({ entry, pr: entry.record.pr, pull });
+        if (applicability.applicability === 'noncurrent') {
+          const sources = await retainedSources(entry);
+          return { valid: !sources.length, applicability, findings: [...applicability.findings, ...sources] };
+        }
         const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime });
         const findings = [...policy.findings];
         if (policy.status !== 'available') return { valid: false, findings };
@@ -93,16 +110,25 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
       const pr = `${trace.repository}#${pull.number}`;
       const assessments = selected.evidence.filter((entry) => entry.record.pr?.toLowerCase() === pr);
       const routingPolicies = new Map();
-      if (!assessments.some((entry) => hasReviewDeclarations(entry.record))) add('review-evidence-missing', `${pr} has no structured review assessment evidence.`);
+      let passingReview = false;
       for (const entry of assessments.length ? assessments : [null]) {
         if (entry?.record.record_type === 'initial-bootstrap-verification') {
           const verified = await verifyBootstrap(entry);
           result.findings.push(...verified.findings);
+          if (pull.merged && verified.valid) passingReview = true;
           continue;
         }
         const historical = pull.merged === true && entry;
         try {
           await trace.bindPolicyScope(pull);
+          if (historical) {
+            const applicability = reviewEvidenceApplicability({ entry, pr, pull });
+            if (applicability.applicability === 'noncurrent') {
+              result.review_evidence.push(applicability);
+              for (const finding of await retainedSources(entry)) add(finding.code, finding.message, 'unavailable', finding.details);
+              continue;
+            }
+          }
           const policy = historical
             ? await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime })
             : await resolvePolicy({ adapter: trace.adapter, work: pr, runtime });
@@ -121,10 +147,18 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
             if (policy.assessment.head !== pull.head.sha || policy.assessment.base_sha !== pull.base.sha || policy.assessment.base_ref !== pull.base.ref) add('assessment-context-stale', `${pr}: PR identity changed while policy was read.`);
           }
           if (entry) {
-            for (const finding of (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current })) {
+            const applicability = reviewEvidenceApplicability({ entry, pr, pull, policy, current });
+            result.review_evidence.push(applicability);
+            if (applicability.applicability === 'noncurrent') {
+              for (const finding of await retainedSources(entry)) add(finding.code, finding.message, 'unavailable', finding.details);
+              continue;
+            }
+            const assessment = (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current });
+            for (const finding of assessment) {
               if (finding.severity === 'review') result.findings.push(finding);
               else add(finding.code, finding.message);
             }
+            if (hasReviewDeclarations(entry.record) && entry.record.result === 'pass' && assessment.every((finding) => finding.severity === 'review')) passingReview = true;
             for (const ref of entry.record.evidence) {
               try { await trace.load(ref); }
               catch (error) { add('evidence-source-unavailable', error.message, 'unavailable', { ref, cause: error.code }); }
@@ -133,6 +167,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
         } catch (error) { acquisitionFailure(error); }
         finally { trace.resetScope(); }
       }
+      if (!passingReview) add('review-evidence-missing', `${pr} has no passing independent review applicable to the actual assessment. Retained history supplies no acceptance credit.`);
       // A specialized verification alone still cannot bypass ordinary PR review.
       if (!routingPolicies.size && !pull.merged) {
         const policy = await trace.withPolicyScope(pull, () => resolvePolicy({ adapter: trace.adapter, work: pr, runtime }));
@@ -196,6 +231,13 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
           if (!pull?.merged) continue;
           try {
             await trace.bindPolicyScope(pull);
+            const applicability = reviewEvidenceApplicability({ entry, pr: entry.record.pr, pull });
+            if (applicability.applicability === 'noncurrent') {
+              result.review_evidence ??= [];
+              result.review_evidence.push(applicability);
+              for (const finding of await retainedSources(entry)) add(finding.code, finding.message, 'unavailable', finding.details);
+              continue;
+            }
             const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record, runtime });
             result.policies.push(policy);
             if (policy.status !== 'available') add('prerequisite-policy-unavailable', `${dependency}: recorded policy could not be reconstructed.`, policy.status === 'invalid' ? 'invalid' : 'unavailable', policy.findings);

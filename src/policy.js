@@ -197,6 +197,9 @@ export async function resolveHistoricalPolicy({ adapter, record, packageRoot = i
   if (pull.head?.sha !== record.head || pull.base.ref !== record.base_ref) {
     return reject('invalid', 'historical-tuple-mismatch', 'Recorded head or destination base ref differs from the actual merged PR.');
   }
+  if (record.base_sha === record.head) {
+    return reject('invalid', 'historical-tuple-mismatch', 'The reviewed candidate cannot also be its own recorded pre-change base.');
+  }
   const historicalPull = { ...pull, base: { ...pull.base, sha: record.base_sha } };
   const result = await resolvePolicySnapshot({ adapter, work: record.pr, packageRoot, historicalPull, runtime });
   result.context = { ...context, merge_commit_sha: pull.merge_commit_sha };
