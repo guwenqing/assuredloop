@@ -5,6 +5,7 @@ import { validateRecord, hasReviewDeclarations } from './records.js';
 import { checkWorkRecords, parseWorkRecord } from './work-records.js';
 import { resolvePolicy, resolveHistoricalPolicy, checkReviewEvidence, checkEvidenceContext } from './policy.js';
 import { isDeepStrictEqual } from 'node:util';
+import { verifyInitialBootstrap } from './initial-bootstrap.js';
 
 async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
   const result = { operation: 'check', mode: 'live', status: 'pass', work, findings: [], policies: [], records: [] };
@@ -25,6 +26,32 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
     result.repository = trace.repository;
     result.context = publicBundle(selected);
     result.context.acquisition = trace.acquisitionContext();
+    const verifyBootstrap = async (entry) => {
+      const policy = result.policy?.status === 'available' ? result.policy : await currentTracePolicy(trace);
+      return verifyInitialBootstrap({ adapter: trace.adapter, record: entry.record, verificationPolicy: policy });
+    };
+    const verifyEvidence = async (entry) => {
+      const pull = await trace.pullAt(entry.record.pr);
+      return trace.withPolicyScope(pull, async () => {
+        const policy = await resolveHistoricalPolicy({ adapter: trace.adapter, record: entry.record });
+        const findings = [...policy.findings];
+        if (policy.status !== 'available') return { valid: false, findings };
+        const { repository } = workIdentity(entry.record.pr);
+        const merge = await trace.adapter.readCommit({ repository, revision: pull.merge_commit_sha });
+        await trace.adapter.readCommit({ repository, revision: entry.record.head });
+        if (!merge.parents.length) return { valid: false, findings: [{ code: 'historical-merge-mismatch', message: 'Actual delivered commit has no integration parent.' }] };
+        // Ordinary reviewed PRs can merge after a separately assessed destination
+        // advance. Retain that distinction; only initial bootstrap requires the
+        // exact recorded sole parent and whole reviewed tree.
+        if (merge.parents[0].sha !== entry.record.base_sha) findings.push({ code: 'historical-integration-review-required', severity: 'review',
+          message: 'The actual integration parent differs from the recorded review base. Review the explicit freshness/disposition and delivered contribution; historical audit fields remain unchanged.' });
+        const current = { ...policy.assessment, policy_ref: policy.policy_ref, contract_package: policy.contract_package,
+          config_digest: policy.config_digest, activation_digest: policy.activation_digest };
+        const assessment = (hasReviewDeclarations(entry.record) ? checkReviewEvidence : checkEvidenceContext)({ record: entry.record, policy, current });
+        for (const ref of entry.record.evidence) await trace.load(ref);
+        return { valid: assessment.every((finding) => finding.severity === 'review'), findings: [...findings, ...assessment] };
+      });
+    };
     if (!selected.pulls.length) {
       const policy = await currentTracePolicy(trace);
       result.policy = policy;
@@ -55,6 +82,11 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
       const assessments = selected.evidence.filter((entry) => entry.record.pr?.toLowerCase() === pr);
       if (!assessments.some((entry) => hasReviewDeclarations(entry.record))) add('review-evidence-missing', `${pr} has no structured review assessment evidence.`);
       for (const entry of assessments.length ? assessments : [null]) {
+        if (entry?.record.record_type === 'initial-bootstrap-verification') {
+          const verified = await verifyBootstrap(entry);
+          result.findings.push(...verified.findings);
+          continue;
+        }
         const historical = pull.merged === true && entry;
         try {
           await trace.bindPolicyScope(pull);
@@ -108,7 +140,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
         try { await trace.load(ref); }
         catch (error) { add('reference-unavailable', error.message, 'unavailable', { ref, cause: error.code }); }
       }
-      const checked = await checkWorkRecords({ work: issueRef, ...bundle, phase: parsed.record?.activity === 'closeout' ? 'closeout' : 'handoff', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt });
+      const checked = await checkWorkRecords({ work: issueRef, ...bundle, phase: parsed.record?.activity === 'closeout' ? 'closeout' : 'handoff', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt, verifyBootstrap, verifyEvidence });
       checked.work = issueRef;
       result.records.push(checked);
       for (const finding of checked.findings) {
@@ -127,10 +159,11 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef }) {
       if (!closeout.manifest.valid) add('manifest-invalid', 'Acceptance manifest verification did not pass.', 'invalid', closeout.manifest.findings);
       for (const dependency of closeout.record.depends_on || []) {
         const bundle = await trace.bundleAt(dependency);
-        const checked = await checkWorkRecords({ work: dependency, ...bundle, phase: 'closeout', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt });
+        const checked = await checkWorkRecords({ work: dependency, ...bundle, phase: 'closeout', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt, verifyBootstrap, verifyEvidence });
         result.records.push({ work: dependency, ...checked });
         if (checked.status !== 'valid') add('prerequisite-unverified', `${dependency}: prerequisite checks did not pass.`, checked.status === 'invalid' ? 'invalid' : 'unavailable', checked.findings);
         for (const entry of bundle.evidence.filter((item) => item.record.pr)) {
+          if (entry.record.record_type === 'initial-bootstrap-verification') continue;
           const pull = bundle.pulls.find((item) => entry.record.pr.toLowerCase() === `${trace.repository}#${item.number}`);
           if (!pull?.merged) continue;
           try {

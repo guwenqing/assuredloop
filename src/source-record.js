@@ -24,7 +24,8 @@ export async function readSourceRecord(body, { allowPlain = false, discoverEvide
       findings: [{ code: error.code, severity: 'error', message: error.message }] };
   }
   const { record, format } = parsed;
-  const kind = expectedKind ?? (record?.record_type === 'self-change-decision' ? 'selfChangeDecision'
+  const kind = expectedKind ?? (record?.record_type === 'initial-bootstrap-verification' ? 'initialBootstrapVerification'
+    : record?.record_type === 'self-change-decision' ? 'selfChangeDecision'
     : format === 'workflow-context' || (discoverEvidence && evidenceCandidate(record)) ? 'evidence' : null);
   if (!kind) return { state: 'context', record: null, kind: null, findings: [] };
   const shape = validateRecord(kind, record);

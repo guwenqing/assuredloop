@@ -21,7 +21,7 @@ export async function loadNativeRuntime(dependencyRoot) {
       'utils/change-metadata.js', 'core/archive.js',
     ].map(async (file) => import(pathToFileURL(await safePath(root, `dist/${file}`)).href)));
     const runtime = Object.assign({}, ...modules);
-    for (const name of ['MarkdownParser', 'ChangeParser', 'Validator', 'parseTaskLines', 'parseDeltaSpec', 'findTaskNumberingIssues', 'findSpecUpdates', 'buildUpdatedSpec', 'buildCodeFenceMask', 'readRetireCapabilitiesMarker', 'isRetirableSpec']) {
+    for (const name of ['MarkdownParser', 'ChangeParser', 'Validator', 'parseTaskLines', 'parseDeltaSpec', 'findTaskNumberingIssues', 'findSpecUpdates', 'buildUpdatedSpec', 'buildCodeFenceMask', 'readRetireCapabilitiesMarker', 'readSkipSpecsMarker', 'isRetirableSpec']) {
       if (typeof runtime[name] !== 'function') fail('compatibility-error', `Native function unavailable: ${name}`);
     }
     for (const [name, methods] of Object.entries({

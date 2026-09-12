@@ -10,18 +10,18 @@ import { maskCodeSpans } from './markdown.js';
 
 const decode = (bytes) => new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
 
-async function retirementMarker(root, changeDir, dependencyRoot) {
+async function nativeMarkers(root, changeDir, dependencyRoot) {
   const script = `const { loadNativeRuntime } = await import(process.argv[1]);
     const runtime = await loadNativeRuntime(process.argv[2] || undefined);
-    console.log(JSON.stringify(runtime.readRetireCapabilitiesMarker(process.argv[3])));`;
+    console.log(JSON.stringify([runtime.readRetireCapabilitiesMarker(process.argv[3]), runtime.readSkipSpecsMarker(process.argv[3])]));`;
   const { stdout } = await execFile(process.execPath, ['--input-type=module', '-e', script,
     new URL('./native-runtime.js', import.meta.url).href, dependencyRoot || '', changeDir], {
     cwd: root, maxBuffer: 1024 * 1024,
     env: { ...process.env, XDG_DATA_HOME: path.join(root, '.native-data'), XDG_CONFIG_HOME: path.join(root, '.native-config') },
   });
-  const marker = JSON.parse(stdout);
-  if (typeof marker?.declared !== 'boolean' || (marker.invalidReason !== undefined && typeof marker.invalidReason !== 'string')) fail('compatibility-error', 'Native retirement marker returned an unsupported shape.');
-  return marker;
+  const markers = JSON.parse(stdout);
+  if (!Array.isArray(markers) || markers.length !== 2 || markers.some((marker) => typeof marker?.declared !== 'boolean' || (marker.invalidReason !== undefined && typeof marker.invalidReason !== 'string'))) fail('compatibility-error', 'Native metadata markers returned an unsupported shape.');
+  return markers;
 }
 
 function snapshotFiles(files) {
@@ -90,13 +90,19 @@ export async function checkSynchronization({ repository, baseRevision, headRevis
       }
     }
     const updates = await runtime.findSpecUpdates(changeDir, mainSpecsDir);
-    if (!updates.length) {
+    const [marker, skip] = await nativeMarkers(root, markerChangeDir, dependencyRoot);
+    if (marker.invalidReason) finding('synchronization-retirement-marker-invalid', marker.invalidReason);
+    if (skip.invalidReason) finding('synchronization-skip-marker-invalid', skip.invalidReason);
+    if (skip.declared && (updates.length || marker.declared || marker.invalidReason)) {
+      finding('synchronization-skip-contradiction', 'Declared skip_specs contradicts delta artifacts or retirement intent.');
+      return result;
+    }
+    if (skip.declared && !skip.invalidReason) result.mode = 'no-spec-change';
+    if (!updates.length && result.mode !== 'no-spec-change') {
       finding('synchronization-delta-unavailable', 'No native delta artifacts were supplied.', 'unavailable');
       return result;
     }
-    else {
-      const marker = await retirementMarker(root, markerChangeDir, dependencyRoot);
-      if (marker.invalidReason) finding('synchronization-retirement-marker-invalid', marker.invalidReason);
+    if (updates.length) {
       const report = await validator.validateChangeDeltaSpecs(changeDir, { mainSpecsDir });
       if (!report.valid) finding('synchronization-native-delta-invalid', JSON.stringify(report));
       for (const update of updates) {
@@ -127,7 +133,8 @@ export async function checkSynchronization({ repository, baseRevision, headRevis
     }
     for (const [file, bytes] of expected) {
       const actual = candidate.get(file);
-      if (!actual) { finding('synchronization-candidate-unavailable', `Missing canonical candidate artifact: ${file}`, 'unavailable'); continue; }
+      if (!actual) { finding('synchronization-candidate-unavailable', `Missing canonical candidate artifact: ${file}`, result.mode === 'no-spec-change' ? 'invalid' : 'unavailable'); continue; }
+      if (result.mode === 'no-spec-change' && !bytes.equals(actual)) finding('synchronization-baseline-drift', `Declared no-spec change requires identical raw Spec bytes: ${file}`);
       const name = file.slice(specsPrefix.length, -'/spec.md'.length);
       const validation = await validator.validateSpecContent(name, decode(actual));
       if (!validation.valid) { finding('synchronization-native-candidate-invalid', `${file}: ${JSON.stringify(validation)}`); continue; }

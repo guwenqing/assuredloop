@@ -3,6 +3,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { fail } from './files.js';
 import { validateRecord } from './records.js';
 import { readRecordBody } from './record-body.js';
+import { sourceBytes } from './source-bytes.js';
+import { verifyInitialBootstrap } from './initial-bootstrap.js';
 
 const auditFields = ['base_ref', 'base_sha', 'policy_ref', 'policy_mode'];
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -36,18 +38,6 @@ function manualRow(entry, bytes) {
   return row;
 }
 
-async function sourceBytes(adapter, source) {
-  const shape = validateRecord('source', source);
-  if (!shape.valid) fail('source-invalid', 'Invalid fixity source descriptor.', shape.errors);
-  if (source.kind === 'git-blob') {
-    const bytes = await adapter.readBlob(source.ref);
-    if (!Buffer.isBuffer(bytes)) fail('evidence-unavailable', 'Raw Git blob bytes are unavailable.');
-    return bytes;
-  }
-  const value = await adapter.readComment({ repository: source.repository, comment_id: source.comment_id });
-  if (value?.id !== source.comment_id || typeof value?.body !== 'string') fail('evidence-unavailable', 'The declared comment identity/body representation is unavailable.');
-  return Buffer.from(value.body, 'utf8');
-}
 
 function summary(record, entry) {
   if (!record || typeof record !== 'object' || record.record_type !== undefined) fail('source-record-invalid', 'Delivery source must contain an Evidence record, not a decision or unstructured summary.');
@@ -67,7 +57,26 @@ function auditFindings(record, source) {
     : [];
 }
 
-export async function captureManifest({ adapter, closeoutPolicyRef, capturedAt, deliveries = [], decisions = [] } = {}) {
+async function bootstrapFindings(adapter, entry, verificationPolicy) {
+  if (!entry.initial_bootstrap) return auditFindings({ ...entry, head: entry.reviewed_head }, entry.source);
+  const nested = entry.initial_bootstrap;
+  const result = await verifyInitialBootstrap({ adapter, record: nested.verification, verificationPolicy });
+  const allowed = [verificationPolicy.config.repository.name, ...(verificationPolicy.config.repository.allowed_reference_repositories || [])].map((name) => name.toLowerCase());
+  const repository = nested.source.kind === 'git-blob' ? nested.source.ref.repository : nested.source.repository;
+  if (!allowed.includes(repository.toLowerCase())) fail('reference-out-of-scope', 'Later verification source is outside current policy scope.');
+  const bytes = await sourceBytes(adapter, nested.source);
+  if (hash(bytes) !== nested.content_sha256) fail('evidence-drift', 'Later verification source differs from its captured digest.');
+  const { record, manual } = await sourceRecord(bytes);
+  if (manual || !isDeepStrictEqual(record, nested.verification)) fail('source-summary-mismatch', 'Stored later verification differs from its source.');
+  const expected = { reviewed_head: record.head, base_ref: record.base_ref, base_sha: record.base_sha,
+    policy_ref: null, policy_mode: null, scope: record.scope, result: record.result };
+  if (Object.entries(expected).some(([field, value]) => !isDeepStrictEqual(entry[field], value)) ||
+      entry.prs?.length !== 1 || entry.prs[0].toLowerCase() !== record.pr.toLowerCase() ||
+      !record.sources.some((item) => item.purpose === 'delivery' && isDeepStrictEqual(item.source, entry.source) && item.content_sha256 === entry.content_sha256)) fail('source-summary-mismatch', 'Historical delivery summary/source differs from the verified initial contribution.');
+  return result.findings;
+}
+
+export async function captureManifest({ adapter, verificationPolicy, closeoutPolicyRef, capturedAt, deliveries = [], decisions = [] } = {}) {
   const manifest = { schema_version: 1, captured_at: capturedAt, closeout_policy_ref: structuredClone(closeoutPolicyRef), deliveries: [], decisions: [] };
   if (!Array.isArray(deliveries) || !Array.isArray(decisions) || !validateRecord('manifest', manifest).valid) {
     fail('manifest-invalid', 'Manifest capture requires valid explicit closeout context and source lists.');
@@ -86,19 +95,20 @@ export async function captureManifest({ adapter, closeoutPolicyRef, capturedAt, 
           if (manual) {
             const row = manualRow(entry, bytes);
             manifest.deliveries.push(row);
-            findings.push(manualReview(entry.source), ...auditFindings({ ...row, head: row.reviewed_head }, entry.source));
+            findings.push(manualReview(entry.source), ...await bootstrapFindings(adapter, row, verificationPolicy));
             continue;
           }
           const evidenceShape = validateRecord('evidence', record);
           if (!evidenceShape.valid) fail('source-evidence-invalid', 'A malformed structured Evidence record cannot use the historical-prose path.', evidenceShape.errors);
           const row = summary(record, { ...entry, content_sha256: hash(bytes) });
+          if (entry.initial_bootstrap) row.initial_bootstrap = structuredClone(entry.initial_bootstrap);
           const shape = validateRecord('delivery', row);
           if (!shape.valid) fail('source-record-invalid', 'Delivery source has insufficient or invalid summary fields.', shape.errors);
           for (const field of ['reviewed_head', 'scope', 'result', 'no_head_reason', ...auditFields]) {
             if (Object.hasOwn(entry, field) && !isDeepStrictEqual(entry[field], row[field])) findings.push({ code: 'source-summary-mismatch', message: `Caller-supplied ${field} contradicts the structured source; its original value is retained.`, source: entry.source });
           }
           if (record.pr && entry.prs && !entry.prs.includes(record.pr)) findings.push({ code: 'source-summary-mismatch', message: 'Supplied delivery PRs contradict the source assessment PR.', source: entry.source });
-          findings.push(...auditFindings(record, entry.source));
+          findings.push(...await bootstrapFindings(adapter, row, verificationPolicy));
           manifest.deliveries.push(row);
         }
       } catch (error) {
@@ -109,7 +119,7 @@ export async function captureManifest({ adapter, closeoutPolicyRef, capturedAt, 
   return { manifest, findings };
 }
 
-export async function checkManifest({ adapter, manifest } = {}) {
+export async function checkManifest({ adapter, verificationPolicy, manifest } = {}) {
   const findings = [];
   const shape = validateRecord('manifest', manifest);
   if (!shape.valid) return { valid: false, findings: [{ code: 'manifest-source-invalid', message: 'Manifest or source descriptor is invalid.', details: shape.errors }] };
@@ -124,7 +134,7 @@ export async function checkManifest({ adapter, manifest } = {}) {
         const { record, manual } = await sourceRecord(bytes);
         if (manual && kind === 'delivery') {
           manualRow(entry, bytes);
-          findings.push(manualReview(entry.source), ...auditFindings({ ...entry, head: entry.reviewed_head }, entry.source));
+          findings.push(manualReview(entry.source), ...await bootstrapFindings(adapter, entry, verificationPolicy));
           continue;
         }
         if (kind === 'decision') {
@@ -133,11 +143,12 @@ export async function checkManifest({ adapter, manifest } = {}) {
           if (!isDeepStrictEqual(stored, record)) findings.push({ code: 'source-summary-mismatch', message: 'Stored decision differs from its source.', source });
         } else {
           const expected = summary(record, entry);
+          if (entry.initial_bootstrap) expected.initial_bootstrap = structuredClone(entry.initial_bootstrap);
           if (!isDeepStrictEqual(expected, entry) || (record.pr && entry.prs && !entry.prs.includes(record.pr))) {
             findings.push({ code: 'source-summary-mismatch', message: 'Stored delivery summary/audit fields differ from the source assessment.', source: entry.source });
           }
           if (!validateRecord('evidence', record).valid) findings.push({ code: 'source-evidence-invalid', message: 'Source evidence shape is invalid.', source: entry.source });
-          findings.push(...auditFindings(record, entry.source));
+          findings.push(...await bootstrapFindings(adapter, entry, verificationPolicy));
         }
       } catch (error) {
         findings.push({ code: 'evidence-unavailable', message: error.message, source: entry.source, cause: error.code });

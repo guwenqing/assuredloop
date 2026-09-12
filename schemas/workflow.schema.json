@@ -1224,6 +1224,26 @@
         },
         "no_head_reason": {
           "$ref": "#/$defs/text"
+        },
+        "initial_bootstrap": {
+          "type": "object",
+          "properties": {
+            "verification": {
+              "$ref": "#/$defs/initialBootstrapVerification"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            },
+            "content_sha256": {
+              "$ref": "#/$defs/digest"
+            }
+          },
+          "required": [
+            "verification",
+            "source",
+            "content_sha256"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -1376,6 +1396,164 @@
         "closeout_policy_ref",
         "deliveries",
         "decisions"
+      ],
+      "additionalProperties": false
+    },
+    "initialBootstrapVerification": {
+      "type": "object",
+      "description": "Later verification of an actual initial squash delivery; never prior policy authority.",
+      "properties": {
+        "record_type": {
+          "const": "initial-bootstrap-verification"
+        },
+        "pr": {
+          "$ref": "#/$defs/work"
+        },
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "base_ref": {
+          "$ref": "#/$defs/text"
+        },
+        "base_sha": {
+          "$ref": "#/$defs/sha"
+        },
+        "merge_sha": {
+          "$ref": "#/$defs/sha"
+        },
+        "bootstrap_ref": {
+          "$ref": "#/$defs/repoRef"
+        },
+        "verified_at": {
+          "$ref": "#/$defs/utc"
+        },
+        "verification_policy_ref": {
+          "$ref": "#/$defs/repoRef"
+        },
+        "scope": {
+          "$ref": "#/$defs/text"
+        },
+        "producer_session": {
+          "$ref": "#/$defs/text"
+        },
+        "reviewer_session": {
+          "$ref": "#/$defs/text"
+        },
+        "reviewer_model": {
+          "$ref": "#/$defs/text"
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "revise",
+            "incomplete"
+          ]
+        },
+        "review_depth": {
+          "const": "full-scope"
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "purpose": {
+                "enum": [
+                  "policy-acceptance",
+                  "proposal-acceptance",
+                  "review",
+                  "delivery"
+                ]
+              },
+              "source": {
+                "$ref": "#/$defs/source"
+              },
+              "content_sha256": {
+                "$ref": "#/$defs/digest"
+              }
+            },
+            "required": [
+              "purpose",
+              "source",
+              "content_sha256"
+            ],
+            "additionalProperties": false
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "purpose": {
+                    "const": "policy-acceptance"
+                  }
+                },
+                "required": [
+                  "purpose"
+                ]
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "purpose": {
+                    "const": "proposal-acceptance"
+                  }
+                },
+                "required": [
+                  "purpose"
+                ]
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "purpose": {
+                    "const": "review"
+                  }
+                },
+                "required": [
+                  "purpose"
+                ]
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "purpose": {
+                    "const": "delivery"
+                  }
+                },
+                "required": [
+                  "purpose"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "record_type",
+        "pr",
+        "head",
+        "base_ref",
+        "base_sha",
+        "merge_sha",
+        "bootstrap_ref",
+        "verified_at",
+        "verification_policy_ref",
+        "scope",
+        "producer_session",
+        "reviewer_session",
+        "reviewer_model",
+        "result",
+        "review_depth",
+        "sources"
       ],
       "additionalProperties": false
     }
