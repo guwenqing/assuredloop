@@ -8,6 +8,7 @@ First-consumer feedback exposed three gaps in verifying real delivery: initial m
 - Preserve that verification and original source fixity through manifest capture and revalidation; unknown historical audit data remains unknown rather than receiving a blanket exemption.
 - Honor native `skip_specs: true` only from the accepted fixed change, with an unchanged complete current Spec baseline and independent assessment of the claimed no-Spec scope.
 - Support a merged PR contribution in existing `depends_on`, separately from completion of a whole Issue. Inspect exact declared scope, task associations, review and delivery; do not require the owning planning Issue to close or synthesize Issue fields on a PR.
+- Let one batch closeout Issue deliver separately selected native changes through their own PRs, using existing PR `change` and fixed task references. Do not require extra closeout tickets or a mutable single-change selector on the aggregate Issue.
 
 ## Capabilities
 

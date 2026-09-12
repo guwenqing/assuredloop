@@ -5,6 +5,7 @@ See [Proposal](proposal.md), original [#25](https://github.com/guwenqing/assured
 - `work-records.js` parses prerequisite bundles as Issue records and requires closed/completed before recursing; a PR identifier passes the shared schema but fails the actual record path.
 - `manifest.js` preserves manual rows but reports any null historical audit field as unavailable; it does not distinguish verified absence from unknown authority.
 - `synchronization.js` returns before comparison whenever `findSpecUpdates` is empty. The pinned native metadata module already exports `readSkipSpecsMarker`; the adapter can reuse it like the existing retirement reader.
+- `trace.js` passes the closeout Issue record to `selectCloseout`, which selects only `record.change`. Shared batch closeout guidance therefore needs a scoped PR-selection path, not just several Issue plan refs.
 
 ## Goals / Non-Goals
 
@@ -56,6 +57,10 @@ Valid declared skip + no deltas + no retirement intent selects identity synchron
 Return the existing top-level status vocabulary with an explicit `mode: no-spec-change` result and compared snapshot identities. Missing/false/malformed/unknown-schema skip metadata cannot convert an empty change to success. If skip and actual delta/retirement artifacts coexist, report contradiction rather than choose a convenient path. Nonempty normal changes retain native full-delta rebuilding. Review still verifies the skip declaration belongs to the accepted plan and accurately describes the real code/requirements impact.
 
 ### 5. Verification and transition
+
+For batch closeout, use the existing optional PR `change` to select one assigned native change per closeout PR. An aggregate Issue may omit its singular `change` while retaining the complete batch's fixed basis/plan refs. Resolve the selected PR's closeout task refs against the actual owning Issue and canonical task associations; require one change and one accepted fixed whole-change revision. Preserve the Issue's aggregate scope, prerequisites and completion obligations. Reject an unassigned change, ambiguous revisions, mismatched Issue/PR selectors or a PR claiming another change's tasks. A legacy single-change Issue retains its existing selection path when no explicit PR selector is supplied.
+
+This is a narrow selector extension, not a multi-change synchronization engine or a new record field. Each closeout PR synchronizes one complete delta against its actual destination and retains its own manifest/policy context. Independent review checks cumulative batch coverage; ordinary whole-Issue completion still requires all assigned contributions. Do not rewrite the aggregate Issue's selector between PRs to make earlier evidence mean something different, or close it after its first contribution. Include focused positive/negative selector and cumulative-completion tests in this delivery.
 
 One developer work outcome covers this related prerequisite/closeout verification path; use scoped commits or contributing PRs if useful without new Architecture Tasks. A different test author writes observable failing unit/functional cases before implementation. Cover ordinary Issue/PR prerequisites, open umbrella planning with a merged accepted contribution, unmerged/cancelled/unrelated/stale PRs, cycles, forbidden references, original bootstrap happy path and every negative scenario, nested manifest drift, and valid/invalid native skip controls. Relevant faults remove absence/source checks, skip PR reviews or treat every empty delta as successful; unchanged tests must detect them before restoration to GREEN.
 
