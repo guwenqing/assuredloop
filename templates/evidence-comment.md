@@ -8,7 +8,7 @@ Reusable draft scaffold. Read templates/README.md, schemas/workflow.schema.json 
 {{commands_exit_results_or_non_executable_applicability}}
 {{source_evidence_and_observed_limits}}
 
-## Structured evidence
+## Workflow context
 
 ```json
 {{validated_evidence_context_json}}
