@@ -1,120 +1,161 @@
 # AssuredLoop Base
 
-Local workflow extensions built on OpenSpec. The package provides record contracts, explicit project initialization, work-category guidance and a private, packable Node.js CLI. It does not activate a consumer workflow or install CI/review providers.
+AssuredLoop is a traceability and context toolkit for OpenSpec. It does two things:
 
-Source checkouts maintain this repository's current product specification at `openspec/specs/workflow-goals/spec.md`, with linked capability and behavior requirements. Installed consumers start at the [versioned Workflow Goals](contracts/workflow-goals/spec.md). `contracts/` contains generated copies, not a second authored specification. Active changes remain under `openspec/changes/` in the source checkout; synchronization alone does not establish overall acceptance or completed closeout.
+- Checks structured work, requirement, change, delivery and evidence relationships.
+- Retrieves bounded, source-linked context so a worker or reviewer can assess the right material.
 
-## Local use
+It does not define how a team develops, tests or reviews software. It does not
+assign roles, dispatch agents, send progress messages, approve work or merge PRs.
+Use your own workflow or BOT system for those tasks.
 
-Use Node.js >=20.19.0 and Git. Install the pinned dependencies with `npm ci`. OpenSpec 1.12.0 supplies native planning and tool discovery; GitHub operations additionally need gh >=2.88.0 with access to the selected repository. Initialization never installs prerequisites or signs in for you.
+## Specification and storage
 
-For a development trial, select the checkout and an isolated npm prefix explicitly:
+The current product definition starts at
+[Workflow Goals](openspec/specs/workflow-goals/spec.md) in this source repository.
+Installed packages carry [generated contracts](contracts/workflow-goals/spec.md)
+from an exact Git revision, not a second authored specification.
+
+Native OpenSpec owns Proposal, Design, delta Specs, tasks, synchronization and
+archive operations. Current Specs describe the latest accepted product definition;
+active/archived changes explain changes to it. AssuredLoop checks the links and
+synchronization evidence rather than asking each reviewer to reconstruct current
+requirements from all past proposals.
+
+Files and their Git revisions remain authoritative. GitHub holds work discussions
+and delivery evidence. There is no authoritative local database. Temporary
+operation caches deduplicate reads; unavailable or out-of-scope sources remain
+visible gaps. User data is separate from packaged toolkit code and contracts.
+
+## Install and configure
+
+Requires Node.js >=20.19.0, Git and the pinned OpenSpec 1.12.0 dependency.
+Use `npm ci` in a source checkout. GitHub operations also require authenticated
+gh >=2.88.0. Initialization does not install prerequisites or sign in.
+
+For a development trial, select a separate npm prefix and the exact executable:
 
 ```sh
-set -e
-trial_prefix=/absolute/isolated-trial-prefix
 cd /absolute/selected-development-checkout
-npm_config_prefix="$trial_prefix" npm link
-"$trial_prefix/bin/assuredloop" --help
-"$trial_prefix/bin/assuredloop" init --target /absolute/trial-consumer --config /absolute/trial-config.json --local-only
+npm_config_prefix=/absolute/trial-prefix npm link
+/absolute/trial-prefix/bin/assuredloop --help
+/absolute/trial-prefix/bin/assuredloop init --target /absolute/consumer --config /absolute/config.json --local-only
 ```
 
-The successful `npm link` step precedes invocation, including in a pipeline using linked development. Invoke the isolated prefix's executable explicitly; bare `assuredloop` can select an existing global link through PATH. For ordinary use, invoke the already selected installation's executable. Actual local/global package-root links select linked development; ordinary executable symlinks into installed packages retain installed behavior. Direct `node src/cli.js` remains direct-source use.
+Actual npm package-root links use `linked-development` with
+`toolkit_verification: not-performed`: no toolkit archive, source, dependency,
+Git-cleanliness or integrity audit. Consumer records, fixed policy, source
+permissions and freshness still apply. Direct-source invocation and ordinary
+executable shims retain their existing verification mode.
 
-Linked init/inspect/check report one operation-level `runtime: {mode: "linked-development", toolkit_verification: "not-performed"}` observation. They omit toolkit archive, source, dependency, Git-cleanliness and packaged-contract integrity checks; no capture, re-pin or waiver flag is needed. Required executable inputs, native API compatibility, consumer bindings, accepted policy, source permissions, review and freshness checks still apply. The declared consumer `contract_package` stays unchanged. Its package-source declaration alone does not request a toolkit provenance read; the same reference explicitly listed as basis, policy or evidence still requires normal acquisition. Fixed policy comes from its permitted immutable Git source; mutable linked contracts cannot supply those authoritative bytes. Unavailable fixed sources remain unavailable.
+Build a real configuration from [the example](templates/records/config.json)
+and [schema](schemas/workflow.schema.json). Bind the consumer repository,
+OpenSpec root, selected native tool roots, category labels and allowed source
+repositories. The review default supplies only a context budget; it does not
+choose a model, role, review method or second provider. Existing explicit
+consumer review constraints remain checked, not silently relaxed.
 
-Create the input from the illustrative `templates/records/config.json` and the descriptions in `schemas/workflow.schema.json`. Select your own repository, OpenSpec root, tools, label mappings and accepted review choices. Do not use example identities or evidence as real authorization. The default command previews eligible changes; repeat with `--apply` only after reviewing that preview. Existing conflicting files cause an error rather than being overwritten. `--local-only` explicitly skips remote checks and is not delivery acceptance.
+`init` previews files. Add `--apply` to write them. Existing differing files
+are conflicts, not overwrite permission. `--provision-labels` previews missing
+mapped labels; applying it creates only those missing labels. Existing metadata
+is preserved. Partial effects return exit 1 and per-operation outcomes; inspect
+them and make a fresh preview. No rollback deletion is performed.
+`--local-only` skips GitHub checks and cannot provision labels.
 
-To provision mapped GitHub labels, add `--provision-labels` to the preview, then add `--apply` for the authorized writes. The preview lists exact name/color/description operations, bound repository and the SHA-256 digest of the generated configuration bytes. Apply rechecks the target, selected package and Skill assets, file conflicts, repository access and live labels. This local preview fixity check does not attest toolkit provenance. Existing labels match case-insensitively and keep their metadata. Only missing mapped labels are created; Issues, settings and credentials are untouched. Without this option, init makes no remote mutations; inspect/check remain read-only. Provisioning cannot be combined with `--local-only`.
+Installation is not policy acceptance, activation or Brownfield conversion.
+The consumer's existing requirements stay separate from toolkit contracts.
+See [adoption guidance](skills/assuredloop-adopt/SKILL.md).
 
-Each creation is read back before proceeding. A concurrent existing label is skipped after confirmation. An incomplete apply returns `status: "partial"`, exit 1, per-label effects (`created`, `skipped`, `failed` or `unverified`) and remaining operations. Readback failure does not prove no effect. Labels are processed before local files, and a later local failure also reports files created/remaining. Inspect the result and create a new preview for retry; there is no deletion rollback. Label availability does not establish policy acceptance or activation.
+## Use the toolkit in your workflow
 
-The adoption procedure is in `skills/assuredloop-adopt/SKILL.md`. Native tool roots are discovered from the pinned OpenSpec registry, including Gemini; upstream ownership markers are preserved. Framework contracts remain in the selected installation, separate from the consumer's product Specs. The returned file list identifies target discovery copies.
-
-## Existing projects and optional notes
-
-Installing the toolkit does not adopt an existing project's product definition. The existing [adoption guidance](skills/assuredloop-adopt/SKILL.md) and [planning guidance](skills/assuredloop-plan/SKILL.md) establish an owner-selected repository/area, tracked code/test/doc anchors and honest coverage. They preserve existing Specs and distinguish observed behavior, intended requirements, conflicts and unknowns. Native Proposal/Design and product Spec deltas provide readable purpose, capabilities and concrete scenarios. Owner intent agreement, independent review and authorized native synchronization/delivery establish only the assessed current baseline; documentation work does not claim executed product tests or whole-project conversion.
-
-`.assuredloop/notes/future-work.md` is optional informal context for tentative gaps and ideas. Give it a short informal/possibly obsolete/not-accepted heading when creating it; preserve existing notes. No empty file is initialized and no IDs, status/schema, backlog, review log or maintained backlinks are required. Default formal synchronization skips ordinary Markdown under the fixed `.assuredloop/notes/` surface, so obsolete notes do not fail consistency. Formal Specs/config/work/evidence retain their checks, including misplaced formal content. Explicit note reads follow normal permissions and are marked informal context; they cannot grant acceptance or authorize implementation. Selected ideas enter normal intake/planning. Notes do not waive privacy rules; keep credentials/private customer material out and execution logs in ignored local data. Consumer notes are not package assets.
-
-## Inspect and check work
-
-For new setup, record `project.review.routing: {primary_tool: "codex", additional: "on-request"}` using the owner's actual selected native tool and model policy; the names here are illustrative. Propose the sole selected tool or obtain an explicit choice for several tools. `required` adds a separate additional review obligation. Qualifying Evidence declares `review_kind` (`internal` primary or `external` additional) and `review_tool`. Primary must match the selected tool and exact internal model allowlist. Additional may use any supported native tool without local installation, including the same tool/model in a distinct eligible session. Unknown tools cannot qualify; unavailable registry stays unavailable. Exclusions, source/policy freshness and producer/reviewer separation still apply.
-
-`check` and `inspect` expose per-PR `review_routing` context with credited source records and missing obligations. `qualified` selects a primary and distinct additional sessions from all eligible assessments; redundant primary reports do not reserve sessions needed for a valid pair. Original records remain in source context/packets. `review_evidence` identifies current versus noncurrent same-PR assessments and their exclusion reasons. Noncurrent reports keep their original verdicts and cannot supply current acceptance. Legacy policy also needs an applicable independent PASS. Earlier findings require linked dispositions and independent reassessment; head advances or newer PASS records do not automatically resolve them. One session cannot satisfy both roles. Explicit work-specific additional requests under `on-request` remain a sourced handoff/review obligation assessed manually; the CLI does not infer them from prose. Configurations without routing keep their prior meaning and report it not configured. New config keys must be adopted under the actual pre-change policy; no migration, provider invocation or consumer re-pin is automatic.
-
-Run `assuredloop inspect --target ABS_ROOT --work OWNER/REPO#NUMBER` to read a reviewer packet, or `assuredloop check` with the same target/work options to check structured records and their sources. Both commands use read-only Git and GitHub operations. A formal `pass` does not authorize a merge, authenticate reviewer independence or establish the whole assigned outcome.
-
-`check` returns a complete, non-paginated machine-readable diagnostic report, including synchronization and manifest outcomes. It has no reviewer-packet cursor, and its full report is not bounded by `max_inline_bytes`. Use `inspect` with the same work/delta/manifest selectors for bounded review context. That inspection captures a fresh view; it does not continue an earlier check snapshot if the source state changed.
-
-`inspect` uses the resolved policy's `project.review.context.max_inline_bytes` for the complete serialized response page, including metadata and its trailing newline. The default is 65536 bytes when the optional context setting is absent. `--max-inline-bytes` may narrow that limit. Follow `packet.next_cursor` with `--cursor` to read remaining inventory pages; do not combine pages after a stale-cursor result. `--expand` accepts an exact discovered structured reference as JSON, including its anchor, or a qualified work reference. Content outside inline depth 1, over budget or unavailable remains distinguishable in the inventory. Policy source bodies are packet content rather than an unbounded duplicate beside the packet. Irreducible metadata that cannot fit returns `packet-limit`. Candidate changed-file inventories come from paginated GitHub reads, with fixed base/head references and available patch text in the PR source context; absent patch text and removed head paths remain explicit gaps.
-
-PR assessments use their actual destination and pre-change Git objects. Delivered PR evidence is compared with its recorded historical base and policy, even after the destination advances. For genuinely non-PR intake, research and cancellation, the adapter inspects the repository's GitHub-reported current default branch and rechecks its revision. This is a current-context convention, not a historical-policy reconstruction or a restriction on PR destinations. Non-PR evidence is retained without synthetic PR audit fields. `--local-only` skips remote checks and returns an incomplete diagnostic.
-
-Historical reconstruction is limited to configurations and package bindings supported by the selected runtime. A legacy five-category/discipline configuration is unsupported here: the comparison remains unavailable with its acquired source bytes, references and digest retained. This does not revoke historical acceptance, declare evidence corrupt or establish a policy mismatch. Current-format synthetic historical tests do not prove cross-version compatibility. Verification may require a separately selected trusted matching historical tool/package; this release does not negotiate, retrieve or execute one automatically, and setting the API's `packageRoot` alone does not change its runtime schema. Never execute code identified only by an untrusted record or widen today's acquisition scope. A required prerequisite or closeout assessment that cannot be verified remains incomplete and returns to its responsible owner.
-
-Acquisition has one current permission ceiling per request. A directly selected PR uses its actual current destination configuration; an Issue-root request uses the repository's live default-branch configuration, even when several PRs are linked. Secondary assessments can narrow that ceiling and cannot widen it through historical coordinates, prerequisites or linked-PR ordering. Scope checks precede cached returns and physical reads, and the primary context/configuration is rechecked for freshness. Derived context retains the primary source and assessment restrictions. A forbidden historical reference remains a coverage gap until a current binding change is explicitly authorized. In nonlinked mode, verified installed contract assets remain readable through their exact package binding; that does not authorize remote access to their source repository. Linked mode uses the existing permitted Git reader for those fixed sources and grants no additional source access. Incidental denied timeline relations stay in the inventory without replacing the permitted local assessment; required denied sources remain unresolved obligations.
-
-`classification.assigned_prs` is optional derived reviewer context listing the currently permitted PR mappings observed for that Issue. Author actual Workflow context from the shared record schema; these observations alone do not establish assignment authority.
-
-Rejected foreign mapping context retains the observed repository/branch/revision and any acquired config bytes and digest without accepting that mapping or its permissions. Earlier acquisition failures retain only coordinates actually observed; missing bytes do not receive a fabricated digest. Consumed rejected sources remain subject to scope and freshness checks.
-
-Open Request or unclassified intake without an authoritative `Workflow context` block remains incomplete. Configured Architecture Task/Task/Bug/Spike labels require that routed record. Epic is a non-executable container and may omit context; executable work belongs to a child. Routed Issues require exactly one configured category compatible with their activity, under the [category contract](templates/README.md#classify-the-assigned-work). Inspection preserves actual labels, resolved category, activity, rule basis and discrepancies for review. A valid declaration does not prove truthful classification. Plain JSON in an Issue body is not a substitute for the block. Null or absent bodies remain source data; missing or unsupported operational states are reported rather than treated as open work. Binary references remain in packet inventories with a non-text reason. A generic basis can be acquired as raw bytes, while heading anchors and native task references require text.
-
-Formal source parsing distinguishes absent context, invalid syntax/shape and a valid supported record. Explicit Workflow context errors remain errors with their source identity and available body; illustrative fenced headings are not declarations. For comments containing a whole JSON object, Evidence candidates use existing own-property signals: `head`, `no_head_reason`, review declarations, command/exit or assessment/audit fields, or `scope` together with `result` or `evidence`. The complete schema is then checked, including missing required fields. This discovery convention creates no review credit and does not infer intent. Tagged self-change decisions and initial-bootstrap verifications are validated separately; malformed or mixed declarations cannot disappear behind another valid review. Unrelated JSON/prose remains context. Generic supporting references may be code, logs or test-result JSON and are not recursively classified as Evidence from familiar keys. Where an operation actually expects a canonical record, such as manifest source derivation, an empty or malformed object cannot qualify. Unstructured historical material retains its separate semantic/manual-assessment boundary.
-
-Under legacy policy without routing, the CLI retains `review-kind-unresolved` and checks shared declarations, aliases, exclusions, depth and revision consistency. It does not invent internal/external assignment from a model name, prose or newly present fields. The low-level `checkReviewEvidence` API still accepts a caller-selected kind for an explicitly labelled comparison under that legacy policy; external comparison does not discharge internal review. With accepted routing, the actual Evidence `review_kind` and `review_tool` declarations govern qualification. A caller argument cannot fill missing declarations or override them. Reviewers still establish actual execution, independence and semantic obligation coverage from the original sources.
-
-Canonical task ownership uses `Work Issue: [label](https://github.com/OWNER/REPO/issues/NUMBER)` in the relevant package section, task subsection or checkbox description. Section declarations apply to their children, while sibling packages remain separate. Conflicting package/task declarations, repeated task IDs and missing or unrecognized associations cannot verify linkage at handoff; early planning may retain an explicitly unresolved association. Code examples and ordinary Basis/dependency links are not ownership declarations. The checker compares the canonical Issue with the contributing Issue/PR mappings, not with human or bot assignees; changing a GitHub assignee does not require rewriting the plan.
-
-For closeout, `check` and `inspect` accept `--delta-ref JSON_REPO_REF` for the complete fixed change directory and `--manifest-ref JSON_REPO_REF` for the actual candidate's `acceptance-manifest.json`. The delta must match the selected change and an accepted plan revision. An unambiguous active change/manifest location can be inferred; use an explicit candidate manifest reference when it has moved. These selectors choose diagnostic inputs, not acceptance or archive authority. The checks compare the full native delta result, including declared capability retirement, against candidate Specs and current inbound references; verify prerequisite delivery and manifest fixity; and retain the semantic acceptance boundary.
-
-Manifest generation is also available through the packaged Node.js module `src/manifest.js`: `captureManifest({adapter, closeoutPolicyRef, capturedAt, deliveries, decisions})` returns a candidate manifest and findings. Supply source descriptors under the shared schema and a bound read adapter from `src/read-adapter.js`. `checkManifest({adapter, manifest})` checks raw Git bytes or the declared decoded GitHub comment body. Neither API posts evidence or writes a manifest file. Missing audit provenance remains a gap; the current closeout policy never fills historical entry fields. Closeout checks separately require inventory entries for its declared prerequisites; generic manifest validity does not prove that inventory is complete. Native parent/sub-Issue membership alone does not create a prerequisite.
-
-For genuinely unstructured historical reports, a `deliveries` input can supply the existing manifest row fields explicitly, including `reviewed_head`, `scope`, `result` and known historical audit values. Capture always reads the original source and computes `content_sha256`; a supplied digest cannot replace acquisition. Unknown audit values remain null with findings. Required values are not invented, and a known PR cannot use a null head to disguise a missing revision. Structured Evidence remains authoritative over conflicting caller fields; malformed or ambiguous structured records cannot use the historical-report path. Typed decisions remain separate. A manual row with valid shape and fixity still carries `source-summary-review-required` on capture and verification: mechanical validity does not establish accurate transcription, approval or delivered coverage.
-
-## Resolve guidance and context
-
-Use the explicitly selected package installation, not whichever source checkout happens to be the working directory. For an installed CLI, follow the executable's symlink and locate its owning `package.json`; a project dependency can also be located through the package manager. For nonlinked installations, verify package name/version and `contracts/metadata.json` against the target's workflow pin and actual installation evidence. For actual npm-linked use, retain the runtime observation and read the consumer's accepted fixed requirements through permitted source references; do not audit or relabel mutable toolkit assets as that fixed policy. If the location or binding is unavailable, request the selected installation context instead of silently choosing another package. Framework-maintenance work may explicitly select its source checkout through the current handoff; that is not consumer policy adoption.
-
-Paths such as `schemas/`, `templates/` and `contracts/` in the guidance are relative to that selected package root. Consumer requirements are relative to the explicitly selected target and its configured OpenSpec root. Record the resolved locations in the current work context. Do not inject framework contracts into consumer product Specs or use the framework's historical Issues as consumer work.
-
-The schema's activity selector identifies the relevant work guidance; this table is a navigation index, not a role assignment or additional policy source:
-
-| Activity | Source guidance |
+| Operation | What it provides |
 | --- | --- |
-| adopt | [Adopt the workflow](skills/assuredloop-adopt/SKILL.md) |
-| triage | [Triage a request](skills/assuredloop-triage/SKILL.md) |
-| plan | [Plan and decompose](skills/assuredloop-plan/SKILL.md) |
-| research | [Research a Spike](skills/assuredloop-research/SKILL.md) |
-| deliver | [Deliver assigned work](skills/assuredloop-deliver/SKILL.md) |
-| review | [Review and return the outcome](skills/assuredloop-review/SKILL.md) |
-| closeout | [Close out a change](skills/assuredloop-closeout/SKILL.md) |
+| `validate` | Local preflight of a complete Issue, PR or evidence Markdown body |
+| `inspect` | Bounded, paginated source context and relationship inventory |
+| `check` | Full mechanical diagnostics, evidence applicability and synchronization results |
+| `init` | Explicit configuration/discovery preview and scoped installation |
+| `generate-contracts` | Reproducible package contracts from fixed committed native Specs |
 
-Use [shared record/template instructions](templates/README.md) for authoritative field examples and draft scaffolds. Optional consumer agent-instruction pointers are in [the opt-in snippet](templates/agent-instructions.md); add them only within the authorized adoption scope, preserving existing instructions. Initialization never overwrites a consumer README/AGENTS file or installs a permanent author-session route. Root `AGENTS.md` points framework contributors to these same sources.
-
-Guidance explains manual/native execution and current owner boundaries. Tool results have the inspection limits described above. Guidance does not claim that automation is available, that schema validity proves semantic correctness, or that a review PASS satisfies a separately withheld owner decision. Fresh-agent trials and independent review assess whether the guidance is usable.
-
-### Authoring reusable Skill examples
-
-Initialization resolves `{{repository}}`, `{{openspec_root}}`, `{{package_name}}` and `{{package_version}}` everywhere in packaged Skill text. To show a later-work template, place the own-line comment `<!-- assuredloop:template:start -->` before the example and `<!-- assuredloop:template:end -->` after it, with a visible caption identifying the content as a reusable template/example rather than completed target data. Only literal markers in the original authored source control regions; substituted values remain data and cannot create or close a region. Other tokens, such as `{{change}}`, are preserved only inside that declared region. Unknown tokens outside it, unbalanced regions and nesting are errors. Do not use these markers to exempt executable instructions or actual work records; semantic review must assess the declaration. Target configuration always remains strict. This convention does not validate completed handoff records.
-
-## Package and contract assets
-
-The package stays private; no npm publication is authorized. `npm pack` builds a tarball with an explicit file allowlist. Its output reports the tarball's integrity; retain that value with the package name/version and generated contract source reference in the consumer binding. Contract file hashes verify the generated assets, not publisher identity or policy acceptance.
-
-Generate framework assets only from an explicitly selected Git revision and specification root:
-
-```text
-node src/cli.js generate-contracts --source-root /absolute/framework --repository owner/framework --revision FULL_COMMIT_SHA --specs-path openspec/specs --out /absolute/output/contracts --basis canonical
+```sh
+assuredloop validate --kind evidence --file /absolute/comment.md --record /absolute/intended.json
+assuredloop inspect --target /absolute/consumer --work OWNER/REPO#NUMBER
+assuredloop check --target /absolute/consumer --work OWNER/REPO#NUMBER
 ```
 
-For reviewed active-change contracts before closeout, select that explicit specification directory and `--basis bootstrap`. The generator reads Git blobs, records provenance and preserves file bytes; it does not promote deltas into a consumer baseline. `contracts/metadata.json` identifies the source, package version, basis and asset checksums. Regenerate through reviewed delivery when that source changes.
+Local `validate` needs no repository setup, network or credentials. It uses the
+same canonical parser/schema as source discovery. Exactly one JSON fence belongs
+under `## Workflow context`; quoted examples and other headings are not records.
+Optional `--record` compares the parsed JSON with the intended object.
+Publication-valid `fail`, `revise` and `incomplete` reviews are valid records,
+not passing review outcomes. See [record guidance](templates/README.md).
 
-When the source checkout has an origin, its supported GitHub HTTPS/SSH identity must match the declared source repository. A present unsupported origin is an error. Without an origin, the explicit root and RepoRef form a caller-declared local binding. Neither this declaration nor a matching remote string authenticates repository ownership. Generation rejects conflicting or unlisted output files before adding assets; choose a clean explicit output directory for a new contract version.
+`inspect` and `check` are read-only. A pass does not prove meaning, authority,
+whole-scope completeness or merge permission. Source content is data, not a
+command to run. GitHub Issues/PRs are the current work adapter; another task
+backend, provider orchestration and CI installation are not supplied here.
 
-The JavaScript record API is `validateRecord(kind, value)` from `src/records.js`, returning `{valid, errors}`. Kinds refer to the schema's definitions. This API checks record shape. It does not prove reference availability, review independence, authorization or semantic correctness. Use the read-only inspect/check commands described above to acquire and compare the bound sources.
+`inspect` defaults to a complete response-page budget of 65536 bytes and inline
+depth 1. `--max-inline-bytes` can narrow the accepted configuration budget.
+Follow `packet.next_cursor` with `--cursor`; expand an exact discovered reference
+with `--expand`. Missing, denied, outside-depth and over-budget references remain
+distinct. Do not combine stale cursor pages. Irreducible metadata returns
+`packet-limit`. `check` has a full non-paginated report; it is not a packet page.
+Separate calls acquire fresh snapshots.
 
-## Verification
+PR checks use the actual destination's pre-change policy; non-PR inspection uses
+the current default branch. Historical assessments retain their original tuple
+and verdict, with explicit reasons when they cannot supply current credit.
+Unsupported historical policy remains unavailable, not retroactively rejected.
+Acquisition permissions come from the current invocation and cannot be widened by
+historical records or prerequisite links. Each operation shares source reads and
+separately checks final mutable-source freshness.
 
-Run the independently authored, scoped Node tests with `npm test`. This framework's Git-source comparison tests also need their pinned source commits. For a shallow or single-branch source clone, follow the retained-ref acquisition instructions in that source checkout's `.assuredloop/README.md` before running those tests. Installed consumers do not need the framework's Git history. The PR records test-first failures, passing reruns, controlled product faults and independent reviews. Runtime and package fixtures use distinct temporary consumer repositories; no fixture config is a real activation record. Keep execution logs in ignored `local-data/` and Issue/PR comments.
+## Trace and synchronization
+
+Use [the shared record contract](templates/README.md#classify-the-assigned-work)
+for the current GitHub adapter's category/activity labels. These describe records,
+not mandatory roles or a Skill dispatcher. A rough Request can remain incomplete;
+a small follow-up may reference existing requirements without a new Proposal.
+
+Canonical task ownership in native `tasks.md` uses:
+
+```markdown
+## 1. Selected contribution
+Work Issue: [Implementation](https://github.com/OWNER/REPO/issues/NUMBER)
+
+- [ ] 1.1 Implement the accepted behavior
+```
+
+Issue/PR `plan_items` point to the fixed tasks revision and actual item IDs.
+Parent membership is not an execution dependency. An Issue prerequisite means its
+whole current assigned scope; a PR prerequisite means that fixed delivered
+contribution. Reopened broader work must not silently reinterpret an existing
+dependency. Preserve decisions and old references when reconciling it.
+
+Synchronization uses native OpenSpec and the fixed whole-change delta. The check
+compares current/base/candidate requirements, inbound links and manifest evidence.
+Optional `--delta-ref` and `--manifest-ref` select exact JSON RepoRefs when needed.
+A native accepted `skip_specs` requires identical full Spec inventory/raw bytes,
+not merely no visible Spec diff. See [synchronization guidance](skills/assuredloop-sync/SKILL.md).
+
+## Skills and limits
+
+Only four tool-operation Skills are packaged:
+[adopt](skills/assuredloop-adopt/SKILL.md),
+[record](skills/assuredloop-record/SKILL.md),
+[context](skills/assuredloop-context/SKILL.md) and
+[sync](skills/assuredloop-sync/SKILL.md).
+
+Older installed work-role Skill copies are not automatically removed. Inspect
+their exact paths and obtain scoped removal approval; preserve native/user Skills
+and locally edited content. Initialization reports conflicts, not an upgrade plan.
+
+Optional informal notes can live under `.assuredloop/notes/`. They may be obsolete
+and are excluded from formal synchronization, not promoted to accepted requirements.
+Logs, credentials and private consumer data do not belong in packaged assets.
+Historical changes and fixtures document earlier behavior; they are not current
+instructions or proof that a new candidate passed.
+
+The package is private and packable; no registry release or installed consumer
+upgrade is claimed. The CLI does not synchronize files, publish reviews, merge,
+archive, close Issues or select the humans/agents who do those things.

@@ -89,8 +89,8 @@ export async function makeTraceEvidenceFixture(t, { mode = 'mixed', ordinary = {
   return { ...fixture, ordinaryEvidence: ordinaryValue, ordinaryBody };
 }
 
-export async function makeNonPrEvidenceFixture(t, { ordinary = {} } = {}) {
-  const fixture = await makeNonPrFixture(t);
+export async function makeNonPrEvidenceFixture(t, { ordinary = {}, contextBudget } = {}) {
+  const fixture = await makeNonPrFixture(t, { contextBudget });
   const scenario = await scenarioFor(fixture);
   const ordinaryValue = ordinaryRecord(fixture.researchEvidence, ordinary);
   const ordinaryBody = JSON.stringify(ordinaryValue, null, 2);

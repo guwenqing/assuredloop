@@ -1,6 +1,6 @@
 import { createReadAdapter, workIdentity } from './read-adapter.js';
 import { fail, relativePath } from './files.js';
-import { validateRecord, collectRecordReferences } from './records.js';
+import { validateRecord, collectRecordReferences, reviewVerdictFindings } from './records.js';
 import { resolvePolicy, resolveCurrentPolicy, resolveHistoricalPolicy } from './policy.js';
 import { readRecordBody } from './record-body.js';
 import { readSourceRecord } from './source-record.js';
@@ -10,7 +10,7 @@ import { checkReviewObligations } from './review-routing.js';
 import { reviewEvidenceApplicability } from './review-evidence.js';
 import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
-import { isLinkedRuntime, runtimeContext } from './runtime.js';
+import { runtimeContext } from './runtime.js';
 import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
 import { isInformalNotePath } from './informal-notes.js';
 
@@ -41,8 +41,11 @@ export async function structuredBody(body, { allowPlain = true } = {}) {
   }
 }
 
-export const recordReferences = (value, { runtime } = {}) => collectRecordReferences(value, {
-  includePackageSources: !isLinkedRuntime(runtime),
+// Package source_ref identifies the contract source tree, not a readable blob.
+// Policy resolution verifies installed assets and contributes selected leaf
+// sources separately. Keep the binding as provenance, not a remote graph edge.
+export const recordReferences = (value) => collectRecordReferences(value, {
+  includePackageSources: false,
 }).map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref);
 
 export async function createTrace({ targetRoot, work, runtime, cacheReads = true }) {
@@ -463,6 +466,11 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     result.context = publicBundle(bundle);
     result.context.pulls = result.context.pulls.map((pull) => ({ number: pull.number, head: { sha: pull.head.sha },
       base: { sha: pull.base.sha, ref: pull.base.ref }, state: pull.state, merged: pull.merged, merge_commit_sha: pull.merge_commit_sha }));
+    for (const entry of bundle.evidence.filter((entry) => !entry.record.pr)) {
+      result.findings.push(...reviewVerdictFindings(entry.record).map((finding) => ({
+        ...finding, severity: 'review', source: entry.ref,
+      })));
+    }
     const policies = [];
     for (const pull of bundle.pulls) {
       const pr = `${trace.repository}#${pull.number}`;
@@ -595,7 +603,7 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     result.packet = await buildReviewPacket({ roots: [...new Map(normalizedRoots.map((ref) => [key(ref), ref])).values()], load: loadPacketSource, maxInlineBytes: budget, cursor,
       expand: expand.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref), envelope: result });
     const staleSources = await trace.recheckWorkSources();
-    if (staleSources.length) fail('context-source-stale', 'Issue or comment sources changed during inspection.', staleSources);
+    if (staleSources.length) fail('context-source-stale', 'Acquired sources changed during inspection.', staleSources);
     await trace.recheckAcquisition();
   } catch (error) {
     result.status = 'unavailable';

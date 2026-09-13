@@ -4,6 +4,15 @@
   "title": "AssuredLoop workflow records",
   "description": "Reusable field contracts; resolve references, policy and actual behavior separately.",
   "$defs": {
+    "reviewVerdict": {
+      "enum": [
+        "pass",
+        "fail",
+        "revise",
+        "incomplete"
+      ],
+      "description": "Canonical result for new review publications. Historical explanatory results remain readable but cannot grant passing review credit."
+    },
     "text": {
       "type": "string",
       "pattern": "\\S",
@@ -194,11 +203,11 @@
         "review",
         "closeout"
       ],
-      "description": "Authoritative guidance selector."
+      "description": "Work-record classification used by trace checks; not an agent role or Skill dispatcher."
     },
     "review": {
       "type": "object",
-      "description": "Explicit consumer review choices. Resolve eligibility separately.",
+      "description": "Optional consumer-declared evidence constraints and context budget. AssuredLoop does not select workers, models, review methods or tools for the consumer.",
       "properties": {
         "depth": {
           "const": "full-scope"
@@ -270,11 +279,6 @@
           "additionalProperties": false
         }
       },
-      "required": [
-        "depth",
-        "internal",
-        "excluded_models"
-      ],
       "additionalProperties": false
     },
     "extensions": {
@@ -656,30 +660,13 @@
         {
           "if": {
             "required": [
-              "producer_session"
-            ]
-          },
-          "then": {
-            "required": [
-              "producer_session",
-              "reviewer_session",
-              "reviewer_model",
-              "review_depth"
-            ]
-          }
-        },
-        {
-          "if": {
-            "required": [
               "reviewer_session"
             ]
           },
           "then": {
             "required": [
               "producer_session",
-              "reviewer_session",
-              "reviewer_model",
-              "review_depth"
+              "reviewer_session"
             ]
           }
         },
@@ -692,9 +679,7 @@
           "then": {
             "required": [
               "producer_session",
-              "reviewer_session",
-              "reviewer_model",
-              "review_depth"
+              "reviewer_session"
             ]
           }
         },
@@ -707,9 +692,7 @@
           "then": {
             "required": [
               "producer_session",
-              "reviewer_session",
-              "reviewer_model",
-              "review_depth"
+              "reviewer_session"
             ]
           }
         },
@@ -976,9 +959,7 @@
           "then": {
             "required": [
               "producer_session",
-              "reviewer_session",
-              "reviewer_model",
-              "review_depth"
+              "reviewer_session"
             ]
           }
         },
@@ -991,9 +972,7 @@
           "then": {
             "required": [
               "producer_session",
-              "reviewer_session",
-              "reviewer_model",
-              "review_depth"
+              "reviewer_session"
             ]
           }
         }
@@ -1608,9 +1587,7 @@
         "scope",
         "producer_session",
         "reviewer_session",
-        "reviewer_model",
         "result",
-        "review_depth",
         "sources"
       ],
       "additionalProperties": false

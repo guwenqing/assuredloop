@@ -195,6 +195,8 @@ export async function makeTraceFixture(t, options = {}) {
     baseSha: options.baseSha ?? revision,
     reviewerSession: options.reviewerSession ?? 'trace-reviewer',
   });
+  // A moved candidate needs a real prior Git object for historical reconstruction.
+  if (options.head && options.head !== head) reviewEvidence.head = revision;
   const evidenceBody = JSON.stringify(reviewEvidence, null, 2);
   const issueBody = bodyFor(issue, 'A bounded read-only trace task.');
   const pullBody = bodyFor(pull, 'A bounded trace contribution. Reference-looking prose: https://github.com/example/consumer/issues/999');

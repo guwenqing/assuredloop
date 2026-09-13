@@ -185,7 +185,6 @@ async function evaluateWorkRecords({ work, issue, pulls = [], evidence = [], cla
       if (!assessment.producer_session || !assessment.reviewer_session || assessment.producer_session === assessment.reviewer_session) {
         add('review-independence-invalid', 'Review must declare distinct nonempty producer and reviewer sessions.');
       }
-      if (assessment.review_depth !== 'full-scope') add('review-depth-invalid', 'Review must declare full-scope depth.');
     }
     if (assessment.pr) {
       const match = pullRecords.get(assessment.pr.toLowerCase());
@@ -213,7 +212,7 @@ async function evaluateWorkRecords({ work, issue, pulls = [], evidence = [], cla
         for (const finding of applicability.findings) add(finding.code, finding.message, 'review', { source: entry.ref, pr: assessment.pr });
         continue;
       }
-      if (assessment.result === 'pass' && assessment.reviewer_session && assessment.producer_session && assessment.reviewer_session !== assessment.producer_session && assessment.review_depth === 'full-scope') reviewed.add(assessment.pr.toLowerCase());
+      if (assessment.result === 'pass' && assessment.reviewer_session && assessment.producer_session && assessment.reviewer_session !== assessment.producer_session) reviewed.add(assessment.pr.toLowerCase());
     }
   }
   const closed = issue.state === 'closed' && issue.state_reason !== 'not_planned';
@@ -240,7 +239,7 @@ async function evaluateWorkRecords({ work, issue, pulls = [], evidence = [], cla
           add('dependency-cycle', 'Explicit prerequisite references contain a cycle.', 'error', { dependency }); continue;
         }
         if (!bundle?.issue?.pull_request && (bundle?.issue?.state !== 'closed' || bundle.issue.state_reason !== 'completed')) {
-          add('prerequisite-undelivered', 'Explicit prerequisite is open, cancelled or not completed.', 'error', { dependency }); continue;
+          add('prerequisite-undelivered', 'The Issue prerequisite is open, cancelled or not completed. An Issue means its whole current assigned scope, including reopened work. If only an already delivered contribution is intended, use its qualified merged PR reference after reconciling the dependent scope; preserve the old relationship and reason in the discussion.', 'error', { dependency }); continue;
         }
         const checked = await checkWorkRecords({ work: dependency,
           ...(workIdentity(dependency).repository === identity.repository ? { categoryMapping } : {}),

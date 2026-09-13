@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { fail, safePath } from './files.js';
-import { validateRecord } from './records.js';
+import { validateRecord, reviewVerdictFindings } from './records.js';
 import { verifyContracts } from './contracts.js';
 import { isLinkedRuntime } from './runtime.js';
 import { workIdentity } from './read-adapter.js';
@@ -245,7 +245,8 @@ export function checkReviewEvidence({ record, policy, current = {}, reviewKind }
   const shape = validateRecord('evidence', record);
   if (!shape.valid) findings.push({ code: 'review-evidence-invalid', message: 'Review evidence shape is invalid.', details: shape.errors });
   if (!record || typeof record !== 'object') return findings;
-  return [...findings, ...checkReviewerEligibility({ record, policy, reviewKind }),
+  return [...findings, ...reviewVerdictFindings(record).map((finding) => ({ ...finding, severity: 'review' })),
+    ...checkReviewerEligibility({ record, policy, reviewKind }),
     ...checkEvidenceContext({ record, policy, current, code: 'review-evidence-stale' })];
 }
 
@@ -264,7 +265,7 @@ export function checkReviewerEligibility({ record, policy, reviewKind } = {}) {
     if (reviewKind === 'internal' && record.review_tool !== routing.primary_tool) add('review-tool-mismatch', 'Primary review tool does not match accepted routing.primary_tool.');
   }
   const knownKind = ['internal', 'external'].includes(reviewKind);
-  findings.push({ code: knownKind ? 'review-kind-declared' : 'review-kind-unresolved', severity: 'review',
+  if (routing || knownKind || review?.internal || review?.excluded_models || review?.depth) findings.push({ code: knownKind ? 'review-kind-declared' : 'review-kind-unresolved', severity: 'review',
     review_kind: knownKind ? reviewKind : null,
     message: routedEvidence
       ? 'Source-declared review role under accepted routing; declarations do not prove execution or independence.'
@@ -274,13 +275,14 @@ export function checkReviewerEligibility({ record, policy, reviewKind } = {}) {
   if (!record.producer_session || !record.reviewer_session || record.producer_session === record.reviewer_session) {
     add('review-independence-invalid', 'Nonempty different producer/reviewer session declarations are required.');
   }
-  if (record.review_depth !== 'full-scope') add('review-depth-invalid', 'Review depth must declare full-scope.');
+  if (review?.depth && record.review_depth !== review.depth) add('review-depth-invalid', `Review depth must declare the configured ${review.depth}.`);
   if (policy?.status !== 'available' || !validateRecord('review', review).valid) {
     add('review-policy-unavailable', 'Accepted destination review policy is unavailable.');
     return findings;
   }
   const aliases = review.model_aliases || {};
-  const exclusions = new Set(review.excluded_models);
+  const exclusions = new Set(review.excluded_models || []);
+  const modelRequired = Boolean(review.internal || review.excluded_models || review.model_aliases);
   let model = record.reviewer_model;
   const seen = new Set();
   while (typeof model === 'string' && Object.hasOwn(aliases, model)) {
@@ -289,10 +291,10 @@ export function checkReviewerEligibility({ record, policy, reviewKind } = {}) {
     if (exclusions.has(model)) add('review-model-excluded', `Excluded reviewer alias: ${model}`);
     model = aliases[model];
   }
-  if (typeof model !== 'string' || !model.trim()) add('review-model-unresolved', 'Reviewer model identity is unresolved.');
+  if ((typeof model !== 'string' || !model.trim()) && modelRequired) add('review-model-unresolved', 'Reviewer model identity is required by the configured constraints and is unresolved.');
   else {
     if (exclusions.has(model)) add('review-model-excluded', `Excluded reviewer model: ${model}; a separately assessed scoped owner override is required.`);
-    if (reviewKind === 'internal' && !review.internal.allowed_models.includes(model)) add('review-model-ineligible', 'Reviewer model is not in the exact internal allowlist.');
+    if (reviewKind === 'internal' && review.internal && !review.internal.allowed_models.includes(model)) add('review-model-ineligible', 'Reviewer model is not in the exact internal allowlist.');
   }
   return findings;
 }

@@ -16,7 +16,7 @@ import { patchScenario } from './fixtures/packet-response-review/helpers.mjs';
 const execFile = promisify(execFileCallback);
 const repositoryRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const cliPath = path.join(repositoryRoot, 'src', 'cli.js');
-const packetBudget = 2048;
+const packetBudget = 4096;
 
 async function runCli(args, env) {
   try {

@@ -1,64 +1,49 @@
 ---
 name: assuredloop-adopt
-description: Adopt the pinned AssuredLoop package in an explicitly selected repository with previewed configuration and native tool discovery.
+description: Configure an explicitly selected repository for AssuredLoop, preview installation and provision mapped labels when requested. Does not plan the project or assign work.
 ---
 
-# Adopt AssuredLoop
+# Install AssuredLoop support
 
-Start from the intended consumer repository and an explicitly selected installed package. This guidance does not select a repository from the framework's own source history. `{{repository}}` is the target repository; `{{openspec_root}}` is its native specification context. The installed framework package is `{{package_name}}` at `{{package_version}}`.
+Target: {{repository}}; native OpenSpec root: {{openspec_root}}.
+Selected package: {{package_name}}@{{package_version}}.
 
-## Select the adoption outcome
-
-Establish whether the owner wants tool installation/configuration only or adoption of an existing project's selected scope. Installation does not establish product requirements or convert the project. For Brownfield adoption, agree the consumer repository, area, important behavior boundaries and explicit exclusions before reading broadly. An assessed area does not grant coverage to the rest of the repository.
-
-Reuse useful current product Specs, designs and applicable active changes. Inspect relevant tracked code, tests and docs incrementally, together with external decisions the owner actually supplied. Record reviewable source anchors: repository, immutable revision, file and relevant heading/requirement or code location. Preserve what each source demonstrates and its limits; a filename, test assertion or implementation is not proof of intended behavior or complete coverage. Do not retrieve unrelated private data, secrets or whole conversation histories to fill gaps.
-
-Develop a bounded candidate through the existing planning guidance and native OpenSpec. Its Proposal/Design distinguish observed implementation, documented intent, explicit owner decisions, disagreements, assumptions, unknowns and unexamined areas. Keep conflicting sources visible rather than rewriting code, tests or existing requirements to manufacture agreement. Ask the actual owner to decide substantive intent with the conflicting anchors and concrete choices; unresolved or very large uncertainty may need a bounded Spike. Continue independent known work within the selected scope while that decision is pending.
-
-Write usable product Spec deltas through ordinary native requirements, scenarios and links: L1 explains the selected area's purpose, L2 its capabilities, and L3 the concrete behavior and boundaries. These are readable product definitions, not a new hierarchy engine or a copy of framework Specs. Preserve unaffected existing requirements and identify exactly which candidate statements await an owner decision. Include source links and honest coverage in the native Proposal/Design; do not introduce another mandatory inventory or manifest.
-
-Obtain the owner's required Proposal/intent agreement and independent review of the candidate, source evidence, conflicts and coverage before the authorized native synchronization/delivery establishes the current baseline. File generation or structural validation alone cannot accept it. Record the actual adopted area and source/decision limits; describe baseline documentation as such, not as feature implementation, executed behavior tests or whole-project conversion. Later work in that area uses the accepted current baseline and normal change process. Other areas establish their own basis when selected.
-
-## Optional future context
-
-When useful, preserve concise tentative ideas in `.assuredloop/notes/future-work.md`, with a visible heading explaining that it is informal, may be obsolete and is not accepted work. Creating this file is optional; init does not create an empty placeholder. Useful links and rationale need no required IDs, states, schema, task checklist, synchronized backlog or maintained backlinks. Preserve existing notes rather than normalize them.
-
-Default formal synchronization excludes ordinary Markdown notes under the fixed `.assuredloop/notes/` surface. Current Specs, configuration and formal work/evidence retain their checks; moving a formal artifact into notes does not make it informal. Explicit note reads still follow normal source permissions and are marked informal context. A note cannot establish requirements, approval, completed work or implementation authority. If the owner selects an idea, preserve its origin through normal intake/planning and establish current scope there. Keep execution logs in ignored local data and private customer/credential material out of committed notes; informal status grants no privacy exception.
-
-## Prepare the binding
-
-Read the selected installation's `schemas/workflow.schema.json` (`config` and `contractPackage`) and `templates/records/config.json`. Examples are illustrative, not accepted policy. Set the consumer's GitHub identity, repository-relative OpenSpec root, selected native tool IDs and labels. Set explicit review eligibility/exclusions and the workflow package version, installation integrity and immutable source reference. For nonlinked installations, resolve framework rules from `contracts/metadata.json` and generated files. For actual npm-linked development, obtain accepted framework policy from its fixed permitted source; mutable local contracts do not attest those bytes. Resolve product requirements from the consumer's own OpenSpec context. Never copy the framework's Specs into the consumer baseline.
-
-For new setup, agree `project.review.routing` before completing the input: `primary_tool` is a selected supported native tool ID and `additional` is `on-request` by default, or `required` when the owner requests it. With one selected tool, propose that tool as primary. With several, obtain the owner's explicit primary choice; do not silently select the first. Ask for the actual eligible model identities and exclusions from the owner's setup. Do not infer models from tool/vendor names or prescribe a framework model. Record these choices in the input; init validates an explicit configuration and does not make the choice for the owner.
-
-`repository.tools` selects native discovery integrations. An additional reviewer may use any supported native tool ID, including a tool not selected or installed in the repository, or the primary tool in a distinct eligible session. This does not install or invoke another provider. Legacy configurations without routing retain their policy meaning and report routing not configured. Upgrading configuration or package remains a reviewed change under the pre-change destination policy; new fields cannot authorize their own adoption.
-
-Use the existing OpenSpec initialization when native context or integrations are missing. AssuredLoop supplements it and does not run prerequisite installers, log in to accounts or modify upstream Skills. Prerequisites are Node.js >=20.19.0, Git, pinned OpenSpec 1.12.0 and, for GitHub checks, authenticated gh >=2.88.0 with access to the bound repository. Different native tools select different roots; incompatible registry versions/shapes and unresolved shared-root ownership are reported rather than guessed.
-
-Before routed work, the adopting owner or explicitly authorized agent must provision missing configured category labels or confirm mappings to existing labels. Supply all six distinct mappings under the category/activity contract in templates/README.md, including Architecture Task for planning/closeout. Assigned adoption uses Task/adopt. Legacy discipline configuration is invalid; use templates/category-migration.md for a separately authorized migration, preserving current records and historical evidence. Default initialization reports label prerequisites without remote writes. Explicitly authorized label provisioning uses the opt-in path below; neither label availability nor a syntactically valid owner/review declaration proves acceptance.
-
-## Preview, apply and verify
-
-Save the agreed configuration to an explicitly named JSON input file. For an explicitly selected development checkout, run `npm link` before invoking `assuredloop`, including in a pipeline using linked development. For trials, use the README's isolated-prefix sequence and invoke that prefix's executable explicitly; bare `assuredloop` may select an existing global link. The following command assumes PATH already selects the intended installation:
+Read the selected package README and `templates/records/config.json`. Field rules are
+in `schemas/workflow.schema.json`. Supply real repository, package, native tool and
+reference-permission bindings. Examples do not establish accepted policy.
 
 ```text
-assuredloop init --target /absolute/consumer/root --config /absolute/config.json
+assuredloop init --target /absolute/consumer --config /absolute/config.json
 ```
 
-Inspect the proposed file list and diagnostics. The default is read-only preview. Use `--local-only` when remote access is intentionally unavailable; it reports skipped GitHub checks and cannot establish complete pre-merge validation. Resolve invalid consumer bindings, nonlinked package-version mismatches, unknown tools and file/co-tenancy conflicts before applying. Preserve user files and upstream `.openspec-target` ownership markers; do not remove conflicting files to force success.
+The default is a read-only preview. Inspect the exact file list before repeating
+with `--apply`. Existing differing files are conflicts, not overwrite permission.
+Native OpenSpec initialization and account login are separate prerequisites.
+The toolkit does not install CI, invoke reviewers or activate a consumer policy.
 
-Actual npm-linked operations report `linked-development` with `toolkit_verification: not-performed` once. Do not request toolkit archive/SRI/source/Git-cleanliness/dependency checks or a capture/re-pin exemption. Preserve the consumer's declared package binding, required input/path/native checks, fixed policy and applicable human/review decisions. Ordinary executable shims into installed packages and direct-source invocation retain existing checks.
+For an authorized label setup, preview with `--provision-labels`, then apply.
+Only missing configured labels are created; existing metadata is preserved.
+A partial result may include successful writes. Read its per-operation outcomes
+and make a fresh preview; do not delete labels as rollback.
+`--local-only` explicitly skips GitHub checks and cannot provision labels.
 
-For authorized mapped-label creation, add `--provision-labels` to the preview. Review its exact ordered label operations, bound repository and digest of the generated config bytes. Add `--apply` to create only those still missing. Existing case-insensitive matches retain their names, colors and descriptions; new labels receive stable neutral metadata. This requires authenticated repository write access and cannot be combined with `--local-only`. It does not classify Issues, change settings or touch credentials. Default init and all inspect/check operations remain remotely read-only.
+The new configuration example contains only a review-context budget. The consumer
+chooses its own development, test, review, role and communication methods.
+Existing explicit review constraints remain enforced; installation does not relax
+them or infer new ones. Accepted source references and actual destination policy
+are still required for remote evidence checks.
 
-Provisioning apply revalidates the same real target, selected package and Skill source bytes, configuration, native roots, local conflicts and fresh GitHub inventory. Comparing local source bytes preserves the preview; it is not a toolkit provenance audit. A concurrent label is skipped only after confirmation. Each create is read back before continuing. On a later failure, inspect the partial result and per-label `created`, `skipped`, `failed` or `unverified` outcomes, remaining operations and any local file effects. Exit 1 and `status: partial` cannot establish complete initialization; an unavailable readback may hide a successful write. Preserve actual effects, resolve the reported cause and generate a new preview before retrying. Never delete labels as rollback. Keep full logs in ignored local data.
+An actual npm package-root link selects linked development and skips verification
+of the toolkit itself. It does not skip consumer record, reference, policy or
+freshness checks. Use an explicitly selected linked executable; do not audit or
+re-pin the linked toolkit to make consumer checks pass.
 
-After the preview matches the authorized adoption scope, repeat with `--apply`. Local writes are limited to the target `.assuredloop/config.json` and namespaced AssuredLoop discovery assets, after any requested label operations complete. Verify a repeat preview is unchanged, native/user Skills and product Specs are preserved, required installation bindings are resolved, and the target configuration points to the intended package. Explicitly declared reusable examples may retain later-work tokens; see the selected package's README section on authoring reusable Skill examples for the marker convention and its limits. Actual target configuration is never exempted. Installed copies are generated from this packaged source; change the source through governed work rather than editing discovery copies independently.
+Verify the repeat preview is unchanged and native/user Skills are preserved.
+Upgrading an existing installation does not remove old discovery copies.
+If old AssuredLoop work-role Skills are present, show their exact paths and obtain
+permission to remove those copies; never delete unrelated or locally edited Skills.
 
-Record the actual command, result, selected package/version and limitations in the adoption work record. Obtain the applicable independent review and policy acceptance before treating adoption as accepted. A successful init does not activate the workflow. Establish accepted bootstrap/configuration in the destination before any later activation assessment; missing policy remains unavailable and a candidate cannot authorize itself. Escalate policy/scope questions to the responsible work owner.
-
-For the first intake, preserve the original request and route the actual work proportionately. Establish native parent/sub-Issue membership when a container is used; keep actual prerequisites separate. Record explicit fixed-policy/Proposal acceptance, independent review and the actual first merge. An initial base with no policy uses the authorized native/manual path. Later verification follows the distinct initial-bootstrap record and source/absence checks in templates/README.md; never fabricate earlier ordinary Evidence or remove that planning contribution from later prerequisites/manifests.
-
-The package README indexes the work-category guidance and templates/README.md explains completing records from the shared schema. Optional agent-instruction pointers may be adapted only within explicitly authorized adoption scope; preserve existing consumer instructions and do not install a permanent author-session route. Initialization writes its documented configuration and namespaced discovery assets, plus missing mapped labels only through explicit provisioning apply.
-
-Use inspect/check only when the selected version actually supplies them; otherwise report their absence and follow the explicitly permitted native/manual checks without claiming a complete automated assessment. Automatic CI, provider orchestration and registry publication are separate authorized work.
+Installing this toolkit does not reconstruct an existing project's requirements.
+Use the consumer's native OpenSpec work to establish any missing baseline.
+The toolkit can reference that evidence and check later synchronization; it cannot
+turn observed code into accepted intent.
