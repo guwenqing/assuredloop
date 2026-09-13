@@ -17,6 +17,15 @@ export async function makeFinalAcquisitionFixture(t) {
   const fixture = await makeLateSourcePaginationFixture(t);
   await installBoundaryFakeGh(fixture);
   const scenario = await scenarioOf(fixture);
+  // Keep the current malformed-source probe separate from historical review reconstruction.
+  fixture.evidence.head = fixture.changedRevision;
+  const body = JSON.stringify(fixture.evidence, null, 2);
+  scenario.records['issues/comments/101'].body = body;
+  for (const key of ['issues/42/comments', 'issues/43/comments']) {
+    for (const page of scenario.records[key]) {
+      for (const comment of page) if (comment.id === 101) comment.body = body;
+    }
+  }
   scenario.records['issues/42'].title += ' '.repeat(50);
   await saveScenario(fixture, scenario);
   return fixture;

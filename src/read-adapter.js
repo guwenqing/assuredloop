@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { execFile, fail, git, relativePath, repositoryIdentity, repositoryRoot } from './files.js';
 import { githubAuthentication } from './native.js';
 import { validateRecord } from './records.js';
+import { readSnapshotBatch } from './github-snapshot-batch.js';
 
 function repositoryName(value) {
   if (!validateRecord('repository', value).valid) fail('binding-invalid', 'Expected an explicit owner/repository identity.');
@@ -31,7 +33,7 @@ function githubFailure(error, accessConfirmed = false) {
   fail('tool-unavailable', 'The bound GitHub read could not complete.', details);
 }
 
-async function objectRead(root, args) {
+async function rawObjectRead(root, args) {
   try {
     return (await execFile('git', ['--no-replace-objects', '-C', root, ...args], {
       encoding: 'buffer', maxBuffer: 16 * 1024 * 1024,
@@ -55,7 +57,40 @@ function treeEntries(bytes) {
   });
 }
 
-export async function createReadAdapter({ targetRoot, repository, referenceRoots = {}, allowedRepositories = [], localOnly = false } = {}) {
+// Shared only by adapters belonging to one explicitly created operation.
+const operations = new WeakMap();
+const clone = (value) => Buffer.isBuffer(value) ? Buffer.from(value) : structuredClone(value);
+const rawMedia = 'application/vnd.github.raw+json';
+const requestKey = (repository, resource, paginate, media = rawMedia) => JSON.stringify([repository, resource, paginate, media]);
+const pick = (value, names) => value && Object.fromEntries(names.map((name) => [name, value[name]]));
+const revisionFacts = (value) => value && ({ sha: value.sha, ref: value.ref, repository: value.repo?.full_name?.toLowerCase() });
+function sourceFacts(resource, value) {
+  if (/^pulls\/\d+$/.test(resource)) return { ...pick(value, ['number', 'body', 'state', 'merged', 'merged_at', 'merge_commit_sha', 'changed_files']),
+    head: revisionFacts(value?.head), base: revisionFacts(value?.base) };
+  if (/^issues\/\d+$/.test(resource)) return { ...pick(value, ['number', 'title', 'body', 'state', 'state_reason', 'repository_url']),
+    pull_request: Boolean(value?.pull_request), labels: value?.labels?.map((label) => label.name).sort() };
+  if (/^issues\/comments\/\d+$/.test(resource)) return pick(value, ['id', 'body']);
+  if (/^issues\/\d+\/comments$/.test(resource)) return value.map((item) => pick(item, ['id', 'body']));
+  if (/^issues\/\d+\/timeline$/.test(resource)) return value.filter((item) => item.event === 'cross-referenced')
+    .map((item) => ({ event: item.event, source: pick(item.source?.issue, ['number', 'repository_url', 'pull_request', 'body']) }));
+  if (/^issues\/\d+\/(parent|sub_issues)$/.test(resource)) return Array.isArray(value)
+    ? value.map((item) => pick(item, ['number', 'repository_url'])) : pick(value, ['number', 'repository_url']);
+  return value;
+}
+
+async function reuse(cache, key, action) {
+  if (!cache) return action();
+  if (!cache.has(key)) {
+    const pending = Promise.resolve().then(action);
+    cache.set(key, pending);
+    // A failed observation remains a rejection, never successful source data.
+    // Fresh verification and subsequent commands own separate caches.
+  }
+  return clone(await cache.get(key));
+}
+
+export async function createReadAdapter({ targetRoot, repository, referenceRoots = {}, allowedRepositories = [], localOnly = false,
+  cacheReads = false, sharedWith } = {}) {
   const bound = repositoryName(repository);
   const target = await repositoryRoot(targetRoot);
   if (repositoryIdentity(await git(target, ['remote', 'get-url', 'origin'])) !== bound) {
@@ -67,7 +102,24 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
   const allowed = new Set([bound, ...allowedRepositories.map(repositoryName)]);
   const roots = new Map([[bound, target]]);
   const suppliedRoots = new Map(Object.entries(referenceRoots).map(([name, root]) => [repositoryName(name), root]));
-  let authenticated = false;
+  const inherited = sharedWith && operations.get(sharedWith);
+  if (sharedWith && (!inherited || inherited.target !== target || inherited.bound !== bound ||
+      inherited.localOnly !== localOnly || !isDeepStrictEqual(inherited.referenceRoots, referenceRoots))) {
+    fail('binding-invalid', 'Shared acquisition must retain the same explicit target and local bindings.');
+  }
+  const operation = inherited || { target, bound, localOnly, referenceRoots, enabled: cacheReads,
+    responses: new Map(), repositories: new Map(), objects: new Map(), gitObjects: new Map(), localInventories: new Map(), observations: new Map(), readers: new Map(), authenticated: false };
+  const cached = operation.enabled;
+  const objectRead = (root, args) => reuse(cached ? operation.gitObjects : null, JSON.stringify([root, args]), () => rawObjectRead(root, args));
+  async function authenticate() {
+    if (!operation.authenticated) {
+      if (!operation.authentication) operation.authentication = githubAuthentication().catch((error) => {
+        operation.authentication = null; throw error;
+      });
+      await operation.authentication;
+      operation.authenticated = true;
+    }
+  }
 
   function scope(name) {
     const normalized = repositoryName(name);
@@ -93,6 +145,13 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
     const root = await localRoot(ref.repository);
     const type = (await objectRead(root, ['cat-file', '-t', ref.revision])).toString('utf8').trim();
     if (type !== 'commit') fail('binding-invalid', 'The selected revision must identify a commit.');
+    const inventoried = operation.localInventories.get(JSON.stringify([root, ref.revision]))?.get(ref.path);
+    if (inventoried) {
+      // A recursive Git inventory reaches this exact entry without traversing
+      // symlinks or submodules. Do not ask ls-tree again for every prefix/file.
+      scopedEntry(inventoried);
+      return root;
+    }
     let prefix = '';
     for (const part of ref.path === '.' ? [] : ref.path.split('/')) {
       prefix = prefix ? `${prefix}/${part}` : part;
@@ -113,34 +172,74 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
     catch { fail('record-unavailable', 'GitHub returned an unsupported JSON representation.', { reason: 'invalid-response' }); }
   }
 
-  async function confirmRepository(name) {
-    let info;
-    try { info = await rawApi(`repos/${name}`); }
-    catch (error) {
-      if (error.code === 'record-unavailable') throw error;
-      githubFailure(error);
-    }
-    if (typeof info?.full_name !== 'string' || info.full_name.toLowerCase() !== name) {
-      fail('binding-invalid', 'GitHub repository rename/redirect requires an explicit verified binding update.');
-    }
-    return info;
+  async function confirmRepository(name, fresh = false) {
+    return reuse(cached && !fresh ? operation.repositories : null, name, async () => {
+      let info;
+      try { info = await rawApi(`repos/${name}`); }
+      catch (error) {
+        if (error.code === 'record-unavailable') throw error;
+        githubFailure(error);
+      }
+      if (typeof info?.full_name !== 'string' || info.full_name.toLowerCase() !== name) {
+        fail('binding-invalid', 'GitHub repository rename/redirect requires an explicit verified binding update.');
+      }
+      return info;
+    });
   }
 
   async function api(name, resource, paginate = false, media) {
     const normalized = scope(name);
     if (localOnly) fail('tool-unavailable', 'GitHub reads are skipped in local-only diagnostics.', { reason: 'local-only' });
-    if (!authenticated) { await githubAuthentication(); authenticated = true; }
-    await confirmRepository(normalized);
-    let result;
-    try { result = await rawApi(`repos/${normalized}/${resource}${paginate ? '?per_page=100' : ''}`, paginate, media); }
-    catch (error) {
-      if (error.code === 'record-unavailable') throw error;
-      if (/HTTP 404/.test(String(error.stderr || error.message))) await confirmRepository(normalized);
-      githubFailure(error, true);
-    }
-    if (paginate) {
-      if (!Array.isArray(result) || result.some((page) => !Array.isArray(page))) fail('record-unavailable', 'GitHub pagination did not return complete array pages.');
-      return result.flat();
+    const key = requestKey(normalized, resource, paginate, media);
+    const result = await reuse(cached ? operation.responses : null, key, async () => {
+      await authenticate();
+      await confirmRepository(normalized);
+      let result;
+      try { result = await rawApi(`repos/${normalized}/${resource}${paginate ? '?per_page=100' : ''}`, paginate, media); }
+      catch (error) {
+        if (error.code === 'record-unavailable') throw error;
+        if (/HTTP 404/.test(String(error.stderr || error.message))) await confirmRepository(normalized, true);
+        githubFailure(error, true);
+      }
+      if (paginate) {
+        if (!Array.isArray(result) || result.some((page) => !Array.isArray(page))) fail('record-unavailable', 'GitHub pagination did not return complete array pages.');
+        result = result.flat();
+      }
+      return result;
+    });
+    if (cached) {
+      const seed = (resource, value, paginated = false) => {
+        const derivedKey = requestKey(normalized, resource, paginated, media);
+        if (!operation.responses.has(derivedKey)) operation.responses.set(derivedKey, Promise.resolve(structuredClone(value)));
+      };
+      const issueObjects = /^issues\/\d+\/(parent|sub_issues)$/.test(resource) ? (Array.isArray(result) ? result : [result])
+        : /^issues\/\d+\/timeline$/.test(resource) ? result.map(item => item.source?.issue) : [];
+      for (const item of issueObjects) {
+          if (Number.isSafeInteger(item?.number) && item.repository_url?.toLowerCase() === `https://api.github.com/repos/${normalized}` &&
+              ['open', 'closed'].includes(item.state) && Object.hasOwn(item, 'body') && Array.isArray(item.labels)) {
+            seed(`issues/${item.number}`, item);
+          }
+      }
+      let comments = /^issues\/\d+\/comments$/.test(resource) ? result : null;
+      if (paginate && /^issues\/\d+\/timeline$/.test(resource)) {
+        const issueResource = resource.slice(0, -'/timeline'.length);
+        const known = operation.responses.get(requestKey(normalized, issueResource, false, media));
+        const issue = known && await known;
+        const entries = result.filter(item => item.event === 'commented');
+        if (Number.isSafeInteger(issue?.comments) && entries.length === issue.comments &&
+            entries.every(item => Number.isSafeInteger(item.id) && typeof item.body === 'string' &&
+              item.issue_url?.toLowerCase() === `https://api.github.com/repos/${normalized}/${issueResource}`)) {
+          comments = entries.map(({ event, actor, ...comment }) => comment);
+          seed(`${issueResource}/comments`, comments, true);
+        }
+      }
+      if (comments) for (const comment of comments) {
+        if (Number.isSafeInteger(comment?.id) && typeof comment.body === 'string') seed(`issues/comments/${comment.id}`, comment);
+      }
+      // Track consumed objects even when their bytes came from a complete list.
+      if (!/^git\/(commits|trees|blobs)\//.test(resource) && !operation.observations.has(key)) {
+        operation.observations.set(key, { normalized, resource, paginate, media, value: structuredClone(result) });
+      }
     }
     return result;
   }
@@ -207,14 +306,15 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
     }
   }
 
-  return {
+  const adapter = {
+    cacheReads: cached,
     repository: bound,
     targetRoot: target,
     localOnly,
     async readRepository(name) {
       const normalized = scope(name);
       if (localOnly) fail('tool-unavailable', 'GitHub reads are skipped in local-only diagnostics.', { reason: 'local-only' });
-      if (!authenticated) { await githubAuthentication(); authenticated = true; }
+      await authenticate();
       return confirmRepository(normalized);
     },
     async readBranchHead({ repository: name, branch } = {}) {
@@ -240,9 +340,12 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
     },
     async readBlob(ref) {
       return withRemoteFallback(ref, async (root) => {
-        const entries = treeEntries(await objectRead(root, ['ls-tree', '-z', ref.revision, '--', ref.path]));
-        const file = entries.find((entry) => entry.path === ref.path && entry.type === 'blob');
-        if (!file) fail('record-unavailable', 'Reference does not identify a file blob.', { reason: 'not-a-blob' });
+        let file = operation.localInventories.get(JSON.stringify([root, ref.revision]))?.get(ref.path);
+        if (!file) {
+          const entries = treeEntries(await objectRead(root, ['ls-tree', '-z', ref.revision, '--', ref.path]));
+          file = entries.find((entry) => entry.path === ref.path && entry.type === 'blob');
+        }
+        if (!file || file.type !== 'blob') fail('record-unavailable', 'Reference does not identify a file blob.', { reason: 'not-a-blob' });
         return objectRead(root, ['cat-file', 'blob', file.sha]);
       }, async (file) => {
         if (file.type !== 'blob') fail('record-unavailable', 'Reference does not identify a file blob.', { reason: 'not-a-blob' });
@@ -257,8 +360,16 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
       });
     },
     async listFiles(ref) {
-      return withRemoteFallback(ref, async (root) =>
-        treeEntries(await objectRead(root, ['ls-tree', '-r', '-z', ref.revision, '--', ref.path])), async (selected) => {
+      return withRemoteFallback(ref, async (root) => {
+        const entries = treeEntries(await objectRead(root, ['ls-tree', '-r', '-z', ref.revision, '--', ref.path]));
+        if (cached) {
+          const key = JSON.stringify([root, ref.revision]);
+          if (!operation.localInventories.has(key)) operation.localInventories.set(key, new Map());
+          const inventory = operation.localInventories.get(key);
+          for (const entry of entries) inventory.set(entry.path, entry);
+        }
+        return entries;
+      }, async (selected) => {
         const result = [];
         const pending = [selected];
         let visited = 0;
@@ -289,4 +400,66 @@ export async function createReadAdapter({ targetRoot, repository, referenceRoots
       return api(ref.repository, `issues/comments/${ref.comment_id}`);
     },
   };
+  // Fixed-object cache keys include repository, revision, path and operation.
+  for (const method of ['readBlob', 'listFiles', 'readCommit']) {
+    const read = adapter[method];
+    adapter[method] = async (ref) => {
+      scope(ref?.repository);
+      if (method !== 'readCommit') relativePath(ref?.path);
+      if (!validateRecord(method === 'readCommit' ? 'sha' : 'repoRef', method === 'readCommit' ? ref?.revision : ref).valid) {
+        fail('binding-invalid', 'Fixed object reads require a valid revision and reference.');
+      }
+      return reuse(cached ? operation.objects : null, JSON.stringify([method, ref.repository.toLowerCase(), ref.revision, ref.path]), () => read(ref));
+    };
+  }
+  const allowedKey = (names) => [...new Set([bound, ...names.map(repositoryName)])].sort().join(',');
+  adapter.scoped = (allowedRepositories) => {
+    const key = allowedKey(allowedRepositories);
+    if (cached && operation.readers.has(key)) return operation.readers.get(key);
+    const pending = createReadAdapter({ targetRoot: target, repository: bound,
+      referenceRoots, allowedRepositories, localOnly, sharedWith: adapter });
+    if (cached) operation.readers.set(key, pending);
+    return pending;
+  };
+  adapter.fresh = () => createReadAdapter({ targetRoot: target, repository: bound,
+    referenceRoots, allowedRepositories: [...allowed], localOnly, cacheReads: cached });
+  adapter.recheck = async (fresh) => {
+    const changed = [];
+    const observations = [...operation.observations.values()];
+    const priority = ({ resource, value }) => /\/(parent|sub_issues)$/.test(resource) ? 0
+      : /^issues\/\d+$/.test(resource) && !value.pull_request ? 1 : /\/timeline$/.test(resource) ? 2 : /\/comments$/.test(resource) ? 3 : 4;
+    observations.sort((a, b) => priority(a) - priority(b));
+    const permitted = observations.filter(item => {
+      try { scope(item.normalized); return true; }
+      catch (error) { if (error.code === 'reference-out-of-scope') return false; throw error; }
+    });
+    await operations.get(fresh).batches.get(fresh)(permitted);
+    for (const item of permitted) {
+      const observed = await operations.get(fresh).apis.get(fresh)(item.normalized, item.resource, item.paginate, item.media);
+      if (!isDeepStrictEqual(sourceFacts(item.resource, item.value), sourceFacts(item.resource, observed))) changed.push({ code: 'context-source-stale',
+        message: `${item.normalized}/${item.resource}: remote source changed during the assessment.` });
+    }
+    return changed;
+  };
+  operations.set(adapter, operation);
+  if (cached && !operation.readers.has(allowedKey([...allowed]))) operation.readers.set(allowedKey([...allowed]), Promise.resolve(adapter));
+  operation.apis ??= new WeakMap();
+  operation.apis.set(adapter, api);
+  operation.batches ??= new WeakMap();
+  operation.batches.set(adapter, async observations => {
+    if (!cached || localOnly) return;
+    const snapshots = await readSnapshotBatch(observations, async query => {
+      for (const name of new Set(observations.map(item => item.normalized))) scope(name);
+      await authenticate();
+      for (const name of new Set(observations.map(item => item.normalized))) await confirmRepository(name);
+      const { stdout } = await execFile('gh', ['api', 'graphql', '--hostname', 'github.com', '--method', 'POST', '-f', `query=${query}`],
+        { maxBuffer: 16 * 1024 * 1024, timeout: 20000 });
+      return JSON.parse(stdout);
+    });
+    for (const item of snapshots) {
+      const key = requestKey(item.normalized, item.resource, item.paginate, item.media);
+      if (!operation.responses.has(key)) operation.responses.set(key, Promise.resolve(item.value));
+    }
+  });
+  return adapter;
 }

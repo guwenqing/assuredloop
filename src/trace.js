@@ -1,6 +1,6 @@
 import { createReadAdapter, workIdentity } from './read-adapter.js';
 import { fail, relativePath } from './files.js';
-import { validateRecord, collectRecordReferences } from './records.js';
+import { validateRecord, collectRecordReferences, reviewVerdictFindings } from './records.js';
 import { resolvePolicy, resolveCurrentPolicy, resolveHistoricalPolicy } from './policy.js';
 import { readRecordBody } from './record-body.js';
 import { readSourceRecord } from './source-record.js';
@@ -10,7 +10,7 @@ import { checkReviewObligations } from './review-routing.js';
 import { reviewEvidenceApplicability } from './review-evidence.js';
 import { evaluateCloseout } from './closeout.js';
 import { isDeepStrictEqual } from 'node:util';
-import { isLinkedRuntime, runtimeContext } from './runtime.js';
+import { runtimeContext } from './runtime.js';
 import { classifyIssue, mappedPullAssignments, withExecutionAssignments } from './classification.js';
 import { isInformalNotePath } from './informal-notes.js';
 
@@ -41,17 +41,22 @@ export async function structuredBody(body, { allowPlain = true } = {}) {
   }
 }
 
-export const recordReferences = (value, { runtime } = {}) => collectRecordReferences(value, {
-  includePackageSources: !isLinkedRuntime(runtime),
+// Package source_ref identifies the contract source tree, not a readable blob.
+// Policy resolution verifies installed assets and contributes selected leaf
+// sources separately. Keep the binding as provenance, not a remote graph edge.
+export const recordReferences = (value) => collectRecordReferences(value, {
+  includePackageSources: false,
 }).map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref);
 
-export async function createTrace({ targetRoot, work, runtime }) {
+export async function createTrace({ targetRoot, work, runtime, cacheReads = true }) {
   const { repository } = workIdentity(work);
-  let adapter = await createReadAdapter({ targetRoot, repository });
+  let adapter = await createReadAdapter({ targetRoot, repository, cacheReads });
   let acquisition;
+  let finalAdapter;
   let openspecRoot;
   const issues = new Map(), pulls = new Map(), comments = new Map(), bundles = new Map();
   const sourceCache = new Map();
+  const parsedSources = new Map();
   const installedAssets = new Set();
   const invalidSources = new Map();
   const findings = [];
@@ -78,7 +83,9 @@ export async function createTrace({ targetRoot, work, runtime }) {
   }
 
   async function sourceRecord(body, ref, options) {
-    const parsed = await readSourceRecord(body, options);
+    const parseKey = JSON.stringify([body, options]);
+    if (!parsedSources.has(parseKey)) parsedSources.set(parseKey, await readSourceRecord(body, options));
+    const parsed = structuredClone(parsedSources.get(parseKey));
     for (const finding of parsed.findings) findings.push({ ...finding, source: structuredClone(ref) });
     if (parsed.state === 'invalid' && !invalidSources.has(key(ref))) invalidSources.set(key(ref), {
       ref: structuredClone(ref), body, kind: parsed.kind, state: parsed.state, captured_at: new Date().toISOString(), findings: parsed.findings,
@@ -162,6 +169,13 @@ export async function createTrace({ targetRoot, work, runtime }) {
     authorize(ref);
     if (!comments.has(ref)) {
       const identity = workIdentity(ref);
+      const issue = issues.get(ref);
+      if (adapter.cacheReads && issue && !issue.pull_request && Number.isSafeInteger(issue.comments) &&
+          (issue.state === 'closed' || (await structuredBody(issue.body))?.activity === 'closeout')) {
+        // Delivery discovery already needs this complete timeline. Its comments
+        // can satisfy the comment inventory when the acquired count agrees.
+        await adapter.listTimeline(ref);
+      }
       const rows = await adapter.listComments(ref);
       const entries = [];
       for (const row of rows) {
@@ -183,9 +197,24 @@ export async function createTrace({ targetRoot, work, runtime }) {
     const bundleKey = `${acquisition?.scopeKey || repository}:${ref}`;
     if (bundles.has(bundleKey)) return bundles.get(bundleKey);
     const issue = await issueAt(ref);
+    if (adapter.cacheReads && !issue.pull_request) {
+      const record = await structuredBody(issue.body);
+      if (validateRecord('issue', record).valid && record.activity === 'closeout') {
+        // Closeout consumes membership later; acquire it before loading the
+        // individual dependencies so their complete Issue objects are shared.
+        const parent = await adapter.readParent(ref);
+        const parentRepository = /^https:\/\/api\.github\.com\/repos\/([^/]+\/[^/]+)$/i.exec(parent?.repository_url || '')?.[1];
+        if (parentRepository && Number.isSafeInteger(parent.number)) {
+          const parentWork = `${parentRepository.toLowerCase()}#${parent.number}`;
+          authorize(parentWork);
+          await adapter.listChildren(parentWork);
+        }
+      }
+    }
     const entries = [...await commentsAt(ref)];
     const refs = new Set();
     const required = new Set();
+    const unrelated = new Set();
     if (issue.pull_request) { refs.add(ref); required.add(ref); }
     else {
       for (const entry of entries) if (assessmentRecord(entry.record) && entry.record.pr) {
@@ -202,11 +231,24 @@ export async function createTrace({ targetRoot, work, runtime }) {
           continue;
         }
         refs.add(sourceWork);
+        if (adapter.cacheReads && typeof source.body === 'string') {
+          try {
+            authorize(sourceWork);
+            const declared = await structuredBody(source.body, { allowPlain: false });
+            if (validateRecord('pr', declared).valid && !declared.issues.some(owner => normalizeWork(owner) === ref)) unrelated.add(sourceWork);
+          } catch (error) {
+            if (error.code !== 'reference-out-of-scope') throw error;
+          }
+        }
       }
     }
     const related = [];
     const unresolvedRelations = [];
     for (const pr of refs) {
+      if (unrelated.has(pr) && !required.has(pr)) {
+        findings.push({ code: 'relation-not-reciprocal', message: `${pr} does not explicitly map to ${ref}.` });
+        continue;
+      }
       let pull;
       try { pull = await pullAt(pr); }
       catch (error) {
@@ -302,7 +344,8 @@ export async function createTrace({ targetRoot, work, runtime }) {
       }
     }),
     acquisitionSource: acquisition.source,
-    recheckAcquisition: () => acquisition.recheck(),
+    assessmentScope: () => acquisition.scopeKey,
+    recheckAcquisition: () => acquisition.recheck(finalAdapter),
     withPolicyScope: withinPolicyScope,
     resetScope() { acquisition.reset(); adapter = acquisition.adapter; },
     async loadForWork(ref, { work: owner } = {}) {
@@ -314,15 +357,17 @@ export async function createTrace({ targetRoot, work, runtime }) {
     cacheSource: (ref, value) => sourceCache.set(sourceKey(ref), value),
     get adapter() { return adapter; },
     async recheckWorkSources() {
-      const changed = [];
+      finalAdapter = await adapter.fresh();
+      const changed = await adapter.recheck(finalAdapter);
+      const reader = finalAdapter;
       for (const [ref, original] of issues) {
-        const observed = await adapter.readIssue(ref);
+        const observed = await reader.readIssue(ref);
         if (!isDeepStrictEqual(issueFacts(original), issueFacts(observed))) changed.push({ code: 'context-source-stale', message: `${ref}: Issue identity, body or state changed during the assessment.` });
       }
       for (const ref of pulls.keys()) {
         try { authorize(ref); }
         catch (error) { if (error.code === 'reference-out-of-scope') continue; throw error; }
-        const observed = await adapter.readPull(ref);
+        const observed = await reader.readPull(ref);
         const identity = workIdentity(ref);
         if (observed?.number !== identity.number || observed?.base?.repo?.full_name?.toLowerCase() !== identity.repository ||
             observed?.body !== pulls.get(ref).body) changed.push({ code: 'context-source-stale',
@@ -335,7 +380,7 @@ export async function createTrace({ targetRoot, work, runtime }) {
         const id = `${ref.repository.toLowerCase()}#${ref.comment_id}`;
         if (seen.has(id)) continue;
         seen.add(id);
-        const observed = await adapter.readComment(ref);
+        const observed = await reader.readComment(ref);
         if (observed?.id !== ref.comment_id || observed?.body !== original.content) changed.push({ code: 'context-source-stale', message: `${id}: referenced comment body changed during the assessment.` });
       }
       return changed;
@@ -421,6 +466,11 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     result.context = publicBundle(bundle);
     result.context.pulls = result.context.pulls.map((pull) => ({ number: pull.number, head: { sha: pull.head.sha },
       base: { sha: pull.base.sha, ref: pull.base.ref }, state: pull.state, merged: pull.merged, merge_commit_sha: pull.merge_commit_sha }));
+    for (const entry of bundle.evidence.filter((entry) => !entry.record.pr)) {
+      result.findings.push(...reviewVerdictFindings(entry.record).map((finding) => ({
+        ...finding, severity: 'review', source: entry.ref,
+      })));
+    }
     const policies = [];
     for (const pull of bundle.pulls) {
       const pr = `${trace.repository}#${pull.number}`;
@@ -553,7 +603,7 @@ export async function inspectWork({ targetRoot, work, maxInlineBytes, cursor = n
     result.packet = await buildReviewPacket({ roots: [...new Map(normalizedRoots.map((ref) => [key(ref), ref])).values()], load: loadPacketSource, maxInlineBytes: budget, cursor,
       expand: expand.map((ref) => typeof ref === 'string' ? normalizeWork(ref) : ref), envelope: result });
     const staleSources = await trace.recheckWorkSources();
-    if (staleSources.length) fail('context-source-stale', 'Issue or comment sources changed during inspection.', staleSources);
+    if (staleSources.length) fail('context-source-stale', 'Acquired sources changed during inspection.', staleSources);
     await trace.recheckAcquisition();
   } catch (error) {
     result.status = 'unavailable';

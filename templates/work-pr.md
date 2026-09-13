@@ -1,13 +1,11 @@
 # {{contribution_title}}
 
-Reusable draft scaffold. Read templates/README.md and schemas/workflow.schema.json before completing it.
+Draft scaffold. Use templates/README.md and schemas/workflow.schema.json.
 
-{{concrete_problem_and_resulting_behavior}}
+## Change and basis
 
-## Scope and basis
-
-{{assigned_issue_scope_and_changed_artifacts}}
-{{unchanged_agreement_or_required_decision}}
+{{concrete_change_and_assigned_issue_scope}}
+{{affected_requirements_or_no_spec_rationale}}
 
 ## Workflow context
 
@@ -15,14 +13,10 @@ Reusable draft scaffold. Read templates/README.md and schemas/workflow.schema.js
 {{validated_pr_context_json}}
 ```
 
-## Verification and review
+## Evidence and limits
 
-{{actual_commands_results_and_scoped_limits}}
-{{independent_review_refs_and_finding_dispositions}}
-{{current_head_base_policy_context_and_required_approval_status}}
+{{actual_observations_source_references_and_unresolved_findings}}
+{{candidate_head_base_and_policy_context}}
 
-## Delivery obligations
-
-{{assigned_destination_outcome_and_pending_post_merge_verification}}
-
-Do not predeclare this PR's merge or Issue/Epic closure. Reference actual evidence after authorized delivery; a staging contribution does not prove broader final integration.
+Preflight this complete body with assuredloop validate --kind pr.
+A candidate is not an already merged delivery.

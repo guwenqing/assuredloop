@@ -34,14 +34,17 @@ for (const omitted of ['review_kind', 'review_tool']) {
   });
 }
 for (const marker of ['review_kind', 'review_tool']) {
-  test(`${marker} is a review marker requiring the existing full reviewer declaration`, () => {
+  test(`${marker} requires both sessions but leaves model and depth to contextual policy`, () => {
     const value = { head: 'a'.repeat(40), scope: 'routing change', result: 'pass', evidence: [{ repository: 'example/consumer', comment_id: 37 }], [marker]: marker === 'review_kind' ? 'internal' : 'codex' };
     assert.equal(hasReviewDeclarations(value), true);
     const checked = validateRecord('evidence', value);
     assert.equal(checked.valid, false);
-    for (const field of ['producer_session', 'reviewer_session', 'reviewer_model', 'review_depth']) {
+    for (const field of ['producer_session', 'reviewer_session']) {
       assert.ok(checked.errors.some((error) => error.keyword === 'required' && error.params?.missingProperty === field), JSON.stringify(checked.errors));
     }
+    value.producer_session = 'producer-session';
+    value.reviewer_session = 'independent-reviewer-session';
+    assert.deepEqual(validateRecord('evidence', value), { valid: true, errors: [] });
   });
 }
 for (const [name, overrides] of Object.entries({ unknownKind: { review_kind: 'provider' }, emptyTool: { review_tool: '' }, nonStringTool: { review_tool: ['codex'] }, unknownField: { inferred_provider: 'model-vendor' } })) {

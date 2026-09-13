@@ -1,105 +1,67 @@
-# Workflow Self-Evolution Specification
+# Policy and Evidence Boundaries Specification
 
 ## Purpose
 
-Make the minimum workflow govern later changes to itself after an explicit, verified activation. This L2 capability supports the shared [L1 goal](../workflow-goals/spec.md#requirement-reuse-supports-governed-evolution). Its requirements and scenarios below define L3 behavior.
+L2: bind mechanical assessment to its actual consumer/destination policy while
+keeping policy checks separate from workflow execution. Supports
+[shared facts](../workflow-goals/spec.md#requirement-shared-facts-support-human-and-machine-judgment).
+The historical path name does not require self-dogfooding or a self-change exercise.
 
 ## Requirements
 
 ### Requirement: Bootstrap has an explicit activation boundary
-
-Before activation, work SHALL use native OpenSpec planning and explicitly executed owner, check and independent-review boundaries without claiming nonexistent automation. Activation SHALL identify the accepted workflow revision, applicable project/repo configuration, usable guidance and verification evidence. Proposal acceptance or file existence alone SHALL NOT mean the extension is active. The initial exception SHALL NOT exempt future work indefinitely.
+Package/Skill presence SHALL NOT assert accepted policy or activation. Before an
+activation pointer exists, available bootstrap assessment SHALL require fixed
+policy_ref, policy_acceptance, proposal_acceptance and authorized_by sources.
+Declarations/source presence SHALL NOT authenticate acceptance.
 
 #### Scenario: Only planning artifacts exist
-- **WHEN** Proposal, Specs or Design are present but the usable extension has not been verified and accepted
-- **THEN** status identifies planning progress and does not claim that the new workflow governs work automatically or is operational
-
-#### Scenario: Initial workflow is activated
-- **WHEN** the usable base has the required verification, independent review and acceptance evidence
-- **THEN** activation records the applicable revision and obligations so the next work item can follow them without inheriting private bootstrap context
+- **WHEN** config or required acceptance sources are unavailable
+- **THEN** policy comparison remains unavailable; it cannot be fabricated from
+  the candidate's own declaration.
 
 ### Requirement: Policy assessment uses destination pre-change state
-
-The activation/policy pointer and consumer config for a PR assessment SHALL be read from the actual destination branch's current pre-change revision, separately from candidate content. Policy/config changes SHALL be assessed under that destination's pre-change policy; candidate files, stale merge-bases and supplied ref overrides SHALL NOT replace it. Activation SHALL identify fixed policy/package refs, authorization and evidence.
-
-PR assessment evidence SHALL bind repository/PR identity, destination branch, full base SHA, candidate head, assessed scope, selected policy/package refs and config/activation digests. Changed destination, base, head or applicable policy/work context SHALL require renewed applicable assessment; a prior result SHALL NOT silently transfer between destinations. Feature-branch acceptance SHALL remain destination/scope-specific. Final integration SHALL assess the cumulative proposed change under the final destination's pre-change policy. Destination-scoped assessment SHALL NOT itself require every PR to target one branch; independently configured consumer policies remain applicable.
-
-When activation is absent, accepted destination config's `project.bootstrap` SHALL contain required `policy_ref`, `policy_acceptance`, `proposal_acceptance` and `authorized_by`. The policy reference SHALL be a fixed-revision RepoRef, both acceptance fields SHALL use the shared EvidenceRef vocabulary, and the owner identity SHALL be a nonempty declaration with activation's semantics. `policy_acceptance` SHALL identify explicit owner-authorized, independently reviewed adoption/handoff of the actual fixed policy revision in `policy_ref`; Proposal-scope acceptance alone SHALL NOT satisfy it. Fields and resolvable references SHALL NOT by themselves establish genuine authorization. A resolvable authorized bootstrap basis SHALL permit bootstrap-policy checks without claiming activation; absent/unresolved input SHALL yield policy unavailable. Suspended/invalid activation SHALL NOT fall back to bootstrap. Mutable comments may support evidence, not select policy automatically; scoped consistency SHALL NOT be presented as protection against privileged bypass of unenforced controls.
-
-#### Scenario: Candidate edits its own activation pointer
-- **WHEN** a PR changes the configured policy or activation source
-- **THEN** checking still resolves the prior accepted pointer from the assessment destination's pre-change state and reports the candidate policy change for review
-
-#### Scenario: Bootstrap has no accepted pointer
-- **WHEN** no versioned activation or explicit authorized bootstrap basis is available
-- **THEN** checking reports policy unavailable and cannot accept the work through a permissive fallback
-
-#### Scenario: Bootstrap carries only scope acceptance
-- **WHEN** bootstrap lacks policy-revision acceptance or declared owner identity, or the referenced acceptance establishes only Proposal scope or a different policy revision
-- **THEN** it cannot establish an authorized bootstrap basis: missing/unresolved data is reported, and independent/human assessment of the acceptance content cannot be replaced by evidence presence or an owner-name string
+PR assessment SHALL use the actual current destination base, not candidate config,
+an arbitrary record ref or stale merge-base. Retargeting/base/policy changes SHALL
+require applicable fresh comparison. Feature-branch delivery SHALL remain allowed;
+its assessment SHALL NOT authorize another destination.
 
 #### Scenario: Work stages through a feature branch
-- **WHEN** work PRs merge into a feature branch before a final PR into the agreed delivery destination
-- **THEN** intermediate results remain valid only for their assessed destination/scope, and final cumulative integration receives its own applicable checks and independent review under the final destination's pre-change policy
+- **WHEN** a PR targets that branch
+- **THEN** its accepted destination policy is assessed; a later main PR uses main's
+  actual policy without a separate mandated staging-outcome workflow.
 
-#### Scenario: PR is retargeted without changing its head
-- **WHEN** a reviewed PR changes destination while its head stays the same
-- **THEN** its prior result cannot establish acceptance for the new destination, and policy, cumulative scope and applicable assessment are resolved again
+#### Scenario: Candidate edits its own activation pointer
+- **WHEN** a PR changes policy
+- **THEN** the candidate pointer cannot select the authority for its own assessment.
 
-#### Scenario: Destination advances after assessment
-- **WHEN** the destination's base SHA or applicable policy changes after evidence is recorded
-- **THEN** the stale assessment is identified and renewed applicable checks/review are required before acceptance
+### Requirement: Consumer constraints are optional explicit inputs
+New review configuration SHALL accept an empty constraint object or context budget
+alone. Existing explicit model/depth/routing constraints SHALL remain enforceable.
+The toolkit SHALL NOT infer a provider from a model or impose such choices as a
+default. It SHALL NOT perform approvals or reviewer dispatch.
 
-#### Scenario: Authorized bootstrap resolves before activation
-- **WHEN** the destination's pre-change config contains applicable review policy and a resolvable authorized `project.bootstrap`, but no activation
-- **THEN** checking applies that fixed bootstrap policy for the named scope and reports bootstrap/not-active operation without treating scope-only acceptance as approval of an arbitrary pointer
+#### Scenario: New consumer already has a review process
+- **WHEN** its configuration contains only context budgeting
+- **THEN** valid revision-specific evidence need not invent model/depth fields or
+  an additional review layer.
 
-#### Scenario: Staged policy changes reach final integration
-- **WHEN** a feature branch carries weaker policy files into its final integration PR
-- **THEN** the final destination's pre-change policy governs the cumulative change, and stage acceptance cannot authorize adopting those weaker files
+### Requirement: Historical assessment is not current authority
+Historical reconstruction SHALL retain original fixed base/policy/source values.
+Current access permissions SHALL still constrain retrieval. Unsupported historical
+formats or inaccessible sources SHALL remain explicit verification limits, not
+proof of corrupt evidence or automatically revoked past acceptance.
 
-### Requirement: Later changes follow the active workflow
+#### Scenario: Destination advances after delivery
+- **WHEN** a delivered PR is checked later
+- **THEN** its evidence is compared to its recorded historical assessment while
+  current destination authority remains separate.
 
-After activation, changes to the project's workflow, Skills, templates, configuration, validators, tests and other traced content SHALL use the active work intake, planning, verification and review paths. Changes that only detail or specialize accepted obligations SHALL be evaluated against the same implementation-only boundary as other work. Changes to the accepted agreement SHALL return to Proposal review. The subject being the methodology itself SHALL NOT create an exemption.
+### Requirement: Historical decisions remain distinct from execution
+Existing typed selfChangeDecision records SHALL remain readable as decisions.
+They SHALL NOT establish executed work or become mandatory adoption/self-change
+exercises. The consuming user controls its workflow and approval requirements.
 
-#### Scenario: Validator behavior is strengthened within agreement
-- **WHEN** a follow-up implements an already agreed check more completely
-- **THEN** the work links the existing basis, supplies applicable test-first and review evidence, and justifies its implementation-only scope
-
-#### Scenario: New policy weakens a merge obligation
-- **WHEN** a workflow change proposes removing an accepted approval or review obligation
-- **THEN** it returns to Proposal-level decision rather than accepting itself through the weakened rule
-
-### Requirement: Evaluate a workflow change against its accepted basis
-
-A change to active workflow obligations SHALL identify the existing basis and the proposed replacement. Review SHALL assess the transition and any affected instructions, templates, checks and work records. The proposal under review SHALL NOT grant itself an exemption from existing applicable obligations. Any necessary transition exception SHALL be explicit and authorized at the affected decision boundary.
-
-#### Scenario: Candidate validation no longer flags its own missing evidence
-- **WHEN** a proposed validator change would allow its own PR to omit currently required evidence
-- **THEN** the current obligation remains part of the review basis and the candidate's success alone cannot authorize merge
-
-### Requirement: Demonstrate a real governed self-change
-
-Minimum acceptance SHALL include a real governed self-change after activation, normally a bounded improvement with its Issue, requirement/decision basis, PR, applicable checks, independent review and authorized completion traceable. At the end of initial trials, if no genuine improvement candidate exists, the owner SHALL decide between a concrete scoped follow-up and an explicitly reasoned named alternative governed self-change, subject to independent review. A closeout-PR alternative SHALL transfer demonstration verification to closeout rather than require that closeout finish before it starts. If neither path is accepted, the release SHALL remain explicitly not accepted and return to the owner, not enter an indefinite wait or automatic waiver. Manual execution and configured automation SHALL remain distinguishable; a checklist or claim of self-governance alone SHALL NOT suffice.
-
-The owner choice SHALL be a distinct `self-change-decision` record with required `record_type`, `selection`, `work`, `rationale`, `authorized_by` and `evidence`, as defined in the shared vocabulary. It SHALL NOT inherit Evidence-comment `head`, `scope` or `result` fields or be interpreted as delivered-work acceptance. Its schema SHALL distinguish valid owner choices from incomplete Evidence comments; separate evidence must still establish the selected work's execution.
-
-#### Scenario: Actual post-activation improvement completes
-- **WHEN** a real bounded change to the base is delivered using its active instructions
-- **THEN** its records demonstrate how intake, scope, work, validation, review and completion connected, including any required human decision
-
-#### Scenario: Automation is still deferred
-- **WHEN** the self-change uses explicit native checks and manual review handoffs
-- **THEN** it can demonstrate the accepted initial workflow while clearly stating that automatic triggers and enforced CI gates are not implemented
-
-#### Scenario: Trials produce no genuine improvement
-- **WHEN** trials end without a meaningful improvement candidate
-- **THEN** the owner records a scoped follow-up or reasoned alternative for independent review, or an explicit not-accepted outcome; the system neither manufactures work nor claims the demonstration completed
-
-#### Scenario: Owner selects closeout as the alternative
-- **WHEN** the owner and independent reviewer accept a named closeout-based demonstration plan
-- **THEN** package 4 hands off that decision without claiming demonstration success, and closeout must verify its actual governed execution before overall acceptance
-
-#### Scenario: A decision is not an executed-work report
-- **WHEN** a correctly tagged self-change decision supplies its complete decision fields without an Evidence-comment head or result
-- **THEN** it is validated as a decision, not rejected as an incomplete Evidence comment or counted as proof of execution; an untagged or wrongly mixed record is not accepted as either kind by guessing
+#### Scenario: A retained decision chose an earlier demonstration
+- **WHEN** a fresh context packet includes that source
+- **THEN** it remains historical context, not a command to repeat the exercise.

@@ -211,7 +211,7 @@ export async function makeLinkedPolicyCeilingFixture(t, { shared = false, outsid
     base_ref: 'linked-first',
     base_sha: first.revision,
     config_digest: first.digest,
-    policy_ref: { repository: 'example/consumer', revision: first.revision, path: 'openspec/changes/trace-cli/design.md', anchor: '5-small-local-tools-and-explicit-trust-boundaries' },
+    policy_ref: structuredClone(first.config.project.bootstrap.policy_ref),
     evidence: [firstRef],
   });
   const secondRecord = {
@@ -221,7 +221,7 @@ export async function makeLinkedPolicyCeilingFixture(t, { shared = false, outsid
     base_ref: 'linked-second',
     base_sha: second.revision,
     config_digest: second.digest,
-    policy_ref: { repository: 'example/consumer', revision: second.revision, path: 'openspec/changes/trace-cli/design.md', anchor: '5-small-local-tools-and-explicit-trust-boundaries' },
+    policy_ref: structuredClone(second.config.project.bootstrap.policy_ref),
     evidence: [secondRef],
     producer_session: 'trace-second-producer',
     reviewer_session: 'trace-second-reviewer',

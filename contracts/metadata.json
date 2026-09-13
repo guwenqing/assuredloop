@@ -5,38 +5,38 @@
   "basis": "canonical",
   "source_ref": {
     "repository": "guwenqing/assuredloop-base",
-    "revision": "9dfe8524072aec0f896dd7bacb345d7ed6471aac",
+    "revision": "8a7b5427866dcce1704acc9c0ea221fb233bde0b",
     "path": "openspec/specs"
   },
   "contracts_path": "contracts",
   "files": [
     {
       "path": "github-work-traceability/spec.md",
-      "sha256": "144bba0ca5bb06afcf70a4899fd3d2252f1644c4d93d62299643a4f0243e0737"
+      "sha256": "617b36f4d4e5debe18aeb04459113bf4f7bab8d190537c36ed59c3b73db94470"
     },
     {
       "path": "project-workflow-adoption/spec.md",
-      "sha256": "e6b28c2a32d4d29921360e6a8e2e1d2a80f6a93ec60e78d2baec23375307f312"
+      "sha256": "e2c82f51d1496b713d908cdd3ddea233e775b147cd2040eee84606161491c0d7"
     },
     {
       "path": "review-and-validation/spec.md",
-      "sha256": "f440040b49641b619d1dabd6b4ee8d06d0f9b23dc6bd72894c79dbc0db586cc4"
+      "sha256": "270cfa4428bf0947942df41dca9f55477a775c1115d1a50619914b95f35f890b"
     },
     {
       "path": "specification-baseline/spec.md",
-      "sha256": "9be2bfce8f7da282c312f365239ce2d76a2ee4b06cc4198aeaba20ec7320d5ba"
+      "sha256": "4dcccbe0e72985eaffa7b2a12d6934ca55c0efd2c74d560d14b7ac8afdb9ad4d"
     },
     {
       "path": "work-intake-and-planning/spec.md",
-      "sha256": "73fc7a51ebc5ae861fc46f8b5ebef993534bd21b44500758fb4be32e9c25e4ef"
+      "sha256": "429ca2c54f766198ed234a227b8e21477dd7a558d79c36cd40cde4f241a353b7"
     },
     {
       "path": "workflow-goals/spec.md",
-      "sha256": "5ad3df98ac60689b065d027c71aaae151441d7d3b4ba332f6a594c0b7c7786d1"
+      "sha256": "e5d2fe4155515380794c0c9f7d4cd601ef12685cd2e0a46a017e684ca0906efe"
     },
     {
       "path": "workflow-self-evolution/spec.md",
-      "sha256": "557fd78d318fd5ffa9c44fe0d41ff54e72d039a9707ae89a5609ef73cace7d92"
+      "sha256": "c879ce34459e2375c9e7cffe6d71dc4e7b9b62d580ae48440cb6ed3391eff787"
     }
   ]
 }

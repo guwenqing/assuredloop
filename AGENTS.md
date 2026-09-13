@@ -1,7 +1,19 @@
-# Repository workflow pointers
+# AssuredLoop repository instructions
 
-Reusable work guidance is authored in skills/assuredloop-*/SKILL.md. README.md lists the activities and explains how to resolve the selected package and consumer context; templates/README.md links the authoritative record schemas/examples and framework contracts.
+Read README.md for the current product boundary and openspec/specs/ for the
+current product definition. Packaged Skills describe tool operations only.
+Do not add development, testing, review, role, dispatch or messaging methodology
+as a reusable product capability.
 
-Use the guidance relevant to explicitly assigned work together with the applicable repository/user instructions and current authorization. Native OpenSpec artifacts remain the formal planning source. Package/Skill presence is not activation: before an accepted consumer configuration exists, use only the explicit current native/manual bootstrap handoff and report its limits. Do not treat framework source history as another consumer's work data.
+Keep toolkit code/fixtures separate from consumer configuration and data.
+Use Node.js and the pinned OpenSpec integration. Files are authoritative.
+Mechanical validity does not establish semantic correctness or approval.
 
-For this repository's own work, follow the model choice, review routing, work ownership and proportionate feedback guidance in [.assuredloop/README.md](.assuredloop/README.md#consumer-specific-model-choice). These local choices are not defaults imposed on other consumers.
+The owner has temporarily waived AssuredLoop's own ticket/Proposal/handoff and
+self-validation workflow for this direct core overhaul. Do not create tickets,
+invoke the old BOT sessions or run self-trace checks for it. Basic targeted TDD
+and a different local subagent's independent review still apply. Preserve
+unrelated work, signing configuration and historical evidence. This exception
+does not change a consuming project's accepted policy.
+
+This repository's model choice is Astra; it is not a product default.

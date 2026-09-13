@@ -1,15 +1,14 @@
 # {{work_title}}
 
-Reusable draft scaffold. Read templates/README.md and schemas/workflow.schema.json before completing it.
+Draft scaffold. Use templates/README.md and schemas/workflow.schema.json.
 
 ## Original request
 
 {{original_request_and_source}}
 
-## Assigned outcome and boundaries
+## Scope and basis
 
-{{bounded_outcome_and_acceptance}}
-{{implementation_only_or_planning_route_rationale}}
+{{assigned_outcome_boundaries_and_relevant_decisions}}
 
 ## Workflow context
 
@@ -17,14 +16,10 @@ Reusable draft scaffold. Read templates/README.md and schemas/workflow.schema.js
 {{validated_issue_context_json}}
 ```
 
-## Ownership and readiness
+## Supporting context
 
-{{explicit_responsibility_and_current_authorization}}
-{{prerequisite_delivery_and_missing_inputs}}
+{{prerequisite_sources_unknowns_and_scope_changes}}
+{{evidence_of_actual_results_or_remaining_gaps}}
 
-## Verification and handoff
-
-{{applicable_checks_independent_review_and_evidence}}
-{{next_owner_or_decision_with_explicit_current_context}}
-
-Formal task definitions remain at their referenced native plan items. Candidate contributions and actual accepted delivery are different; do not close on unsupported evidence.
+The structured record references native task definitions rather than copying
+them. Preflight this complete body with assuredloop validate --kind issue.

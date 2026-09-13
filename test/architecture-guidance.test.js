@@ -54,32 +54,18 @@ test('shared creation guidance states the compatible category/activity table and
     Request: ['triage'], Epic: [], 'Architecture Task': ['plan', 'closeout'],
     Task: ['adopt', 'deliver', 'review'], Bug: ['deliver'], Spike: ['research'],
   });
-  assert.match(guidance, /rough incoming Request[^.]*omit[^.]*before triage/i);
-  assert.match(guidance, /non-executable Epic[^.]*omit context/i);
-  assert.match(guidance, /Neither exception[^.]*omit context[^.]*Epic[^.]*executable activity/i);
-  assert.match(guidance, /exactly one configured category/i);
-  assert.match(guidance, /case-insensitive/i);
-  assert.match(guidance, /Different consumer label names[^.]*supported/i);
-  assert.match(guidance, /unrelated labels[^.]*not count/i);
-  assert.match(guidance, /category-migration\.md/);
+  const prose = guidance.replace(/\s+/g, ' ');
+  assert.match(prose, /rough incoming Request[^.]*omit[^.]*before triage/i);
+  assert.match(prose, /non-executable Epic[^.]*omit context/i);
+  assert.match(prose, /Neither exception[^.]*omit context[^.]*Epic[^.]*executable activity/i);
+  assert.match(prose, /exactly one configured category/i);
+  assert.match(prose, /case-insensitive/i);
+  assert.match(prose, /Different consumer label names[^.]*supported/i);
+  assert.match(prose, /unrelated labels[^.]*not count/i);
+  assert.match(prose, /category-migration\.md/);
 });
 
-test('each packaged activity points to shared category guidance and its compatible category', async () => {
-  const pairs = {
-    adopt: ['Task/adopt'], triage: ['Request/triage'], plan: ['Architecture Task/plan'],
-    research: ['Spike/research'], deliver: ['Task/deliver', 'Bug/deliver'],
-    review: ['Task/review'], closeout: ['Architecture Task/closeout'],
-  };
-  for (const [activity, declarations] of Object.entries(pairs)) {
-    const file = `skills/assuredloop-${activity}/SKILL.md`;
-    const source = await read(file);
-    assert.match(source, /templates\/README\.md/, `${file} uses the shared creation contract`);
-    for (const declaration of declarations) {
-      assert.ok(source.includes(declaration), `${file} must identify ${declaration}`);
-    }
-    assert.doesNotMatch(source, /(?:(?<!Architecture )Task\/(?:plan|closeout)|Architecture Task\/deliver|Epic\/deliver)/,
-      `${file} must not teach an incompatible executable category`);
-  }
+test('record template and package README discover the shared category contract', async () => {
   assert.match(await read('templates/work-issue.md'), /templates\/README\.md/);
   assert.match(await read('README.md'), /templates\/README\.md#classify-the-assigned-work/);
 });

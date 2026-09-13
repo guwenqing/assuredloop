@@ -72,7 +72,7 @@ test('packed CLI initializes a different consumer from the installed executable 
   assert.equal(packageInfo.packageJson.version, artifact.manifest.version);
   assert.equal(packageInfo.metadata.name, artifact.manifest.name);
   assert.equal(packageInfo.metadata.version, artifact.manifest.version);
-  assert.equal(packageInfo.metadata.basis, 'bootstrap');
+  assert.equal(packageInfo.metadata.basis, 'canonical');
   assert.equal(packageInfo.lockfile.packages['node_modules/@fission-ai/openspec'].version, '1.12.0');
   assert.equal(packageInfo.lockfile.packages['node_modules/ajv'].version, '8.20.0');
   assert.ok(artifact.manifest.files.every(({ path: entry }) => !/(^|\/)(test|openspec|local-data)(\/|$)/.test(entry)),
@@ -263,7 +263,7 @@ test('packed inspect preserves typed unavailable outcomes for missing and malfor
   const mainBranchEndpoint = 'repos/example/consumer/git/ref/heads/main';
   const mainReads = stableCommands.filter((args) => args[0] === 'api' && args.includes(mainBranchEndpoint));
   assert.ok(stable.data?.packet);
-  assert.equal(mainReads.length, 3);
+  assert.equal(mainReads.length, 2, 'shared initial acquisition is followed by a final freshness read');
   await writeFile(path.join(malformedFixture.root, 'packed-final-acquisition-drift.txt'), 'new destination\n');
   await git(malformedFixture.root, ['add', 'packed-final-acquisition-drift.txt']);
   await git(malformedFixture.root, ['commit', '-q', '-m', 'advance destination after packed source acquisition']);
@@ -284,7 +284,10 @@ test('packed inspect preserves typed unavailable outcomes for missing and malfor
   ], malformedFixture.env);
   assert.notEqual(drift.exitCode, 0);
   assert.equal(drift.data?.status, 'unavailable');
-  assert.ok(findingsOf(drift.data).some((finding) => finding.code === 'acquisition-context-stale'));
+  const stale = findingsOf(drift.data).find((finding) => finding.code === 'context-source-stale');
+  assert.ok(stale, 'shared source freshness rejects the changed destination');
+  assert.match(JSON.stringify(stale.details), /example\/consumer\/git\/ref\/heads\/main/);
+  assert.equal(drift.data?.packet, undefined, 'stale context cannot retain a usable packet');
   assert.equal(drift.data?.packet?.next_cursor, undefined);
 });
 

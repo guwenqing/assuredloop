@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, readFile, readdir, rm } from 'node:fs/promises';
+import { readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { test } from 'node:test';
 
@@ -14,22 +14,13 @@ import {
 const repositoryRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const skillsRoot = path.join(repositoryRoot, 'skills');
 const templatesRoot = path.join(repositoryRoot, 'templates');
-const guidanceFixturesRoot = path.join(repositoryRoot, 'test', 'fixtures', 'guidance');
-
-const activities = [
-  'adopt',
-  'triage',
-  'plan',
-  'research',
-  'deliver',
-  'review',
-  'closeout',
-];
+const operations = ['adopt', 'record', 'context', 'sync'];
 
 const templateKinds = new Map([
   ['activation.json', 'activation'],
   ['config.json', 'config'],
   ['evidence.json', 'evidence'],
+  ['initialBootstrapVerification.json', 'initialBootstrapVerification'],
   ['issue.json', 'issue'],
   ['manifest.json', 'manifest'],
   ['planRef.json', 'planRef'],
@@ -142,62 +133,41 @@ async function readSnapshot(root, paths) {
   return new Map(await Promise.all(paths.map(async (relative) => [relative, await readFile(path.join(root, relative))])));
 }
 
-test('packaged work guidance has complete activities, simple frontmatter, and authoritative references', async () => {
+test('packaged operation guidance has usable frontmatter and sanitized content', async () => {
   const entries = (await readdir(skillsRoot, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && entry.name.startsWith('assuredloop-'))
     .map((entry) => entry.name)
     .sort();
-  assert.deepEqual(entries, activities.map((activity) => `assuredloop-${activity}`).sort());
+  assert.deepEqual(entries, operations.map((operation) => `assuredloop-${operation}`).sort());
 
-  let sourceTemplateRegions = 0;
   for (const directory of entries) {
     const relative = `skills/${directory}/SKILL.md`;
     const skillDirectory = path.join(skillsRoot, directory);
     assert.deepEqual((await readdir(skillDirectory)).sort(), ['SKILL.md'], `${relative} must be a single authored source file`);
     const source = await readFile(path.join(skillDirectory, 'SKILL.md'), 'utf8');
     const { fields, body } = parseFrontmatter(source, relative);
-    const activity = directory.slice('assuredloop-'.length);
     assert.equal(fields.name, directory, `${relative} frontmatter name must match its namespaced asset`);
-    if (fields.activity !== undefined) assert.equal(fields.activity, activity, `${relative} has the wrong activity selector`);
     assert.match(body, /\S/, `${relative} must contain usable guidance`);
-    assert.match(source, authoritativeReference, `${relative} must point to an authoritative schema, template, or contract`);
-    sourceTemplateRegions += assertBalancedTemplateRegions(source, relative);
+    if (directory === 'assuredloop-record') {
+      assert.match(source, authoritativeReference, `${relative} must point to its record field authority`);
+    }
+    assertBalancedTemplateRegions(source, relative);
     assertSanitized(source, relative);
   }
-  assert.ok(sourceTemplateRegions > 0, 'at least one packaged Skill must exercise the declared reusable-example boundary');
 });
 
-test('reusable Markdown templates are present by work category and defer field authority', async () => {
+test('reusable record Markdown templates are present and defer field authority', async () => {
   const markdown = (await filesUnder(templatesRoot, (file) => file.endsWith('.md')))
     .filter((file) => !file.startsWith('records/'));
-  const expectedMarkdown = [
-    'README.md',
-    'agent-instructions.md',
-    'category-migration.md',
-    'closeout-summary.md',
-    'evidence-comment.md',
-    'research-report.md',
-    'review-request.md',
-    'review-result.md',
-    'work-issue.md',
-    'work-pr.md',
-  ];
-  assert.deepEqual(markdown, expectedMarkdown, 'template inventory must keep one reusable source per named handoff');
-  const categories = {
-    work: /(?:^|[-_/])work(?:[-_/]|\.|$)|issue/i,
-    pr: /(?:^|[-_/])pr(?:[-_/]|\.|$)|pull[-_ ]request/i,
-    evidence: /evidence/i,
-    review: /review|handoff/i,
-    research: /research|spike/i,
-    closeout: /closeout|close[-_ ]change/i,
-  };
-  for (const [category, pattern] of Object.entries(categories)) {
-    assert.ok(markdown.some((file) => pattern.test(file)), `missing reusable ${category} Markdown template`);
+  for (const file of ['README.md', 'evidence-comment.md', 'work-issue.md', 'work-pr.md']) {
+    assert.ok(markdown.includes(file), `missing reusable record template ${file}`);
   }
   for (const relative of markdown) {
     const source = await readFile(path.join(templatesRoot, relative), 'utf8');
     assertBalancedTemplateRegions(source, `templates/${relative}`);
-    assert.match(source, authoritativeReference, `templates/${relative} must name its authoritative contract`);
+    if (['README.md', 'evidence-comment.md', 'work-issue.md', 'work-pr.md'].includes(relative)) {
+      assert.match(source, authoritativeReference, `templates/${relative} must name its record authority`);
+    }
     assertSanitized(source, `templates/${relative}`);
   }
 });
@@ -216,7 +186,7 @@ test('every shipped JSON example validates through the delivered record API', as
 
 test('README and a repository-agent pointer discover the same packaged guidance', async () => {
   const readme = await readFile(path.join(repositoryRoot, 'README.md'), 'utf8');
-  assert.match(readme, /skills\/assuredloop-/i);
+  for (const operation of operations) assert.ok(readme.includes(`skills/assuredloop-${operation}/SKILL.md`));
   assert.match(readme, /templates\//i);
   assert.match(readme, /schemas\/workflow\.schema\.json|contracts\//i);
 
@@ -230,9 +200,10 @@ test('README and a repository-agent pointer discover the same packaged guidance'
       assert.equal(error.code, 'ENOENT');
     }
   }
-  assert.ok(pointers.length > 0, 'repository-agent instructions must point to the packaged work guidance');
+  assert.ok(pointers.length > 0, 'repository-agent instructions must point to the packaged operation guidance');
   for (const [relative, source] of pointers) {
-    assert.match(source, /assuredloop-(?:adopt|triage|plan|research|deliver|review|closeout)|skills\/assuredloop-/i, `${relative} must discover work guidance`);
+    assert.match(source, /README\.md|assuredloop-(?:adopt|record|context|sync)|skills\/assuredloop-/i,
+      `${relative} must discover operation guidance directly or through the package README`);
     assert.match(source, /openspec|schema|contract/i, `${relative} must preserve native/authoritative context`);
   }
 });
@@ -272,7 +243,7 @@ test('local initialization installs all namespaced guidance in Gemini and Codex 
     localOnly: true,
   });
 
-  const expectedSourceSkills = activities.map((activity) => `assuredloop-${activity}`);
+  const expectedSourceSkills = operations.map((operation) => `assuredloop-${operation}`);
   const expectedInstallPaths = new Set([
     '.assuredloop/config.json',
     ...expectedSourceSkills.flatMap((skill) => [
@@ -293,7 +264,6 @@ test('local initialization installs all namespaced guidance in Gemini and Codex 
     assert.deepEqual(await readFile(path.join(target.root, relative)), expected, `${relative} must be preserved`);
   }
 
-  let preservedExampleTokens = 0;
   for (const activity of expectedSourceSkills) {
     const sourcePath = path.join(skillsRoot, activity, 'SKILL.md');
     const source = await readFile(sourcePath, 'utf8');
@@ -302,62 +272,8 @@ test('local initialization installs all namespaced guidance in Gemini and Codex 
       readFile(path.join(target.root, root, 'skills', activity, 'SKILL.md'), 'utf8')));
     for (const token of tokens) {
       if (!installBindings.has(token)) {
-        preservedExampleTokens += 1;
         for (const rendered of renderedCopies) assert.match(rendered, new RegExp(`\\{\\{${token}\\}\\}`));
       }
     }
-  }
-  assert.ok(preservedExampleTokens > 0, 'initialization must preserve at least one source-declared reusable example token');
-});
-
-test('fresh-agent guidance fixtures are sanitized original inputs without embedded verdicts', async () => {
-  const expectedCases = [
-    'implementation-only-no-active-change',
-    'triage-incomplete-request',
-    'legitimate-no-spec',
-    'unjustified-no-spec',
-    'active-plan-addition',
-    'planning-proposal-merged-design-owed',
-    'planning-assignable-outcome',
-    'planning-arbitrary-split',
-    'bounded-spike',
-    'review-same-session',
-    'review-missing-session',
-    'review-policy-unavailable',
-    'review-stale-evidence',
-    'review-planning-author',
-    'review-implementation-author',
-    'review-missing-author',
-    'review-clean-result',
-    'review-queued-not-confirmed',
-    'closeout-normal',
-    'closeout-incomplete-evidence',
-    'closeout-owner-hold',
-  ];
-  const entries = (await readdir(guidanceFixturesRoot, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  assert.deepEqual(entries, [...expectedCases].sort());
-  const evidenceCases = new Set([
-    'review-planning-author',
-    'review-implementation-author',
-    'review-clean-result',
-    'review-queued-not-confirmed',
-    'closeout-normal',
-    'closeout-owner-hold',
-  ]);
-  for (const name of entries) {
-    const source = await readFile(path.join(guidanceFixturesRoot, name, 'case.md'), 'utf8');
-    assert.match(source, /^> Simulation input only\./m, `${name} must identify itself as simulated input`);
-    assert.match(source, /^# Original request\s*$/m, `${name} must preserve a request snapshot`);
-    assert.match(source, /^## Specification snapshot\s*$/m, `${name} must include a specification snapshot`);
-    assert.match(source, /^## Issue snapshot\s*$/m, `${name} must include an Issue snapshot`);
-    if (evidenceCases.has(name)) {
-      assert.match(source, /^## Policy snapshot\s*$/m, `${name} must include simulated policy inputs`);
-      assert.match(source, /^## Evidence snapshot\s*$/m, `${name} must include simulated evidence inputs`);
-    }
-    assert.doesNotMatch(source, /(?:expected verdict|gold answer|answer key|intended outcome)/i, `${name} must not disclose its trial answer`);
-    assertSanitized(source, `test/fixtures/guidance/${name}/case.md`);
   }
 });

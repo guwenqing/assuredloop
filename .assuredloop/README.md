@@ -1,58 +1,29 @@
-# AssuredLoop consumer setup
+# Retained consumer binding
 
-The versioned consumer binding is `config.json`; its fixed policy and acceptance references identify the applicable bootstrap basis. `activation.json` selects the current active checkpoint. Read the current destination's records before assessing a change to these files: a proposed binding cannot govern its own adoption. Installing configuration and Skills alone does not establish whole-project adoption or complete traceability.
+The owner has paused AssuredLoop self-dogfooding for the current direct core
+overhaul. This checkout does not run its own Issue/Proposal, BOT handoff or
+self-trace workflow for that work. Targeted tests and independent local subagent
+review still apply. See ../AGENTS.md. This exception does not change another
+consumer's accepted policy or make an old checkpoint describe the new source.
 
-## Locate the selected runtime
+config.json and activation.json are retained binding/evidence records, not an
+instruction to resume old sessions. The selected historical package is
+assuredloop-base@0.1.0 at code/assets commit
+29f2a59daf15f4f154297580296bff71e8f9a9f8; its tarball integrity is in config.json.
+Its canonical contract source is
+9dfe8524072aec0f896dd7bacb345d7ed6471aac:openspec/specs.
+The source-retention tag assuredloop-base-0.1.0-canonical-build identifies that
+build, not a release/approval of the current candidate.
 
-This consumer's selected local package is `assuredloop-base@0.1.0`, built from repository `guwenqing/assuredloop-base` at code/assets commit `29f2a59daf15f4f154297580296bff71e8f9a9f8`. The exact tarball SRI is retained in `config.json` as `project.workflow.integrity`. Its `source_ref` separately identifies canonical framework-contract source `9dfe8524072aec0f896dd7bacb345d7ed6471aac:openspec/specs`; that field is not the code-build revision. Package name/version alone cannot distinguish it from the initial bootstrap artifact.
+These historical objects remain available for source/fixity reconstruction.
+In a shallow or single-branch clone, fetch the needed history/tag explicitly and
+verify the full commit identity before use. Do not force a conflicting tag,
+substitute today's files or execute a package based only on an untrusted record.
 
-No registry release is assumed. The annotated source-retention tag `assuredloop-base-0.1.0-canonical-build` points to that exact build commit; the canonical source commit is its ancestor. Preserve this tag while this binding or its historical evidence requires those objects. It is not a release or approval marker. Squash delivery and later working-branch removal do not replace this retained ref with a main-ancestry assumption.
+Current product capabilities and limits are in ../README.md. The old AssuredLoop
+work-role discovery copies have been removed from this checkout; native OpenSpec
+and user Skills remain. New tool-operation Skills are authored under ../skills/
+and packaged for explicit installation, not automatically activated here.
 
-For a shallow source clone, first obtain its full history with `git fetch --unshallow origin`. Then, or for a single-branch/no-tags clone, fetch the retained ref explicitly:
-
-```sh
-git fetch origin tag assuredloop-base-0.1.0-canonical-build
-git rev-parse 'refs/tags/assuredloop-base-0.1.0-canonical-build^{commit}'
-git cat-file -t 9dfe8524072aec0f896dd7bacb345d7ed6471aac
-```
-
-Require the resolved tag commit to equal `29f2a59daf15f4f154297580296bff71e8f9a9f8` and the second object to be a commit before using them. Do not force a conflicting tag or trust its name alone. These are explicit read/acquisition steps, not an automatic network operation in a validator. An ordinary full clone obtains the retained tag and history; Git-source comparison tests need those objects, whereas an installed consumer uses the verified packaged contracts without a framework checkout.
-
-To recover the selected artifact, export that fixed Git tree into a separate build directory and run `npm pack --ignore-scripts --json` there. Compare the reported integrity with the versioned binding before selecting the result. Install the matching tarball into an explicitly chosen local runtime directory with lifecycle scripts disabled; retain the installation lock and compare dependency versions and integrity entries with `package-lock.json` from that same fixed code/assets commit (29f2a59daf15f4f154297580296bff71e8f9a9f8). Report a mismatch for review before selecting a different environment. Never infer acceptance merely because the package name/version matches. If the retained ref, fixed source, matching artifact or prerequisites cannot be obtained, report the missing installation context.
-
-Resolve the chosen installation's `node_modules/.bin/assuredloop` symlink to its owning package root. Read its README, `contracts/metadata.json`, schemas and templates. Keep the framework's packaged contracts separate from this consumer's native `openspec/` work. Generated namespaced discovery Skills come from the selected package; do not edit their copies as an independent rule source.
-
-Invoke commands with explicit target/work bindings, for example `assuredloop inspect --target /absolute/consumer --work guwenqing/assuredloop-base#NUMBER`. Required work-specific ownership and return-recipient context belong to the current handoff. Return the actual published review-comment URL with the examined revision, verdict and summary after a real review publication; a PR landing-page URL alone does not identify that outcome. This file stores no machine-wide settings or permanent author-session route.
-
-## Consumer-specific model choice
-
-The [owner's explicit choice](https://github.com/guwenqing/assuredloop-base/issues/9#issuecomment-5594754510) applies only to `guwenqing/assuredloop-base` as a consumer: all ChatGPT/Codex work here uses `gpt-6-astra`, including development, test authoring and internal review. Select an appropriate reasoning effort for the task; do not substitute Sol, Luna or Terra to vary effort. A named agent role must not silently select another model. Current handoffs must explicitly select Astra when a role's default differs. This choice applies until the owner changes it through the applicable reviewed configuration process; it is not a reusable framework default or machine-wide rule.
-
-The current schema represents the internal review allowlist. It does not schedule or mechanically enforce the model of every worker/test author. The broader instruction above is enforced through explicit consumer handoffs and actual execution identity checks. Completed verification preceding this owner choice retains its original model/authorship; it is not relabeled as Astra execution.
-
-## Consumer-specific review routing and feedback
-
-The owner's 2026-09-12 direction replaces routine cross-provider review for this repository. One independent Astra reviewer is normally sufficient for scoped work. Keep the reviewer separate from the producer; a separate reviewer task in the same tool/model ecosystem can provide independent review. An external review role or PR review does not by itself require another provider or a second review layer.
-
-Claude/Opus review is exceptional: use it only for a substantial design question that warrants an additional perspective, stating the reason, or when the owner explicitly requests it. Fable still requires an explicit owner request. Do not trigger Claude automatically for every task, PR, correction or closeout. Preserve completed reviews under their actual author, model, scope and revision; do not relabel them or rerun them merely to match this routing change. No unsupported config key or machine-enforced routing is claimed. This repository-local direction remains in effect until the owner changes it; it does not waive required validation or owner approval.
-
-When receiving feedback or handing off work, highlight observed process cost that is disproportionate to the work: redundant review rounds, avoidable waiting or repeated checks of unchanged material. Use the smallest scoped improvement within current authority. Review changed or affected material and retain still-valid unchanged coverage with its original scope and evidence; do not treat an old verdict as covering new work. A wider reassessment remains necessary when the change invalidates that coverage. Do not add permanent gates, files or review layers merely in response to one correction, and do not bypass required checks to save time.
-
-## Consumer-specific work ownership
-
-The owner's 2026-09-12 clarification removes any routine final-architect approval or notification requirement for developer-owned work. After independent reviewer acceptance, applicable checks, finding dispositions and any actually required human approval, the developer owns the integration decision, authorized merge and post-merge completion. Return the review to that work's producer; ordinary delivery does not need to pass through the architect. This supersedes older handoffs that added a blanket architect gate.
-
-For a significant change, the developer or reviewer consults the architect when a requirement/design boundary is uncertain and needs that judgment. The architect may also explicitly take up a particular matter; state its scope and any required decision rather than silently turning it into a standing gate. For the architect's own authored changes, a different reviewer performs the independent assessment and the architect always owns the subsequent integration decision. This is not self-review and cannot dismiss an unresolved finding or replace a required human decision. These are this repository's operating assignments, not mandatory role names or universal approval rules for consumers.
-
-## Current adoption limits and deferred capabilities
-
-- Required `type:bug`, `type:spike` and `type:architecture-task` labels were provisioned manually under scoped authorization. The completed #14 migration reconciled classifications and removed only the two obsolete discipline labels; all other labels and historical work evidence were preserved. The current configuration supplies six distinct category mappings. Current `init` only checks/reports GitHub prerequisites and does not provision labels. The owner wants formal initial setup eventually to own the required label mapping's checking/provisioning. That is deferred work, not a GitHub-write capability added to this release's init.
-- Current adoption is manual and limited. It does not reconstruct the whole existing project's intended definition from all code, documents, tests, CI and delivery history. Code is evidence of actual behavior, not automatic proof of intended requirements. A future Brownfield-adoption Proposal would own a reviewed current project/product definition, references and unresolved gaps; this setup claims no whole-project conversion, retroactive Spec generation or historical traceability reconstruction.
-- A discoverable repo-persistent convention for informal future gaps, tentative thinking and possible work is not yet designed. Such notes are intended to be best-effort, potentially obsolete, and outside formal specification/status/consistency validation—not accepted requirements or delivery commitments. In this owner direction, 'untracked' means outside that formal tracking, not Git-ignored; it is not a universal Git rule or a reclassification of current execution logs. Exact folder/format/convention remains a future decision. A selected item would enter normal Proposal/work intake; no new backlog directory, schema, validator or automatically spawned work is established here.
-- Owner-requested follow-up, 2026-09-12: consuming projects must be able to choose their review policy. The default should be independent review within the project's selected tool/model ecosystem, not a mandatory cross-tool or cross-provider review. Projects may choose a different policy. The existing internal model allowlist is not a complete review-routing policy; configurable routing/defaults and their setup guidance still need scoped design and implementation. This is a retained product requirement for later work, not an implemented capability, an amendment to the archived minimum, or a requirement that other projects use Astra.
-
-## Checkpoint ordering
-
-Initialization and accepted bootstrap are distinct from activation. The initial config/bootstrap must be reviewed, owner-authorized and delivered in the destination before a later activation candidate can use it. Usable-base evidence and the separate owner-authorized activation record remain required. A later self-change decision and its applicable demonstration/handoff remain separate from activation and overall closeout. The consumer choices above do not themselves accept the entire fixed policy/package proposal or authorize activation, merge, archive or parent closure.
-
-The [canonical binding transition and retained-source disposition](https://github.com/guwenqing/assuredloop-base/pull/20#issuecomment-5605339950) is governed by the pre-change active checkpoint and is subject to its stated independent-review and delivery conditions. The new checkpoint timestamp records candidate preparation, not an actual merge time. Until delivery, the destination's existing initial package remains authoritative: recover it from fixed code commit `1e4a06a32b3b1870b49ca916456cef3389bd86d9` and compare against the binding in that destination's config. The [initial activation delivery](https://github.com/guwenqing/assuredloop-base/pull/18#issuecomment-5604005268) and prior authorization remain historical evidence; they do not by themselves accept this new package. An archive/final-closure hold is separate from this binding transition.
+Only Astra is used for this repository's work, at the effort appropriate to the
+task. This is a repository-local user choice, not a framework default.

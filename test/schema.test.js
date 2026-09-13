@@ -390,7 +390,21 @@ test('evidence checks conditional command/exit and review envelopes structurally
 
   const reviewOnly = clone(valid);
   delete reviewOnly.reviewer_model;
-  assertInvalid(await validate('evidence', reviewOnly));
+  delete reviewOnly.review_depth;
+  assertValid(await validate('evidence', reviewOnly));
+
+  for (const session of ['producer_session', 'reviewer_session']) {
+    const missingSession = clone(reviewOnly);
+    missingSession.review_tool = 'codex';
+    delete missingSession[session];
+    assertInvalid(await validate('evidence', missingSession));
+  }
+
+  const execution = clone(valid);
+  for (const field of ['reviewer_session', 'reviewer_model', 'review_depth', 'review_kind', 'review_tool']) delete execution[field];
+  execution.result = 'Executed the recorded command and retained its output.';
+  assert.ok(execution.producer_session);
+  assertValid(await validate('evidence', execution));
 
   const wrongDigest = clone(valid);
   wrongDigest.config_digest = 'short';

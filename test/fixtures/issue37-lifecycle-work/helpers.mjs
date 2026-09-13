@@ -50,7 +50,12 @@ export async function prerequisite(t, { verdict = 'revise', mode = 'fresh' } = {
   const oldComment = { id: 403, body: bodyFor(old, 'Retained prior independent assessment; its verdict is not rewritten.') };
   records['issues/40/comments'] = [[oldComment, ...comments, { id: 404, body: disposition }]];
   for (const comment of records['issues/40/comments'][0]) records[`issues/comments/${comment.id}`] = comment;
-  if (mode === 'unavailable-source') delete records['issues/comments/403'];
+  if (mode === 'unavailable-source') {
+    delete records['issues/comments/403'];
+    // A complete listing already supplies the same source. Remove it there too
+    // so this fault models an unavailable comment, not inconsistent endpoints.
+    records['issues/40/comments'] = [records['issues/40/comments'][0].filter((comment) => comment.id !== 403)];
+  }
   await f.save();
   const executable = await nativeLink(t, f.toolkitRoot);
   return { ...f, old, oldComment, reviews, run: () => cli(f, executable), inspect: () => cli(f, executable, ['--max-inline-bytes', '65536'], 'inspect', 'example/consumer#40') };

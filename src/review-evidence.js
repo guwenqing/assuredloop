@@ -1,4 +1,4 @@
-import { validateRecord } from './records.js';
+import { validateRecord, reviewVerdictFindings } from './records.js';
 import { checkEvidenceContext } from './policy.js';
 
 // Applicability is relative to trusted PR/policy acquisition, never comment order.
@@ -16,9 +16,10 @@ export function reviewEvidenceApplicability({ entry, pr, pull, policy, current }
       .map((field) => ({ code: 'evidence-tuple-stale', message: `Recorded ${field} differs from the actual PR assessment.` }));
   if (differences.length) {
     result.applicability = 'noncurrent';
-    result.findings = differences.map((finding) => ({ ...finding, severity: 'review' }));
+    result.findings.push(...differences.map((finding) => ({ ...finding, severity: 'review' })));
     result.findings.push({ code: 'review-history-retained', severity: 'review',
       message: 'Noncurrent evidence supplies no acceptance credit. Its original verdict and findings remain unresolved context until explicitly dispositioned and independently reassessed; exclusion does not resolve them.' });
   }
+  result.findings.push(...reviewVerdictFindings(record).map((finding) => ({ ...finding, severity: 'review' })));
   return result;
 }

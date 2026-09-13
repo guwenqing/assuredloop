@@ -1,31 +1,52 @@
-# Workflow Goals Specification
+# Traceability and Context Goals Specification
 
 ## Purpose
 
-Provide the shared L1 goals and constraints for AssuredLoop Base. These goals govern the L2 capabilities linked below; those capabilities contain the L3 behavior requirements and scenarios. This is ordinary OpenSpec content, not a new layer schema. Origin: [expanded Proposal at the owner-accepted revision](https://github.com/guwenqing/assuredloop-base/blob/5c1f33a26b5f106d594b11be46764b2ad23b6322/openspec/changes/establish-project-workflow/proposal.md), with [Wenqing's B4 acceptance recorded on PR #5](https://github.com/guwenqing/assuredloop-base/pull/5#issuecomment-5576464303). Acceptance of that scope is distinct from acceptance of subsequent design-review corrections.
+L1: provide a file-based traceability and retrieval layer for specification-driven
+work. The toolkit makes relevant requirements, changes and evidence discoverable
+and mechanically checkable without owning the user's way of working.
 
 ## Requirements
 
 ### Requirement: Work is traceable and proportionate
-
-The project SHALL make supported work traceable from its originating request through agreed requirements, responsible work, actual delivery and acceptance, while keeping the path proportionate to uncertainty and scope. Work records SHALL enable responsible handoff rather than multiply for each document or review stage. Supporting capabilities: [intake and planning](../work-intake-and-planning/spec.md) and [GitHub work traceability](../github-work-traceability/spec.md).
+The toolkit SHALL represent work-to-requirement, change-to-current-Spec and
+delivery-to-evidence relationships using explicit references. It SHALL NOT require
+a new Proposal for an implementation-only follow-up, or assign agents and task
+counts. [Work context](../work-intake-and-planning/spec.md) and
+[GitHub traceability](../github-work-traceability/spec.md) define the L2 capabilities.
 
 #### Scenario: A different executor takes over
-- **WHEN** a new executor takes an existing work item
-- **THEN** its formal basis, scope, current work and remaining acceptance obligations can be recovered without the previous executor's private conversation
+- **WHEN** an executor selects a work record
+- **THEN** its relevant original requirements, decisions, fixed tasks and actual
+  contributions are discoverable without reconstructing the whole project history.
 
 ### Requirement: Shared facts support human and machine judgment
-
-The project SHALL keep formal requirements and necessary repo relationships in readable versioned files, with operational work and review evidence in the declared GitHub records. Mechanical checks SHALL expose formal omissions and inconsistencies and support focused AI review; they SHALL NOT replace semantic judgment or required human decisions. Supporting capabilities: [specification baseline](../specification-baseline/spec.md) and [review and validation](../review-and-validation/spec.md).
+Mechanical checks SHALL report shape, reference, state, freshness and comparison
+facts. Bounded context SHALL preserve sources and gaps for semantic judgment.
+[Validation and context](../review-and-validation/spec.md) defines these behaviors.
 
 #### Scenario: Complete records contain a wrong conclusion
-- **WHEN** all required records exist but delivery does not satisfy the agreed requirement
-- **THEN** semantic review can reject the conclusion despite successful structural checks
+- **WHEN** a structurally complete record misstates the meaning of its source
+- **THEN** structural success does not claim semantic acceptance or merge permission.
 
-### Requirement: Reuse supports governed evolution
+### Requirement: Current requirements remain a usable baseline
+Native current Specs SHALL remain distinct from active and archived change
+artifacts. The toolkit SHALL verify the selected synchronization inputs and expose
+incomplete or inconsistent updates. See [baseline verification](../specification-baseline/spec.md).
 
-The project SHALL reuse OpenSpec and supported extensions to provide a usable single-repo minimum with project extensibility, practical work guidance and an explicit transition to governing its own changes. It SHALL NOT require a forked core, a parallel workflow engine, an authoritative database, a fixed bot topology or multi-repo scheduling in the minimum. Supporting capabilities: [workflow adoption](../project-workflow-adoption/spec.md) and [self-evolution](../workflow-self-evolution/spec.md).
+#### Scenario: A later feature builds on earlier changes
+- **WHEN** work uses the current project definition
+- **THEN** it references the integrated current Specs rather than treating all old
+  proposals as equally current or reconstructing their accumulated meaning.
 
-#### Scenario: Project conventions need detail
-- **WHEN** a project specializes an accepted workflow convention
-- **THEN** it can do so through the active traced workflow and applicable review rather than replacing the underlying specification system
+### Requirement: Reuse supports a narrow toolkit boundary
+The toolkit SHALL reuse pinned OpenSpec artifact/parsing/synchronization behavior
+and provide operation-oriented guidance. Development, testing, review methods,
+roles, dispatch, communication and approval execution SHALL remain outside its
+product capability. [Adoption](../project-workflow-adoption/spec.md) and
+[policy boundaries](../workflow-self-evolution/spec.md) describe integration.
+
+#### Scenario: A consumer already has a BOT workflow
+- **WHEN** it installs the toolkit
+- **THEN** its existing workflow remains in control and the toolkit supplies record,
+  retrieval and validation operations without a competing work procedure.

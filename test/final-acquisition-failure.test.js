@@ -31,8 +31,8 @@ test('stable padded late-source inspection remains a usable 10000-byte packet', 
   assert.equal(result.data.work, fixture.work);
   assert.ok(result.data.packet && Array.isArray(result.data.packet.entries));
   assert.deepEqual(malformed?.source, expectedMalformedSource(fixture));
-  assert.equal(commands.filter((args) => args[0] === 'api' && args.includes(mainBranchEndpoint)).length, 3,
-    'the boundary fake performs two pre-source main reads and one final post-source read');
+  assert.equal(commands.filter((args) => args[0] === 'api' && args.includes(mainBranchEndpoint)).length, 2,
+    'shared initial acquisition is followed by one final post-source freshness read');
   assert.equal(hasForeignRead(commands), false);
 });
 
@@ -43,12 +43,12 @@ for (const budget of [10000, 8192]) {
     const result = await runBoundedInspect(fixture, budget);
     const findings = findingsOf(result.data);
     const malformed = findings.find((finding) => finding.code === 'record-context-invalid');
-    const stale = findings.find((finding) => finding.code === 'acquisition-context-stale');
+    const stale = findings.find((finding) => finding.code === 'context-source-stale');
     const commands = await commandLog(fixture);
 
     assert.ok(stable.data.packet && Array.isArray(stable.data.packet.entries),
       'the same-budget stable acquisition produces a packet before drift is introduced');
-    assert.equal(mainReads.length, 3,
+    assert.equal(mainReads.length, 2,
       'the drift sequence changes only the known final main-branch read after source acquisition');
     assert.equal(result.data.status, 'unavailable');
     assert.equal(result.data.work, fixture.work);
@@ -56,9 +56,12 @@ for (const budget of [10000, 8192]) {
       `the complete drift failure stays within ${budget} bytes`);
     assert.equal(result.data.packet?.next_cursor, undefined,
       'a stale continuation cursor is never offered after the final acquisition failure');
+    assert.equal(result.data.packet, undefined, 'stale context cannot retain a usable packet');
     assert.equal(findings.some((finding) => finding.code === 'packet-limit'), false,
       'the actual acquisition failure is not replaced by packet-limit');
-    assert.equal(stale?.code, 'acquisition-context-stale');
+    assert.equal(stale?.code, 'context-source-stale');
+    assert.match(JSON.stringify(stale.details), /example\/consumer\/git\/ref\/heads\/main/,
+      'the changed destination, not an unrelated source, triggers the final rejection');
     assert.deepEqual(malformed?.source, expectedMalformedSource(fixture),
       'the final recheck runs after the changed-root source has been acquired');
     assert.equal(hasForeignRead(commands), false);

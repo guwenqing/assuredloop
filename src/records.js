@@ -15,7 +15,13 @@ ajv.addSchema(schema);
 const validators = new Map();
 
 export const hasReviewDeclarations = (record) => record && typeof record === 'object' &&
-  ['producer_session', 'reviewer_session', 'reviewer_model', 'review_depth', 'review_kind', 'review_tool'].some((field) => Object.hasOwn(record, field));
+  ['reviewer_session', 'reviewer_model', 'review_depth', 'review_kind', 'review_tool'].some((field) => Object.hasOwn(record, field));
+
+export function reviewVerdictFindings(record) {
+  if (!hasReviewDeclarations(record) || validateRecord('reviewVerdict', record.result).valid) return [];
+  return [{ code: 'review-verdict-invalid', severity: 'error',
+    message: 'Review result must be exactly pass, fail, revise, or incomplete. Keep explanation outside the JSON result. Preserve historical text; a reviewer may append a source-linked clarification for the original assessed tuple. Do not infer pass from prose.' }];
+}
 
 export function validateRecord(kind, value) {
   if (!Object.hasOwn(schema.$defs, kind)) {

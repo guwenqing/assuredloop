@@ -13,6 +13,8 @@ import { reviewEvidenceApplicability } from './review-evidence.js';
 async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
   const result = { ...runtimeContext(runtime), operation: 'check', mode: 'live', status: 'pass', work, findings: [], policies: [], records: [] };
   let trace;
+  const assessmentCache = new Map();
+  const scopeKey = () => trace.assessmentScope();
   const add = (code, message, status = 'invalid', details) => {
     result.findings.push({ code, message, details });
     if (status === 'invalid' || result.status === 'pass') result.status = status;
@@ -203,7 +205,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
         try { await trace.load(ref); }
         catch (error) { add('reference-unavailable', error.message, 'unavailable', { ref, cause: error.code }); }
       }
-      const checked = await checkWorkRecords({ work: issueRef, ...bundle, phase: parsed.record?.activity === 'closeout' ? 'closeout' : 'handoff', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt, verifyBootstrap, verifyEvidence });
+      const checked = await checkWorkRecords({ work: issueRef, ...bundle, phase: parsed.record?.activity === 'closeout' ? 'closeout' : 'handoff', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt, verifyBootstrap, verifyEvidence, assessmentCache, scopeKey });
       checked.work = issueRef;
       result.records.push(checked);
       for (const finding of checked.findings) {
@@ -222,7 +224,7 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
       if (!closeout.manifest.valid) add('manifest-invalid', 'Acceptance manifest verification did not pass.', 'invalid', closeout.manifest.findings);
       for (const dependency of closeout.record.depends_on || []) {
         const bundle = await trace.bundleAt(dependency);
-        const checked = await checkWorkRecords({ work: dependency, ...bundle, phase: 'closeout', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt, verifyBootstrap, verifyEvidence });
+        const checked = await checkWorkRecords({ work: dependency, ...bundle, phase: 'closeout', resolveRef: trace.loadForWork, resolveWork: trace.bundleAt, verifyBootstrap, verifyEvidence, assessmentCache, scopeKey });
         result.records.push({ work: dependency, ...checked });
         if (checked.status !== 'valid') add('prerequisite-unverified', `${dependency}: prerequisite checks did not pass.`, checked.status === 'invalid' ? 'invalid' : 'unavailable', checked.findings);
         for (const entry of bundle.evidence.filter((item) => item.record.pr)) {
@@ -270,7 +272,10 @@ async function liveCheck({ targetRoot, work, deltaRef, manifestRef, runtime }) {
     }
     result.findings.push({ code: 'formal-check-only', message: 'Formal checks do not grant merge permission, authenticate review independence or establish the full assigned outcome.' });
   } catch (error) {
-    if (error.code === 'acquisition-context-stale' && error.details?.assessment) result.assessment ??= error.details.assessment;
+    if (error.code === 'acquisition-context-stale') {
+      result.status = 'unavailable';
+      if (error.details?.assessment) result.assessment ??= error.details.assessment;
+    }
     add(error.code || 'check-unavailable', error.message, 'unavailable', error.details);
   } finally {
     if (trace) {
