@@ -13,19 +13,6 @@
       "contracts_path": "contracts"
     },
     "review": {
-      "depth": "full-scope",
-      "internal": {
-        "allowed_models": [
-          "example-review-model-a",
-          "example-review-model-b"
-        ]
-      },
-      "excluded_models": [
-        "example-excluded-model"
-      ],
-      "model_aliases": {
-        "model-a": "example-review-model-a"
-      },
       "context": {
         "max_inline_bytes": 65536
       }

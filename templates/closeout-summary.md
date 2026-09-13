@@ -1,29 +1,23 @@
-# Closeout assessment — {{change}}
+# {{change_or_batch_title}}
 
-Reusable draft scaffold. Read templates/README.md, schemas/workflow.schema.json and contracts/specification-baseline/spec.md.
+Draft synchronization/evidence summary. Use templates/README.md and the manifest
+schema; this template does not prescribe an owner, approval sequence or archive.
 
-## Aggregate scope and evidence
+## Selected sources
 
-{{accepted_requirement_and_delivery_coverage_including_planning}}
-{{prerequisite_results_gaps_and_responsible_follow_up}}
-{{assigned_self_change_demonstration_or_decision_handoff}}
+{{fixed_whole_change_delta_and_candidate_manifest_refs}}
+{{current_base_candidate_and_policy_context}}
 
-## Policy and authorization
+## Comparison
 
-{{current_destination_policy_and_verified_owner_conditions}}
-{{separately_authorized_work_pending_holds_and_their_sources}}
+{{requirements_added_modified_renamed_removed_and_preserved}}
+{{current_inbound_link_repairs_or_explicit_none}}
+{{native_validation_and_synchronization_diagnostics}}
 
-## Candidate contribution
+## Delivery evidence and gaps
 
-{{synchronized_delta_coverage_scenario_preservation_and_anchor_repairs}}
-{{contract_regeneration_integrity_and_binding_transition}}
-{{manifest_capture_sources_historical_audit_values_and_gaps}}
-{{archive_status_only_if_actually_authorized}}
+{{actual_delivery_refs_and_manifest_fixity_results}}
+{{historical_limits_and_unresolved_semantic_questions}}
 
-## Review and delivery
-
-{{independent_full_scope_review_current_checks_and_dispositions}}
-{{actual_integration_commit_and_post_merge_observations_if_performed}}
-{{remaining_owner_acceptance_archive_or_final_closure_obligations}}
-
-An archive hold does not block separately authorized synchronization, and a sync merge does not satisfy withheld archive acceptance. Keep the change active and dependent completion open until the actual required approval and remaining delivery steps occur. Do not pre-complete the candidate's own merge or closure.
+A valid structure/hash is not proof of correct synchronization or final approval.
+Do not report a merge, archive or closure that has not happened.
