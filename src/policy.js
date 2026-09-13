@@ -13,6 +13,7 @@ import { reviewRouting } from './native.js';
 const installedRoot = fileURLToPath(new URL('..', import.meta.url));
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const decode = (bytes) => new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+const snapshots = new WeakMap();
 
 function requireShape(kind, value, field) {
   const checked = validateRecord(kind, value);
@@ -51,6 +52,18 @@ export async function resolvePolicy({ adapter, work, packageRoot = installedRoot
 }
 
 async function resolvePolicySnapshot({ adapter, work, packageRoot, historicalPull, currentContext, runtime }) {
+  if (!historicalPull && !adapter.cacheReads) return readPolicySnapshot({ adapter, work, packageRoot, currentContext, runtime });
+  let cache = snapshots.get(adapter);
+  if (!cache) { cache = new Map(); snapshots.set(adapter, cache); }
+  const key = JSON.stringify([work, packageRoot, historicalPull, currentContext, runtime]);
+  if (cache.has(key)) return structuredClone(cache.get(key));
+  const result = await readPolicySnapshot({ adapter, work, packageRoot, historicalPull, currentContext, runtime });
+  // Cache source reconstruction, never the individual Evidence's verdict.
+  if (result.status === 'available') cache.set(key, structuredClone(result));
+  return result;
+}
+
+async function readPolicySnapshot({ adapter, work, packageRoot, historicalPull, currentContext, runtime }) {
   const result = { status: 'unavailable', mode: null, config: null, activation: null, policy_ref: null,
     contract_package: null, config_digest: null, activation_digest: null, sources: [], findings: [] };
   let field = 'destination';

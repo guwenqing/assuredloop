@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { createReadAdapter, workIdentity } from './read-adapter.js';
+import { workIdentity } from './read-adapter.js';
 import { validateRecord } from './records.js';
 import { fail } from './files.js';
 import { isDeepStrictEqual } from 'node:util';
@@ -44,10 +44,11 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
   }
   const primary = await configAt(initialAdapter, repository, revision);
   const ceiling = primary.allowed;
-  const makeReader = (allowed) => createReadAdapter({ targetRoot, repository, allowedRepositories: [...allowed] });
+  const makeReader = (allowed) => initialAdapter.scoped([...allowed]);
   const reader = await makeReader(ceiling);
   let active = { reader, allowed: ceiling };
   const contexts = [];
+  const scopes = new Map();
   const classifications = new Map();
   const context = { kind: issue.pull_request ? 'pr-destination' : 'repository-default', work, repository, branch, revision,
     config_ref: primary.ref, config_digest: digest(primary.bytes), allowed_repositories: [...ceiling].sort() };
@@ -99,6 +100,12 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
     async narrow(candidate) {
       const name = candidate.base.repo.full_name.toLowerCase();
       const pr = `${name}#${candidate.number}`;
+      const key = JSON.stringify(tuple(candidate));
+      const cached = scopes.get(key);
+      if (initialAdapter.cacheReads && cached) {
+        active = cached.active;
+        return structuredClone(cached.context);
+      }
       let branch = candidate.base.ref, currentRevision;
       try {
         const observed = await reader.readPull(pr);
@@ -111,6 +118,7 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
         const item = { work: pr, config_ref: scoped.ref, config_digest: digest(scoped.bytes),
           allowed_repositories: [...allowed].sort(), denied_by_ceiling: [...scoped.allowed].filter((value) => !ceiling.has(value)).sort() };
         if (!contexts.some((entry) => isDeepStrictEqual(entry, item))) contexts.push(item);
+        if (initialAdapter.cacheReads) scopes.set(key, { active, context: item, observed, branch, revision: currentRevision });
         return item;
       } catch (error) {
         fail('secondary-acquisition-unavailable', `${pr}: current destination context is unavailable: ${error.message}`, {
@@ -125,11 +133,23 @@ export async function establishAcquisition({ targetRoot, work, issue, pull, init
       try { await this.narrow(candidate); return await action(); }
       finally { active = previous; }
     },
-    async recheck() {
+    async recheck(fresh) {
+      const reader = fresh || await active.reader.fresh();
+      for (const selected of scopes.values()) {
+        this.authorize(selected.context.work);
+        const observed = await reader.readPull(selected.context.work);
+        const name = selected.context.config_ref.repository;
+        const revision = await reader.readBranchHead({ repository: name, branch: selected.branch });
+        if (!isDeepStrictEqual(tuple(observed), tuple(selected.observed)) || revision !== selected.revision) {
+          fail('acquisition-context-stale', 'A secondary PR or its current destination changed during acquisition.', { work: selected.context.work });
+        }
+        const current = await configAt(reader, name, revision);
+        if (digest(current.bytes) !== selected.context.config_digest) fail('acquisition-context-stale', 'A secondary acquisition permission configuration changed.', { work: selected.context.work });
+      }
       for (const selected of classifications.values()) {
         this.authorize(selected.ref);
         const allowed = new Set([...selected.allowed].filter((name) => active.allowed.has(name)));
-        const scopedReader = await makeReader(allowed);
+        const scopedReader = await reader.scoped([...allowed]);
         const metadata = await scopedReader.readRepository(selected.repository);
         const revision = await scopedReader.readBranchHead({ repository: selected.repository, branch: selected.branch });
         if (metadata.default_branch !== selected.branch || revision !== selected.revision) fail('acquisition-context-stale', 'Foreign Issue classification default branch or revision changed.', { repository: selected.repository });

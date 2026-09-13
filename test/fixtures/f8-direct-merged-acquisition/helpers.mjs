@@ -141,7 +141,7 @@ export async function makeDirectMergedFixture(t, { drift = false } = {}) {
 
   if (drift) scenario.endpointSequences = {
     ...(scenario.endpointSequences || {}),
-    [branchEndpoint]: [currentRevision, currentRevision, currentRevision, driftRevision].map((sha) => ({
+    [branchEndpoint]: [currentRevision, driftRevision].map((sha) => ({
       ref: 'refs/heads/main',
       object: { type: 'commit', sha },
     })),

@@ -26,7 +26,24 @@ export async function parseWorkRecord({ body, kind, allowMissing = false } = {})
 const planKey = (ref, item) => `${ref.repository.toLowerCase()}:${ref.path}#${item}`;
 const plans = (record) => new Set((record?.plan_items || []).flatMap((ref) => ref.items.map((item) => planKey(ref, item))));
 
-export async function checkWorkRecords({ work, issue, pulls = [], evidence = [], classification, categoryMapping, phase = 'handoff', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack = [], _contribution = false } = {}) {
+export async function checkWorkRecords(options = {}) {
+  const { work, issue, pulls = [], evidence = [], classification, categoryMapping, phase = 'handoff',
+    resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack = [], _contribution = false,
+    assessmentCache = new Map(), scopeKey } = options;
+  const normalized = typeof work === 'string' ? work.toLowerCase() : work;
+  // Visiting is path-specific and must be checked before completed-node reuse.
+  const cycle = _stack.includes(normalized);
+  const key = JSON.stringify([normalized, phase, _contribution, typeof scopeKey === 'function' ? scopeKey() : scopeKey,
+    issue, pulls, evidence, classification, categoryMapping]);
+  const callbacks = [resolveRef, resolveWork, verifyBootstrap, verifyEvidence];
+  const cached = !cycle && assessmentCache.get(key);
+  if (cached && callbacks.every((callback, index) => callback === cached.callbacks[index])) return structuredClone(cached.result);
+  const result = await evaluateWorkRecords({ ...options, assessmentCache, scopeKey });
+  if (!cycle && result.status === 'valid') assessmentCache.set(key, { callbacks, result: structuredClone(result) });
+  return result;
+}
+
+async function evaluateWorkRecords({ work, issue, pulls = [], evidence = [], classification, categoryMapping, phase = 'handoff', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack = [], _contribution = false, assessmentCache, scopeKey } = {}) {
   const result = { status: 'valid', findings: [], context: { work, phase, issue: structuredClone(issue), pulls: structuredClone(pulls), evidence: structuredClone(evidence), references: [], prerequisites: [] } };
   const add = (code, message, severity = 'error', details) => {
     result.findings.push({ code, message, severity, details });
@@ -56,7 +73,7 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
         const scopedEvidence = [...new Map([...evidence, ...(bundle.evidence || []).filter((entry) => entry.record?.pr?.toLowerCase() === work)]
           .map((entry) => [JSON.stringify(entry.ref), entry])).values()];
         const checked = await checkWorkRecords({ work: owner, ...bundle, pulls: [pull], evidence: scopedEvidence, categoryMapping,
-          phase: 'handoff', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack: [..._stack, work], _contribution: true });
+          phase: 'handoff', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, assessmentCache, scopeKey, _stack: [..._stack, work], _contribution: true });
         result.context.prerequisites.push({ work: owner, ...checked.context });
         for (const finding of checked.findings) add(finding.code, finding.message, finding.severity, finding.details);
       } catch (error) { add('prerequisite-unavailable', error.message, 'unavailable', { owner, cause: error.code }); }
@@ -227,7 +244,7 @@ export async function checkWorkRecords({ work, issue, pulls = [], evidence = [],
         }
         const checked = await checkWorkRecords({ work: dependency,
           ...(workIdentity(dependency).repository === identity.repository ? { categoryMapping } : {}),
-          ...bundle, phase: 'closeout', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, _stack: [..._stack, work] });
+          ...bundle, phase: 'closeout', resolveRef, resolveWork, verifyBootstrap, verifyEvidence, assessmentCache, scopeKey, _stack: [..._stack, work] });
         result.context.prerequisites.at(-1).assessment = checked.context;
         for (const finding of checked.findings.filter((item) => item.severity === 'review')) add(finding.code, finding.message, 'review', { dependency, ...finding.details });
         if (checked.status !== 'valid') add('prerequisite-unverified', 'Prerequisite delivery lacks required formal evidence.', checked.status === 'unavailable' ? 'unavailable' : 'error', { dependency, findings: checked.findings });
