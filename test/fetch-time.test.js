@@ -3,7 +3,7 @@
 // `clone:` entry of origin/HEAD's reflog. Times come from git, never the clock.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, utimesSync, existsSync } from 'node:fs';
+import { rmSync, utimesSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeRepo, cloneRepo, runAl, sha256 } from './helpers/fixture.js';
 import { assertFrame } from './helpers/output.js';
@@ -99,4 +99,44 @@ test('[VW-9] when FETCH_HEAD is newer than origin/main\'s last reflog entry, the
   assert.ok(line.includes('2026-09-26T18:05Z'), line);
   assert.ok(!line.includes('2026-09-24T12:30Z'), line);
   assert.ok(!line.includes('fetched at clone'), line);
+});
+
+// FETCH_HEAD counts only when it lists origin's main (`branch 'main' of <origin url>`).
+function fetchAt(clone, args, iso) {
+  clone.git(['fetch', '-q', ...args], { date: iso });
+  const when = new Date(iso);
+  utimesSync(join(clone.dir, '.git/FETCH_HEAD'), when, when);
+  return readFileSync(join(clone.dir, '.git/FETCH_HEAD'), 'utf8');
+}
+
+test('[VW-9] a one-branch fetch of origin (not main) does not count as a fetch of origin/main', (t) => {
+  const { repo, clone } = clonedSource(t);
+  repo.git(['checkout', '-q', '-b', 'feature']);
+  repo.write('feature.txt', 'on feature\n');
+  repo.commit('feature work', { date: '2026-09-22T10:00:00Z' });
+  const fetchHead = fetchAt(clone, ['origin', 'feature'], '2026-09-26T18:05:00Z');
+  assert.match(fetchHead, /branch 'feature' of /, fetchHead);
+  assert.doesNotMatch(fetchHead, /branch 'main' of /, fetchHead);
+  const r = runAl(clone.dir, ['context', 'invoice-download'], { env: ENV });
+  assert.equal(r.code, 0, r.stderr);
+  const line = originLine(r.stdout);
+  assert.ok(!line.includes('2026-09-26T18:05Z'), line);
+  assert.ok(line.includes('fetched at clone'), line);
+  assert.ok(line.includes('2026-09-21T07:45Z'), line);
+});
+
+test('[VW-9] a fetch from another remote, even of its main, does not count as a fetch of origin/main', (t) => {
+  const { clone } = clonedSource(t);
+  const other = makeRepo(t);
+  other.write('other.txt', 'another repo\n');
+  other.commit('other work', { date: '2026-09-22T10:00:00Z' });
+  clone.git(['remote', 'add', 'other', other.dir]);
+  const fetchHead = fetchAt(clone, ['other'], '2026-09-26T18:05:00Z');
+  assert.ok(fetchHead.includes(`branch 'main' of ${other.dir}`), fetchHead);
+  const r = runAl(clone.dir, ['context', 'invoice-download'], { env: ENV });
+  assert.equal(r.code, 0, r.stderr);
+  const line = originLine(r.stdout);
+  assert.ok(!line.includes('2026-09-26T18:05Z'), line);
+  assert.ok(line.includes('fetched at clone'), line);
+  assert.ok(line.includes('2026-09-21T07:45Z'), line);
 });
