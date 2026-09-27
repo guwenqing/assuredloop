@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { Fail, git, historyGap, isShallow } from './git.js';
-import { openTree, writableUnder } from './tree.js';
+import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, numberHeadings } from './sections.js';
 import { line } from './commands.js';
 
@@ -88,7 +88,7 @@ function addIds({ top, cwd, opts }) {
   const tree = openTree(top);
   const root = rootOf(tree);
   const path = relative(top, resolve(cwd, opts['add-ids']));
-  if (!path.endsWith('.md') || !path.startsWith(`${root}/`) || !existsSync(join(top, path)) || !writableUnder(top, root, path)) {
+  if (!path.endsWith('.md') || !path.startsWith(`${root}/`) || !existsSync(join(top, path)) || !noSymlinkOn(top, path)) {
     throw new Fail(`${opts['add-ids']}: give a .md file under the baseline root ${root}/, not through a symlink`, `al spec --list shows the files under ${root}/`);
   }
   const gap = historyGap(top);
