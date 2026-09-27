@@ -517,3 +517,30 @@ test('[STA-2] real data: a copy of assuredloop-v1 and specs/ — REC-1..5 and SP
   assert.equal(entry(list, 'assuredloop-v1/TL-1@1').op, 'add');
   assert.equal(entry(list, 'assuredloop-v1/VW-9@2').op, 'modify');
 });
+
+// --- Candidates keep indentation [SPC-4][STA-2] ---
+
+// An indented code line is not the same text as the words unindented [SPC-4].
+const CODE = '## [INV-3] Dates\n    literal code\n';
+
+test('[SPC-4][STA-2] row 6: a candidate\'s body is compared with its indentation: an indented code line in "was" or "now" does not match the same words unindented', async (t) => {
+  const repo = makeRepo(t);
+  baseline(repo, INV1, '## [INV-9] Code\nliteral code\n');
+  for (const [side, b] of [['was', { was: CODE, now: S1 }], ['now', { was: S0, now: CODE }]]) {
+    request(repo, 'inv', [block('[INV-3]@1 modify', b)]);
+    const e = entry(await states(repo), 'inv/INV-3@1');
+    assert.equal(e.state, 'not found', `${side}: ${JSON.stringify(pick(e))}`);
+    assert.deepEqual(e.candidates, [], `${side}: ${JSON.stringify(pick(e))}`);
+  }
+});
+
+test('[SPC-4][STA-2] row 6 contrast: the same indented body is a candidate, also with a blank line after the heading and a trailing space', async (t) => {
+  const repo = makeRepo(t);
+  request(repo, 'inv', [block('[INV-3]@1 modify', { was: CODE, now: S1 })]);
+  for (const inv9 of ['## [INV-9] Code\n    literal code\n', '## [INV-9] Code\n\n    literal code \n']) {
+    baseline(repo, INV1, inv9);
+    const e = entry(await states(repo), 'inv/INV-3@1');
+    assert.equal(e.state, 'not found', `${JSON.stringify(inv9)}: ${JSON.stringify(pick(e))}`);
+    assert.deepEqual(e.candidates, ['INV-9'], `${JSON.stringify(inv9)}: ${JSON.stringify(pick(e))}`);
+  }
+});

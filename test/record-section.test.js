@@ -251,3 +251,60 @@ test('[STA-5][REC-1] record section on an unknown request exits 2 and writes not
   }
   assert.equal(section(repo, ['INV-3']).code, 0);
 });
+
+// An entry is a line `- D<n>,` inside ## Decisions, which runs to the next
+// level-1 or level-2 heading. The same line anywhere else is not an entry.
+const D77 = '- D77, 2026-09-27. Source: the owner. Split the export into two parts.\n';
+const PARTS_D77 = '\n## Parts\n\n1. CSV export\n' + D77;
+
+test('[STA-5] a revision naming a D<n> that is only outside ## Decisions (under ## Parts, after a level-1 heading, or with no ## Decisions at all) exits 2, writes nothing, and says to write the decision first', (t) => {
+  const requests = {
+    'under ## Parts': REQUEST + PARTS_D77,
+    'after a level-1 heading': REQUEST + '\n# Appendix\n\n' + D77,
+    'no ## Decisions': HEAD + PARTS_D77,
+  };
+  for (const [where, request] of Object.entries(requests)) {
+    const repo = setup(t, { change: OWN, request });
+    for (const extra of [[], ['--yes']]) {
+      const r = section(repo, ['INV-3', '--decision', 'D77', ...extra]);
+      assert.equal(r.code, 2, `${where} ${extra.join(' ')}: ${r.stdout}${r.stderr}`);
+      assert.ok((r.stdout + r.stderr).includes('--decision'), `${where}: should say to pass --decision:\n${r.stdout}${r.stderr}`);
+      clean(repo);
+    }
+  }
+});
+
+test('[STA-5] --decision is matched literally: D1.*, D. and D name no entry though D1 is in ## Decisions; each exits 2, writes nothing, and says to write the decision first', (t) => {
+  const repo = setup(t, { change: OWN });
+  for (const d of ['D1.*', 'D.', 'D']) {
+    for (const extra of [[], ['--yes']]) {
+      const r = section(repo, ['INV-3', '--decision', d, ...extra]);
+      assert.equal(r.code, 2, `${d} ${extra.join(' ')}: ${r.stdout}${r.stderr}`);
+      assert.ok((r.stdout + r.stderr).includes('--decision'), `${d}: should say to pass --decision:\n${r.stdout}${r.stderr}`);
+      clean(repo);
+    }
+  }
+});
+
+test('[STA-5] contrast: entries inside ## Decisions are accepted while a D77 sits under ## Parts, including one under a ### heading inside ## Decisions', (t) => {
+  const D7 = '- D7, 2026-09-26. Source: the owner. Times in UTC.\n';
+  const repo = setup(t, { change: OWN, request: REQUEST + '\n### Later\n\n' + D7 + PARTS_D77 });
+  for (const d of ['D4', 'D7']) {
+    const r = section(repo, ['INV-3', '--decision', d]);
+    assert.equal(r.code, 0, `${d}: ${r.stdout}${r.stderr}`);
+    clean(repo);
+  }
+});
+
+test('[STA-5] --accept numbers its decision from ## Decisions entries only: D1 and D2 there and D9 under ## Parts gives D3, at the end of ## Decisions', (t) => {
+  const decisions = '\n## Decisions\n\n' +
+    '- D1, 2026-09-21. Source: the owner. CSV only for now.\n' +
+    '- D2, 2026-09-22. Source: the owner. ISO dates.\n';
+  const parts = '\n## Parts\n\n1. CSV export\n- D9, 2026-09-27. Source: the owner. Ship the export in one part.\n';
+  const repo = setup(t, { change: changeMd(block('[INV-3]@1 modify   for R2', { was: S0, now: S1 })), inv3: S2,
+    request: HEAD + decisions + parts });
+  const r = section(repo, ['INV-3', '--accept', '--yes']);
+  assert.equal(r.code, 0, r.stderr);
+  assert.equal(read(repo, `${DIR}/request.md`), HEAD + decisions +
+    '- D3, 2026-09-23. Source: the agent. Accepted the text underneath [INV-3] as the new "now" for invoice-download/INV-3@1.\n' + parts);
+});
