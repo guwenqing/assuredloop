@@ -1,7 +1,7 @@
 // Every read goes through a tree: the working tree, or a commit's tree read
 // through git ([VW-8]). Paths are relative to the repo's top level.
-import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { git, resolveCommit } from './git.js';
 
 export function openTree(top, at) {
@@ -49,16 +49,16 @@ export function findRequest(tree, name) {
   return null;
 }
 
-// Whether the tool may write `path` (repo-relative): with every symlink
-// resolved, its folder lies inside `base` (repo-relative), which lies inside
-// the repo, and the file itself, if it exists, is not a symlink. A lexical
-// check alone would follow a tracked symlink out of the repo.
-export function writableUnder(top, base, path) {
-  const inside = (child, parent) => child === parent || child.startsWith(parent + sep);
-  try {
-    const repo = realpathSync(top);
-    const realBase = realpathSync(join(top, base));
-    if (!inside(realBase, repo) || !inside(realpathSync(dirname(join(top, path))), realBase)) return false;
-  } catch { return false; }
-  try { return !lstatSync(join(top, path)).isSymbolicLink(); } catch { return true; }
+// Whether the tool may write `path` (repo-relative): no part of it below the
+// repo top, from the first folder down to the file, is a symlink, wherever the
+// link points. Parts that do not exist yet are created as real folders.
+export function noSymlinkOn(top, path) {
+  let at = top;
+  for (const part of path.split('/')) {
+    at = join(at, part);
+    try {
+      if (lstatSync(at).isSymbolicLink()) return false;
+    } catch { return true; }
+  }
+  return true;
 }
