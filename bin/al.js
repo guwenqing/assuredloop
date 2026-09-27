@@ -4,6 +4,7 @@
 import { parseArgs } from 'node:util';
 import { Fail, mainRef, topLevel } from '../src/git.js';
 import { newRequest, recordOrigin, context, line } from '../src/commands.js';
+import { spec } from '../src/spec.js';
 
 const COMMANDS = {
   new: { run: newRequest, options: { from: { type: 'string' }, title: { type: 'string' }, tier: { type: 'string' } } },
@@ -15,8 +16,12 @@ const COMMANDS = {
     },
   },
   context: { run: context, options: { at: { type: 'string' } } },
+  spec: {
+    run: spec,
+    options: { at: { type: 'string' }, list: { type: 'boolean' }, 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } },
+  },
 };
-const USAGE = 'al new | record | context  (spec, check, consolidate and conclude are not built yet)';
+const USAGE = 'al new | record | context | spec  (check, consolidate and conclude are not built yet)';
 
 function main(argv) {
   const cwd = process.cwd();

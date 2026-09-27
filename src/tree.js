@@ -1,7 +1,7 @@
 // Every read goes through a tree: the working tree, or a commit's tree read
 // through git ([VW-8]). Paths are relative to the repo's top level.
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { git, resolveCommit } from './git.js';
 
 export function openTree(top, at) {
@@ -13,6 +13,13 @@ export function openTree(top, at) {
       },
       list(dir) {
         try { return readdirSync(join(top, dir)).sort(); } catch { return null; }
+      },
+      // Every file under `dir`, as repo-relative paths in path order.
+      walk(dir) {
+        try {
+          return readdirSync(join(top, dir), { recursive: true, withFileTypes: true }).filter((d) => d.isFile())
+            .map((d) => relative(top, join(d.parentPath, d.name))).sort();
+        } catch { return []; }
       },
     };
   }
@@ -26,6 +33,10 @@ export function openTree(top, at) {
       const out = git(top, ['ls-tree', '--name-only', sha, `${dir}/`], { allowFail: true });
       if (!out) return null;
       return out.split('\n').map((p) => p.slice(dir.length + 1)).sort();
+    },
+    walk(dir) {
+      const out = git(top, ['ls-tree', '-r', '--name-only', sha, '--', `${dir}/`], { allowFail: true });
+      return out ? out.split('\n').sort() : [];
     },
   };
 }
