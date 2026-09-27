@@ -178,3 +178,16 @@ test('[VW-9] with no origin/main reflog and no clone entry, origin/main\'s time 
   assert.ok(!line.includes('2026-09-25T06:10Z'), line);
   assert.ok(!line.includes('2026-09-21T07:45Z'), line);
 });
+
+test('[VW-9] a later `git remote set-head` entry in origin/HEAD\'s reflog is not the clone time: only the clone: entry counts', (t) => {
+  const { clone } = clonedSource(t);
+  clone.git(['remote', 'set-head', 'origin', 'main'], { date: '2026-09-26T18:05:00Z' });
+  const headLog = clone.git(['reflog', 'show', '--date=iso-strict', '--format=%gd %gs', 'refs/remotes/origin/HEAD']).split('\n');
+  assert.match(headLog[0], /2026-09-26T18:05:00Z.*remote set-head/, 'the newest origin/HEAD entry is the set-head');
+  assert.match(headLog[1], /2026-09-21T07:45:00Z.*clone:/, 'the clone: entry is below it');
+  assert.ok(!existsSync(join(clone.dir, '.git/logs/refs/remotes/origin/main')), 'the fixture has no origin/main reflog');
+  const r = runAl(clone.dir, ['context', 'invoice-download'], { env: ENV });
+  assert.equal(r.code, 0, r.stderr);
+  const line = assertAsOfClone(r.stdout);
+  assert.ok(!line.includes('2026-09-26T18:05Z'), line);
+});
