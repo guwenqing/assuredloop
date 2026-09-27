@@ -27,15 +27,29 @@ export function topLevel(cwd) {
   return top;
 }
 
-// The full commit id for `rev`, or a Fail when it names no commit.
+// The full commit id for `rev`, or a Fail when it names no commit. A clone that
+// lacks history cannot tell a missing commit from a wrong one ([VW-9]).
 export function resolveCommit(top, rev) {
   const sha = git(top, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${rev}^{commit}`], { allowFail: true });
-  if (!sha) throw new Fail(`--at ${rev}: no such commit here`, 'al context <name> --at <a commit in this clone>');
-  return sha;
+  if (sha) return sha;
+  if (isShallow(top)) {
+    throw new Fail(`history unavailable: this clone is shallow, and ${rev} is not in it`, 'git fetch --unshallow, then run it again');
+  }
+  if (isSingleBranch(top)) {
+    throw new Fail(`history unavailable: this clone is single-branch, and ${rev} is not in it`,
+      "git fetch origin '+refs/heads/*:refs/remotes/origin/*', then run it again");
+  }
+  throw new Fail(`--at ${rev}: unknown commit`, 'al context <name> --at <a commit in this repo>');
 }
 
 export function isShallow(top) {
   return git(top, ['rev-parse', '--is-shallow-repository'], { allowFail: true }) === 'true';
+}
+
+// Cloned with --single-branch: origin fetches named branches, not refs/heads/*.
+function isSingleBranch(top) {
+  const specs = git(top, ['config', '--get-all', 'remote.origin.fetch'], { allowFail: true });
+  return Boolean(specs) && !specs.includes('*');
 }
 
 // The ref the tool reads as main, and when it was last fetched ([VW-9]).
