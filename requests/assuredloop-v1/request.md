@@ -41,6 +41,17 @@ Type: epic · Tier: 3 · Status: open
   which the design enforces by also refusing `record section` while
   unsigned. The AI proposed amending R10 to name that refusal, and asked the
   owner to re-sign. Until then this request is blocked.
+- 2026-09-27: the owner re-signed with R10 amended: "Yes this is strict but one
+  clarification. One can include their spec work and the sign off in one
+  commit. Or they can sign off first and then separate pr after". Record:
+  `origin/2026-09-27-signoff-2.md`. The clarification is taken into the spec as
+  the meaning of "before" ([REC-6], [REC-10]) and into ADR 0011.
+- 2026-09-27: the owner clarified: "So people can work on the spec work before
+  sign off but the spec work or any later work have to be delivered as part of
+  sing-off or after." That changes the text again. R3 now allows drafting
+  before the sign-off and requires delivery with it or after it. R10 returns
+  to its first-signed wording, with no refusal to start spec work. A new
+  sign-off is needed; until then this request is blocked.
 
 ## Organized requirement
 
@@ -57,9 +68,11 @@ organized requirement written from them.
 
 ### R3 The owner signs off first
 The organized requirement (for a spike, the organized question) MUST be signed
-off by the owner before any spec work. The sign-off MUST bind the exact text.
-Any later change MUST need a new sign-off, showing only what changed. Until it
-is signed, the request MUST be blocked from consolidation and conclusion.
+off by the owner. Spec work and any later work MAY be drafted before the
+sign-off, but MUST be delivered together with the sign-off or after it. The
+sign-off MUST bind the exact text. Any later change MUST need a new sign-off,
+showing only what changed. Until it is signed, the request MUST be blocked
+from consolidation and conclusion.
 
 ### R4 The change, and closing it
 Larger work MUST describe its spec change per section as what it says now and
@@ -98,11 +111,10 @@ Lasting decisions MUST be recorded as ADRs in the kit's format. The tool MUST
 show the ADRs that govern a section, and flag broken supersede links.
 
 ### R10 Hints, not a harness
-The tool MUST give hints in its output. It MUST NOT block commits or merges.
-Only its own commands refuse, for their own request: consolidate and conclude,
-and starting spec work while the requirement is not signed off (R3). A strict
-mode is opt-in. It MUST NOT enforce the way of working (tests-first, review,
-the PR flow), which belongs to the bots.
+The tool MUST give hints in its output. It MUST NOT block commits or merges:
+only its own consolidate and conclude refuse, and a strict mode is opt-in. It
+MUST NOT enforce the way of working (tests-first, review, the PR flow), which
+belongs to the bots.
 
 ### R11 Light and plain
 The tool MUST run offline and deterministically, with no database and no AI
@@ -127,4 +139,4 @@ Assumed:
   this requirement's. The working design is `design-v3.4.md` in the bots repo.
   It moves into this request's change spec after the sign-off.
 
-Signed off: 2026-09-27 owner ("Signed"), origin/2026-09-27-signoff.md
+Signed off: 2026-09-27 owner ("Yes"), origin/2026-09-27-signoff-2.md (replaces origin/2026-09-27-signoff.md)

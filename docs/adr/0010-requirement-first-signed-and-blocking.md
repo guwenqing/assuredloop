@@ -1,7 +1,7 @@
 # ADR 0010: The owner's words become an organized requirement, signed off first; until then the request is blocked
 
 Date: 2026-09-27.
-Status: accepted.
+Status: superseded by [ADR 0011](0011-requirement-signed-work-delivered-with-or-after.md).
 Decided by: the owner (inputs 33, 34, 36, 37, 41, 42, 44 and 48). Consulted: the
 architect, the adversary, the case testers.
 Supersedes: [ADR 0004](0004-requirement-sign-off-blocks.md).

@@ -205,7 +205,7 @@ R2, the second fresh-reader run (an independent judge graded all three parts
 | 42 | **Spikes are signed off too**, in plain words: the question, what a useful answer looks like, and what is out. They are blocked until signed, like any other request (§4) |
 | 43 | **Every PR states its tier and its claim** (`Tier: 0 — restores INV-4; no promise changes`). The tool shows the claim and the evidence, and flags the contradictions it can see (`not ok` for a tier-0 claim with a spec edit). The reviewer's duty to validate the claim is a bots' review rule, not an AssuredLoop enforcement (input 48) (§4, §7) |
 | 48 | **The boundary.** The bots own the way of working (tests-first, review, the PR flow). AssuredLoop absorbs the way of writing: requirement, spec, change spec, tiers, record links (§1) |
-| 44 | **Requirement before spec.** For tiers 2, 3 and S, the owner's words become the organized requirement, and it is signed off before any spec work; `record section` refuses while the request is blocked. Tier 1 may do it all in one PR. **A full audit on demand:** `--audit` returns the whole trace (§4, §6) |
+| 44 | **Requirement before spec.** For tiers 2, 3 and S, the owner's words become the organized requirement, and it is signed off before any spec work; `record section` refuses while the request is blocked. Tier 1 may do it all in one PR. *(Replaced by input 50: work may be drafted before the sign-off and is delivered with it or after; nothing refuses drafting; see §4.)* **A full audit on demand:** `--audit` returns the whole trace (§4, §6) |
 | 45 | **History:** every read command takes `--at <commit>`, and shows everything as it was at that commit (§6, §8) |
 
 The walkthrough called the tiers "sizes"; they are the same thing.
@@ -432,8 +432,10 @@ Other decisions stay as decision lines in their request.
      sign-off"), the request is **blocked**:
      - `consolidate` and `conclude` refuse, except `consolidate --revert` and
        `conclude --dropped` when every section retains nothing (§5.4);
+       drafting is never refused;
      - `context` shows `BLOCKED: awaiting owner sign-off` first;
-     - `check --strict` is `not ok` for any branch serving the request.
+     - `check` is `not ok` for a branch that delivers work for the request
+       while it is still blocked in that branch's final state.
    - Whether implementation may start before the sign-off is a bots' rule
      (input 48). AssuredLoop shows the blocked state, and its own commands
      refuse.
@@ -443,10 +445,14 @@ Other decisions stay as decision lines in their request.
      inherits the parent's latest sign-off for those lines.
    - The sign-off binds the whole Requirement part, compared like a section
      (§5.1).
-   - **Requirement before spec** (input 44). For tiers 2, 3 and S, the
-     organized requirement is signed off before any spec work. `record section`
-     refuses while the request is blocked, and a hint shows when a change spec
-     reached main before the first sign-off. Tier 1 may do it all in one PR.
+   - **Draft before, deliver with or after** (inputs 44 and 50). For every
+     tier except 0, spec work and later work may be drafted before the
+     sign-off, but are delivered with it (the same commit or PR) or after it
+     (a later PR). No command refuses drafting. `check` reports `not ok` for a
+     branch whose final state delivers work for a request that is still
+     blocked there. A branch that brings the sign-off with the work is fine.
+     A hint shows work that reached main in an earlier commit than the first
+     sign-off.
 2. **Conclusion.** `conclude` refuses until both hold:
    - every held section is consolidated, carried, dropped (with the baseline
      at "was"), or kept (§5.4);
@@ -934,8 +940,10 @@ re-derived from this document's text, not from R1's model code.
     - tier 0 with a spec edit gives `not ok`;
     - tier 0 with a nearby promise's test changed gives a note;
     - no tier line gives a note.
-  - `record section` refused while blocked; a hint for a change spec that
-    landed before sign-off.
+  - Drafting is allowed while blocked. A branch whose final state delivers
+    work for a still-blocked request gives `not ok`; the sign-off in the same
+    PR clears it. Work on main in an earlier commit than the first sign-off
+    gives a hint.
 - **C5, links.** The G1-G5 link fixtures, plus related history finding a
   negative spike.
 - **C5a, ADRs.**
@@ -995,6 +1003,6 @@ re-derived from this document's text, not from R1's model code.
 **Left for the owner, before any code:**
 - R1 P14 is decided (input 40): a hotfix that changes a promise waits for the
   sign-off, or lands as tier 0 first;
-- agreement to this design (v3.3) and its ADRs (`adr/0001`-`0010` (0004 superseded by 0010)) as final.
+- agreement to this design (v3.3) and its ADRs (`adr/0001`-`0011` (0004 and 0010 superseded)) as final.
   The rules re-test (R1) and the fresh-reader run (R2) are done, and their
   fixes are in.
