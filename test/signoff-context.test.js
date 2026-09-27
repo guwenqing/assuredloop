@@ -384,3 +384,15 @@ test('[REC-5] a tie on Fetched: the Signed off line names a file exactly, not by
   const plain = tie(t, '2026-09-21 owner, origin/2026-09-21-signoff.md', '2026-09-21-signoff.md', '2026-09-21-signoff.md.md');
   assertSigned(context(plain), '2026-09-21-signoff.md');
 });
+
+test('[REC-5] a tie on Fetched: only the first origin/ pointer on the Signed off line counts, not earlier sign-offs cited after it', (t) => {
+  // "-2" holds the current text and is named first; the old one is cited after it.
+  const first = tie(t, '2026-09-21 owner, origin/2026-09-21-signoff-2.md (the latest; earlier: origin/2026-09-21-signoff.md)',
+    '2026-09-21-signoff-2.md', '2026-09-21-signoff.md');
+  assertSigned(context(first), '2026-09-21-signoff-2.md');
+
+  // The reverse: the old text is named first, "-2" (the current text) is cited after it.
+  const reverse = tie(t, '2026-09-21 owner, origin/2026-09-21-signoff.md (the latest; earlier: origin/2026-09-21-signoff-2.md)',
+    '2026-09-21-signoff-2.md', '2026-09-21-signoff.md');
+  assertBlocked(context(reverse), 'changed since', '2026-09-21-signoff.md');
+});
