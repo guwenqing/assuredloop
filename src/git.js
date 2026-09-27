@@ -52,13 +52,19 @@ function isSingleBranch(top) {
   return Boolean(specs) && !specs.includes('*');
 }
 
+// Main as the tool reads it: origin/main when there is one, else local main.
+export function mainCommit(top) {
+  for (const ref of ['refs/remotes/origin/main', 'refs/heads/main']) {
+    if (git(top, ['rev-parse', '--verify', '--quiet', ref], { allowFail: true }) !== null) return ref;
+  }
+  return null;
+}
+
 // The ref the tool reads as main, and when it was last fetched ([VW-9]).
 // The fetch time is the recorded time of origin/main's last reflog entry, else
 // the time FETCH_HEAD was written; never the clock.
 export function mainRef(top) {
-  if (git(top, ['rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main'], { allowFail: true }) === null) {
-    return 'local main';
-  }
+  if (mainCommit(top) !== 'refs/remotes/origin/main') return 'local main';
   let when = null;
   const reflog = git(top, ['reflog', 'show', '-1', '--format=%gd', '--date=unix', 'refs/remotes/origin/main'], { allowFail: true });
   const m = reflog && reflog.match(/@\{(\d+)\}/);

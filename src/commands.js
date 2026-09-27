@@ -1,7 +1,7 @@
 // The commands built so far: new, record origin, context.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { Fail, git, isShallow, now, stamp } from './git.js';
+import { Fail, git, isShallow, mainCommit, now, stamp } from './git.js';
 import { openTree, findRequest } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
 
@@ -71,6 +71,12 @@ export function recordOrigin({ top, cwd, args, opts }) {
   const tree = openTree(top);
   const dir = findRequest(tree, name ?? '');
   if (!dir) throw new Fail(`no request named ${name ?? ''}`, 'al new <name> --from <file|->');
+  // [REC-1]: an archive on main is never edited; one archived on this branch still may be ([REC-12]).
+  const main = mainCommit(top);
+  if (dir.startsWith('requests/archive/') && main && git(top, ['cat-file', '-e', `${main}:${dir}/request.md`], { allowFail: true }) !== null) {
+    throw new Fail(`${name} is archived on ${main.replace('refs/remotes/', '').replace('refs/heads/', '')}, and an archived request is not edited`,
+      'start a new request that follows it: al new <name> --from <file|->');
+  }
   if ((opts.url === undefined) === (opts.verify === undefined)) throw new Fail('give one of --url <source> or --verify <snapshot>');
   if (opts.fetched !== undefined && !FETCHED.test(opts.fetched)) throw new Fail(`--fetched ${opts.fetched}: write it as YYYY-MM-DDTHH:MMZ`);
   const text = readInput(opts.from, cwd);
@@ -85,7 +91,7 @@ export function recordOrigin({ top, cwd, args, opts }) {
     const bytes = tree.read(path) ?? (existsSync(join(cwd, path)) ? readFileSync(join(cwd, path)) : null);
     if (bytes === null) throw new Fail(`no snapshot ${opts.verify}`, `ls ${dir}/origin`);
     const old = parseSnapshot(bytes);
-    if (!old) throw new Fail(`${opts.verify} is not a snapshot: no SHA-256 line and --- separator`);
+    if (!old) throw new Fail(`${opts.verify} is not a valid snapshot: it needs Source, Fetched and SHA-256, then a --- line`);
     if (!old.intact) body.push(`not ok: ${opts.verify} text no longer matches its SHA-256`);
     if (sha256(text) === old.recorded) {
       body.push(`unchanged since ${old.fields.Fetched}`);
@@ -129,19 +135,20 @@ export function context({ top, args, opts }) {
   const bad = [];
   for (const f of files) {
     const s = parseSnapshot(tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0));
-    if (!s || !s.intact) bad.push(f);
+    if (!s) bad.push([f, 'is not a valid snapshot (it needs Source, Fetched, SHA-256, then ---)']);
+    else if (!s.intact) bad.push([f, 'no longer matches its SHA-256']);
   }
   const body = [
     `${name}  ${title}  ${head.join(' · ')}`,
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
-  for (const f of bad.slice(0, 3)) body.push(line('Hint', `not ok: origin/${f} no longer matches its SHA-256`));
+  for (const [f, why] of bad.slice(0, 3)) body.push(line('Hint', `not ok: origin/${f} ${why}`));
   if (bad.length > 3) body.push(line('Hint', `${bad.length - 3} more hidden`));
   return {
     tree,
     body,
     next: bad.length
-      ? `re-fetch the source of origin/${bad[0]}, then al record ${name} origin --verify ${bad[0]} --from -`
+      ? `re-fetch the source of origin/${bad[0][0]}, then al record ${name} origin ${bad[0][1].startsWith('no longer') ? `--verify ${bad[0][0]}` : '--url <source>'} --from -`
       : `al record ${name} origin --url <source> --from - to snapshot a new original`,
     notKnown: [historyNote(top), 'whether the sources changed since they were fetched'].filter(Boolean),
   };
