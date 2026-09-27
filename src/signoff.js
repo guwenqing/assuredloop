@@ -66,8 +66,9 @@ export function latestSignoff(tree, dir, md) {
   const latest = signoffs.filter((s) => s.fetched === last);
   if (latest.length === 1) return { signoff: latest[0] };
   const line = md.split('\n').find((l) => SIGNED_OFF.test(l)) ?? '';
-  const named = [...line.matchAll(/origin\/([^\s,;()]+)/g)].map((m) => m[1]);
-  const chosen = latest.find((s) => named.includes(s.file));
+  // Only the line's first pointer counts; later ones cite earlier sign-offs.
+  const named = line.match(/origin\/([^\s,;()]+)/)?.[1];
+  const chosen = latest.find((s) => s.file === named);
   return chosen ? { signoff: chosen } : { signoff: null, tie: last };
 }
 
