@@ -1,8 +1,8 @@
 # ADR 0003: Judge every held section by comparing content: link first, then text
 
 Date: 2026-09-27.
-Status: proposed. The rules were re-tested in `case-tests/R1` (154 checks), and the fixes are in `design-v3.3.md` §2b.
-Decided by: the owner, on agreement of the design. Proposed by: the architect.
+Status: accepted.
+Decided by: the owner ("Accept", input 52). Proposed by: the architect.
 Consulted: the adversary, the case testers.
 
 ## Context
