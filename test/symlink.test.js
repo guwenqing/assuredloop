@@ -114,3 +114,18 @@ test('[REC-1][REC-3] contrast: with plain folders, record origin --yes and new s
   assert.equal(n.code, 0, n.stdout + n.stderr);
   assert.ok(readdirSync(join(repo.dir, 'requests', 'brand-new', 'origin')).length === 1);
 });
+
+test('[REC-1][REC-3] record origin --yes refuses when `requests/<name>` links out to a folder with no origin/: nothing created outside', (t) => {
+  const outside = tempDir(t);
+  write(join(outside, 'request.md'), REQUEST_MD);
+  const repo = makeRepo(t);
+  mkdirSync(join(repo.dir, 'requests'));
+  symlinkSync(outside, join(repo.dir, 'requests', 'req-y'));
+  repo.commit('requests/req-y is a link');
+  assertLinkCommitted(repo, 'requests/req-y');
+  const before = tree(outside);
+  const r = runAl(repo.dir, ['record', 'req-y', 'origin', '--url', 'https://example.com/other', '--from', '-',
+    '--fetched', '2026-09-25T08:05Z', '--yes'], { input: EDITED, env: ENV });
+  assertRefused(r, repo, outside, before);
+  assert.deepEqual(readdirSync(outside), ['request.md'], 'no origin/ folder created outside');
+});
