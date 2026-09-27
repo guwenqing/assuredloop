@@ -374,3 +374,13 @@ test('[REC-5][REC-6] real data: al context assuredloop-v1 in this repo is not bl
   const r = runAl(root, ['context', 'assuredloop-v1']);
   assertSigned(r, '2026-09-27-signoff-3.md');
 });
+
+test('[REC-5] a tie on Fetched: the Signed off line names a file exactly, not by prefix', (t) => {
+  // The line names "….md.md", the only one that matches; "2026-09-21-signoff.md" is a prefix of it (both end in .md).
+  const extra = tie(t, '2026-09-21 owner, origin/2026-09-21-signoff.md.md', '2026-09-21-signoff.md.md', '2026-09-21-signoff.md');
+  assertSigned(context(extra), '2026-09-21-signoff.md.md');
+
+  // The reverse: the line names the shorter name, which matches; "….md.md" does not.
+  const plain = tie(t, '2026-09-21 owner, origin/2026-09-21-signoff.md', '2026-09-21-signoff.md', '2026-09-21-signoff.md.md');
+  assertSigned(context(plain), '2026-09-21-signoff.md');
+});
