@@ -32,14 +32,18 @@ export function topLevel(cwd) {
 export function resolveCommit(top, rev) {
   const sha = git(top, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${rev}^{commit}`], { allowFail: true });
   if (sha) return sha;
-  if (isShallow(top)) {
-    throw new Fail(`history unavailable: this clone is shallow, and ${rev} is not in it`, 'git fetch --unshallow, then run it again');
-  }
-  if (isSingleBranch(top)) {
-    throw new Fail(`history unavailable: this clone is single-branch, and ${rev} is not in it`,
-      "git fetch origin '+refs/heads/*:refs/remotes/origin/*', then run it again");
-  }
+  const gap = historyGap(top);
+  if (gap) throw new Fail(`history unavailable: this clone is ${gap.kind}, and ${rev} is not in it`, gap.next);
   throw new Fail(`--at ${rev}: unknown commit`, 'al context <name> --at <a commit in this repo>');
+}
+
+// How this clone lacks history, and the fetch that fills it; null for a full clone.
+export function historyGap(top) {
+  if (isShallow(top)) return { kind: 'shallow', next: 'git fetch --unshallow, then run it again' };
+  if (isSingleBranch(top)) {
+    return { kind: 'single-branch', next: "git fetch origin '+refs/heads/*:refs/remotes/origin/*', then run it again" };
+  }
+  return null;
 }
 
 export function isShallow(top) {
