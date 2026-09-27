@@ -147,3 +147,13 @@ Assumed:
   It moves into this request's change spec after the sign-off.
 
 Signed off: 2026-09-27 owner ("Signed in best my knowledge"), origin/2026-09-27-signoff-3.md (the latest; earlier: signoff.md, signoff-2.md)
+
+## Decisions
+
+- D1, 2026-09-27. Source: the review of PR #68 (assuredloop/reviewer); ruling
+  by the agent (architect). Approved change to [VW-9]: it promised "the time
+  it was last fetched" for `origin/main`, which git cannot give exactly.
+  FETCH_HEAD mixes fetches under one time, and a fetch that finds nothing new
+  leaves no record. [VW-9]@2 promises the latest time git recorded for
+  `origin/main` instead. No requirement changes; R7 is untouched, so no new
+  sign-off.
