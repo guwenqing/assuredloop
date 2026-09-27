@@ -24,13 +24,14 @@ function range(lines, id, n) {
   return { start, end };
 }
 
-// The D-entries of request.md, and where the next one goes.
+// The D-numbers of the entries in request.md's `## Decisions` (to the next
+// level-1/2 heading), and where the next entry goes.
 function decisions(md) {
   const lines = md.split('\n');
   const at = lines.findIndex((l) => /^##\s+Decisions\s*$/.test(l));
-  const ids = [...md.matchAll(/^- D(\d+),/gm)].map((m) => Number(m[1]));
   let end = lines.length;
   if (at >= 0) for (let i = at + 1; i < lines.length; i++) if (/^#{1,2}\s/.test(lines[i])) { end = i; break; }
+  const ids = at < 0 ? [] : lines.slice(at + 1, end).map((l) => l.match(/^- D(\d+),/)?.[1]).filter(Boolean).map(Number);
   let last = end;
   while (last > at + 1 && !lines[last - 1].trim()) last--;
   return { at, ids, insertAt: last, lines };
@@ -72,7 +73,7 @@ export function recordSection({ top, args, opts }) {
   } else if (latest) {
     if (opts['builds-on']) throw new Fail(`${name} already holds [${id}] (${latest.key}); a new version builds on it`, `al record ${name} section ${id} --decision Dn`);
     const d = opts.decision;
-    if (!d || !new RegExp(`^- ${d},`, 'm').test(md)) {
+    if (!/^D\d+$/.test(d ?? '') || !decisions(md).ids.includes(Number(d.slice(1)))) {
       throw new Fail(`a revision of ${latest.key} needs --decision Dn naming an entry in ## Decisions: write the decision first (why, and its source), then pass --decision Dn`,
         `write the decision in ${reqPath}, then al record ${name} section ${id} --decision Dn`);
     }
