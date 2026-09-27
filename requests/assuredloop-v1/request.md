@@ -52,6 +52,9 @@ Type: epic · Tier: 3 · Status: open
   before the sign-off and requires delivery with it or after it. R10 returns
   to its first-signed wording, with no refusal to start spec work. A new
   sign-off is needed; until then this request is blocked.
+- 2026-09-27: after consolidate and conclude were explained, the owner signed
+  the amended requirement: "Signed in best my knowledge". Record:
+  `origin/2026-09-27-signoff-3.md`. The request is no longer blocked.
 
 ## Organized requirement
 
@@ -139,4 +142,4 @@ Assumed:
   this requirement's. The working design is `design-v3.4.md` in the bots repo.
   It moves into this request's change spec after the sign-off.
 
-Signed off: 2026-09-27 owner ("Yes"), origin/2026-09-27-signoff-2.md (replaces origin/2026-09-27-signoff.md)
+Signed off: 2026-09-27 owner ("Signed in best my knowledge"), origin/2026-09-27-signoff-3.md (the latest; earlier: signoff.md, signoff-2.md)
