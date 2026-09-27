@@ -38,6 +38,29 @@ test('[SPC-2] --add-ids on a committed symlink under the root to a .md file outs
   assert.equal(repo.read('specs/real.md').toString('utf8'), '## [INV-1] Real\n');
 });
 
+test('[SPC-2] --add-ids when the root itself is a committed symlink to a directory outside the repo exits 2 and writes nothing, with or without --yes', (t) => {
+  const outDir = join(tempDir(t), 'outside-root');
+  mkdirSync(outDir);
+  const outside = join(outDir, 'x.md');
+  writeFileSync(outside, OUTSIDE);
+  const repo = makeRepo(t);
+  symlinkSync(outDir, join(repo.dir, 'specs'));
+  repo.commit('symlinked root');
+  assert.equal(repo.git(['ls-files', '-s', 'specs']).split(' ')[0], '120000', 'the fixture commits a symlink');
+
+  for (const extra of [[], ['--yes']]) {
+    assertRefused(repo, runAl(repo.dir, ['spec', '--add-ids', 'specs/x.md', '--prefix', 'INV', ...extra]), outside);
+  }
+
+  // Contrast: the same file in a repo whose specs is a real folder is numbered.
+  const plain = makeRepo(t);
+  plain.write('specs/x.md', OUTSIDE);
+  plain.commit('real root');
+  const ok = runAl(plain.dir, ['spec', '--add-ids', 'specs/x.md', '--prefix', 'INV', '--yes']);
+  assert.equal(ok.code, 0, ok.stdout + ok.stderr);
+  assert.equal(plain.read('specs/x.md').toString('utf8'), '# [INV-1] Outside title\n## [INV-2] Dates\nd\n');
+});
+
 test('[SPC-2] --add-ids on a file reached through a symlinked directory under the root exits 2 and writes nothing, with or without --yes', (t) => {
   const outDir = join(tempDir(t), 'outside-dir');
   mkdirSync(outDir);
