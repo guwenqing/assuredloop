@@ -31,10 +31,11 @@ function decisions(md) {
   const at = lines.findIndex((l) => /^##\s+Decisions\s*$/.test(l));
   let end = lines.length;
   if (at >= 0) for (let i = at + 1; i < lines.length; i++) if (/^#{1,2}\s/.test(lines[i])) { end = i; break; }
-  const ids = at < 0 ? [] : lines.slice(at + 1, end).map((l) => l.match(/^- D(\d+),/)?.[1]).filter(Boolean).map(Number);
+  const names = at < 0 ? [] : lines.slice(at + 1, end).map((l) => l.match(/^- (D\d+),/)?.[1]).filter(Boolean);
+  const ids = names.map((n) => Number(n.slice(1)));
   let last = end;
   while (last > at + 1 && !lines[last - 1].trim()) last--;
-  return { at, ids, insertAt: last, lines };
+  return { at, ids, names, insertAt: last, lines };
 }
 
 export function recordSection({ top, args, opts }) {
@@ -73,7 +74,7 @@ export function recordSection({ top, args, opts }) {
   } else if (latest) {
     if (opts['builds-on']) throw new Fail(`${name} already holds [${id}] (${latest.key}); a new version builds on it`, `al record ${name} section ${id} --decision Dn`);
     const d = opts.decision;
-    if (!/^D\d+$/.test(d ?? '') || !decisions(md).ids.includes(Number(d.slice(1)))) {
+    if (!decisions(md).names.includes(d)) {
       throw new Fail(`a revision of ${latest.key} needs --decision Dn naming an entry in ## Decisions: write the decision first (why, and its source), then pass --decision Dn`,
         `write the decision in ${reqPath}, then al record ${name} section ${id} --decision Dn`);
     }
