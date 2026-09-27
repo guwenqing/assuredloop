@@ -1,6 +1,6 @@
 // al spec: the design as it stands ([VW-5]), and numbering headings ([SPC-2], [SPC-3]).
-import { readFileSync, realpathSync, writeFileSync, existsSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { Fail, git, historyGap, isShallow } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, numberHeadings } from './sections.js';
@@ -10,7 +10,7 @@ const PREFIX = /^[A-Z][A-Z0-9]*$/;
 
 // The baseline root: `specs`, or `root: <path>` in `.assuredloop` ([SPC-1]).
 // The baseline is on main, so the root must lie inside this repo: never
-// absolute or through `..`, and in the working tree not out through a symlink.
+// absolute, through `..`, or through a symlink.
 function rootOf(top, tree, at) {
   const config = tree.read('.assuredloop')?.toString('utf8') ?? '';
   const m = config.match(/^root:[ \t]*(.+?)[ \t]*$/m);
@@ -18,13 +18,8 @@ function rootOf(top, tree, at) {
   const root = raw.replace(/\/+$/, '');
   const parts = root.split('/');
   let inside = !isAbsolute(raw) && !parts.includes('..') && !parts.includes('.');
-  if (inside && at) inside = !tree.linkOn(root);
-  if (inside && !at) {
-    try {
-      const repo = realpathSync(top);
-      inside = realpathSync(join(top, root)).startsWith(repo + sep);
-    } catch { /* no root folder yet: an empty baseline */ }
-  }
+  // No part of the root may be a symlink, in the commit or the working tree.
+  if (inside) inside = at ? !tree.linkOn(root) : noSymlinkOn(top, root);
   if (!inside) throw new Fail(`root must be inside this repo: ${raw} (from .assuredloop)`, 'set `root:` in .assuredloop to a folder in this repo');
   return root;
 }
