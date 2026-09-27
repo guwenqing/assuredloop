@@ -417,7 +417,16 @@ Now:
     line and a Not known line. A shallow or single-branch clone that lacks
     history MUST say "history unavailable", never "nothing found".
 
-### [VW-9]@2 add after [VW-8]   for R7
+### [VW-9]@2 modify   for R7
+Was:
+
+    ## [VW-9] Every output says what it read and what is next
+    Every output MUST name the refs it read (working tree, `origin/main` and the
+    time it was last fetched, or local main when there is no remote). It reports
+    times as timestamps, never as ages. It MUST end with a Next
+    line and a Not known line. A shallow or single-branch clone that lacks
+    history MUST say "history unavailable", never "nothing found".
+
 Now:
 
     ## [VW-9] Every output says what it read and what is next
