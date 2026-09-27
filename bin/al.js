@@ -44,7 +44,7 @@ function main(argv) {
     return 0;
   } catch (e) {
     if (!(e instanceof Fail)) throw e;
-    let main = 'no main read (not in a git repository)';
+    let main = { label: 'no main read (not in a git repository)' };
     if (top) try { main = mainRef(top); } catch { /* keep the fallback */ }
     if (!top) read = 'nothing';
     print([`al: ${e.message}`], read, main, e.next ?? USAGE, ['nothing was written']);
@@ -53,7 +53,8 @@ function main(argv) {
 }
 
 function print(body, read, main, next, notKnown) {
-  const text = [...body, line('Read', `${read} · ${main}`), line('Next', next), line('Not known', notKnown.join('; '))]
+  const unknown = main.unknown ? [...notKnown, main.unknown] : notKnown;
+  const text = [...body, line('Read', `${read} · ${main.label}`), line('Next', next), line('Not known', unknown.join('; '))]
     .join('\n');
   process.stdout.write(text + '\n');
 }
