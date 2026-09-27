@@ -14,15 +14,18 @@ const PREFIX = /^[A-Z][A-Z0-9]*$/;
 function rootOf(top, tree, at) {
   const config = tree.read('.assuredloop')?.toString('utf8') ?? '';
   const m = config.match(/^root:[ \t]*(.+?)[ \t]*$/m);
-  const root = m ? m[1].replace(/\/+$/, '') : 'specs';
-  let inside = !isAbsolute(root) && !root.split('/').includes('..');
+  const raw = m ? m[1] : 'specs';
+  const root = raw.replace(/\/+$/, '');
+  const parts = root.split('/');
+  let inside = !isAbsolute(raw) && !parts.includes('..') && !parts.includes('.');
+  if (inside && at) inside = !tree.linkOn(root);
   if (inside && !at) {
     try {
       const repo = realpathSync(top);
       inside = realpathSync(join(top, root)).startsWith(repo + sep);
     } catch { /* no root folder yet: an empty baseline */ }
   }
-  if (!inside) throw new Fail(`root must be inside this repo: ${root} (from .assuredloop)`, 'set `root:` in .assuredloop to a folder in this repo');
+  if (!inside) throw new Fail(`root must be inside this repo: ${raw} (from .assuredloop)`, 'set `root:` in .assuredloop to a folder in this repo');
   return root;
 }
 
