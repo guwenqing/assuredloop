@@ -49,10 +49,12 @@ export function findRequest(tree, name) {
   return null;
 }
 
-// Whether the tool may write `path` (repo-relative): no part of it below the
-// repo top, from the first folder down to the file, is a symlink, wherever the
-// link points. Parts that do not exist yet are created as real folders.
+// Whether the tool may write `path` (repo-relative): it stays inside the repo
+// (no `..`), and no part of it below the repo top, from the first
+// folder down to the file, is a symlink, wherever the link points. Parts that
+// do not exist yet are created as real folders.
 export function noSymlinkOn(top, path) {
+  if (path.split('/').includes('..')) return false;
   let at = top;
   for (const part of path.split('/')) {
     at = join(at, part);
