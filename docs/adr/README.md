@@ -15,7 +15,8 @@ changes only its status.
 | [0007](0007-rough-links-from-git.md) | Rough links from git, with reasons | proposed |
 | [0008](0008-tiers-as-the-way-of-working-with-adrs.md) | Tiers decide which records to write; ADRs are records | proposed |
 | [0009](0009-a-deterministic-script-node-zero-dependencies.md) | A deterministic script, Node, no dependencies | proposed |
-| [0010](0010-requirement-first-signed-and-blocking.md) | Requirement first, signed, and blocking | accepted |
+| [0010](0010-requirement-first-signed-and-blocking.md) | Requirement first, signed, and blocking | superseded by 0011 |
+| [0011](0011-requirement-signed-work-delivered-with-or-after.md) | Requirement signed; work drafted before, delivered with or after | accepted |
 
 **Where the cited material lives.**
 - The design as agreed: `requests/assuredloop-v1/design.md`.

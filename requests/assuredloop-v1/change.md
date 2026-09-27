@@ -91,13 +91,15 @@ Now:
 
     ## [REC-6] The blocked state
     A request is **blocked** while its organized section has no sign-off, or
-    differs from the text last signed off. While a request is blocked:
-    `consolidate` and `conclude` MUST refuse for it, except `consolidate
-    --revert` and `conclude --dropped` when every section retains nothing
-    ([STA-3]); `record section` MUST refuse for it; `context` MUST show the
-    blocked state first; and `check --strict` MUST count it as `not ok` for any
-    branch serving the request. `record signoff` MUST show only what changed
-    since the last sign-off.
+    differs from the text last signed off. Work MAY be drafted while it is
+    blocked, but MUST be delivered with the sign-off or after it. While a request
+    is blocked: `consolidate` and `conclude` MUST refuse for it, except
+    `consolidate --revert` and `conclude --dropped` when every section retains
+    nothing ([STA-3]); `context` MUST show the blocked state first; and `check`
+    MUST report `not ok` for a branch whose final state delivers spec work or
+    other work for the request while it is still blocked in that state. A branch
+    that brings the sign-off with the work is not blocked. `record signoff` MUST
+    show only what changed since the last sign-off.
 
 ### [REC-7]@1 add after [REC-6]   for R2
 Now:
@@ -144,8 +146,10 @@ Now:
     - **S, spike**: a signed organized question and `findings.md`, which starts
       with its Answer; no spec change.
 
-    For tiers 2, 3 and S, the organized section MUST be signed off before any
-    spec work. Tier 1 MAY do everything in one PR.
+    For every tier except 0, the organized section MUST be signed off. Spec work
+    and later work MAY be drafted before the sign-off, but MUST be delivered with
+    it (the same commit or PR) or after it (a later PR). Work MUST NOT land on
+    main in an earlier commit than the sign-off.
 
 ### [REC-11]@1 add after [REC-10]   for R6
 Now:
@@ -486,6 +490,8 @@ Now:
     - a request archived on the branch that no longer meets `conclude`'s rules;
     - a baseline section changed on the branch that equals the "now" of a
       blocked request;
+    - a branch whose final state delivers spec work or other work for a request
+      that is still blocked in that state;
     - a tier-0 claim with a baseline edit;
     - a snapshot whose text no longer matches its SHA-256.
 
@@ -502,7 +508,8 @@ Now:
     - a test result that is not evidence for this change;
     - a tier-0 claim where a nearby promise's tests changed;
     - a missing tier line;
-    - a change spec that reached main before its first sign-off;
+    - work that reached main in an earlier commit than its request's first
+      sign-off;
     - a requirement in no section at conclusion;
     - an open child request when the parent concludes.
 

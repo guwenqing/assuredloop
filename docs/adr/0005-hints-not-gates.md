@@ -29,11 +29,11 @@ Consulted: the adversary.
   `check`), ranked, with "N more". Each view ends with "Next" (the command to
   run) and "Not known".
 - `context`, `spec` and `check` exit 0.
-- **The only refusals are the tool's own commands, for their own request:**
-  - `consolidate` and `conclude` (ADR 0003);
-  - while a request is blocked on sign-off (ADR 0010): `consolidate`,
-    `conclude`, and `record section`, so that no spec work starts before the
-    sign-off (the owner's R3 and R10).
+- **The only refusals are the tool's own `consolidate` and `conclude`, for
+  their own request** (ADR 0003). They also refuse while a request is blocked
+  on its sign-off (ADR 0011). Drafting is never refused. Delivering work for a
+  blocked request is a `not ok` in `check`, not a refusal (owner's R3 and
+  R10).
 - `check --strict` is opt-in for CI. It counts only the diagnostics owned by
   requests the branch serves or archives, so a hotfix is never failed by
   another request's alignment debt.
