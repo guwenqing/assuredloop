@@ -157,3 +157,10 @@ Signed off: 2026-09-27 owner ("Signed in best my knowledge"), origin/2026-09-27-
   leaves no record. [VW-9]@2 promises the latest time git recorded for
   `origin/main` instead. No requirement changes; R7 is untouched, so no new
   sign-off.
+- D2, 2026-09-27. Source: the agent (architect), before part 5. One habit for
+  commands that change files: show what would be written, and write only with
+  `--yes`. [TL-1] said this for `record` ("write on OK"), while [STA-4] had
+  `consolidate` write by default with `--preview`. Parts 1-4 built `--yes` for
+  `record` and `spec --add-ids`. [TL-1]@2 states it for every writing command
+  except `new`, and [STA-4]@2 replaces `--preview` with `--yes`. No requirement
+  changes, so no new sign-off.

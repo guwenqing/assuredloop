@@ -271,7 +271,7 @@ Now:
     kept ([STA-6]). Retaining nothing MUST NOT be inferred from a failure to
     match "now".
 
-### [STA-4]@1 add after [STA-3]   for R4
+### [STA-4]@1 add after [STA-3]   Revised 2026-09-27 (D2)   for R4
 Now:
 
     ## [STA-4] Consolidate
@@ -279,6 +279,32 @@ Now:
     and then write atomically. It writes only sections that are **pending** and not
     marked Dropped: an add after its anchor (refused while the anchor itself is
     pending, unless both go together), a modify in place, a remove. It leaves
+    **consolidated** and **carried** sections alone, and refuses every other
+    state, and every request that is blocked. `consolidate --revert <ID>` puts "was"
+    back, a remove after its recorded anchor, and is allowed while blocked. Anyone
+    MAY consolidate another request's section; the output names its owner.
+
+### [STA-4]@2 modify   for R4
+Was:
+
+    ## [STA-4] Consolidate
+    `consolidate <name> [--section ID] [--preview]` MUST validate everything first
+    and then write atomically. It writes only sections that are **pending** and not
+    marked Dropped: an add after its anchor (refused while the anchor itself is
+    pending, unless both go together), a modify in place, a remove. It leaves
+    **consolidated** and **carried** sections alone, and refuses every other
+    state, and every request that is blocked. `consolidate --revert <ID>` puts "was"
+    back, a remove after its recorded anchor, and is allowed while blocked. Anyone
+    MAY consolidate another request's section; the output names its owner.
+
+Now:
+
+    ## [STA-4] Consolidate
+    `consolidate <name> [--section ID] [--yes]` MUST validate everything first,
+    show what it would write, and with `--yes` write atomically. It writes only
+    sections that are **pending** and not marked Dropped: an add after its
+    anchor (refused while the anchor itself is pending, unless both go
+    together), a modify in place, a remove. It leaves
     **consolidated** and **carried** sections alone, and refuses every other
     state, and every request that is blocked. `consolidate --revert <ID>` puts "was"
     back, a remove after its recorded anchor, and is allowed while blocked. Anyone
@@ -543,7 +569,7 @@ Now:
     NOT count. `conclude` and `consolidate` MUST exit 1 when they refuse. The tool
     MUST exit 2 when it fails itself. Nothing is installed in git hooks.
 
-### [TL-1]@1 add in specs/tool.md   for R7
+### [TL-1]@1 add in specs/tool.md   Revised 2026-09-27 (D2)   for R7
 Now:
 
     ## [TL-1] Commands
@@ -552,6 +578,32 @@ Now:
     from a file or standard input. `record <name>
     decision|signoff|part|section|origin` MUST write only its own part of a
     record, show the diff, and write on OK. `record section <ID> [--builds-on
+    <request>]` MUST copy "was" from the baseline, or pin the named request's
+    latest version. `record origin --url <u> --from -` MUST store a snapshot with
+    its hash, and `--verify <file> --from -` MUST check a re-fetch.
+
+### [TL-1]@2 modify   for R7
+Was:
+
+    ## [TL-1] Commands
+    The tool MUST offer seven commands: `new`, `context`, `spec`, `check`,
+    `record`, `consolidate` and `conclude`. `new` MUST accept the owner's words
+    from a file or standard input. `record <name>
+    decision|signoff|part|section|origin` MUST write only its own part of a
+    record, show the diff, and write on OK. `record section <ID> [--builds-on
+    <request>]` MUST copy "was" from the baseline, or pin the named request's
+    latest version. `record origin --url <u> --from -` MUST store a snapshot with
+    its hash, and `--verify <file> --from -` MUST check a re-fetch.
+
+Now:
+
+    ## [TL-1] Commands
+    The tool MUST offer seven commands: `new`, `context`, `spec`, `check`,
+    `record`, `consolidate` and `conclude`. `new` MUST accept the owner's words
+    from a file or standard input. `record <name>
+    decision|signoff|part|section|origin` MUST write only its own part of a
+    record. Every command that changes files, except `new`, MUST show what it
+    would write, and write only when given `--yes`. `record section <ID> [--builds-on
     <request>]` MUST copy "was" from the baseline, or pin the named request's
     latest version. `record origin --url <u> --from -` MUST store a snapshot with
     its hash, and `--verify <file> --from -` MUST check a re-fetch.
