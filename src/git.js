@@ -1,7 +1,5 @@
 // Every call to git goes through here. Output is a Buffer unless asked as text.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 
 // The tool's own failure or misuse: exit 2 ([HNT-3]), with a Next line.
 export class Fail extends Error {
@@ -60,24 +58,22 @@ export function mainCommit(top) {
   return null;
 }
 
-// The ref the tool reads as main, and when it was last fetched ([VW-9]), from
-// what git recorded, never the clock: the time FETCH_HEAD was written when it
-// lists origin's main, else origin/main's last reflog entry, else the clone
-// (a clone is a fetch).
+// The ref the tool reads as main, and the time git last recorded for it
+// ([VW-9]): origin/main's latest reflog entry (it moved then, by a fetch, a
+// push or the clone), else origin/HEAD's clone entry; never the clock.
+// FETCH_HEAD is not used: it keeps lines from earlier fetches under a new
+// time, so it cannot say which fetch touched main. `unknown` goes on the Not
+// known line.
 export function mainRef(top) {
-  if (mainCommit(top) !== 'refs/remotes/origin/main') return 'local main';
-  const fetchHead = join(git(top, ['rev-parse', '--absolute-git-dir']), 'FETCH_HEAD');
-  const url = git(top, ['remote', 'get-url', 'origin'], { allowFail: true });
-  try {
-    if (url && readFileSync(fetchHead, 'utf8').split('\n').some((l) => l.endsWith(`branch 'main' of ${url}`))) {
-      return `origin/main fetched ${stamp(statSync(fetchHead).mtime)}`;
-    }
-  } catch { /* never fetched */ }
+  if (mainCommit(top) !== 'refs/remotes/origin/main') return { label: 'local main' };
   const [last] = reflogTimes(top, 'refs/remotes/origin/main');
-  if (last) return `origin/main fetched ${stamp(last.when)}`;
-  const clone = reflogTimes(top, 'refs/remotes/origin/HEAD').find((e) => e.subject.startsWith('clone:'));
-  if (clone) return `origin/main (fetched at clone, ${stamp(clone.when)})`;
-  return 'origin/main (last fetch time unknown)';
+  const clone = last ? null : reflogTimes(top, 'refs/remotes/origin/HEAD').find((e) => e.subject.startsWith('clone:'));
+  const when = (last ?? clone)?.when;
+  if (!when) return { label: 'origin/main (time unknown)' };
+  return {
+    label: `origin/main as of ${stamp(when)}${clone ? ' (clone)' : ''}`,
+    unknown: `whether origin/main moved after ${stamp(when)}; a fetch that finds nothing new leaves no record`,
+  };
 }
 
 // A ref's reflog entries, newest first, with their recorded times.
