@@ -1,8 +1,8 @@
 # ADR 0007: Links between requests, spec, code and tests are rough, derived from git, and shown with their reasons
 
 Date: 2026-09-27.
-Status: proposed.
-Decided by: the owner, on agreement of the design. Proposed by: the architect.
+Status: accepted.
+Decided by: the owner ("Accept", input 52). Proposed by: the architect.
 Consulted: the case testers.
 
 ## Context

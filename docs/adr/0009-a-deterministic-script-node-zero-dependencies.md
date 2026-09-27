@@ -1,8 +1,8 @@
 # ADR 0009: A deterministic script: no LLM, network or database; Node ESM with no runtime dependencies
 
 Date: 2026-09-27.
-Status: proposed.
-Decided by: the owner, on agreement of the design. Proposed by: the architect.
+Status: accepted.
+Decided by: the owner ("Accept", input 52). Proposed by: the architect.
 
 ## Context
 

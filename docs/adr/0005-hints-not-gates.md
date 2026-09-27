@@ -1,8 +1,8 @@
 # ADR 0005: Hints in the output, not a harness; only a few hard rules
 
 Date: 2026-09-27.
-Status: proposed.
-Decided by: the owner, on agreement of the design. Proposed by: the architect.
+Status: accepted.
+Decided by: the owner ("Accept", input 52). Proposed by: the architect.
 Consulted: the adversary.
 
 ## Context

@@ -1,8 +1,8 @@
 # ADR 0008: Tiers decide which records to write; ADRs are part of the records
 
 Date: 2026-09-27.
-Status: proposed.
-Decided by: the owner, on agreement of the design. Proposed by: the architect.
+Status: accepted.
+Decided by: the owner ("Accept", input 52). Proposed by: the architect.
 Consulted: the adversary, the case testers.
 
 ## Context
