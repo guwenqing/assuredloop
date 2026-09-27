@@ -115,3 +115,25 @@ test('[REC-1][REC-5] record signoff --yes never writes through a dangling symlin
   assert.ok(readFileSync(join(repo.dir, 'requests/x/request.md'), 'utf8')
     .includes('Signed off: 2026-09-23 owner, origin/2026-09-23-signoff-2.md\n'));
 });
+
+test('[REC-1][REC-5] record signoff --yes refuses a real request folder whose origin/ is a symlink to a folder outside the repo', (t) => {
+  const outside = join(tempDir(t), 'outside-origin');
+  mkdirSync(outside);
+  writeFileSync(join(outside, '2026-09-20-owner-words.md'), OWNER_WORDS);
+  const repo = makeRepo(t);
+  repo.write('requests/x/request.md', REQUEST_MD);
+  symlinkSync(outside, join(repo.dir, 'requests/x/origin'));
+  addRealRequest(repo, 'real');
+  repo.commit('requests/x/origin links outside');
+  assertLinkCommitted(repo, 'requests/x/origin');
+  const before = tree(outside);
+
+  assertRefused(runAl(repo.dir, ['record', 'x', ...SIGN], { env: ENV }), repo);
+  assert.deepEqual(tree(outside), before, 'the outside folder must get no new file');
+  assert.equal(readFileSync(join(repo.dir, 'requests/x/request.md'), 'utf8'), REQUEST_MD, 'request.md must be unchanged');
+
+  // Contrast: the real request in the same repo is signed.
+  const ok = runAl(repo.dir, ['record', 'real', ...SIGN], { env: ENV });
+  assert.equal(ok.code, 0, ok.stdout + ok.stderr);
+  assert.ok(existsSync(join(repo.dir, 'requests/real/origin/2026-09-23-signoff.md')));
+});
