@@ -9,6 +9,7 @@ import { changedParts, latestSignoff, organized, parts, signoffState } from './s
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const TIERS = ['0', '1', '2', '3', 'S'];
+const TIER0 = 'tier 0 has no record ([REC-10]): if this is a fix, say why in the commit and drop the record; otherwise its tier is 1 or higher';
 const FETCHED = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
 
 // A labelled line, as in `Next      al context x`.
@@ -34,6 +35,7 @@ export function newRequest({ top, cwd, args, opts }) {
     throw new Fail(`bad request name ${JSON.stringify(name ?? '')}: use lowercase letters, digits and hyphens`, 'al new <name> --from <file|->');
   }
   if (opts.tier !== undefined && !TIERS.includes(opts.tier)) throw new Fail(`bad tier ${opts.tier}: one of ${TIERS.join(', ')}`);
+  if (opts.tier === '0') throw new Fail(TIER0, 'al new <name> --tier 1 (or higher) when the work changes a promise');
   const words = readInput(opts.from, cwd);
   if (words.length === 0) throw new Fail('no owner\'s words given', 'pass the words with --from <file> or on standard input');
 
@@ -144,6 +146,9 @@ function recordSignoff({ top, args, opts }) {
   if (!opts.source) throw new Fail('--source <where the owner signed> is missing', `al record ${name} signoff --source <where> --words <quote>`);
   const tree = openTree(top);
   const dir = requestToWrite(top, tree, name);
+  if (!noSymlinkOn(top, `${dir}/request.md`) || !noSymlinkOn(top, `${dir}/origin`)) {
+    throw new Fail(`${dir} is reached through a symlink; records are written only through real folders, and nothing was written`, `make ${dir} a real folder in this repo`);
+  }
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const org = organized(md);
   if (!org) throw new Fail(`${dir}/request.md has no "## Organized requirement" (or question) to sign`, `write the organized requirement in ${dir}/request.md`);
@@ -158,7 +163,7 @@ function recordSignoff({ top, args, opts }) {
   const removed = last ? changedParts(org.text, last.text).filter((k) => !parts(org.text).some((p) => p.key === k)) : [];
   const fetched = stamp(now());
   let file = `${fetched.slice(0, 10)}-signoff.md`;
-  for (let n = 2; existsSync(join(top, dir, 'origin', file)); n++) file = `${fetched.slice(0, 10)}-signoff-${n}.md`;
+  for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${fetched.slice(0, 10)}-signoff-${n}.md`;
   const body = [last ? `Changed since ${last.file}:` : 'To be signed (first sign-off):', ...shown];
   if (removed.length) body.push(`Removed: ${removed.join(', ')}`);
   if (!opts.yes) {
@@ -214,6 +219,7 @@ export function context({ top, args, opts }) {
     line('Require', state.blocked ? `${state.reason}${changed}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
+  if (field('Tier') === '0') body.push(line('Hint', `note: ${TIER0}`));
   for (const [f, why] of bad.slice(0, 3)) body.push(line('Hint', `not ok: origin/${f} ${why}`));
   if (bad.length > 3) body.push(line('Hint', `${bad.length - 3} more hidden`));
   return {
