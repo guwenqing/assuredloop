@@ -164,3 +164,8 @@ Signed off: 2026-09-27 owner ("Signed in best my knowledge"), origin/2026-09-27-
   `record` and `spec --add-ids`. [TL-1]@2 states it for every writing command
   except `new`, and [STA-4]@2 replaces `--preview` with `--yes`. No requirement
   changes, so no new sign-off.
+- D3, 2026-09-27. Source: the agent (architect), from the developer's part 5
+  questions. [STA-7] said `conclude` "prints three lines or fewer", while
+  [VW-9] makes every output also name what it read and end with Next and Not
+  known, which is three lines on its own. [STA-7]@2 says three lines or fewer
+  plus those. No requirement changes, so no new sign-off.
