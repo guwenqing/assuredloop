@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Fail, git, isShallow, mainCommit, now, stamp } from './git.js';
-import { openTree, findRequest, writableUnder } from './tree.js';
+import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
@@ -42,8 +42,8 @@ export function newRequest({ top, cwd, args, opts }) {
   if (used) throw new Fail(`the name ${name} is already used (${used}); a request name is never reused`, 'al new <another name> --from <file|->');
 
   // [REC-1]: records are written only inside requests/ in this repo, never through a symlink.
-  if (existsSync(join(top, 'requests')) && !writableUnder(top, 'requests', `requests/${name}`)) {
-    throw new Fail('requests/ leads out of this repo through a symlink; nothing was written', 'make requests/ a real folder in this repo');
+  if (!noSymlinkOn(top, `requests/${name}/origin`)) {
+    throw new Fail('requests/ is a symlink; records are written only through real folders, and nothing was written', 'make requests/ a real folder in this repo');
   }
 
   const date = stamp(now());
@@ -83,8 +83,8 @@ export function recordOrigin({ top, cwd, args, opts }) {
       'start a new request that follows it: al new <name> --from <file|->');
   }
   const origin = `${dir}/origin`;
-  if (!writableUnder(top, 'requests', `${dir}/request.md`) || (existsSync(join(top, origin)) && !writableUnder(top, 'requests', `${origin}/x`))) {
-    throw new Fail(`${dir} leads out of this repo's requests/ through a symlink; nothing was written`, `make ${origin} a real folder in this repo`);
+  if (!noSymlinkOn(top, origin)) {
+    throw new Fail(`${origin} is reached through a symlink; records are written only through real folders, and nothing was written`, `make ${origin} a real folder in this repo`);
   }
   if ((opts.url === undefined) === (opts.verify === undefined)) throw new Fail('give one of --url <source> or --verify <snapshot>');
   if (opts.fetched !== undefined && !FETCHED.test(opts.fetched)) throw new Fail(`--fetched ${opts.fetched}: write it as YYYY-MM-DDTHH:MMZ`);
