@@ -12,7 +12,7 @@ export function formatSnapshot({ source, fetched, updated, text }) {
 }
 
 // The header fields, the text, and whether the text still matches its hash.
-// Null when the file has no header separator or no SHA-256 line.
+// Null when the header lacks Source, Fetched or SHA-256, or the separator.
 export function parseSnapshot(bytes) {
   const fields = {};
   let pos = 0;
@@ -24,7 +24,7 @@ export function parseSnapshot(bytes) {
     if (line.startsWith('---')) {
       const text = bytes.subarray(Math.min(pos, bytes.length));
       const recorded = (fields['SHA-256'] || '').split(/\s/)[0].toLowerCase();
-      if (!recorded) return null;
+      if (!recorded || !fields.Source || !fields.Fetched) return null;
       return { fields, text, recorded, intact: sha256(text) === recorded };
     }
     const m = line.match(/^([^:]+):\s?(.*)$/);
