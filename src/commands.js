@@ -1,5 +1,5 @@
 // The commands built so far: new, record origin, context.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { Fail, git, isShallow, mainCommit, now, stamp } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
@@ -113,7 +113,8 @@ export function recordOrigin({ top, cwd, args, opts }) {
   const snapshot = formatSnapshot({ source, fetched, updated: opts.updated, text });
   const base = `${fetched.slice(0, 10)}-${slug(source)}`;
   let file = `${base}.md`;
-  for (let n = 2; existsSync(join(top, dir, 'origin', file)); n++) file = `${base}-${n}.md`;
+  // A name is taken by anything there, a symlink included, so no write goes through a link.
+  for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${base}-${n}.md`;
   const target = `${dir}/origin/${file}`;
   const shown = snapshot.toString('utf8').replace(/\n$/, '');
   if (opts.yes) {
@@ -125,6 +126,10 @@ export function recordOrigin({ top, cwd, args, opts }) {
   body.push(`Would write ${target}:`, shown);
   return { body, next: 'run the same command with --yes to write it', notKnown: ['whether the source changes after this fetch'] };
 }
+
+const taken = (path) => {
+  try { lstatSync(path); return true; } catch { return false; }
+};
 
 // al context <name> [--at <commit>]: where a request stands (minimal, [VW-2] comes later).
 export function context({ top, args, opts }) {
