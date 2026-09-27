@@ -28,33 +28,40 @@ function readLine(r) {
   return read;
 }
 
-test('[VW-9] spec --at c, where c\'s .assuredloop has root: ../outside, exits 2 and the Read line names c, not the working tree', (t) => {
+test('[VW-9] spec --at c (as a full sha, and as a branch naming it), where c\'s .assuredloop has root: ../outside, exits 2 and the Read line names c, not the working tree or "not found"', (t) => {
   const repo = makeRepo(t);
   const outside = join(dirname(repo.dir), 'outside');
   mkdirSync(outside);
   writeFileSync(join(outside, 'x.md'), '## Outside\n');
   repo.write('.assuredloop', 'root: ../outside\n');
   const c = repo.commit('root outside the repo', { date: '2026-09-20T10:00:00Z' });
+  repo.git(['branch', 'old-root']);
   repo.git(['rm', '-q', '.assuredloop']);
   repo.commit('default root', { date: '2026-09-21T10:00:00Z' });
-  for (const args of [['spec', '--at', c], ['spec', '--list', '--at', c]]) {
-    const r = runAl(repo.dir, args);
-    assert.equal(r.code, 2, r.stdout + r.stderr);
-    const read = readLine(r);
-    assert.ok(read.includes(c.slice(0, 7)), `${args.join(' ')}: the Read line should name ${c.slice(0, 7)}:\n${r.stdout}`);
-    assert.ok(!read.includes('working tree'), `${args.join(' ')}:\n${r.stdout}`);
+  for (const rev of [c, 'old-root']) {
+    for (const args of [['spec', '--at', rev], ['spec', '--list', '--at', rev]]) {
+      const r = runAl(repo.dir, args);
+      assert.equal(r.code, 2, r.stdout + r.stderr);
+      const read = readLine(r);
+      assert.ok(read.includes(c.slice(0, 7)), `${args.join(' ')}: the Read line should name ${c.slice(0, 7)}:\n${r.stdout}`);
+      assert.ok(!read.includes('working tree'), `${args.join(' ')}:\n${r.stdout}`);
+      assert.ok(!read.includes('not found'), `${args.join(' ')}: c resolved, so not "not found":\n${r.stdout}`);
+    }
   }
 });
 
-test('[VW-9] context no-such-request --at c exits 2 and the Read line names c, not the working tree', (t) => {
+test('[VW-9] context no-such-request --at c (as a full sha, and as the branch main) exits 2 and the Read line names c, not the working tree or "not found"', (t) => {
   const repo = makeRepo(t);
   addRequest(repo, 'invoice-download');
   const c = repo.commit('request', { date: '2026-09-20T10:00:00Z' });
-  const r = runAl(repo.dir, ['context', 'no-such-request', '--at', c]);
-  assert.equal(r.code, 2, r.stdout + r.stderr);
-  const read = readLine(r);
-  assert.ok(read.includes(c.slice(0, 7)), `the Read line should name ${c.slice(0, 7)}:\n${r.stdout}`);
-  assert.ok(!read.includes('working tree'), r.stdout);
+  for (const rev of [c, 'main']) {
+    const r = runAl(repo.dir, ['context', 'no-such-request', '--at', rev]);
+    assert.equal(r.code, 2, r.stdout + r.stderr);
+    const read = readLine(r);
+    assert.ok(read.includes(c.slice(0, 7)), `--at ${rev}: the Read line should name ${c.slice(0, 7)}:\n${r.stdout}`);
+    assert.ok(!read.includes('working tree'), `--at ${rev}:\n${r.stdout}`);
+    assert.ok(!read.includes('not found'), `--at ${rev}: c resolved, so not "not found":\n${r.stdout}`);
+  }
 });
 
 for (const rev of ['deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', 'no-such-branch']) {
