@@ -1,6 +1,6 @@
 // al spec: the design as it stands ([VW-5]), and numbering headings ([SPC-2], [SPC-3]).
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { readFileSync, realpathSync, writeFileSync, existsSync } from 'node:fs';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Fail, git, historyGap, isShallow } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, numberHeadings } from './sections.js';
@@ -9,10 +9,21 @@ import { line } from './commands.js';
 const PREFIX = /^[A-Z][A-Z0-9]*$/;
 
 // The baseline root: `specs`, or `root: <path>` in `.assuredloop` ([SPC-1]).
-function rootOf(tree) {
+// The baseline is on main, so the root must lie inside this repo: never
+// absolute or through `..`, and in the working tree not out through a symlink.
+function rootOf(top, tree, at) {
   const config = tree.read('.assuredloop')?.toString('utf8') ?? '';
   const m = config.match(/^root:[ \t]*(.+?)[ \t]*$/m);
-  return m ? m[1].replace(/\/+$/, '') : 'specs';
+  const root = m ? m[1].replace(/\/+$/, '') : 'specs';
+  let inside = !isAbsolute(root) && !root.split('/').includes('..');
+  if (inside && !at) {
+    try {
+      const repo = realpathSync(top);
+      inside = realpathSync(join(top, root)).startsWith(repo + sep);
+    } catch { /* no root folder yet: an empty baseline */ }
+  }
+  if (!inside) throw new Fail(`root must be inside this repo: ${root} (from .assuredloop)`, 'set `root:` in .assuredloop to a folder in this repo');
+  return root;
 }
 
 // The baseline's Markdown files, each with its sections.
@@ -38,7 +49,7 @@ export function spec(ctx) {
   const { top, opts } = ctx;
   if (opts['add-ids'] !== undefined) return addIds(ctx);
   const tree = openTree(top, opts.at);
-  const root = rootOf(tree);
+  const root = rootOf(top, tree, opts.at);
   const files = baseline(tree, root);
   const notKnown = [isShallow(top) && 'history unavailable (shallow clone)', 'whether the code does what the spec says (tests and review judge that)'].filter(Boolean);
   if (!files.length) {
@@ -86,7 +97,7 @@ function addIds({ top, cwd, opts }) {
       'al spec --add-ids <file> --prefix <PREFIX>');
   }
   const tree = openTree(top);
-  const root = rootOf(tree);
+  const root = rootOf(top, tree, opts.at);
   const path = relative(top, resolve(cwd, opts['add-ids']));
   if (!path.endsWith('.md') || !path.startsWith(`${root}/`) || !existsSync(join(top, path)) || !noSymlinkOn(top, path)) {
     throw new Fail(`${opts['add-ids']}: give a .md file under the baseline root ${root}/, not through a symlink`, `al spec --list shows the files under ${root}/`);
