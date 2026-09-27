@@ -170,6 +170,45 @@ test('[REC-5][REC-6] a sign-off whose signed text no longer matches its SHA-256 
   assertBlocked(context(repo));
 });
 
+test('[REC-5] a sign-off with a bad hash is dropped before the latest is chosen: an older good one matching the text counts', (t) => {
+  const repo = makeRepo(t);
+  addRequest(repo, 'invoice-download', 'Customers can download invoices', ORG);
+  addSignoff(repo, 'invoice-download', '2026-09-21-signoff.md', '2026-09-21T10:00Z', ORG);
+  // Newer, but its signed text is not the text its hash is of.
+  const edited = ORG.replace(R2, R2_EDITED);
+  addSignoff(repo, 'invoice-download', '2026-09-22-signoff.md', '2026-09-22T10:00Z', edited.replace('PDF', 'XLS'), sha256(edited));
+  assertSigned(context(repo), '2026-09-21-signoff.md', ['2026-09-22-signoff.md']);
+});
+
+// Two sign-offs with the same Fetched: one of ORG (matching), one of other text.
+function tie(t, signedOff, matching, other) {
+  const repo = makeRepo(t);
+  addRequest(repo, 'invoice-download', 'Customers can download invoices', ORG, { signedOff });
+  addSignoff(repo, 'invoice-download', matching, '2026-09-21T10:00Z', ORG);
+  addSignoff(repo, 'invoice-download', other, '2026-09-21T10:00Z', ORG.replace(R2, R2_EDITED));
+  return repo;
+}
+
+test('[REC-5] a tie on Fetched: the sign-off that the Signed off line names counts, whichever file name it has', (t) => {
+  for (const [matching, other] of [['2026-09-21-signoff.md', '2026-09-21-signoff-2.md'], ['2026-09-21-signoff-2.md', '2026-09-21-signoff.md']]) {
+    const repo = tie(t, `2026-09-21 owner, origin/${matching}`, matching, other);
+    assertSigned(context(repo), matching, [other]);
+  }
+  // The Signed off line naming the file whose text does not match: blocked.
+  const repo = tie(t, '2026-09-21 owner, origin/2026-09-21-signoff-2.md', '2026-09-21-signoff.md', '2026-09-21-signoff-2.md');
+  assertBlocked(context(repo), 'changed since', '2026-09-21-signoff-2.md');
+});
+
+test('[REC-5][REC-6] a tie on Fetched that the Signed off line does not settle: BLOCKED, with a hint naming the time and "not known"', (t) => {
+  for (const signedOff of ['pending', '2026-09-20 owner, origin/2026-09-20-signoff.md']) {
+    const repo = tie(t, signedOff, '2026-09-21-signoff.md', '2026-09-21-signoff-2.md');
+    const r = context(repo);
+    assertBlocked(r);
+    assert.ok(lines(r.stdout).some((l) => l.includes('2026-09-21T10:00Z') && /not known/i.test(l)),
+      `a line should give the shared time and say which counts is not known:\n${r.stdout}`);
+  }
+});
+
 test('C7 [REC-6] "changed since sign-off" survives a squash: the text is compared, not the commits', (t) => {
   const repo = signed(t);
   repo.commit('sign off', { date: '2026-09-21T10:00:00Z' });
@@ -276,6 +315,43 @@ test('[REC-5] a child is judged against the parent\'s latest signed text, not th
   assert.equal(signedCopy.code, 0, signedCopy.stderr);
   assert.ok(!signedCopy.stdout.includes('BLOCKED'), `copy of the signed text should not be blocked:\n${signedCopy.stdout}`);
   assertBlocked(context(repo, 'email-link-pdf'));
+});
+
+test('[REC-5][REC-6] a child\'s own sign-off binds deletions: deleting a part it signed blocks it', (t) => {
+  const repo = parentWithChildren(t, ['email-link']);
+  const own = '### R2 Link expiry\nThe link MUST work for 30 days.\n';
+  const org = childOrg(COPIED_R1, own);
+  addRequest(repo, 'email-link', 'Invoice emails carry the link', org);
+  addSignoff(repo, 'email-link', '2026-09-24-signoff.md', '2026-09-24T09:00Z', org);
+  const before = context(repo, 'email-link');
+  assert.equal(before.code, 0, before.stderr);
+  assert.ok(!before.stdout.includes('BLOCKED'), `signed child should not be blocked:\n${before.stdout}`);
+
+  // R1 alone is still word for word in the parent, but the child signed R2 too.
+  repo.write('requests/email-link/request.md', requestMd('Invoice emails carry the link', childOrg(COPIED_R1)));
+  assertBlocked(context(repo, 'email-link'));
+});
+
+test('[REC-5] a child with no own sign-off that drops one of the parent\'s copied R-lines stays signed', (t) => {
+  const repo = parentWithChildren(t, ['email-link']);
+  const copiedR2 = P_R2.replace('### R2', '### R1');
+  const copiedR3 = P_R3.replace('### R3', '### R2');
+  addRequest(repo, 'email-link', 'Invoice emails carry the link', childOrg(copiedR2, copiedR3));
+  const both = context(repo, 'email-link');
+  assert.equal(both.code, 0, both.stderr);
+  assert.ok(!both.stdout.includes('BLOCKED'), `child copying two lines should not be blocked:\n${both.stdout}`);
+
+  repo.write('requests/email-link/request.md', requestMd('Invoice emails carry the link', childOrg(copiedR3.replace('### R2', '### R1'))));
+  const one = context(repo, 'email-link');
+  assert.equal(one.code, 0, one.stderr);
+  assert.ok(!one.stdout.includes('BLOCKED'), `child that dropped a copied line should not be blocked:\n${one.stdout}`);
+  assert.ok(one.stdout.includes('invoice-epic'), `child should name its parent:\n${one.stdout}`);
+});
+
+test('[REC-5][REC-6] a copied R-line whose title differs from the parent\'s is blocked, though its body is word for word', (t) => {
+  const repo = parentWithChildren(t, ['email-link']);
+  addRequest(repo, 'email-link', 'Invoice emails carry the link', childOrg(COPIED_R1.replace('Email link', 'Email links')));
+  assertBlocked(context(repo, 'email-link'));
 });
 
 test('[REC-5][REC-6] real data: al context assuredloop-v1 in this repo is not blocked and names 2026-09-27-signoff-3.md', () => {
