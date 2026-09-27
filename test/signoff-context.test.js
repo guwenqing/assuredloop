@@ -354,6 +354,21 @@ test('[REC-5][REC-6] a copied R-line whose title differs from the parent\'s is b
   assertBlocked(context(repo, 'email-link'));
 });
 
+test('[REC-5] a request whose name is a prefix of a child\'s is not a child: its copy of the parent\'s text is blocked', (t) => {
+  const repo = parentWithChildren(t, ['email-link']);
+  addRequest(repo, 'email-link', 'Invoice emails carry the link', childOrg(COPIED_R1));
+  addRequest(repo, 'email', 'Invoice emails', childOrg(COPIED_R1));
+
+  const prefix = context(repo, 'email');
+  assertBlocked(prefix, 'awaiting owner sign-off');
+  assert.ok(!prefix.stdout.includes('invoice-epic'), `"email" should not name a parent:\n${prefix.stdout}`);
+
+  const child = context(repo, 'email-link');
+  assert.equal(child.code, 0, child.stderr);
+  assert.ok(!child.stdout.includes('BLOCKED'), `the child should not be blocked:\n${child.stdout}`);
+  assert.ok(child.stdout.includes('invoice-epic'), `the child should name its parent:\n${child.stdout}`);
+});
+
 test('[REC-5][REC-6] real data: al context assuredloop-v1 in this repo is not blocked and names 2026-09-27-signoff-3.md', () => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const r = runAl(root, ['context', 'assuredloop-v1']);
