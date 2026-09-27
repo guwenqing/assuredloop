@@ -332,7 +332,7 @@ Now:
     before it can be kept. A section carried by a successor MUST NOT be reverted,
     only kept. Dropping never touches the baseline or another request.
 
-### [STA-7]@1 add after [STA-6]   for R4
+### [STA-7]@1 add after [STA-6]   Revised 2026-09-27 (D3)   for R4
 Now:
 
     ## [STA-7] Conclude
@@ -344,6 +344,31 @@ Now:
     `Status: dropped`; when every section retains nothing it needs no sign-off,
     and otherwise every retained section must be reverted or kept. It prints three
     lines or fewer.
+
+### [STA-7]@2 modify   for R4
+Was:
+
+    ## [STA-7] Conclude
+    `conclude <name>` MUST read the working tree and name what it read. It MUST
+    refuse unless the organized section's sign-off is current and every held
+    section is consolidated, carried, dropped while retaining nothing (or
+    reverted), or kept. On success it writes the Outcome, sets `Status: concluded`,
+    and moves the folder to `requests/archive/`. `conclude <name> --dropped Dn` sets
+    `Status: dropped`; when every section retains nothing it needs no sign-off,
+    and otherwise every retained section must be reverted or kept. It prints three
+    lines or fewer.
+
+Now:
+
+    ## [STA-7] Conclude
+    `conclude <name>` MUST read the working tree and name what it read. It MUST
+    refuse unless the organized section's sign-off is current and every held
+    section is consolidated, carried, dropped while retaining nothing (or
+    reverted), or kept. On success it writes the Outcome, sets `Status: concluded`,
+    and moves the folder to `requests/archive/`. `conclude <name> --dropped Dn` sets
+    `Status: dropped`; when every section retains nothing it needs no sign-off,
+    and otherwise every retained section must be reverted or kept. It prints three
+    lines or fewer, plus the Read, Next and Not known lines ([VW-9]).
 
 ### [STA-8]@1 add after [STA-7]   for R4, R7
 Now:
