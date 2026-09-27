@@ -1,7 +1,7 @@
 // Every read goes through a tree: the working tree, or a commit's tree read
 // through git ([VW-8]). Paths are relative to the repo's top level.
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
 import { git, resolveCommit } from './git.js';
 
 export function openTree(top, at) {
@@ -13,6 +13,13 @@ export function openTree(top, at) {
       },
       list(dir) {
         try { return readdirSync(join(top, dir)).sort(); } catch { return null; }
+      },
+      // Every file under `dir`, as repo-relative paths in path order.
+      walk(dir) {
+        try {
+          return readdirSync(join(top, dir), { recursive: true, withFileTypes: true }).filter((d) => d.isFile())
+            .map((d) => relative(top, join(d.parentPath, d.name))).sort();
+        } catch { return []; }
       },
     };
   }
@@ -27,6 +34,10 @@ export function openTree(top, at) {
       if (!out) return null;
       return out.split('\n').map((p) => p.slice(dir.length + 1)).sort();
     },
+    walk(dir) {
+      const out = git(top, ['ls-tree', '-r', '--name-only', sha, '--', `${dir}/`], { allowFail: true });
+      return out ? out.split('\n').sort() : [];
+    },
   };
 }
 
@@ -36,4 +47,18 @@ export function findRequest(tree, name) {
     if (tree.read(`${dir}/request.md`) !== null) return dir;
   }
   return null;
+}
+
+// Whether the tool may write `path` (repo-relative): with every symlink
+// resolved, its folder lies inside `base` (repo-relative), which lies inside
+// the repo, and the file itself, if it exists, is not a symlink. A lexical
+// check alone would follow a tracked symlink out of the repo.
+export function writableUnder(top, base, path) {
+  const inside = (child, parent) => child === parent || child.startsWith(parent + sep);
+  try {
+    const repo = realpathSync(top);
+    const realBase = realpathSync(join(top, base));
+    if (!inside(realBase, repo) || !inside(realpathSync(dirname(join(top, path))), realBase)) return false;
+  } catch { return false; }
+  try { return !lstatSync(join(top, path)).isSymbolicLink(); } catch { return true; }
 }
