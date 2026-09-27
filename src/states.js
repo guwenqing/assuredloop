@@ -65,7 +65,7 @@ export function parseChange(text, request) {
 const same = (a, b) => a != null && b != null && sameSection(a, b);
 // A section's body: the lines under its heading, trailing spaces and blank edge lines
 // dropped ([SPC-4]); indentation is kept.
-const body = (text) => text.split('\n').slice(1).map((l) => l.replace(/[ \t]+$/, '')).join('\n').replace(/^\n+|\n+$/g, '');
+const body = (text) => text.replace(/\r\n/g, '\n').split('\n').slice(1).map((l) => l.replace(/[ \t]+$/, '')).join('\n').replace(/^\n+|\n+$/g, '');
 
 // Every block of every request (archived ones too, for chains), with the
 // request's status.
