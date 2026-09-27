@@ -1,8 +1,8 @@
 // The commands built so far: new, record origin, context.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { Fail, git, isShallow, mainCommit, now, stamp } from './git.js';
-import { openTree, findRequest } from './tree.js';
+import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
@@ -41,6 +41,11 @@ export function newRequest({ top, cwd, args, opts }) {
     (git(top, ['log', '--all', '-1', '--format=%h', '--', ...paths], { allowFail: true }) ? 'git history' : null);
   if (used) throw new Fail(`the name ${name} is already used (${used}); a request name is never reused`, 'al new <another name> --from <file|->');
 
+  // [REC-1]: records are written only inside requests/ in this repo, never through a symlink.
+  if (!noSymlinkOn(top, `requests/${name}/origin`)) {
+    throw new Fail('requests/ is a symlink; records are written only through real folders, and nothing was written', 'make requests/ a real folder in this repo');
+  }
+
   const date = stamp(now());
   const snapName = `${date.slice(0, 10)}-owner-words.md`;
   const dir = join(top, 'requests', name);
@@ -77,6 +82,10 @@ export function recordOrigin({ top, cwd, args, opts }) {
     throw new Fail(`${name} is archived on ${main.replace('refs/remotes/', '').replace('refs/heads/', '')}, and an archived request is not edited`,
       'start a new request that follows it: al new <name> --from <file|->');
   }
+  const origin = `${dir}/origin`;
+  if (!noSymlinkOn(top, origin)) {
+    throw new Fail(`${origin} is reached through a symlink; records are written only through real folders, and nothing was written`, `make ${origin} a real folder in this repo`);
+  }
   if ((opts.url === undefined) === (opts.verify === undefined)) throw new Fail('give one of --url <source> or --verify <snapshot>');
   if (opts.fetched !== undefined && !FETCHED.test(opts.fetched)) throw new Fail(`--fetched ${opts.fetched}: write it as YYYY-MM-DDTHH:MMZ`);
   const text = readInput(opts.from, cwd);
@@ -104,7 +113,8 @@ export function recordOrigin({ top, cwd, args, opts }) {
   const snapshot = formatSnapshot({ source, fetched, updated: opts.updated, text });
   const base = `${fetched.slice(0, 10)}-${slug(source)}`;
   let file = `${base}.md`;
-  for (let n = 2; existsSync(join(top, dir, 'origin', file)); n++) file = `${base}-${n}.md`;
+  // A name is taken by anything there, a symlink included, so no write goes through a link.
+  for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${base}-${n}.md`;
   const target = `${dir}/origin/${file}`;
   const shown = snapshot.toString('utf8').replace(/\n$/, '');
   if (opts.yes) {
@@ -116,6 +126,10 @@ export function recordOrigin({ top, cwd, args, opts }) {
   body.push(`Would write ${target}:`, shown);
   return { body, next: 'run the same command with --yes to write it', notKnown: ['whether the source changes after this fetch'] };
 }
+
+const taken = (path) => {
+  try { lstatSync(path); return true; } catch { return false; }
+};
 
 // al context <name> [--at <commit>]: where a request stands (minimal, [VW-2] comes later).
 export function context({ top, args, opts }) {
