@@ -55,6 +55,10 @@ Type: epic · Tier: 3 · Status: open
 - 2026-09-27: after consolidate and conclude were explained, the owner signed
   the amended requirement: "Signed in best my knowledge". Record:
   `origin/2026-09-27-signoff-3.md`. The request is no longer blocked.
+- 2026-09-27: a new snapshot of the owner's inputs, now 1-53, including the
+  clarifications that changed R3 (inputs 49-50) and the later decisions
+  (51-53). Snapshot: `origin/2026-09-27-owner-inputs-2.md`. The earlier
+  snapshot (inputs 1-48) is kept.
 
 ## Organized requirement
 
