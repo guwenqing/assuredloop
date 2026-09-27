@@ -214,11 +214,12 @@ Now:
 
     ## [SPC-5] The change spec
     `change.md` holds the change's why and design as prose, then `## Spec changes`
-    with one block per held section. A block's heading is `### [ID]@<n> <op>`,
+    with one block per version of a held section. A block's heading is `### [ID]@<n> <op>`,
     where `<n>` counts that section's versions within this request, and `<op>` is
     `modify`, `add in <path>` (at the end of that file, which is created if
     needed), `add after [ID]`, or `remove, was after [ID]`. Its text is `Was:` and
-    `Now:`, each an indented or fenced block holding exactly one heading. Markers
+    `Now:`, each an indented or fenced block holding exactly one heading: an add
+    has no `Was:`, a remove has no `Now:`, and a modify has both. Markers
     after the op: `builds on <request>/<ID>@<n>` (or `builds on @<n>` within the
     request), `Dropped <date> (Dn)`, `Kept <date> (Dn)`, `Revised <date> (Dn)`,
     and optionally `for R<n>`.
@@ -407,7 +408,8 @@ Now:
 
     ## [VW-9] Every output says what it read and what is next
     Every output MUST name the refs it read (working tree, `origin/main` and the
-    fetch's age, or local main when there is no remote). It MUST end with a Next
+    time it was last fetched, or local main when there is no remote). It reports
+    times as timestamps, never as ages. It MUST end with a Next
     line and a Not known line. A shallow or single-branch clone that lacks
     history MUST say "history unavailable", never "nothing found".
 
@@ -534,8 +536,10 @@ Now:
     ## [TL-2] Deterministic and plain
     The tool MUST make no network calls, no AI calls, and keep no database or
     cache that holds unique truth. It is Node ESM with no runtime dependencies
-    beyond Node and git, tested with `node --test`. The same inputs MUST give the
-    same output.
+    beyond Node and git, tested with `node --test`. The same inputs (the
+    repository, its refs and their recorded times, the working tree, and the
+    command line) MUST give the same output. It MUST NOT read the clock, except
+    to stamp what it writes.
 
 ### [TL-3]@1 add after [TL-2]   for R10
 Now:

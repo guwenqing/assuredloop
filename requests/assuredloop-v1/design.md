@@ -319,10 +319,10 @@ SHA-256: 5d41402abc4b2a76b9719d911017c592...   (of the text below)
 The spec text is not signed (owner decision 3).
 
 **`change.md`**: why and design as free prose, then `## Spec changes` with one
-block per held section:
+block per version of a held section:
 
 ```markdown
-### [INV-3] modify          (path hint: specs/invoices.md)
+### [INV-3]@1 modify          (path hint: specs/invoices.md)
 Was:
     ## [INV-3] Dates
     Dates show in the customer's local format.
@@ -330,14 +330,15 @@ Now:
     ## [INV-3] Dates
     Dates MUST show in ISO 8601.
 
-### [INV-7] add after [INV-3]   for R1
+### [INV-7]@1 add after [INV-3]   for R1          (an add has no Was:)
 Now:
     ## [INV-7] CSV export
     A customer MUST be able to export one invoice as CSV from the invoice page.
 
-### [INV-3] modify, builds on invoice-download/INV-3@1   (in another request)
+### [INV-3]@1 modify, builds on invoice-download/INV-3@1   (in another request)
 ```
 
+- An add has no `Was:`, a remove has no `Now:`, and a modify has both.
 - A block is the indented or fenced text after `Was:` or `Now:`; blank lines
   inside it are kept. **A block holds exactly one heading**; a second one is
   flagged by `record` and `check`.

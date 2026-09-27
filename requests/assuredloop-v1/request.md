@@ -36,6 +36,11 @@ Type: epic · Tier: 3 · Status: open
     development as well, even though no tool yet".
 - 2026-09-27: the owner signed off the organized requirement below: "Signed".
   Record: `origin/2026-09-27-signoff.md`, with the exact text and its SHA-256.
+- 2026-09-27: the review of PR #56 found that R10 ("only consolidate and
+  conclude refuse") conflicts with R3 ("signed off before any spec work"),
+  which the design enforces by also refusing `record section` while
+  unsigned. The AI proposed amending R10 to name that refusal, and asked the
+  owner to re-sign. Until then this request is blocked.
 
 ## Organized requirement
 
@@ -93,10 +98,11 @@ Lasting decisions MUST be recorded as ADRs in the kit's format. The tool MUST
 show the ADRs that govern a section, and flag broken supersede links.
 
 ### R10 Hints, not a harness
-The tool MUST give hints in its output. It MUST NOT block commits or merges:
-only its own consolidate and conclude refuse, and a strict mode is opt-in. It
-MUST NOT enforce the way of working (tests-first, review, the PR flow), which
-belongs to the bots.
+The tool MUST give hints in its output. It MUST NOT block commits or merges.
+Only its own commands refuse, for their own request: consolidate and conclude,
+and starting spec work while the requirement is not signed off (R3). A strict
+mode is opt-in. It MUST NOT enforce the way of working (tests-first, review,
+the PR flow), which belongs to the bots.
 
 ### R11 Light and plain
 The tool MUST run offline and deterministically, with no database and no AI

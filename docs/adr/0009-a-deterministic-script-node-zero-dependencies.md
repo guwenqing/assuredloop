@@ -19,8 +19,13 @@ Decided by: the owner, on agreement of the design. Proposed by: the architect.
 
 - The CLI is deterministic:
   - no LLM calls;
-  - no network (a URL original is recorded as link only);
-  - no database or cache holding unique truth.
+  - no network. The agent fetches originals, and the tool stores each as a
+    snapshot with its SHA-256 and fetch metadata (ADR 0006);
+  - no database or cache holding unique truth;
+  - the same inputs give the same output. The inputs are the repository, its
+    refs and their recorded times, the working tree, and the command line.
+    The tool reads no clock except to stamp what it writes, and reports times
+    as timestamps, never as ages.
 - It is written in Node ESM with zero runtime dependencies (only Node and git,
   version floor to confirm), and tested with `node --test`.
 - It has 7 commands, a CLI and one skill, and no MCP server.
