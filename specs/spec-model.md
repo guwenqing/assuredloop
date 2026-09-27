@@ -26,3 +26,15 @@ trailing spaces and tabs on each line; blank lines at the start and end of the
 section and between its heading and body; and the number of `#` in the
 heading. Code blocks, indentation and list structure MUST be compared exactly.
 Scope inherited from a parent heading is outside the comparison.
+
+## [SPC-5] The change spec
+`change.md` holds the change's why and design as prose, then `## Spec changes`
+with one block per version of a held section. A block's heading is `### [ID]@<n> <op>`,
+where `<n>` counts that section's versions within this request, and `<op>` is
+`modify`, `add in <path>` (at the end of that file, which is created if
+needed), `add after [ID]`, or `remove, was after [ID]`. Its text is `Was:` and
+`Now:`, each an indented or fenced block holding exactly one heading: an add
+has no `Was:`, a remove has no `Now:`, and a modify has both. Markers
+after the op: `builds on <request>/<ID>@<n>` (or `builds on @<n>` within the
+request), `Dropped <date> (Dn)`, `Kept <date> (Dn)`, `Revised <date> (Dn)`,
+and optionally `for R<n>`.

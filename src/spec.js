@@ -11,7 +11,7 @@ const PREFIX = /^[A-Z][A-Z0-9]*$/;
 // The baseline root: `specs`, or `root: <path>` in `.assuredloop` ([SPC-1]).
 // The baseline is on main, so the root must lie inside this repo: never
 // absolute, through `..`, or through a symlink.
-function rootOf(top, tree, at) {
+export function rootOf(top, tree, at) {
   const config = tree.read('.assuredloop')?.toString('utf8') ?? '';
   const m = config.match(/^root:[ \t]*(.+?)[ \t]*$/m);
   const raw = m ? m[1] : 'specs';
@@ -25,7 +25,7 @@ function rootOf(top, tree, at) {
 }
 
 // The baseline's Markdown files, each with its sections.
-function baseline(tree, root) {
+export function baseline(tree, root) {
   return tree.walk(root).filter((p) => p.endsWith('.md'))
     .map((path) => ({ path, text: tree.read(path).toString('utf8') }))
     .map((f) => ({ ...f, sections: parseSections(f.text) }));

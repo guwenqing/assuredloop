@@ -6,6 +6,24 @@ import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
 import { sameSection } from './sections.js';
 import { changedParts, latestSignoff, organized, parts, signoffState } from './signoff.js';
+import { changeStates } from './states.js';
+import { recordSection } from './record-section.js';
+
+const BAD = ['differs', 'broken link', 'base revised', 'base dropped', 'not found'];
+
+// The entries of a `## <title>` section: its bullet or numbered items, each with its continuation lines.
+function entriesOf(text, title) {
+  const lines = text.split('\n');
+  const at = lines.findIndex((l) => new RegExp(`^##\\s+${title}\\s*$`).test(l));
+  if (at < 0) return [];
+  const out = [];
+  for (const l of lines.slice(at + 1)) {
+    if (/^#{1,2}\s/.test(l)) break;
+    if (/^(-|\d+\.)\s/.test(l)) out.push(l.trim());
+    else if (l.trim() && out.length) out[out.length - 1] += ` ${l.trim()}`;
+  }
+  return out;
+}
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const TIERS = ['0', '1', '2', '3', 'S'];
@@ -78,7 +96,8 @@ export function recordOrigin(ctx) {
   const { top, cwd, args, opts } = ctx;
   const [name, kind] = args;
   if (kind === 'signoff') return recordSignoff(ctx);
-  if (kind !== 'origin') throw new Fail(`record ${kind ?? ''}: only "record <name> origin|signoff" is built so far`, 'al record <name> origin --url <source> --from -');
+  if (kind === 'section') return recordSection(ctx);
+  if (kind !== 'origin') throw new Fail(`record ${kind ?? ''}: only "record <name> origin|signoff|section" is built so far`, 'al record <name> origin --url <source> --from -');
   const tree = openTree(top);
   const dir = requestToWrite(top, tree, name);
   const origin = `${dir}/origin`;
@@ -128,7 +147,7 @@ export function recordOrigin(ctx) {
 
 // The folder of a request the tool may write: it exists, and is not archived on
 // main ([REC-1]; one archived on this branch still may be, [REC-12]).
-function requestToWrite(top, tree, name) {
+export function requestToWrite(top, tree, name) {
   const dir = findRequest(tree, name ?? '');
   if (!dir) throw new Fail(`no request named ${name ?? ''}`, 'al new <name> --from <file|->');
   const main = mainCommit(top);
@@ -219,9 +238,37 @@ export function context({ top, args, opts }) {
     line('Require', state.blocked ? `${state.reason}${changed}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
-  if (field('Tier') === '0') body.push(line('Hint', `note: ${TIER0}`));
-  for (const [f, why] of bad.slice(0, 3)) body.push(line('Hint', `not ok: origin/${f} ${why}`));
-  if (bad.length > 3) body.push(line('Hint', `${bad.length - 3} more hidden`));
+  // [VW-2]: the decisions, the held sections, the parts, and who else holds sections in the same files.
+  const text = md.join('\n');
+  const decisions = entriesOf(text, 'Decisions').filter((e) => /^- D\d+/.test(e)).reverse().map((e) => {
+    const source = e.match(/Source:\s*([\s\S]*?)(?:\.\s|\.$|$)/)?.[1] ?? '';
+    return `${e.match(/^- (D\d+)/)[1]} ${e.match(/\d{4}-\d\d-\d\d/)?.[0] ?? ''}${/\bagent\b/.test(source) ? ' (agent ruling)' : ''}`.trim();
+  });
+  if (decisions.length) body.push(line('Decided', decisions.join(' · ')));
+  const all = changeStates(top, { at: opts.at });
+  const held = all.filter((e) => e.request === name);
+  const count = (id) => held.filter((e) => e.id === id).length;
+  const label = (e) => (count(e.id) > 1 ? `${e.id}@${e.n}` : e.id);
+  if (held.length) {
+    body.push(line('Spec', held.map((e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`).join(' · ')));
+  }
+  const parts = entriesOf(text, 'Parts');
+  if (parts.length) body.push(line('Parts', parts.map((p) => p.replace(/\s+/g, ' ')).join(' · ')));
+  const mine = new Set(held.map((e) => e.file).filter(Boolean));
+  const others = all.filter((e) => e.request !== name && mine.has(e.file));
+  if (others.length) body.push(line('Same file', others.map((e) => `${e.request} holds ${e.id} in ${e.file} (${e.state})`).join(' · ')));
+
+  const hints = [];
+  if (field('Tier') === '0') hints.push(`note: ${TIER0}`);
+  for (const [f, why] of bad) hints.push(`not ok: origin/${f} ${why}`);
+  for (const e of held.filter((x) => BAD.includes(x.state))) {
+    hints.push(`not ok: ${label(e)} ${e.state}${e.candidates.length ? `; candidates: ${e.candidates.join(', ')}` : ''}`);
+  }
+  // Twelve lines at most ([VW-2]): the hints get what is left after the Read, Next and Not known lines.
+  const room = Math.max(0, Math.min(3, 12 - body.length - 3));
+  const shown = hints.slice(0, room);
+  if (room && hints.length > room) shown[room - 1] += ` (+${hints.length - room} more)`;
+  body.push(...shown.map((h) => line('Hint', h)));
   return {
     tree,
     body,
