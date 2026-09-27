@@ -34,6 +34,8 @@ Type: epic · Tier: 3 · Status: open
       of writing.
   - Then: "Looks good so far", and "follow the same method for this
     development as well, even though no tool yet".
+- 2026-09-27: the owner signed off the organized requirement below: "Signed".
+  Record: `origin/2026-09-27-signoff.md`, with the exact text and its SHA-256.
 
 ## Organized requirement
 
@@ -119,4 +121,4 @@ Assumed:
   this requirement's. The working design is `design-v3.4.md` in the bots repo.
   It moves into this request's change spec after the sign-off.
 
-Signed off: pending
+Signed off: 2026-09-27 owner ("Signed"), origin/2026-09-27-signoff.md
