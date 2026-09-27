@@ -38,6 +38,11 @@ export function openTree(top, at) {
       const out = git(top, ['ls-tree', '-r', '--name-only', sha, '--', `${dir}/`], { allowFail: true });
       return out ? out.split('\n').sort() : [];
     },
+    // Whether any part of `path` is a symlink (mode 120000) in this commit.
+    linkOn(path) {
+      const parts = path.split('/');
+      return parts.some((_, i) => git(top, ['ls-tree', sha, '--', parts.slice(0, i + 1).join('/')], { allowFail: true })?.startsWith('120000'));
+    },
   };
 }
 
