@@ -4,7 +4,7 @@
 // classification. Expected states are worked out by hand from design §5.2.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync } from 'node:fs';
+import { cpSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo } from './helpers/fixture.js';
@@ -489,21 +489,30 @@ test('C2 [STA-3] a waiting block retains nothing; a partial revert differs and i
 
 // --- Real data ---
 
-test('[STA-2] real data: a copy of assuredloop-v1 and specs/ — REC-1..5 and SPC-1..4 consolidated, VW-9@2 waiting on VW-9@1, every other block pending', async (t) => {
-  // As later parts consolidate more sections, the pending ones here will move on.
+test('[STA-2] real data: a copy of assuredloop-v1 and specs/ — REC-1..5 and SPC-1..4 consolidated, every other @1 consolidated when its ID is in specs/ and pending when not, VW-9@2 waiting on VW-9@1', async (t) => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const repo = makeRepo(t);
   cpSync(join(root, 'requests/assuredloop-v1'), join(repo.dir, 'requests/assuredloop-v1'), { recursive: true });
   cpSync(join(root, 'specs'), join(repo.dir, 'specs'), { recursive: true });
+  // The IDs the copied baseline holds, read here from the headings (parts consolidate more as they land).
+  const inBaseline = new Set(readdirSync(join(repo.dir, 'specs'), { recursive: true })
+    .filter((f) => f.endsWith('.md'))
+    .flatMap((f) => [...readFileSync(join(repo.dir, 'specs', f), 'utf8').matchAll(/^#+ \[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/gm)].map((m) => m[1])));
   const list = await states(repo);
   assert.ok(list.every((e) => e.request === 'assuredloop-v1'), JSON.stringify(keys(list)));
   const consolidated = ['REC-1', 'REC-2', 'REC-3', 'REC-4', 'REC-5', 'SPC-1', 'SPC-2', 'SPC-3', 'SPC-4'];
   for (const id of consolidated) expectState(list, `assuredloop-v1/${id}@1`, 'consolidated');
+
+  assert.ok(!inBaseline.has('VW-9'), '[VW-9] is now in specs/: this test\'s VW-9 expectations need updating');
+  expectState(list, 'assuredloop-v1/VW-9@1', 'pending', { retainsNothing: true });
   expectState(list, 'assuredloop-v1/VW-9@2', 'waiting', { by: 'assuredloop-v1/VW-9@1', retainsNothing: true });
-  for (const id of ['REC-6', 'TL-1', 'STA-4', 'VW-9']) expectState(list, `assuredloop-v1/${id}@1`, 'pending', { retainsNothing: true });
-  const others = list.filter((e) => e.n === 1 && !consolidated.includes(e.id));
+
+  const others = list.filter((e) => e.n === 1 && !consolidated.includes(e.id) && e.id !== 'VW-9');
   assert.ok(others.length > 30, `expected the rest of the @1 blocks: ${JSON.stringify(keys(list))}`);
-  for (const e of others) assert.equal(e.state, 'pending', `${e.block}: ${JSON.stringify(pick(e))}`);
+  assert.ok(others.some((e) => !inBaseline.has(e.id)), 'some @1 blocks should still be pending');
+  for (const e of others) {
+    assert.equal(e.state, inBaseline.has(e.id) ? 'consolidated' : 'pending', `${e.block}: ${JSON.stringify(pick(e))}`);
+  }
   assert.deepEqual(entry(list, 'assuredloop-v1/REC-4@1').forR, ['R2', 'R3']);
   assert.equal(entry(list, 'assuredloop-v1/TL-1@1').op, 'add');
   assert.equal(entry(list, 'assuredloop-v1/VW-9@2').op, 'modify');

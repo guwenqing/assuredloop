@@ -249,6 +249,29 @@ test('[VW-2] at most three hints: five sections that differ give one to three "n
   assertFrame(r.stdout);
 });
 
+test('[VW-2][REC-6] the 12-line cap with every optional line at once: blocked, decisions, parts, a same-file request, and more not-ok hints than fit', (t) => {
+  const repo = makeRepo(t);
+  const ns = [11, 12, 13, 14, 15];
+  repo.write('specs/invoices.md', [...ns.map((n) => `## [INV-${n}] Rule ${n}\nRule ${n} changed underneath.\n`), INV5].join('\n'));
+  addRequest(repo, 'invoice-download', 'Customers can download invoices',
+    ns.map((n) => block(`[INV-${n}]@1 modify   for R1`, { was: `## [INV-${n}] Rule ${n}\nRule ${n} holds.\n`, now: `## [INV-${n}] Rule ${n}\nRule ${n} MUST hold.\n` })), {
+      signed: false,
+      rest: '\n## Decisions\n\n' +
+        '- D1, 2026-09-21. Source: the owner. CSV only for now.\n' +
+        '- D2, 2026-09-24. Source: ruling by the agent (architect). Semicolon as separator.\n' +
+        '- D3, 2026-09-25. Source: the owner, in review. Dates in ISO 8601.\n' +
+        '\n## Parts\n\n1. CSV export: request csv-export\n2. Date format\n3. Email link\n',
+    });
+  addRequest(repo, 'cancel-invoices', 'Invoices can be cancelled',
+    [block('[INV-5]@1 modify   for R1', { was: INV5, now: INV5.replace('can be', 'MUST be able to be') })]);
+  const r = context(repo);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(lines(r.stdout)[0], /^BLOCKED/, r.stdout);
+  assertCap(r);
+  assertFrame(r.stdout);
+  assert.match(r.stdout, /not ok/, `at least one not-ok hint should fit:\n${r.stdout}`);
+});
+
 test('[VW-2] real data: context of a copy of assuredloop-v1 shows its sections\' states and D1 as the agent\'s ruling, in twelve lines', (t) => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const repo = makeRepo(t);
