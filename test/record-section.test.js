@@ -213,7 +213,7 @@ test('[STA-5] --accept puts its decision at the end of ## Decisions when ## Part
     '- D5, 2026-09-23. Source: the agent. Accepted the text underneath [INV-3] as the new "now" for invoice-download/INV-3@1.\n' + parts);
 });
 
-test('[STA-5] --accept for an ID the request does not hold, or that is not in the baseline, exits 2 and writes nothing; a held baseline ID exits 0', (t) => {
+test('[STA-5] --accept for an ID the request does not hold, or that is not in the baseline, exits 2 (a refusal with Next and Not known, not a crash) and writes nothing; a held baseline ID exits 0', (t) => {
   const INV8 = '## [INV-8] Export page\nThe invoice page MUST offer the export.\n';
   const repo = setup(t, { change: changeMd(
     block('[INV-3]@1 modify   for R2', { was: S0, now: S1 }),
@@ -222,6 +222,9 @@ test('[STA-5] --accept for an ID the request does not hold, or that is not in th
     for (const extra of [[], ['--yes']]) {
       const r = section(repo, [id, '--accept', ...extra]);
       assert.equal(r.code, 2, `${id} ${extra.join(' ')}: ${r.stdout}${r.stderr}`);
+      // A refusal, not a crash: the usual frame, and no stack trace.
+      assert.doesNotMatch(r.stderr, /TypeError|Error:|\n\s+at /, `${id} ${extra.join(' ')} crashed:\n${r.stderr}`);
+      assertFrame(r.stdout);
       clean(repo);
     }
   }
