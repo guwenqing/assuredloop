@@ -103,3 +103,20 @@ test('[SPC-2] --add-ids refuses a spec file that is a symlink to another spec fi
   assert.equal(ok.code, 0, ok.stdout + ok.stderr);
   assert.equal(readFileSync(join(repo.dir, 'specs/real.md'), 'utf8'), '## [INV-1] Real\n');
 });
+
+test('[SPC-2] --add-ids refuses a spec file reached through a symlinked folder inside the repo; the real path still numbers', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/real-dir/x.md', '## X\n');
+  symlinkSync('real-dir', join(repo.dir, 'specs', 'sub'));
+  repo.commit('specs/sub links to specs/real-dir');
+  assertLinkCommitted(repo, 'specs/sub');
+  for (const extra of [[], ['--yes']]) {
+    const r = runAl(repo.dir, ['spec', '--add-ids', 'specs/sub/x.md', '--prefix', 'INV', ...extra]);
+    assertRefused(r, repo);
+    assert.equal(readFileSync(join(repo.dir, 'specs/real-dir/x.md'), 'utf8'), '## X\n');
+  }
+  // Contrast: the real path is numbered.
+  const ok = runAl(repo.dir, ['spec', '--add-ids', 'specs/real-dir/x.md', '--prefix', 'INV', '--yes']);
+  assert.equal(ok.code, 0, ok.stdout + ok.stderr);
+  assert.equal(readFileSync(join(repo.dir, 'specs/real-dir/x.md'), 'utf8'), '## [INV-1] X\n');
+});
