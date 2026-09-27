@@ -2,7 +2,7 @@
 // al: AssuredLoop's command line. Every output names what it read and ends
 // with a Next line and a Not known line ([VW-9]).
 import { parseArgs } from 'node:util';
-import { Fail, mainRef, topLevel } from '../src/git.js';
+import { Fail, mainRef, resolveCommit, topLevel } from '../src/git.js';
 import { newRequest, recordOrigin, context, line } from '../src/commands.js';
 import { spec } from '../src/spec.js';
 
@@ -38,6 +38,11 @@ function main(argv) {
       parsed = parseArgs({ args: rest, options: command.options, allowPositionals: true, strict: true });
     } catch (e) {
       throw new Fail(e.message, USAGE);
+    }
+    // [VW-9]: under --at, every output names the commit, error exits included.
+    if (parsed.values.at !== undefined) {
+      read = `--at ${parsed.values.at} (not found)`; // stays if the rev does not resolve
+      read = `commit ${resolveCommit(top, parsed.values.at).slice(0, 7)}`;
     }
     const out = command.run({ top, cwd, args: parsed.positionals, opts: parsed.values });
     if (out.tree) read = out.tree.label;
