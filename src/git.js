@@ -1,6 +1,6 @@
 // Every call to git goes through here. Output is a Buffer unless asked as text.
 import { spawnSync } from 'node:child_process';
-import { statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 // The tool's own failure or misuse: exit 2 ([HNT-3]), with a Next line.
@@ -61,12 +61,18 @@ export function mainCommit(top) {
 }
 
 // The ref the tool reads as main, and when it was last fetched ([VW-9]), from
-// what git recorded, never the clock: the time FETCH_HEAD was written, else
-// origin/main's last reflog entry, else the clone (a clone is a fetch).
+// what git recorded, never the clock: the time FETCH_HEAD was written when it
+// lists origin's main, else origin/main's last reflog entry, else the clone
+// (a clone is a fetch).
 export function mainRef(top) {
   if (mainCommit(top) !== 'refs/remotes/origin/main') return 'local main';
-  const gitDir = git(top, ['rev-parse', '--absolute-git-dir']);
-  try { return `origin/main fetched ${stamp(statSync(join(gitDir, 'FETCH_HEAD')).mtime)}`; } catch { /* never fetched */ }
+  const fetchHead = join(git(top, ['rev-parse', '--absolute-git-dir']), 'FETCH_HEAD');
+  const url = git(top, ['remote', 'get-url', 'origin'], { allowFail: true });
+  try {
+    if (url && readFileSync(fetchHead, 'utf8').split('\n').some((l) => l.endsWith(`branch 'main' of ${url}`))) {
+      return `origin/main fetched ${stamp(statSync(fetchHead).mtime)}`;
+    }
+  } catch { /* never fetched */ }
   const [last] = reflogTimes(top, 'refs/remotes/origin/main');
   if (last) return `origin/main fetched ${stamp(last.when)}`;
   const clone = reflogTimes(top, 'refs/remotes/origin/HEAD').find((e) => e.subject.startsWith('clone:'));
