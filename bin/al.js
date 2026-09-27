@@ -13,6 +13,7 @@ const COMMANDS = {
     options: {
       from: { type: 'string' }, url: { type: 'string' }, verify: { type: 'string' },
       fetched: { type: 'string' }, updated: { type: 'string' }, yes: { type: 'boolean' },
+      source: { type: 'string' }, words: { type: 'string' },
     },
   },
   context: { run: context, options: { at: { type: 'string' } } },
