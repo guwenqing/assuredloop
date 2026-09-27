@@ -60,20 +60,26 @@ export function mainCommit(top) {
   return null;
 }
 
-// The ref the tool reads as main, and when it was last fetched ([VW-9]).
-// The fetch time is the recorded time of origin/main's last reflog entry, else
-// the time FETCH_HEAD was written; never the clock.
+// The ref the tool reads as main, and when it was last fetched ([VW-9]), from
+// what git recorded, never the clock: the time FETCH_HEAD was written, else
+// origin/main's last reflog entry, else the clone (a clone is a fetch).
 export function mainRef(top) {
   if (mainCommit(top) !== 'refs/remotes/origin/main') return 'local main';
-  let when = null;
-  const reflog = git(top, ['reflog', 'show', '-1', '--format=%gd', '--date=unix', 'refs/remotes/origin/main'], { allowFail: true });
-  const m = reflog && reflog.match(/@\{(\d+)\}/);
-  if (m) when = new Date(Number(m[1]) * 1000);
-  else {
-    const gitDir = git(top, ['rev-parse', '--absolute-git-dir']);
-    try { when = statSync(join(gitDir, 'FETCH_HEAD')).mtime; } catch { /* never fetched */ }
-  }
-  return when ? `origin/main fetched ${stamp(when)}` : 'origin/main (last fetch time unknown)';
+  const gitDir = git(top, ['rev-parse', '--absolute-git-dir']);
+  try { return `origin/main fetched ${stamp(statSync(join(gitDir, 'FETCH_HEAD')).mtime)}`; } catch { /* never fetched */ }
+  const [last] = reflogTimes(top, 'refs/remotes/origin/main');
+  if (last) return `origin/main fetched ${stamp(last.when)}`;
+  const clone = reflogTimes(top, 'refs/remotes/origin/HEAD').find((e) => e.subject.startsWith('clone:'));
+  if (clone) return `origin/main (fetched at clone, ${stamp(clone.when)})`;
+  return 'origin/main (last fetch time unknown)';
+}
+
+// A ref's reflog entries, newest first, with their recorded times.
+function reflogTimes(top, ref) {
+  const out = git(top, ['reflog', 'show', '--format=%gd %gs', '--date=unix', ref], { allowFail: true });
+  if (!out) return [];
+  return out.split('\n').map((l) => l.match(/@\{(\d+)\} (.*)$/)).filter(Boolean)
+    .map((m) => ({ when: new Date(Number(m[1]) * 1000), subject: m[2] }));
 }
 
 // A timestamp as the tool writes it: UTC to the minute, `2026-09-23T10:14Z`.
