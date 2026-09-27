@@ -544,3 +544,18 @@ test('[SPC-4][STA-2] row 6 contrast: the same indented body is a candidate, also
     assert.deepEqual(e.candidates, ['INV-9'], `${JSON.stringify(inv9)}: ${JSON.stringify(pick(e))}`);
   }
 });
+
+// A baseline file written with CRLF line endings [SPC-4].
+const crlf = (text) => text.replace(/\n/g, '\r\n');
+
+test('[SPC-4][STA-2] row 6: a candidate\'s body is compared after normalizing line endings, and its indentation still counts', async (t) => {
+  const repo = makeRepo(t);
+  request(repo, 'inv', [block('[INV-3]@1 modify', { was: '## [INV-3] Dates\nSame text.\n', now: S1 })]);
+  repo.write('specs/invoices.md', crlf([INV1,
+    '## [INV-9] Dates\nSame text.\n',             // the "was" body
+    '## [INV-10] Dates\n    Same text.\n',        // indented: not the same text
+  ].join('\n')));
+  const e = entry(await states(repo), 'inv/INV-3@1');
+  assert.equal(e.state, 'not found', JSON.stringify(pick(e)));
+  assert.deepEqual(e.candidates, ['INV-9'], JSON.stringify(pick(e)));
+});

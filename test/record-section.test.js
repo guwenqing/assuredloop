@@ -308,3 +308,30 @@ test('[STA-5] --accept numbers its decision from ## Decisions entries only: D1 a
   assert.equal(read(repo, `${DIR}/request.md`), HEAD + decisions +
     '- D3, 2026-09-23. Source: the agent. Accepted the text underneath [INV-3] as the new "now" for invoice-download/INV-3@1.\n' + parts);
 });
+
+// The same decisions with D1 written `D01`.
+const DECISIONS_D01 = '\n## Decisions\n\n' +
+  '- D01, 2026-09-21. Source: the owner. CSV only for now.\n' +
+  '- D2, 2026-09-22. Source: the owner. ISO dates.\n';
+
+test('[STA-5] --decision is matched as written, not as a number: D01 names no entry when D1 is written, nor D1 when D01 is; each exits 2, writes nothing, and says to write the decision first', (t) => {
+  const cases = [['D1 written', REQUEST, 'D01'], ['D01 written', HEAD + DECISIONS_D01, 'D1']];
+  for (const [where, request, d] of cases) {
+    const repo = setup(t, { change: OWN, request });
+    for (const extra of [[], ['--yes']]) {
+      const r = section(repo, ['INV-3', '--decision', d, ...extra]);
+      assert.equal(r.code, 2, `${where}, --decision ${d} ${extra.join(' ')}: ${r.stdout}${r.stderr}`);
+      assert.ok((r.stdout + r.stderr).includes('--decision'), `${where}: should say to pass --decision:\n${r.stdout}${r.stderr}`);
+      clean(repo);
+    }
+  }
+});
+
+test('[STA-5] contrast: on the same requests, D1 is accepted where D1 is written, and D2 where D01 is', (t) => {
+  for (const [request, d] of [[REQUEST, 'D1'], [HEAD + DECISIONS_D01, 'D2']]) {
+    const repo = setup(t, { change: OWN, request });
+    const r = section(repo, ['INV-3', '--decision', d]);
+    assert.equal(r.code, 0, `${d}: ${r.stdout}${r.stderr}`);
+    clean(repo);
+  }
+});
