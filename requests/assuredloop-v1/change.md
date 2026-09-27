@@ -407,7 +407,7 @@ Now:
     requests, their states and the links as they were at that commit, reading
     that commit's tree through git.
 
-### [VW-9]@1 add after [VW-8]   for R7
+### [VW-9]@1 add after [VW-8]   Revised 2026-09-27 (D1)   for R7
 Now:
 
     ## [VW-9] Every output says what it read and what is next
@@ -416,6 +416,16 @@ Now:
     times as timestamps, never as ages. It MUST end with a Next
     line and a Not known line. A shallow or single-branch clone that lacks
     history MUST say "history unavailable", never "nothing found".
+
+### [VW-9]@2 add after [VW-8]   for R7
+Now:
+
+    ## [VW-9] Every output says what it read and what is next
+    Every output MUST name the refs it read (working tree, `origin/main` and the
+    latest time git recorded for it, or local main when there is no remote). It
+    reports times as timestamps, never as ages. It MUST end with a Next line and
+    a Not known line. A shallow or single-branch clone that lacks history MUST
+    say "history unavailable", never "nothing found".
 
 ### [LNK-1]@1 add in specs/links.md   for R8
 Now:
