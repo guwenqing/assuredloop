@@ -4,9 +4,12 @@ import { join } from 'node:path';
 import { Fail, git, isShallow, mainCommit, now, stamp } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
+import { sameSection } from './sections.js';
+import { changedParts, latestSignoff, organized, parts, signoffState } from './signoff.js';
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const TIERS = ['0', '1', '2', '3', 'S'];
+const TIER0 = 'tier 0 has no record ([REC-10]): if this is a fix, say why in the commit and drop the record; otherwise its tier is 1 or higher';
 const FETCHED = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
 
 // A labelled line, as in `Next      al context x`.
@@ -32,6 +35,7 @@ export function newRequest({ top, cwd, args, opts }) {
     throw new Fail(`bad request name ${JSON.stringify(name ?? '')}: use lowercase letters, digits and hyphens`, 'al new <name> --from <file|->');
   }
   if (opts.tier !== undefined && !TIERS.includes(opts.tier)) throw new Fail(`bad tier ${opts.tier}: one of ${TIERS.join(', ')}`);
+  if (opts.tier === '0') throw new Fail(TIER0, 'al new <name> --tier 1 (or higher) when the work changes a promise');
   const words = readInput(opts.from, cwd);
   if (words.length === 0) throw new Fail('no owner\'s words given', 'pass the words with --from <file> or on standard input');
 
@@ -70,18 +74,13 @@ export function newRequest({ top, cwd, args, opts }) {
 }
 
 // al record <name> origin --url <src> | --verify <snapshot>, --from <file|-> [--yes]
-export function recordOrigin({ top, cwd, args, opts }) {
+export function recordOrigin(ctx) {
+  const { top, cwd, args, opts } = ctx;
   const [name, kind] = args;
-  if (kind !== 'origin') throw new Fail(`record ${kind ?? ''}: only "record <name> origin" is built so far`, 'al record <name> origin --url <source> --from -');
+  if (kind === 'signoff') return recordSignoff(ctx);
+  if (kind !== 'origin') throw new Fail(`record ${kind ?? ''}: only "record <name> origin|signoff" is built so far`, 'al record <name> origin --url <source> --from -');
   const tree = openTree(top);
-  const dir = findRequest(tree, name ?? '');
-  if (!dir) throw new Fail(`no request named ${name ?? ''}`, 'al new <name> --from <file|->');
-  // [REC-1]: an archive on main is never edited; one archived on this branch still may be ([REC-12]).
-  const main = mainCommit(top);
-  if (dir.startsWith('requests/archive/') && main && git(top, ['cat-file', '-e', `${main}:${dir}/request.md`], { allowFail: true }) !== null) {
-    throw new Fail(`${name} is archived on ${main.replace('refs/remotes/', '').replace('refs/heads/', '')}, and an archived request is not edited`,
-      'start a new request that follows it: al new <name> --from <file|->');
-  }
+  const dir = requestToWrite(top, tree, name);
   const origin = `${dir}/origin`;
   if (!noSymlinkOn(top, origin)) {
     throw new Fail(`${origin} is reached through a symlink; records are written only through real folders, and nothing was written`, `make ${origin} a real folder in this repo`);
@@ -127,6 +126,64 @@ export function recordOrigin({ top, cwd, args, opts }) {
   return { body, next: 'run the same command with --yes to write it', notKnown: ['whether the source changes after this fetch'] };
 }
 
+// The folder of a request the tool may write: it exists, and is not archived on
+// main ([REC-1]; one archived on this branch still may be, [REC-12]).
+function requestToWrite(top, tree, name) {
+  const dir = findRequest(tree, name ?? '');
+  if (!dir) throw new Fail(`no request named ${name ?? ''}`, 'al new <name> --from <file|->');
+  const main = mainCommit(top);
+  if (dir.startsWith('requests/archive/') && main && git(top, ['cat-file', '-e', `${main}:${dir}/request.md`], { allowFail: true }) !== null) {
+    throw new Fail(`${name} is archived on ${main.replace('refs/remotes/', '').replace('refs/heads/', '')}, and an archived request is not edited`,
+      'start a new request that follows it: al new <name> --from <file|->');
+  }
+  return dir;
+}
+
+// al record <name> signoff --source <where> [--words <quote>] [--yes] ([REC-5]):
+// shows only what changed since the last sign-off, and writes on --yes.
+function recordSignoff({ top, args, opts }) {
+  const [name] = args;
+  if (!opts.source) throw new Fail('--source <where the owner signed> is missing', `al record ${name} signoff --source <where> --words <quote>`);
+  const tree = openTree(top);
+  const dir = requestToWrite(top, tree, name);
+  if (!noSymlinkOn(top, `${dir}/request.md`) || !noSymlinkOn(top, `${dir}/origin`)) {
+    throw new Fail(`${dir} is reached through a symlink; records are written only through real folders, and nothing was written`, `make ${dir} a real folder in this repo`);
+  }
+  const md = tree.read(`${dir}/request.md`).toString('utf8');
+  const org = organized(md);
+  if (!org) throw new Fail(`${dir}/request.md has no "## Organized requirement" (or question) to sign`, `write the organized requirement in ${dir}/request.md`);
+  const { signoff: last } = latestSignoff(tree, dir, md);
+  const notKnown = ['whether the owner read what was signed (the file records only what they said)'];
+  if (last && sameSection(org.text, last.text)) {
+    return { body: [`unchanged since ${last.file}; nothing to sign`], next: `al context ${name}`, notKnown };
+  }
+  const shown = last
+    ? parts(org.text).filter((p) => changedParts(org.text, last.text).includes(p.key)).map((p) => p.text.replace(/\n+$/, ''))
+    : [org.text.replace(/\n+$/, '')];
+  const removed = last ? changedParts(org.text, last.text).filter((k) => !parts(org.text).some((p) => p.key === k)) : [];
+  const fetched = stamp(now());
+  let file = `${fetched.slice(0, 10)}-signoff.md`;
+  for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${fetched.slice(0, 10)}-signoff-${n}.md`;
+  const body = [last ? `Changed since ${last.file}:` : 'To be signed (first sign-off):', ...shown];
+  if (removed.length) body.push(`Removed: ${removed.join(', ')}`);
+  if (!opts.yes) {
+    body.push(`Would write ${dir}/origin/${file} and set the Signed off line`);
+    return { body, next: 'show this to the owner; on their OK, run the same command with --yes', notKnown };
+  }
+  const header = [`Source: ${opts.source}`, ...(opts.words !== undefined ? [`Owner's words: ${opts.words}`] : []),
+    `Fetched: ${fetched}`, `SHA-256: ${sha256(org.text)}   (of the signed text below)`, '--- signed text ---', ''].join('\n');
+  mkdirSync(join(top, dir, 'origin'), { recursive: true });
+  writeFileSync(join(top, dir, 'origin', file), header + org.text);
+  const signedOff = `Signed off: ${fetched.slice(0, 10)} owner, origin/${file}\n`;
+  const lines = org.raw.split(/(?<=\n)/);
+  const at = lines.findIndex((l) => /^Signed off:/.test(l));
+  if (at >= 0) lines.splice(at, 1, signedOff);
+  else lines.splice(lines.findLastIndex((l) => l.trim()) + 1, 0, signedOff);
+  writeFileSync(join(top, dir, 'request.md'), md.slice(0, org.start) + lines.join('') + md.slice(org.end));
+  body.push(`Wrote ${dir}/origin/${file} and the Signed off line in ${dir}/request.md`);
+  return { body, next: `al context ${name}`, notKnown };
+}
+
 const taken = (path) => {
   try { lstatSync(path); return true; } catch { return false; }
 };
@@ -152,16 +209,24 @@ export function context({ top, args, opts }) {
     if (!s) bad.push([f, 'is not a valid snapshot (it needs Source, Fetched, SHA-256, then ---)']);
     else if (!s.intact) bad.push([f, 'no longer matches its SHA-256']);
   }
+  const state = signoffState(tree, dir, name);
+  const changed = state.changed?.length ? `: ${state.changed.join(', ')}` : '';
+  const signedBy = state.signoff ? `origin/${state.signoff.file} (${state.signoff.fetched})` : '';
+  const through = state.parent ? `${signedBy ? ' and ' : ''}through ${state.parent}` : '';
   const body = [
+    ...(state.blocked ? [`BLOCKED: ${state.reason}${changed}`] : []),
     `${name}  ${title}  ${head.join(' · ')}`,
+    line('Require', state.blocked ? `${state.reason}${changed}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
+  if (field('Tier') === '0') body.push(line('Hint', `note: ${TIER0}`));
   for (const [f, why] of bad.slice(0, 3)) body.push(line('Hint', `not ok: origin/${f} ${why}`));
   if (bad.length > 3) body.push(line('Hint', `${bad.length - 3} more hidden`));
   return {
     tree,
     body,
-    next: bad.length
+    next: state.blocked ? `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`
+      : bad.length
       ? `re-fetch the source of origin/${bad[0][0]}, then al record ${name} origin ${bad[0][1].startsWith('no longer') ? `--verify ${bad[0][0]}` : '--url <source>'} --from -`
       : `al record ${name} origin --url <source> --from - to snapshot a new original`,
     notKnown: [historyNote(top), 'whether the sources changed since they were fetched'].filter(Boolean),
