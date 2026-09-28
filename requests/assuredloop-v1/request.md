@@ -182,3 +182,4 @@ Signed off: 2026-09-27 owner ("Signed in best my knowledge"), origin/2026-09-27-
   on one line; otherwise it shows the count in each state, naming every section
   except those consolidated, carried or pending. No requirement changes, so no
   new sign-off.
+- D6, 2026-09-28. Source: the agent (architect), from the C10 re-run in part 10. Reading of [HNT-2]: "a cited requirement that does not exist" skips blocks marked Dropped. A dropped block citing an R-line that moved to Out is the record of the drop, not an error: it retains nothing and touches nothing ([STA-6]). Kept blocks stay checked, since [STA-6] makes them trace to a signed R-line or an owner decision. No requirement changes, so no new sign-off.
