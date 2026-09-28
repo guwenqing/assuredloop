@@ -139,8 +139,8 @@ export function statesOf(files, blocks, include = (b) => b.open) {
     if (link) { result.push(entry(link)); continue; }
     if (same(b.was, b.now)) { result.push(entry('no change yet')); continue; }
     if (b.op === 'remove' ? base === undefined : same(base, b.now)) { result.push(entry('consolidated')); continue; }
-    const carrier = [...blocks.values()].find((d) => d.key !== b.key && upward(d).includes(b) && same(base, d.now));
-    if (carrier) { result.push(entry('carried', carrier.key)); continue; }
+    const carriers = [...blocks.values()].filter((d) => d.key !== b.key && upward(d).includes(b) && same(base, d.now));
+    if (carriers.length) { result.push({ ...entry('carried', carriers[0].key), carriers: carriers.map((d) => d.key) }); continue; }
     const waitOn = upward(b).find((u) => (u.op === 'add' ? base === undefined : same(base, u.was)));
     if (waitOn) { result.push(entry('waiting', waitOn.key)); continue; }
     if (atWas) { result.push(entry('pending')); continue; }

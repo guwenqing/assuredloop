@@ -20,8 +20,8 @@ const NOT_KNOWN = ['whether the code does what the spec says, and whether review
 function fateOf(e, b, { name, dropped, blocks, signedR, ownerDecisions }) {
   if (b.kept) {
     if (!HELD.includes(e.state)) return { bad: `${e.block} is Kept but reads ${e.state}; align it before it is kept` };
-    // Its own signed R, or, when a successor carries it, the successor's (design §5.4).
-    const traced = signedR(b) || (e.state === 'carried' && signedR(blocks.get(e.by))) || ownerDecisions.has(b.kept[1]);
+    // Its own signed R, or, when successors carry it, any one of theirs (design §5.4).
+    const traced = signedR(b) || (e.state === 'carried' && e.carriers.some((k) => signedR(blocks.get(k)))) || ownerDecisions.has(b.kept[1]);
     return traced ? { fate: 'kept' } : { bad: `${e.block} is Kept, but traces to no signed requirement and no owner decision ([STA-6])` };
   }
   if (dropped || b.dropped) {
