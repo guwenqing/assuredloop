@@ -245,17 +245,21 @@ export function hintLines(list, cap) {
 }
 
 // The files at `at` that import or require `path` by a relative specifier, as
-// rough links with their reason ([LNK-1]); comments are skipped.
+// rough links with their reason ([LNK-1]). One left-to-right scan takes each
+// comment and string whole, so neither counts as an import nor hides code.
+const TOKENS = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|\b(from|import|require)\s*\(?\s*(['"])(\.{1,2}\/[^'"\n]*)\2|(['"`])(?:\\[\s\S]|(?!\4)[^\\])*\4/g;
 function importers(top, at, path) {
-  const stem = posix.basename(path).replace(/\.[^.]*$/, '');
+  const base = posix.basename(path).replace(/\.[^.]*$/, '');
+  // A directory specifier names the folder of its index file.
+  const stem = base === 'index' && posix.dirname(path) !== '.' ? posix.basename(posix.dirname(path)) : base;
   const found = git(top, ['grep', '-l', '-F', stem, at, '--', '*.js', '*.mjs', '*.cjs', '*.ts'], { allowFail: true }) ?? '';
   const out = [];
   for (const f of found.split('\n').filter(Boolean).map((l) => l.slice(at.length + 1)).filter((f) => f !== path)) {
-    const text = (git(top, ['show', `${at}:${f}`], { allowFail: true }) ?? '').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
-    for (const [, how, spec] of text.matchAll(/\b(from|import\s*\(|require\s*\(|import)\s*['"](\.{1,2}\/[^'"]*)['"]/g)) {
-      const p = posix.join(posix.dirname(f), spec);
-      if (![p, `${p}.js`, `${p}.mjs`, `${p}.cjs`, `${p}.ts`, `${p}/index.js`].includes(path)) continue;
-      out.push(`${how.startsWith('require') ? 'required' : 'imported'} by ${f}`);
+    const text = git(top, ['show', `${at}:${f}`], { allowFail: true }) ?? '';
+    for (const [, how, , spec] of text.matchAll(TOKENS)) {
+      const p = spec && posix.join(posix.dirname(f), spec);
+      if (!p || ![p, `${p}.js`, `${p}.mjs`, `${p}.cjs`, `${p}.ts`, `${p}/index.js`].includes(path)) continue;
+      out.push(`${how === 'require' ? 'required' : 'imported'} by ${f}`);
       break;
     }
   }
