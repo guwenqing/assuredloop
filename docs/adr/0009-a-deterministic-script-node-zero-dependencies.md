@@ -1,7 +1,7 @@
 # ADR 0009: A deterministic script: no LLM, network or database; Node ESM with no runtime dependencies
 
 Date: 2026-09-27.
-Status: accepted.
+Status: superseded by [ADR 0012](0012-a-deterministic-script-under-3500-lines.md).
 Decided by: the owner ("Accept", input 52). Proposed by: the architect.
 
 ## Context
