@@ -32,7 +32,7 @@ export function resolveCommit(top, rev) {
   if (sha) return sha;
   const gap = historyGap(top);
   if (gap) throw new Fail(`history unavailable: this clone is ${gap.kind}, and ${rev} is not in it`, gap.next);
-  throw new Fail(`--at ${rev}: unknown commit`, 'al context <name> --at <a commit in this repo>');
+  throw new Fail(`${rev}: unknown commit`, 'name a commit in this repo');
 }
 
 // How this clone lacks history, and the fetch that fills it; null for a full clone.
@@ -69,7 +69,12 @@ export function mainCommit(top) {
 // time, so it cannot say which fetch touched main. `unknown` goes on the Not
 // known line.
 export function mainRef(top) {
-  if (mainCommit(top) !== 'refs/remotes/origin/main') return { label: 'local main' };
+  const main = mainCommit(top);
+  if (!main) {
+    const gap = historyGap(top);
+    return { label: 'no main (no origin/main, no main branch)', unknown: gap && `history unavailable (${gap.kind} clone without main)` };
+  }
+  if (main !== 'refs/remotes/origin/main') return { label: 'local main' };
   const [last] = reflogTimes(top, 'refs/remotes/origin/main');
   const clone = last ? null : reflogTimes(top, 'refs/remotes/origin/HEAD').find((e) => e.subject.startsWith('clone:'));
   const when = (last ?? clone)?.when;
