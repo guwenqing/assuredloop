@@ -33,7 +33,9 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   const before = base ? baseline(openTree(top, base), rootOf(top, openTree(top, base), base)) : files;
   const [was, now] = [sections(before), sections(files)];
   const changedIds = [...new Set([...was.keys(), ...now.keys()])].filter((id) => !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
-  const changed = base ? paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, ...(at ? [at] : [])])) : [];
+  // The working tree's final state includes its untracked files; a commit's is only its tree.
+  const changed = base ? [...paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, ...(at ? [at] : [])])),
+    ...(at ? [] : paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z'])))] : [];
   const requests = requestsIn(tree);
   const seen = new Map();
   const mapped = commits.map((sha) => requestOf(top, sha, requests, seen));
@@ -165,7 +167,7 @@ export function hintsOf(top, b, { main }) {
     const r = b.requests.find((x) => x.name === name);
     const ids = [...b.blocks.values()].filter((x) => x.request === name && x.dropped && !x.kept).map((x) => x.id);
     if (!r || !(isDropped(r.md) || ids.length)) continue;
-    const live = liveCode(top, name, b.root, isDropped(r.md) ? null : ids);
+    const live = liveCode(top, name, b.root, isDropped(r.md) ? null : ids, b.at ?? 'HEAD');
     if (!live.length) continue;
     const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => entriesOf(p.md, 'Parts').map((e) => [p.name, e]))
       .find(([, e]) => live.some((l) => e.includes(l.split(':')[0])));
@@ -186,22 +188,26 @@ export function hintsOf(top, b, { main }) {
   return out;
 }
 
-// Work for a served request that reached main before its first sign-off: a
-// main commit mapped to it, neither the commit adding its first sign-off nor after it.
+// Work for a served request that reached main before its first sign-off,
+// judged by when each reached main: along main's first-parent line, where a
+// merge brings its branch's commits all at once.
 function earlyWork(top, b, mainSha) {
   const out = [];
-  let history = null;
+  let line = null;
   for (const name of b.served) {
     const r = b.requests.find((x) => x.name === name);
     if (!r) continue;
     const signoffs = (b.tree.list(`${r.dir}/origin`) ?? []).filter((f) => (b.tree.read(`${r.dir}/origin/${f}`) ?? Buffer.alloc(0)).includes('\n--- signed text ---\n'));
     const places = signoffs.flatMap((f) => [`requests/${name}/origin/${f}`, `requests/archive/${name}/origin/${f}`]);
-    const first = places.length ? git(top, ['log', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
-    history ??= git(top, ['rev-list', mainSha]).split('\n').filter(Boolean);
-    for (const sha of history) {
-      if (!requestOf(top, sha, b.requests, b.seen).names.includes(name) || !b.work(name, sha)) continue;
-      if (first && git(top, ['merge-base', '--is-ancestor', first, sha], { allowFail: true }) !== null) continue;
-      out.push({ kind: 'note', rank: 23, owners: [name], text: `${sha.slice(0, 7)}, work for ${name}, reached main before its first sign-off`, command: `git show ${sha.slice(0, 7)}` });
+    const first = places.length ? git(top, ['log', '--first-parent', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
+    line ??= git(top, ['rev-list', '--first-parent', mainSha]).split('\n').filter(Boolean).map((c) => ({
+      c, brought: git(top, ['rev-parse', '--verify', '--quiet', `${c}^2`], { allowFail: true }) ? git(top, ['rev-list', `${c}^1..${c}^2`]).split('\n').filter(Boolean) : [c],
+    }));
+    for (const { c, brought } of line) {
+      if (first && git(top, ['merge-base', '--is-ancestor', first, c], { allowFail: true }) !== null) continue;
+      for (const sha of brought.filter((s) => requestOf(top, s, b.requests, b.seen).names.includes(name) && b.work(name, s))) {
+        out.push({ kind: 'note', rank: 23, owners: [name], text: `${sha.slice(0, 7)}, work for ${name}, reached main before its first sign-off`, command: `git show ${sha.slice(0, 7)}` });
+      }
     }
   }
   return out;
