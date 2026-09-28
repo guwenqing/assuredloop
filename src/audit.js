@@ -65,15 +65,20 @@ function trace(a, name) {
   const blocks = allBlocks(tree);
   for (const e of statesOf(baseline(tree, a.root), blocks, (b) => b.request === name)) {
     const b = blocks.get(e.block);
-    const landed = history(a).find((c) => (b.op === 'remove' ? !c.sections.has(b.id) : c.sections.has(b.id) && sameSection(c.sections.get(b.id), b.now ?? '')));
+    // A removal lands where the section goes from present to absent (the last such commit).
+    const landed = b.op === 'remove' ? history(a).findLast((c, i) => i && !c.sections.has(b.id) && history(a)[i - 1].sections.has(b.id))
+      : history(a).find((c) => c.sections.has(b.id) && sameSection(c.sections.get(b.id), b.now ?? ''));
     body.push(line('Section', `${e.block} ${e.state}${e.by ? ` ${e.by}` : ''}; ${a.gap ?? (landed ? `consolidated on main at ${landed.sha.slice(0, 7)}` : 'not consolidated on main')}`));
   }
   // The linked commits ([LNK-2]) and the test files they changed.
   if (a.shallow) body.push(line('Commits', HISTORY));
   else {
     const rev = a.at ?? 'HEAD';
+    // Every route [LNK-2] maps by: a Request: line, the folder, an issue number in the owner's words.
+    const issues = [...new Set(entriesOf(md, "Owner's words and dialog").join('\n').match(/#\d+/g) ?? [])];
     const shas = [...new Set([...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', rev]).split('\n'),
-      ...git(top, ['log', '--format=%H', rev, '--', ...place('')]).split('\n')].filter(Boolean))];
+      ...git(top, ['log', '--format=%H', rev, '--', ...place('')]).split('\n'),
+      ...issues.flatMap((n) => git(top, ['log', '-E', `--grep=${n}([^0-9]|$)`, '--format=%H', rev]).split('\n'))].filter(Boolean))];
     const mine = shas.map((sha) => requestOf(top, sha, a.requests, a.seen)).filter((c) => c.names.includes(name));
     body.push(...mine.map((c) => line('Commit', commitLine(a, c))));
     const isTest = testMatcher(a.root, configured(top, tree, a.at, 'tests'));

@@ -94,8 +94,9 @@ export function check({ top, opts }) {
   const base = main ? git(top, ['merge-base', main, head], { allowFail: true }) : null;
   const commits = main ? git(top, ['rev-list', '--reverse', '--topo-order', `${main}..${head}`]).split('\n').filter(Boolean) : [];
   const b = readBranch(top, { base, commits, tree: openTree(top, opts.at), at: opts.at, range: `main..${to}` });
-  const list = ranked(hintsOf(top, b, { main }), b);
-  const notKnown = headNote(top, b);
+  // Under --at, main is read only up to X's fork point, so no later commit leaks in.
+  const list = ranked(hintsOf(top, b, { main: opts.at ? base : main }), b);
+  const notKnown = [...headNote(top, b), ...(opts.at ? ["main after X's fork point (read only up to it under --at)"] : [])];
   if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
   const body = [line('Serves', [...[...b.served].filter((n) => !b.archived.has(n)), ...[...b.archived].map((n) => `archives ${n}`)].join(' · ') || 'no request')];
   if (b.tier) {
