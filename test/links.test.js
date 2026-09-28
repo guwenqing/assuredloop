@@ -394,3 +394,28 @@ test('[LNK-1] an ignore list that also names a commit git does not know (left fr
   has(out, 'src/dates.js', 'last changed by invoice-dates');
   hasNo(out, 'src/dates.js', 'no request');
 });
+
+test('[LNK-1] --diff does not take the ignore list from git\'s configured blame.ignoreRevsFile in the working tree: with the committed list empty, an uncommitted edit to it leaves the line last changed by iso', (t) => {
+  const repo = base(t);
+  repo.write('src/dates.js', "export const pattern = 'local';\nexport const zone = 'UTC';\n");
+  const original = repo.commit('Local dates\n\nRequest: original', { date: '2026-02-01T12:00:00Z' });
+  change(repo, 'src/dates.js', "'local'", "'iso'");
+  const iso = repo.commit('ISO dates\n\nRequest: iso', { date: '2026-02-02T12:00:00Z' });
+  repo.write('.git-blame-ignore-revs', '');
+  repo.commit('An empty ignore list for blame', { date: '2026-02-03T12:00:00Z' });
+  repo.git(['config', 'blame.ignoreRevsFile', '.git-blame-ignore-revs']);
+  work(repo, [['src/dates.js', "'iso'", "'iso-8601'"]], 'ISO 8601 dates\n\nRequest: feature');
+  assertBlamed(repo, 'main', 'src/dates.js', [1, 1], ['-w', '-M', '-C'], iso);
+
+  const committed = diffOk(repo);
+  has(committed, 'src/dates.js', 'last changed by iso');
+
+  repo.write('.git-blame-ignore-revs', `# iso's commit\n${iso}\n`);
+  assert.equal(repo.git(['status', '--porcelain', '--', '.git-blame-ignore-revs']), 'M .git-blame-ignore-revs', 'the fixture: the list is edited only in the working tree');
+  // The config is live: git's own blame now reads the uncommitted list.
+  assertBlamed(repo, 'main', 'src/dates.js', [1, 1], ['-w', '-M', '-C'], original);
+
+  const uncommitted = diffOk(repo);
+  has(uncommitted, 'src/dates.js', 'last changed by iso');
+  hasNo(uncommitted, 'src/dates.js', 'last changed by original');
+});
