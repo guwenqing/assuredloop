@@ -76,16 +76,16 @@ export function sectionView(top, id) {
   };
 }
 
-// The hunks of `path` between two revs: old and new start and count.
+// The hunks of `path` between two revs (the working tree when `head` is null): old and new start and count.
 function hunks(top, base, head, path) {
-  return git(top, ['diff', '-U0', '--no-renames', base, head, '--', path]).split('\n').map((l) => l.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/))
+  return git(top, ['diff', '-U0', '--no-renames', base, ...(head ? [head] : []), '--', path]).split('\n').map((l) => l.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/))
     .filter(Boolean).map((m) => ({ a: Number(m[1]), b: Number(m[2] ?? 1), c: Number(m[3]), d: Number(m[4] ?? 1) }));
 }
 
 // The links of one changed code file ([LNK-1]): lines of text, the section
-// IDs they reach, and the requests blame names.
+// IDs they reach, and the requests blame names. A null `head` reads the working tree.
 export function fileLinks(top, base, head, path, { root, requests, seen, shallow, headings }) {
-  const text = git(top, ['show', `${head}:${path}`], { allowFail: true }) ?? '';
+  const text = (head ? git(top, ['show', `${head}:${path}`], { allowFail: true }) : openTree(top).read(path)?.toString('utf8')) ?? '';
   const fileLines = text.split('\n');
   const out = [];
   const ids = new Map();
