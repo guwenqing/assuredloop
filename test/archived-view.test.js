@@ -95,6 +95,18 @@ test('[VW-6][LNK-2] after a later request changes INV-3: "since changed by tz-da
   isNot(out, 'INV-7', 'since changed');
 });
 
+test('[VW-6][LNK-2] "since changed by" names only requests whose commits come after the concluding one: INV-3 names tz-dates, not iso-dates, whose earlier commit still holds its heading line', (t) => {
+  const repo = concluded(t);
+  const later = laterChange(repo);
+  const first = repo.git(['log', '--format=%H', '--fixed-strings', '--grep=iso-dates: request']);
+  const line = (n) => repo.git(['blame', '-w', '-M', '--porcelain', '-L', `${n},${n}`, 'HEAD', '--', 'specs/invoices.md']).slice(0, 40);
+  assert.equal(line(4), first, 'the fixture: INV-3\'s heading blames to "iso-dates: request", from before the conclusion');
+  assert.equal(line(5), later, 'the fixture: INV-3\'s body line blames to the tz-dates commit');
+  const out = context(repo);
+  is(out, 'INV-3', /since changed by tz-dates \(2026-10-05/);
+  isNot(out, 'INV-3', /iso-dates/);
+});
+
 test('[VW-6][LNK-2] "Followed by" lists the open and the archived requests whose status line has "Follows: iso-dates", and not "Follows: iso-dates-old"', (t) => {
   const repo = concluded(t);
   laterChange(repo);
