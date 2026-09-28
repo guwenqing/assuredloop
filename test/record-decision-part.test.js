@@ -133,6 +133,27 @@ test('[REC-8] record part --yes on a request with no ## Parts creates it at the 
   assert.deepEqual(shape(now.slice(md.length)), ['## Parts', '1. Date format']);
 });
 
+test('[REC-8] record part --yes on a request with no ## Parts starts at 1, though another section holds a numbered list ("9." under the owner\'s words, or under ## Notes)', (t) => {
+  const note = '9. Numbered background note.\n';
+  const entry = '- 2026-09-20 owner chat, snapshot origin/2026-09-20-owner-words.md\n';
+  const cases = {
+    'the owner\'s words': (md) => md.replace(entry, `${entry}${note}`),
+    '## Notes': (md) => `${md}\n## Notes\n\n${note}`,
+  };
+  for (const [where, edit] of Object.entries(cases)) {
+    const repo = makeRepo(t);
+    addRequest(repo, 'invoice-download', null);
+    const md = edit(read(repo));
+    repo.write(MD, md);
+    repo.commit('invoice-download: request', { date: '2026-09-21T12:00:00Z' });
+    assert.ok(md.includes(note) && !md.includes('## Parts'), `the fixture: a numbered list under ${where}, no ## Parts`);
+    ok(record(repo, ['part', '--text', 'Dates', '--yes']));
+    const now = read(repo);
+    assert.ok(now.startsWith(md), `${where}: request.md is kept as it was, up to the new section:\n${now}`);
+    assert.deepEqual(shape(now.slice(md.length)), ['## Parts', '1. Dates'], `${where}:\n${now}`);
+  }
+});
+
 test('[REC-8] record part without --text exits 2, and no flag marks a part done (--done exits 2); nothing is written, even with --yes', (t) => {
   const { repo } = setup(t, { rest: PARTS });
   for (const args of [[], ['--done'], ['--text', 'CSV export', '--done']]) {

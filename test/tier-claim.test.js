@@ -57,6 +57,20 @@ test('C4 [REC-11] check shows the claim on a Tier line; a tier-0 claim on a code
   strict(repo, 0);
 });
 
+test('C4 [REC-11] the evidence keeps a non-ASCII file name: a tier-0 code change to src/éxport.js under an [INV-4] marker names INV-4 near the changed code, as src/export.js does', (t) => {
+  for (const path of ['src/export.js', 'src/éxport.js']) {
+    const repo = makeRepo(t);
+    repo.write('specs/invoices.md', file(INV1, S0, INV4));
+    repo.write(path, EXPORT(','));
+    repo.commit('Initial spec and code', { date: '2026-09-20T12:00:00Z' });
+    repo.git(['checkout', '-q', '-b', 'work']);
+    repo.write(path, EXPORT(';'));
+    repo.commit(message('Restore the separator', { tier: '0 — restores the separator; no promise changes' }), { date: '2026-09-21T12:00:00Z' });
+    const out = check(repo, '--all');
+    assert.ok(evidence(out).some((l) => hasId(l, 'INV-4')), `${path}: the evidence names INV-4, the section near the changed code:\n${out}`);
+  }
+});
+
 test('C4 [REC-11][HNT-3] a tier-0 claim with a baseline edit is not ok, counting, and check --strict exits 1; the evidence names INV-3, the section it edits', (t) => {
   const repo = base(t);
   editBaseline(repo);

@@ -157,6 +157,32 @@ test('[HNT-2][REC-9] code still live for a request the branch drops and archives
   hint(check(repo, '--all'), 'note', 'code still live', 'src/email.js:1-3');
 });
 
+test('[HNT-2][REC-9] context --diff over a fixed range reads code still live at the range\'s head: a later commit that rewrites the line leaves the hint as it was', (t) => {
+  const LINE1 = /src\/export\.js:1(?![\d-])/;
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S1));
+  addRequest(repo, 'email-link', [block('[EM-2]@1 add in specs/email.md   for R3', { now: EM2 })]);
+  const base = repo.commit('Records', { date: '2026-09-20T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'drop-email-link']);
+  repo.write('src/export.js', "export const link = 'the email link';\n");
+  const code = repo.commit(message('Email link in the export', { request: 'email-link', tier: '2 — email' }), { date: '2026-09-21T12:00:00Z' });
+  const r = runAl(repo.dir, ['conclude', 'email-link', '--dropped', 'D4', '--yes'], { env: ENV });
+  assert.equal(r.code, 0, both(r));
+  const head = repo.commit(message('Drop email-link', { request: 'email-link', tier: '2 — drop' }), { date: '2026-09-22T12:00:00Z' });
+  const range = () => {
+    const d = runAl(repo.dir, ['context', '--diff', `${base}..${head}`, '--all']);
+    assert.equal(d.code, 0, both(d));
+    return d.stdout;
+  };
+  hint(range(), 'note', 'code still live', LINE1);
+
+  repo.write('src/export.js', "export const link = 'no link';\n");
+  const later = repo.commit(message('Rewrite the export', { tier: '0 — tidy the export' }), { date: '2026-09-23T12:00:00Z' });
+  assertBlamed(repo, head, 'src/export.js', [1, 1], BLAME, code);
+  assertBlamed(repo, 'HEAD', 'src/export.js', [1, 1], BLAME, later);
+  hint(range(), 'note', 'code still live', LINE1);
+});
+
 // --- snapshots not re-checked ---
 
 const snap = (source, fetched, text) => `Source: ${source}\nFetched: ${fetched}\nSHA-256: ${sha256(text)}\n---\n${text}`;
