@@ -71,12 +71,19 @@ export function spec(ctx) {
     return { tree, body: [`no baseline yet; requests add sections as they go (root: ${root}/)`], next: 'al new <name> --from <file|->', notKnown };
   }
   // [VW-5]: each open change under the section it holds; an add not in the
-  // baseline yet under the section it is added after.
+  // baseline yet under the baseline section its chain of anchors starts
+  // from; the rest (a new file) after the text.
   const blocks = allBlocks(tree);
   const held = statesOf(files, blocks);
   const ids = new Set(files.flatMap((f) => f.sections.map((s) => s.id)));
-  const under = (id) => held.filter((e) => e.id === id || (!ids.has(e.id) && blocks.get(e.block).anchor === id));
-  const overlay = (s, text) => under(s.id).flatMap((e) => {
+  const placed = (e, n = 0) => {
+    const anchor = blocks.get(e.block).anchor;
+    const up = held.find((x) => x.request === e.request && x.id === anchor && !ids.has(anchor));
+    return ids.has(anchor) ? anchor : up && n < 50 ? placed(up, n + 1) : null;
+  };
+  const under = (id) => held.filter((e) => e.id === id || (!ids.has(e.id) && placed(e) === id));
+  const loose = held.filter((e) => !ids.has(e.id) && !placed(e));
+  const overlay = (s, text, list = under(s.id)) => list.flatMap((e) => {
     const now = blocks.get(e.block).now;
     const same = now && e.id === s.id && sameSection(now, s.text);
     return [`>> ${e.block} ${e.state}${e.by ? ` ${e.by}` : ''}${!text ? '' : !now ? ', removes it' : same ? ', now as above' : ', now:'}`,
@@ -87,6 +94,8 @@ export function spec(ctx) {
     body.push(line(body.length ? '' : 'Map', f.path));
     for (const s of f.sections) body.push(`${' '.repeat(12)}${s.id ? `[${s.id}] ` : ''}${s.title}`, ...overlay(s).map((l) => `${' '.repeat(14)}${l}`));
   }
+  const into = [...new Set(loose.map((e) => blocks.get(e.block).path ?? 'no file named'))].map((p) => [p, loose.filter((e) => (blocks.get(e.block).path ?? 'no file named') === p)]);
+  for (const [p, list] of into) body.push(line('New', `${p} (not in the baseline yet)`), ...overlay({}, false, list).map((l) => `${' '.repeat(14)}${l}`));
   body.push(line('Covers', files.map((f) => `${f.path} (${f.sections.length} sections)`).join(' · ')));
   const hints = duplicates(files);
   body.push(...hints);
@@ -96,6 +105,7 @@ export function spec(ctx) {
       body.push('', `==> ${f.path}`, ...(preamble ? [preamble.replace(/\n$/, '')] : []));
       for (const s of f.sections) body.push(s.text.replace(/\n$/, ''), ...overlay(s, true));
     }
+    for (const [p, list] of into) body.push('', `==> ${p} (not in the baseline yet)`, ...overlay({}, true, list));
     body.push('');
   }
   return {
