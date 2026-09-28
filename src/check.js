@@ -99,7 +99,7 @@ export function check({ top, opts }) {
   if (b.tier) {
     // [REC-11]: the claim with its evidence, the spec edits and the sections near the changed code.
     const ctx = { root: b.root, requests: b.requests, seen: b.seen, shallow: isShallow(top), headings: new Map() };
-    const code = base ? git(top, ['diff', '--name-only', base, head]).split('\n').filter((p) => p && !p.startsWith('requests/') && !p.startsWith(`${b.root}/`)) : [];
+    const code = base ? paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, head])).filter((p) => !p.startsWith('requests/') && !p.startsWith(`${b.root}/`)) : [];
     const near = [...new Set(code.flatMap((p) => [...fileLinks(top, base, head, p, ctx).ids.keys()]))];
     body.push(line('Tier', b.tier), line('Evidence', [`edits ${b.changedIds.map((i) => `[${i}]`).join(', ') || 'no baseline section'}`,
       `near the changed code: ${near.map((i) => `[${i}]`).join(', ') || 'none'}`].join(' · ')));

@@ -256,19 +256,20 @@ function byIdAt(top, sha) {
 
 // [REC-9]: the code still live at HEAD from the commits that map to `name`
 // by a Request: line or its folder, as `path:a-b`; only under the markers of
-// `onlyIds` when given.
-export function liveCode(top, name, root, onlyIds) {
-  const requests = requestsIn(openTree(top));
+// `onlyIds` when given. `at` is the revision read (HEAD, with the working
+// tree's records, by default).
+export function liveCode(top, name, root, onlyIds, at = 'HEAD') {
+  const requests = requestsIn(openTree(top, at === 'HEAD' ? undefined : at));
   const seen = new Map();
   const candidates = [
-    ...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', 'HEAD']).split('\n'),
-    ...git(top, ['log', '--format=%H', 'HEAD', '--', `requests/${name}/`, `requests/archive/${name}/`]).split('\n'),
+    ...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', at]).split('\n'),
+    ...git(top, ['log', '--format=%H', at, '--', `requests/${name}/`, `requests/archive/${name}/`]).split('\n'),
   ].filter(Boolean);
   const mine = new Set([...new Set(candidates)].filter((sha) => requestOf(top, sha, requests, seen).names.includes(name)));
   const found = new Set([...mine].flatMap((sha) => filesOf(top, sha)).filter(isCode(root)));
   // Code moves: a later commit that changed one of these files may have taken
   // its lines into its other files, so those are read too.
-  const history = git(top, ['rev-list', '--reverse', 'HEAD']).split('\n').filter(Boolean);
+  const history = git(top, ['rev-list', '--reverse', at]).split('\n').filter(Boolean);
   for (const sha of mine.size ? history.slice(history.findIndex((s) => mine.has(s)) + 1) : []) {
     const files = filesOf(top, sha).filter(isCode(root));
     if (files.some((f) => found.has(f))) files.forEach((f) => found.add(f));
@@ -276,14 +277,14 @@ export function liveCode(top, name, root, onlyIds) {
   const touched = [...found].sort();
   const out = [];
   for (const path of touched) {
-    const text = git(top, ['show', `HEAD:${path}`], { allowFail: true });
+    const text = git(top, ['show', `${at}:${path}`], { allowFail: true });
     if (text === null) continue;
     const fileLines = text.split('\n');
     const under = (n) => {
       for (let i = n; i >= 1; i--) if (idsOn(fileLines[i - 1]).length) return idsOn(fileLines[i - 1]);
       return [];
     };
-    const live = blame(top, 'HEAD', path, [[1, lineCount(text)]], { code: true })
+    const live = blame(top, at, path, [[1, lineCount(text)]], { code: true })
       .filter((b) => mine.has(b.sha) && (!onlyIds || under(b.line).some((id) => onlyIds.includes(id)))).map((b) => b.line);
     out.push(...ranges(live).map((r) => `${path}:${r}`));
   }

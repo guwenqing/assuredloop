@@ -260,7 +260,7 @@ function recordEntry({ top, args, opts }, kind) {
   let last = end;
   while (at >= 0 && last > at + 1 && !lines[last - 1].trim()) last--;
   const n = kind === 'decision' ? Math.max(0, ...decisionIds(md).ids) + 1
-    : Math.max(0, ...lines.slice(at + 1, end).map((l) => Number(l.match(/^(\d+)\.\s/)?.[1] ?? 0))) + 1;
+    : at < 0 ? 1 : Math.max(0, ...lines.slice(at + 1, end).map((l) => Number(l.match(/^(\d+)\.\s/)?.[1] ?? 0))) + 1;
   const entry = kind === 'decision' ? `- D${n}, ${stamp(now()).slice(0, 10)}. Source: ${opts.source}. ${opts.text}` : `${n}. ${opts.text}`;
   const next = at < 0 ? `${md.replace(/\n*$/, '\n')}\n## ${title}\n\n${entry}\n` : [...lines.slice(0, last), entry, ...lines.slice(last)].join('\n');
   if (!opts.yes) return { body: [`Would add to ${dir}/request.md, ## ${title}:`, entry], next: 'run the same command with --yes to write it', notKnown: [] };
