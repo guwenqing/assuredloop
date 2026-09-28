@@ -1,10 +1,10 @@
 // al context --diff <range> --for review [VW-4]: an intent part (per served
 // request: the signed organized text verbatim from its latest sign-off file
-// [REC-5], its blocks with their states, its decisions with the agent's
-// rulings apart [REC-7]), then an evidence part (per R of a served request,
-// the changed files linked, with the reason [LNK-1], to a section whose block
-// cites that R, or "none found"; then the changed files linked to no served
-// request).
+// [REC-5], the blocks whose sections the branch changes, with their states,
+// its decisions with the agent's rulings apart [REC-7]), then an evidence
+// part (per R of a served request, the changed files linked, with the reason
+// [LNK-1], to a section whose block cites that R, or "none found"; then the
+// changed files linked to no served request).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { makeRepo, sha256 } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
-import { ORG, addRequest, both, lineWith } from './helpers/request.js';
+import { ORG, addRequest, both, hasId, lineWith } from './helpers/request.js';
 import { assertDiffFrame, contextDiff, file, indexOf, says } from './helpers/links.js';
 
 const INV1 = '## [INV-1] Totals\nTotals MUST show two decimals.\n';
@@ -76,11 +76,11 @@ test('[VW-4][REC-5] --for review: an Intent part then an Evidence part, with the
   assert.ok(!out.includes('RFC 3339'), `the older sign-off's text is not shown:\n${out}`);
 });
 
-test('[VW-4][REC-7] --for review, intent: the served request\'s blocks with their states, and its decisions with the agent\'s ruling apart', (t) => {
+test('[VW-4][REC-7] --for review, intent: the blocks whose sections the branch changes, with their states (INV-7), not the served request\'s other blocks (INV-3); and its decisions with the agent\'s ruling apart', (t) => {
   const { out, intent } = review(reviewed(t));
   const text = intent.join('\n');
   assert.ok(says(text, 'INV-7', 'consolidated'), `INV-7 consolidated in the intent part:\n${out}`);
-  assert.ok(says(text, 'INV-3', 'pending'), `INV-3 pending in the intent part:\n${out}`);
+  assert.ok(!intent.some((l) => hasId(l, 'INV-3')), `the branch does not change INV-3; the intent part should not list it:\n${out}`);
 
   const d = (n) => new RegExp(`\\bD${n}\\b`);
   const owner = [1, 3].map((n) => {

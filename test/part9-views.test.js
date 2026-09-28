@@ -1,6 +1,7 @@
 // Gaps in the views, from the architect's rulings for part 9:
 // [VW-2] al context <name>'s Words line names each snapshot with its SHA-256
-// re-checked, a tampered one "not ok"; [VW-3] context <ID> for a pending add
+// re-checked, a tampered one named "not ok" on a line of its own (no intact
+// one beside it); [VW-3] context <ID> for a pending add
 // shows each holder's "now"; [VW-4] the review view's intent lists only the
 // blocks whose sections the branch changes, counted by state as [VW-2]@2 has
 // it when they do not fit; [HNT-1] hidden hints are always counted, even when
@@ -45,14 +46,17 @@ function words(t, tampered) {
 }
 const SNAPSHOTS = ['2026-09-20-owner-words.md', '2026-09-21-signoff.md', '2026-09-22-issue.md'];
 
-test('[VW-2][REC-3] context <name>: the Words line names each snapshot in origin/, and marks the tampered one "not ok" on the line naming it', (t) => {
+test('[VW-2][REC-3] context <name>: the Words line names each snapshot in origin/; the tampered one is named with "not ok" on some line, and no line pairs "not ok" with an intact one', (t) => {
   const r = contextOf(words(t, true), 'csv-export');
   ok(r);
   const w = labelled(r.stdout, 'Words');
   assert.ok(w, `expected a line starting with Words:\n${r.stdout}`);
   for (const f of SNAPSHOTS) assert.ok(w.includes(f), `the Words line should name ${f}:\n${r.stdout}`);
-  assert.ok(lines(w).some((l) => l.includes('2026-09-22-issue.md') && l.includes('not ok')),
-    `the Words line naming 2026-09-22-issue.md should say "not ok":\n${r.stdout}`);
+  assert.ok(lines(r.stdout).some((l) => l.includes('2026-09-22-issue.md') && l.includes('not ok')),
+    `a line should name 2026-09-22-issue.md with "not ok":\n${r.stdout}`);
+  for (const f of SNAPSHOTS.filter((x) => x !== '2026-09-22-issue.md')) {
+    assert.ok(!lines(r.stdout).some((l) => l.includes('not ok') && l.includes(f)), `no line should pair "not ok" with the intact ${f}:\n${r.stdout}`);
+  }
   assert.ok(lines(r.stdout).length <= 12, `more than 12 lines:\n${r.stdout}`);
 });
 
