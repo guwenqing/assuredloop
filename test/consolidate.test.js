@@ -95,6 +95,20 @@ test('[STA-4] an add after a sub-heading goes before the next heading at a highe
   await expectState(repo, 'inv/INV-8@1', 'consolidated');
 });
 
+test('[STA-4] an add into a file with no blank lines between sections still lands with one blank line before and after it; the other gaps stay as they were (exact bytes)', async (t) => {
+  // INV-1 is followed directly by the next heading at its level; INV-3's last
+  // sub-heading, INV-3.1, is followed directly by the next heading at INV-3's level.
+  const tight = `# Invoices\n${INV1}${S0}${INV31}${INV4}`;
+  const repo = setup(t, [
+    block('[INV-2]@1 add after [INV-1]', { now: INV2 }),
+    block('[INV-7]@1 add after [INV-3]', { now: INV7 }),
+  ], { baseline: tight });
+  ok(consolidate(repo, 'inv', '--yes'));
+  assert.equal(spec(repo), `# Invoices\n${INV1}\n${INV2}\n${S0}${INV31}\n${INV7}\n${INV4}`);
+  await expectState(repo, 'inv/INV-2@1', 'consolidated');
+  await expectState(repo, 'inv/INV-7@1', 'consolidated');
+});
+
 test('[STA-4][SPC-5] add in <path>: a new file (and its folder) holds the Now as written; in an existing file it goes at the end (exact bytes)', async (t) => {
   const repo = setup(t, [
     block('[INV-8]@1 add in specs/billing/export.md', { now: INV8 }),

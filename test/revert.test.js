@@ -116,6 +116,25 @@ test('[STA-4] revert when the baseline already reads "was" (a modify, an add, a 
   assert.equal(spec(repo), BASE);
 });
 
+test('[STA-4][SPC-4] revert when the baseline reads "was" only after [SPC-4]\'s normalizing (trailing spaces and a tab, a blank line after the heading) changes no byte, with or without --yes; after a fold it writes "was" as written', async (t) => {
+  const s0Loose = '## [INV-3] Dates  \n\nDates show in the customer\'s local format.\t\n';
+  const loose = file('# Invoices\n', INV1, INV2, s0Loose, INV31, INV4);
+  const repo = setup(t, [block('[INV-3]@1 modify', { was: S0, now: S1 })], { baseline: loose });
+  await expectState(repo, 'inv/INV-3@1', 'pending');
+  for (const extra of [[], ['--yes']]) {
+    const r = revert(repo, 'INV-3', ...extra);
+    ok(r);
+    assert.equal(spec(repo), loose, 'no byte of the file changes');
+    clean(repo);
+    assertFrame(r.stdout);
+  }
+  // The contrast: once folded, the revert writes, and puts back "was" as written.
+  ok(consolidate(repo, 'inv', '--yes'));
+  assert.equal(spec(repo), file('# Invoices\n', INV1, INV2, S1, INV31, INV4));
+  ok(revert(repo, 'INV-3', '--yes'));
+  assert.equal(spec(repo), BASE);
+});
+
 test('[STA-4][STA-6] revert refuses a section carried by another request\'s block (exit 1, "carried"), with or without --yes; nothing written', async (t) => {
   const repo = setup(t, [block('[INV-3]@1 modify', { was: S0, now: S1 })], {
     baseline: file('# Invoices\n', INV1, INV2, S2, INV31, INV4),
