@@ -12,6 +12,7 @@ import { allBlocks, statesOf } from './states.js';
 import { organized, parts, signoffState } from './signoff.js';
 import { requestToWrite, decisionList, entriesOf } from './commands.js';
 import { decisions } from './record-section.js';
+import { liveCode } from './views.js';
 
 const HELD = ['consolidated', 'carried'];
 const NOT_KNOWN = ['whether the code does what the spec says, and whether review agreed (conclude reads only the records)'];
@@ -33,7 +34,7 @@ function fateOf(e, b, { name, dropped, blocks, signedR, ownerDecisions }) {
 }
 
 // The generated block of the Outcome ([REC-9]): content facts only.
-function outcome(md, org, fates, droppedBy) {
+function outcome(md, org, fates, droppedBy, live) {
   const ids = new Map();
   for (const f of fates) ids.set(f.b.id, [...(ids.get(f.b.id) ?? []), f]);
   const kind = (fs) => {
@@ -54,6 +55,11 @@ function outcome(md, org, fates, droppedBy) {
   const all = decisionList(md);
   lines.push(`- Decisions: ${all.filter((d) => !d.agent).map((d) => d.id).join(', ') || 'none'}`);
   lines.push(`- Agent rulings: ${all.filter((d) => d.agent).map((d) => d.id).join(', ') || 'none'}`);
+  // Any code still live for dropped work: all the request's for a dropped
+  // request, else only under the markers of its Dropped sections.
+  const droppedIds = [...kinds].filter(([, k]) => k === 'Dropped').map(([id]) => id);
+  const code = droppedBy || droppedIds.length ? live(droppedBy ? null : droppedIds) : [];
+  if (code.length) lines.push(`- Code still live for dropped work: ${code.join(', ')}`);
   return lines;
 }
 
@@ -133,7 +139,8 @@ export function conclude({ top, args, opts }) {
   }
 
   const status = dropped ? 'dropped' : 'concluded';
-  const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped));
+  const live = (ids) => liveCode(top, name, rootOf(top, tree), ids);
+  const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live));
   const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])
     .filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
   const note = children.length ? [`note: child request ${children.join(', ')} is still open`] : [];
