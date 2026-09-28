@@ -14,9 +14,10 @@ changes only its status.
 | [0006](0006-the-request-record-and-its-audit-scope.md) | The request record, snapshots and audit scope | accepted |
 | [0007](0007-rough-links-from-git.md) | Rough links from git, with reasons | accepted |
 | [0008](0008-tiers-as-the-way-of-working-with-adrs.md) | Tiers decide which records to write; ADRs are records | accepted |
-| [0009](0009-a-deterministic-script-node-zero-dependencies.md) | A deterministic script, Node, no dependencies | accepted |
+| [0009](0009-a-deterministic-script-node-zero-dependencies.md) | A deterministic script, Node, no dependencies | superseded by 0012 |
 | [0010](0010-requirement-first-signed-and-blocking.md) | Requirement first, signed, and blocking | superseded by 0011 |
 | [0011](0011-requirement-signed-work-delivered-with-or-after.md) | Requirement signed; work drafted before, delivered with or after | accepted |
+| [0012](0012-a-deterministic-script-under-3500-lines.md) | A deterministic script, Node, no dependencies, under 3,500 lines | accepted |
 
 **Where the cited material lives.**
 - The design as agreed: `requests/assuredloop-v1/design.md`.

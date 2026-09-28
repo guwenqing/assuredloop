@@ -974,7 +974,8 @@ re-derived from this document's text, not from R1's model code.
 - **C8, non-blocking.** Exit codes; nothing in git hooks.
 - **C9, cost.**
   - No runtime dependencies.
-  - Under 2,000 lines of CLI source.
+  - Under 3,500 lines of CLI source: every line of `src/*.js` and `bin/*.js`
+    (ADR 0012; the first target, 2,000, was an estimate made before any code).
   - A skill with a 15-line quick path and a core of 40 lines or fewer.
 - **C10, fresh reader.**
   - A fresh agent gets only the tool's output at the midpoint of an epic that
