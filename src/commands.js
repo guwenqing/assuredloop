@@ -45,7 +45,7 @@ function concludedOnMain(top, name) {
   return `on main at ${sha.slice(0, 7)} (${stamp(new Date(Number(when) * 1000))}), the commit that added ${path}`;
 }
 
-const NAME =/^[a-z0-9][a-z0-9-]*$/;
+const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const TIERS = ['0', '1', '2', '3', 'S'];
 const TIER0 = 'tier 0 has no record ([REC-10]): if this is a fix, say why in the commit and drop the record; otherwise its tier is 1 or higher';
 const FETCHED = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
