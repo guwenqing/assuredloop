@@ -138,6 +138,7 @@ export function statesOf(files, blocks, include = (b) => b.open) {
     const atWas = b.op === 'add' ? base === undefined : same(base, b.was);
     const entry = (state, by = null, candidates = []) => ({
       request: b.request, id: b.id, n: b.n, block: b.key, op: b.op, state, by, candidates, forR: b.forR,
+      mark: b.kept ? 'kept' : b.dropped ? 'dropped' : null, // the block's marker, for the views ([VW-2])
       file: fileOf.get(b.id) ?? addedIn(b),
       retainsNothing: same(b.was, b.now) || atWas || state === 'waiting',
     });
