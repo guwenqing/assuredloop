@@ -245,23 +245,58 @@ export function hintLines(list, cap) {
 }
 
 // The files at `at` that import or require `path` by a relative specifier, as
-// rough links with their reason ([LNK-1]). One left-to-right scan takes each
-// comment and string whole, so neither counts as an import nor hides code.
-const TOKENS = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|\b(from|import|require)\s*\(?\s*(['"])(\.{1,2}\/[^'"\n]*)\2|(['"`])(?:\\[\s\S]|(?!\4)[^\\])*\4/g;
+// rough links with their reason ([LNK-1]).
 function importers(top, at, path) {
   const base = posix.basename(path).replace(/\.[^.]*$/, '');
-  // A directory specifier names the folder of its index file.
-  const stem = base === 'index' && posix.dirname(path) !== '.' ? posix.basename(posix.dirname(path)) : base;
-  const found = git(top, ['grep', '-l', '-F', stem, at, '--', '*.js', '*.mjs', '*.cjs', '*.ts'], { allowFail: true }) ?? '';
+  // An index file is named by itself, or by its folder in a directory specifier.
+  const stems = base === 'index' && posix.dirname(path) !== '.' ? [base, posix.basename(posix.dirname(path))] : [base];
+  const found = git(top, ['grep', '-l', '-F', ...stems.flatMap((s) => ['-e', s]), at, '--', '*.js', '*.mjs', '*.cjs', '*.ts'], { allowFail: true }) ?? '';
   const out = [];
   for (const f of found.split('\n').filter(Boolean).map((l) => l.slice(at.length + 1)).filter((f) => f !== path)) {
-    const text = git(top, ['show', `${at}:${f}`], { allowFail: true }) ?? '';
-    for (const [, how, , spec] of text.matchAll(TOKENS)) {
-      const p = spec && posix.join(posix.dirname(f), spec);
-      if (!p || ![p, `${p}.js`, `${p}.mjs`, `${p}.cjs`, `${p}.ts`, `${p}/index.js`].includes(path)) continue;
+    for (const [how, spec] of specifiers(git(top, ['show', `${at}:${f}`], { allowFail: true }) ?? '')) {
+      const p = posix.join(posix.dirname(f), spec);
+      if (![p, `${p}.js`, `${p}.mjs`, `${p}.cjs`, `${p}.ts`, `${p}/index.js`].includes(path)) continue;
       out.push(`${how === 'require' ? 'required' : 'imported'} by ${f}`);
       break;
     }
+  }
+  return out;
+}
+
+// The relative specifiers `text` imports or requires, as [how, spec], read left
+// to right: comments and the text of strings and templates are skipped whole,
+// and a template's ${…} expressions are read as code.
+const SPEC = /\b(from|import|require)\s*\(?\s*(['"])(\.{1,2}\/[^'"\n]*)\2/y;
+function specifiers(text) {
+  const out = [];
+  const braces = []; // for each ${ we are inside, the { depth within it
+  let inTemplate = false;
+  for (let i = 0; i < text.length;) {
+    const c = text[i];
+    const two = text.slice(i, i + 2);
+    if (inTemplate) {
+      if (c === '\\') i += 2;
+      else if (c === '`') { inTemplate = false; i++; }
+      else if (two === '${') { braces.push(0); inTemplate = false; i += 2; }
+      else i++;
+      continue;
+    }
+    SPEC.lastIndex = i;
+    const m = 'fir'.includes(c) && SPEC.exec(text);
+    if (m) { out.push([m[1], m[3]]); i = SPEC.lastIndex; }
+    else if (two === '//') { const n = text.indexOf('\n', i); i = n < 0 ? text.length : n; }
+    else if (two === '/*') { const n = text.indexOf('*/', i + 2); i = n < 0 ? text.length : n + 2; }
+    else if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < text.length && text[j] !== c && text[j] !== '\n') j += text[j] === '\\' ? 2 : 1;
+      i = j + 1;
+    } else if (c === '`') { inTemplate = true; i++; }
+    else if (c === '{') { if (braces.length) braces[braces.length - 1]++; i++; }
+    else if (c === '}') {
+      if (braces.length && braces[braces.length - 1] === 0) { braces.pop(); inTemplate = true; }
+      else if (braces.length) braces[braces.length - 1]--;
+      i++;
+    } else i++;
   }
   return out;
 }
