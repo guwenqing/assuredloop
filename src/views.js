@@ -3,13 +3,15 @@
 // dropped work ([REC-9]), all from the rough links ([LNK-1], [LNK-2]).
 import { Fail, git, isShallow, mainCommit, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
-import { rootOf, baseline } from './spec.js';
+import { rootOf, baseline, configured } from './spec.js';
 import { allBlocks, changeStates, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { latestSignoff, organized, parts } from './signoff.js';
 import { line, decisionList, entriesOf, concluding } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
 import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
+import { headNote, resultLines, testLines, testMatcher } from './tests.js';
+import { adrFolders, governing } from './adrs.js';
 
 const HISTORY = 'history unavailable (shallow clone)';
 const isCode = (root) => (p) => !p.startsWith('requests/') && !p.startsWith(`${root}/`);
@@ -21,7 +23,8 @@ const labelled = (label, items) => items.map((t, i) => line(i ? '' : label, t));
 const titles = (files) => new Map(files.flatMap((f) => f.sections).filter((s) => s.id).map((s) => [s.id, s.title]));
 
 // al context <ID>: the section, who holds it, who shaped it, the decisions
-// citing it, and the code linked to it, each link with its reason.
+// and ADRs citing it, and the code and tests linked to it, each link with its
+// reason.
 export function sectionView(top, id) {
   const tree = openTree(top);
   const root = rootOf(top, tree);
@@ -43,25 +46,33 @@ export function sectionView(top, id) {
     for (const c of commits) {
       const files = filesOf(top, c.sha);
       if (files.length > WIDE) skipped++;
-      else links.push(...files.filter(isCode(root)).map((p) => `${p}  changed together with [${id}] (${day(c.when)}, ${describe(c)})`));
+      else links.push(...files.filter(isCode(root)).map((p) => [p, `${p}  changed together with [${id}] (${day(c.when)}, ${describe(c)})`]));
     }
   }
   const named = git(top, ['grep', '-n', '-z', '-F', `[${id}]`, '--', '.', ':!requests', `:!${root}`], { allowFail: true }) ?? '';
-  const byName = named.split('\n').filter(Boolean).map((l) => l.split('\0')).map(([p, n]) => `${p}:${n}  names [${id}]`);
+  const byName = named.split('\n').filter(Boolean).map((l) => l.split('\0')).map(([p, n]) => [p, `${p}:${n}  names [${id}]`]);
   const heading = s ? wordsOf(s.title) : new Set();
   const byWord = paths(git(top, ['ls-files', '-z'])).filter(isCode(root)).flatMap((p) => {
     const w = [...wordsOf(p)].find((x) => heading.has(x));
-    return w ? [`${p}  shares the word "${w}"`] : [];
+    return w ? [[p, `${p}  shares the word "${w}"`]] : [];
   });
   const decided = requests.flatMap((r) => entriesOf(r.md, 'Decisions').filter((e) => /^- D\d+/.test(e) && cites(e, id))
     .map((e) => `${r.name} ${e.match(/^- (D\d+)/)[1]}`));
   body.push(line('Decisions', decided.length ? decided.join(' · ') : 'none cite it'));
-  body.push(...labelled('Links', [...byName, ...links, ...byWord]));
+  const adrs = governing(top, tree, id);
+  body.push(line('ADRs', adrs.length ? adrs.join(' · ') : 'none cite it'));
+  // An ADR file shows on the ADRs line; a test file under Tests ([LNK-3]).
+  const isTest = testMatcher(root, configured(top, tree, undefined, 'tests'));
+  const adr = adrFolders(top, tree);
+  const all = [...byName, ...links, ...byWord].filter(([p]) => !adr.some((d) => p.startsWith(`${d}/`)));
+  const tests = all.filter(([p]) => isTest(p)).map(([, t]) => t);
+  body.push(...labelled('Links', all.filter(([p]) => !isTest(p)).map(([, t]) => t)));
+  body.push(...labelled('Tests', tests.length ? tests : ['none linked']));
   if (skipped) body.push(skippedLine(skipped));
   return {
     body,
     next: held.length ? `al context ${held[0].request}` : 'al spec --list',
-    notKnown: ['whether the linked code does what the section says (tests and review judge that); ADRs and linked tests (not read yet)'],
+    notKnown: ['whether the linked code does what the section says (tests and review judge that)'],
   };
 }
 
@@ -165,11 +176,12 @@ export function diffView(top, range, forReview, all) {
   const branch = readBranch(top, { base, commits: commits.map((c) => c.sha), tree, at: head, range: `${base.slice(0, 7)}..${head.slice(0, 7)}` });
   const list = ranked(hintsOf(top, branch, { main: mainCommit(top) }), branch);
   const hints = hintLines(list, all ? list.length : 3);
-  if (forReview) body.push(...review(tree, files, served, code, branch.tier), ...hints);
+  const tests = [...testLines(top, branch, true), ...resultLines(top, branch)];
+  if (forReview) body.push(...review(tree, files, served, code, branch.tier), ...tests, ...hints);
   else {
     body.push(...labelled('Changes', changes.length ? changes : ['no baseline section']));
     body.push(...labelled('Links', code.flatMap((f) => f.out)));
-    body.push(line('Nearby', nearby.length ? nearby.map((id) => `[${id}] ${headings.get(id) ?? ''}`.trim()).join(' · ') : 'none'));
+    body.push(line('Nearby', nearby.length ? nearby.map((id) => `[${id}] ${headings.get(id) ?? ''}`.trim()).join(' · ') : 'none'), ...tests);
     body.push(line('Related', related.length ? related.join(' · ') : 'none'), ...hints);
   }
   if (skipped) body.push(skippedLine(skipped));
@@ -177,7 +189,7 @@ export function diffView(top, range, forReview, all) {
     tree: { label: `commits ${base.slice(0, 7)}..${head.slice(0, 7)}` },
     body,
     next: forReview ? 'al context <ID> for any section named here' : `al context --diff ${range} --for review`,
-    notKnown: ['uncommitted changes (the range reads commits only)', 'linked tests, test results and hints (not read yet)'],
+    notKnown: ['uncommitted changes (the range reads commits only)', ...headNote(top, branch)],
   };
 }
 

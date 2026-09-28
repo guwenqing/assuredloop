@@ -15,6 +15,8 @@ import { judge, outcomeFacts } from './conclude.js';
 import { appendOnly } from './check.js';
 import { liveCode } from './views.js';
 import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
+import { testHints } from './tests.js';
+import { adrHints, adrsOf } from './adrs.js';
 
 const BAD = ['differs', 'base revised', 'base dropped', 'broken link'];
 const ID_TOKEN = /\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g;
@@ -180,10 +182,12 @@ export function hintsOf(top, b, { main }) {
       `al record ${name} signoff --source <where> --yes`);
   }
   if (b.commits.length && !b.tier) add('note', 22, [], `no Tier line in ${b.range}`, 'add "Tier: <n> — <claim>" to the PR, e.g. with git commit --amend');
+  out.push(...testHints(top, b), ...adrHints(top, b));
   if (mainSha) out.push(...earlyWork(top, b, mainSha));
   for (const [name, { r, j }] of facts) {
     for (const x of outcomeFacts(j.org, j.fates).rs.filter((y) => !y.ids.length)) add('note', 24, [name], `${name} ${x.key}${x.title ? ` ${x.title}` : ''} is in no section at conclusion`, `al context ${name}`);
     for (const c of childrenOf(r.md).filter((n) => open.some((o) => o.name === n))) add('note', 25, [name], `${name} concludes while its child ${c} is still open`, `al context ${c}`);
+    for (const a of adrsOf(top, b.tree, b.at, name, b.requests).added.filter((x) => x.status === 'proposed')) add('note', 24, [name], `${name} concludes with ${a.path} still proposed`, 'set its Status line, then al check');
   }
   return out;
 }
