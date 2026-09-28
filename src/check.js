@@ -5,7 +5,7 @@
 // grow at the end; a file in origin/ never changes or goes; nothing changes
 // under a request archived on main; the move to archive/ is not an edit.
 // check exits 0, and --strict exits 1 on a not ok that counts ([HNT-3]).
-import { git, isShallow, mainCommit } from './git.js';
+import { git, isShallow, mainCommit, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
 import { line } from './commands.js';
 import { hintText, hintsOf, ranked, readBranch } from './hints.js';
@@ -86,13 +86,17 @@ export function appendOnly(top, main, commits) {
   return out;
 }
 
+// Under --at X, the final state is X's tree and the commits main..X ([VW-8]).
 export function check({ top, opts }) {
   const main = mainCommit(top);
-  const base = main ? git(top, ['merge-base', main, 'HEAD'], { allowFail: true }) : null;
-  const commits = main ? git(top, ['rev-list', '--reverse', '--topo-order', `${main}..HEAD`]).split('\n').filter(Boolean) : [];
-  const b = readBranch(top, { base, commits, tree: openTree(top), range: 'main..HEAD' });
-  const list = ranked(hintsOf(top, b, { main }), b);
-  const notKnown = headNote(top, b);
+  const head = opts.at ? resolveCommit(top, opts.at) : 'HEAD';
+  const to = opts.at ? head.slice(0, 7) : 'HEAD';
+  const base = main ? git(top, ['merge-base', main, head], { allowFail: true }) : null;
+  const commits = main ? git(top, ['rev-list', '--reverse', '--topo-order', `${main}..${head}`]).split('\n').filter(Boolean) : [];
+  const b = readBranch(top, { base, commits, tree: openTree(top, opts.at), at: opts.at, range: `main..${to}` });
+  // Under --at, main is read only up to X's fork point, so no later commit leaks in.
+  const list = ranked(hintsOf(top, b, { main: opts.at ? base : main }), b);
+  const notKnown = [...headNote(top, b), ...(opts.at ? ["main after X's fork point (read only up to it under --at)"] : [])];
   if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
   const body = [line('Serves', [...[...b.served].filter((n) => !b.archived.has(n)), ...[...b.archived].map((n) => `archives ${n}`)].join(' · ') || 'no request')];
   if (b.tier) {
@@ -109,7 +113,7 @@ export function check({ top, opts }) {
   body.push(NOTE);
   const counting = list.filter((h) => h.counts).length;
   return {
-    tree: { label: `working tree and ${commits.length} commit(s) over main..HEAD` },
+    tree: { label: `${opts.at ? `commit ${to}` : 'working tree'} and ${commits.length} commit(s) over main..${to}` },
     body,
     exit: opts.strict && counting ? 1 : 0,
     next: counting ? 'fix or explain each not ok that counts, then al check --strict' : 'run al check again after each push; it certifies only what it read',

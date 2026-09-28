@@ -26,8 +26,8 @@ export function adrsIn(top, tree, at) {
 const shown = (a) => `${a.n} ${a.status === 'superseded' ? `superseded by ${a.by.join(', ')}` : a.status || 'no status'}`;
 
 // The ADRs that govern section `id` (a Governs: line) or name it, current first.
-export function governing(top, tree, id) {
-  return adrsIn(top, tree).filter((a) => a.governs.includes(id) || cites(a.text, id))
+export function governing(top, tree, id, at) {
+  return adrsIn(top, tree, at).filter((a) => a.governs.includes(id) || cites(a.text, id))
     .sort((x, y) => (y.status === 'accepted') - (x.status === 'accepted') || x.n.localeCompare(y.n))
     .map((a) => `${shown(a)} (${a.governs.includes(id) ? 'governs' : 'names'} [${id}])`);
 }

@@ -1,7 +1,7 @@
 // The commands built so far: new, record origin, context.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
-import { Fail, git, isShallow, mainCommit, now, stamp } from './git.js';
+import { Fail, git, isShallow, mainCommit, now, resolveCommit, stamp } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
 import { sameSection } from './sections.js';
@@ -11,6 +11,9 @@ import { recordSection } from './record-section.js';
 import { archivedLines, diffView, sectionView } from './views.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
 import { decisions as decisionIds } from './record-section.js';
+import { rootOf, baseline } from './spec.js';
+import { requestsIn } from './links.js';
+import { audit } from './audit.js';
 
 const BAD = ['differs', 'broken link', 'base revised', 'base dropped', 'not found'];
 
@@ -38,12 +41,12 @@ export function decisionList(md) {
 }
 
 // [STA-8]: whether a request is concluded on main, derived from main's history:
-// the commit on main's first-parent line where its archived request.md arrived
-// (for a merge, the merge commit), as { sha, when }; else { none } saying why.
-// Nothing records it.
-export function concluding(top, name) {
+// the commit on main's first-parent line (the --at commit's, under --at)
+// where its archived request.md arrived (for a merge, the merge commit), as
+// { sha, when }; else { none } saying why. Nothing records it.
+export function concluding(top, name, at) {
   const path = `requests/archive/${name}/request.md`;
-  const main = mainCommit(top);
+  const main = at ? resolveCommit(top, at) : mainCommit(top);
   if (!main || git(top, ['cat-file', '-e', `${main}:${path}`], { allowFail: true }) === null) return { none: 'not on main yet' };
   const unknown = `on main; which commit added ${path} is not known`;
   if (isShallow(top)) return { none: `${unknown}: history unavailable (shallow clone)`, shallow: true };
@@ -53,9 +56,9 @@ export function concluding(top, name) {
   return { sha, when: new Date(Number(when) * 1000) };
 }
 
-function concludedOnMain(top, name) {
-  const c = concluding(top, name);
-  return c.sha ? `on main at ${c.sha.slice(0, 7)} (${stamp(c.when)}), where requests/archive/${name}/request.md arrived` : c.none;
+export function concludedOnMain(top, name, at) {
+  const c = concluding(top, name, at);
+  return c.sha ? `${at ? `in the history of ${at}` : 'on main'} at ${c.sha.slice(0, 7)} (${stamp(c.when)}), where requests/archive/${name}/request.md arrived` : c.none;
 }
 
 const ID_ARG = /^\[?([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]?$/;
@@ -67,6 +70,16 @@ const FETCHED = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
 
 // A labelled line, as in `Next      al context x`.
 export const line = (label, text) => `${label.padEnd(10)}${text}`;
+
+// [VW-2]: held sections, each as `text(e)`, while the line fits in 100
+// characters; else the count in each state, naming each by `id(e)` except the
+// consolidated, carried and pending ones.
+export function fitOrCount(label, held, text, id) {
+  const full = line(label, held.map(text).join(' · '));
+  if (full.length <= 100) return full;
+  return line(label, [...new Set(held.map((e) => e.state))].map((s) => [s, held.filter((e) => e.state === s)])
+    .map(([s, es]) => `${es.length} ${s}${['consolidated', 'carried', 'pending'].includes(s) ? '' : ` (${es.map(id).join(', ')})`}`).join(' · '));
+}
 
 function readInput(from, cwd) {
   if (from === undefined) throw new Fail('--from <file|-> is missing', 'pass the text with --from <file>, or --from - on standard input');
@@ -272,16 +285,19 @@ const taken = (path) => {
   try { lstatSync(path); return true; } catch { return false; }
 };
 
-// al context <name> [--at <commit>]: where a request stands (minimal, [VW-2] comes later).
+// al context [<name> | <ID> | --diff <range>] [--audit] [--at <commit>]: where
+// the project, a request or a section stands ([VW-1] to [VW-4], [VW-7]).
 export function context({ top, args, opts }) {
   const [name] = args;
-  if ((opts.diff !== undefined || ID_ARG.test(name ?? '')) && opts.at !== undefined) {
-    throw new Fail('--at is not built yet for al context <ID> or --diff', 'run it without --at, on a checkout of that commit');
-  }
   if (opts.for !== undefined && (opts.for !== 'review' || opts.diff === undefined)) throw new Fail('--for review goes with --diff <range>', 'al context --diff main...HEAD --for review');
-  if (opts.diff !== undefined) return diffView(top, opts.diff, opts.for === 'review', opts.all);
-  if (ID_ARG.test(name ?? '')) return sectionView(top, name.match(ID_ARG)[1]);
-  if (name === undefined) throw new Fail('al context <name>: the list of all requests is not built yet', 'al context <name>');
+  if (opts.audit) {
+    if (name === undefined || opts.diff !== undefined) throw new Fail('--audit takes a request, a section ID or path:line', 'al context <name | ID | path:line> --audit');
+    return audit(top, ID_ARG.test(name) ? name.match(ID_ARG)[1] : name, opts.at);
+  }
+  if (/:\d+$/.test(name ?? '')) throw new Fail(`${name}: path:line goes with --audit`, `al context ${name} --audit`);
+  if (opts.diff !== undefined) return diffView(top, opts.diff, opts.for === 'review', opts.all, opts.at);
+  if (ID_ARG.test(name ?? '')) return sectionView(top, name.match(ID_ARG)[1], opts.at);
+  if (name === undefined) return projectView(top, opts.at);
   const tree = openTree(top, opts.at);
   const dir = findRequest(tree, name);
   if (!dir) throw new Fail(`no request named ${name} in the ${tree.label}`, 'al context <name> for a request under requests/');
@@ -306,7 +322,7 @@ export function context({ top, args, opts }) {
   const body = [
     ...(state.blocked ? [`BLOCKED: ${state.reason}${changed}`] : []),
     `${name}  ${title}  ${head.join(' · ')}`,
-    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name)), ...archivedLines(top, name, opts.at)] : []),
+    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name, opts.at)), ...archivedLines(top, name, opts.at)] : []),
     line('Require', state.blocked ? `${state.reason}${changed}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
@@ -318,9 +334,7 @@ export function context({ top, args, opts }) {
   const held = all.filter((e) => e.request === name);
   const count = (id) => held.filter((e) => e.id === id).length;
   const label = (e) => (count(e.id) > 1 ? `${e.id}@${e.n}` : e.id);
-  if (held.length) {
-    body.push(line('Spec', held.map((e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`).join(' · ')));
-  }
+  if (held.length) body.push(fitOrCount('Spec', held, (e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`, label));
   const parts = entriesOf(text, 'Parts');
   if (parts.length) body.push(line('Parts', parts.map((p) => p.replace(/\s+/g, ' ')).join(' · ')));
   const mine = new Set(held.map((e) => e.file).filter(Boolean));
@@ -344,14 +358,34 @@ export function context({ top, args, opts }) {
       if (now) hints.push({ kind: 'note', text: `part ${k + 1} names request ${c}: ${now}`, command: `al context ${c}` });
     }
   });
-  body.push(...hintLines(hints, opts.all ? hints.length : Math.max(0, Math.min(3, 12 - body.length - 3))));
+  const cap = opts.all ? hints.length : Math.max(0, Math.min(3, 12 - body.length - 3));
+  body.push(...hintLines(hints, cap));
+  const hidden = cap === 0 && hints.length ? `; hints: ${hints.length} more hidden, --all` : '';
   return {
     tree,
     body,
-    next: state.blocked ? `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`
+    next: (state.blocked ? `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`
       : bad.length
       ? `re-fetch the source of origin/${bad[0][0]}, then al record ${name} origin ${bad[0][1].startsWith('no longer') ? `--verify ${bad[0][0]}` : '--url <source>'} --from -`
-      : `al record ${name} origin --url <source> --from - to snapshot a new original`,
+      : `al record ${name} origin --url <source> --from - to snapshot a new original`) + hidden,
+    notKnown: [historyNote(top), 'whether the sources changed since they were fetched', opts.at && 'the hints that compare with main (not read under --at)'].filter(Boolean),
+  };
+}
+
+// al context: the open requests, one line each, the blocked ones first ([VW-1]).
+function projectView(top, at) {
+  const tree = openTree(top, at);
+  const rows = requestsIn(tree).filter((r) => r.open).map((r) => {
+    const s = signoffState(tree, r.dir, r.name);
+    const title = (r.md.match(/^# (.*)$/m)?.[1] ?? r.name).trim();
+    return { blocked: s.blocked, text: `${r.name}  ${title}  ${s.blocked ? `BLOCKED: ${s.reason}` : r.md.match(/\bStatus:\s*(\w+)/)?.[1] ?? 'status unknown'}` };
+  }).sort((x, y) => y.blocked - x.blocked);
+  const body = rows.length ? rows.map((r) => r.text) : ['no open requests'];
+  if (!baseline(tree, rootOf(top, tree, at)).length) body.push('no baseline yet; requests add sections as they go');
+  return {
+    tree,
+    body,
+    next: rows[0] ? `al context ${rows[0].text.split('  ')[0]}` : 'al new <name> --from <file|->',
     notKnown: [historyNote(top), 'whether the sources changed since they were fetched'].filter(Boolean),
   };
 }

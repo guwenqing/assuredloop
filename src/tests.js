@@ -5,7 +5,6 @@
 // reason; and [HNT-2]'s four test notes.
 import { basename } from 'node:path';
 import { git, isShallow } from './git.js';
-import { openTree } from './tree.js';
 import { configured } from './spec.js';
 import { line } from './commands.js';
 import { fileLinks } from './views.js';
@@ -117,12 +116,12 @@ function parse(text) {
   return points ? r : null;
 }
 
-// The files `results:` names, read from the working tree, each classed by its
-// revision line against `head` and `base`: head, base, older or unknown.
-function results(top, head, base) {
-  const tree = openTree(top);
+// The files `results:` names, read from `tree` (the working tree, or the
+// commit's under --at), each classed by its revision line against `head` and
+// `base`: head, base, older or unknown.
+function results(top, tree, at, head, base) {
   const out = [];
-  for (const p of configured(top, tree, undefined, 'results')) {
+  for (const p of configured(top, tree, at, 'results')) {
     const files = tree.read(p) !== null ? [p] : tree.walk(p);
     if (!files.length) out.push({ path: p, missing: true });
     for (const path of files) {
@@ -144,7 +143,9 @@ export function testFacts(top, b) {
   if (b.testFacts) return b.testFacts;
   const head = git(top, ['rev-parse', b.at ?? 'HEAD']);
   const isTest = testMatcher(b.root, configured(top, b.tree, b.at, 'tests'));
-  const found = results(top, head, b.base);
+  // --diff reads the working tree's results unless --at names a commit ([VW-8]).
+  const r = b.readResults ?? b;
+  const found = results(top, r.tree, r.at, head, b.base);
   const adr = adrFolders(top, b.tree, b.at);
   const text = (p) => b.tree.read(p)?.toString('utf8') ?? null;
   const tracked = new Set(paths(b.at ? git(top, ['ls-tree', '-r', '-z', '--name-only', head]) : git(top, ['ls-files', '-z'])));

@@ -125,6 +125,12 @@ export function statesOf(files, blocks, include = (b) => b.open) {
     return out.map((k) => blocks.get(k));
   };
 
+  // The file an add goes to: its own path, its anchor's file, or, for an
+  // anchor its request adds too, where that add goes.
+  const addedIn = (b, n = 0) => {
+    const anchor = [...blocks.values()].find((x) => x.request === b.request && x.id === b.anchor && x.op === 'add');
+    return b.path ?? fileOf.get(b.anchor) ?? (anchor && n < 50 ? addedIn(anchor, n + 1) : null);
+  };
   const result = [];
   for (const b of blocks.values()) {
     if (!include(b)) continue;
@@ -132,7 +138,7 @@ export function statesOf(files, blocks, include = (b) => b.open) {
     const atWas = b.op === 'add' ? base === undefined : same(base, b.was);
     const entry = (state, by = null, candidates = []) => ({
       request: b.request, id: b.id, n: b.n, block: b.key, op: b.op, state, by, candidates, forR: b.forR,
-      file: fileOf.get(b.id) ?? b.path ?? fileOf.get(b.anchor) ?? null,
+      file: fileOf.get(b.id) ?? addedIn(b),
       retainsNothing: same(b.was, b.now) || atWas || state === 'waiting',
     });
     const link = links.get(b.key);
