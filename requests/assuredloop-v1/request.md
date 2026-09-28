@@ -175,3 +175,10 @@ Signed off: 2026-09-27 owner ("Signed in best my knowledge"), origin/2026-09-27-
   source, counted as every line in `src/` and `bin/`. After 6 of 10 parts the
   source was 2,115 lines, and about 3,000 are expected at the end. Recorded as
   ADR 0012, which supersedes ADR 0009. No requirement changes.
+- D5, 2026-09-28. Source: the agent (architect), from the developer's part 9
+  questions. [VW-2] said `context` shows "each held section with its state and
+  its requirement". For a request of 50 blocks that no longer fits twelve
+  readable lines, which R7 asks for. [VW-2]@2 keeps the full list while it fits
+  on one line; otherwise it shows the count in each state, naming every section
+  except those consolidated, carried or pending. No requirement changes, so no
+  new sign-off.

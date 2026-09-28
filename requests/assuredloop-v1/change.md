@@ -389,7 +389,7 @@ Now:
     state, blocked ones first. On a repo with no baseline it MUST say so, and that
     requests add sections as they go.
 
-### [VW-2]@1 add after [VW-1]   for R7
+### [VW-2]@1 add after [VW-1]   Revised 2026-09-28 (D5)   for R7
 Now:
 
     ## [VW-2] Where a request stands
@@ -398,6 +398,31 @@ Now:
     re-checked; its sign-off state, and which requirements changed since, if any;
     the decisions, newest first, with agent rulings marked; each held section
     with its state and its requirement; the parts; other changes holding sections
+    in the same file; at most three hints; then a Next line (the command to run)
+    and a Not known line (what could not be checked).
+
+### [VW-2]@2 modify   for R7
+Was:
+
+    ## [VW-2] Where a request stands
+    `al context <name>` MUST print twelve lines or fewer: the request's title,
+    tier and state; its owner's words and snapshots, with whether each was
+    re-checked; its sign-off state, and which requirements changed since, if any;
+    the decisions, newest first, with agent rulings marked; each held section
+    with its state and its requirement; the parts; other changes holding sections
+    in the same file; at most three hints; then a Next line (the command to run)
+    and a Not known line (what could not be checked).
+
+Now:
+
+    ## [VW-2] Where a request stands
+    `al context <name>` MUST print twelve lines or fewer: the request's title,
+    tier and state; its owner's words and snapshots, with whether each was
+    re-checked; its sign-off state, and which requirements changed since, if any;
+    the decisions, newest first, with agent rulings marked; each held section
+    with its state and its requirement, or, when they do not fit on one line,
+    the count in each state with every section named except those
+    consolidated, carried or pending; the parts; other changes holding sections
     in the same file; at most three hints; then a Next line (the command to run)
     and a Not known line (what could not be checked).
 
