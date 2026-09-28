@@ -157,8 +157,10 @@ test('[HNT-2][REC-9] code still live for a request the branch drops and archives
   hint(check(repo, '--all'), 'note', 'code still live', 'src/email.js:1-3');
 });
 
-test('[HNT-2][REC-9] context --diff over a fixed range reads code still live at the range\'s head: a later commit that rewrites the line leaves the hint as it was', (t) => {
-  const LINE1 = /src\/export\.js:1(?![\d-])/;
+// A fixed range base..head whose head drops and archives email-link while
+// its code, src/export.js:1, is live; range() runs context --diff over it.
+const LINE1 = /src\/export\.js:1(?![\d-])/;
+function droppedRange(t) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, S1));
   addRequest(repo, 'email-link', [block('[EM-2]@1 add in specs/email.md   for R3', { now: EM2 })]);
@@ -174,12 +176,28 @@ test('[HNT-2][REC-9] context --diff over a fixed range reads code still live at 
     assert.equal(d.code, 0, both(d));
     return d.stdout;
   };
+  return { repo, code, head, range };
+}
+
+test('[HNT-2][REC-9] context --diff over a fixed range reads code still live at the range\'s head: a later commit that rewrites the line leaves the hint as it was', (t) => {
+  const { repo, code, head, range } = droppedRange(t);
   hint(range(), 'note', 'code still live', LINE1);
 
   repo.write('src/export.js', "export const link = 'no link';\n");
   const later = repo.commit(message('Rewrite the export', { tier: '0 — tidy the export' }), { date: '2026-09-23T12:00:00Z' });
   assertBlamed(repo, head, 'src/export.js', [1, 1], BLAME, code);
   assertBlamed(repo, 'HEAD', 'src/export.js', [1, 1], BLAME, later);
+  hint(range(), 'note', 'code still live', LINE1);
+});
+
+test('[HNT-2][REC-9] context --diff over a fixed range reads code still live at the range\'s head: a later commit that deletes the file leaves the hint as it was', (t) => {
+  const { repo, code, head, range } = droppedRange(t);
+  hint(range(), 'note', 'code still live', LINE1);
+
+  repo.git(['rm', '-q', 'src/export.js']);
+  repo.commit(message('Remove the export', { tier: '0 — remove the export' }), { date: '2026-09-23T12:00:00Z' });
+  assert.equal(repo.git(['ls-tree', '--name-only', 'HEAD', 'src/export.js']), '', 'the fixture: src/export.js is gone at HEAD');
+  assertBlamed(repo, head, 'src/export.js', [1, 1], BLAME, code);
   hint(range(), 'note', 'code still live', LINE1);
 });
 

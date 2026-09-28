@@ -256,3 +256,30 @@ test('C4 [HNT-2][REC-10] when work reached main is what counts: a draft committe
   noHint(out, 'before its first sign-off', draft.slice(0, 7));
   noHint(out, 'before its first sign-off', merge.slice(0, 7));
 });
+
+test('C4 [HNT-2][REC-10] the mirror: a draft that reached main in a --no-ff merge while iso-dates was unsigned, its first sign-off in a later main commit, is "before its first sign-off", naming the draft', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0, INV4));
+  addRequest(repo, 'iso-dates', null, { signed: false });
+  repo.commit('iso-dates: request', { date: '2026-09-20T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'iso-dates-draft']);
+  repo.write('src/dates.js', 'export const format = "iso";\n');
+  const draft = repo.commit(message('Draft dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-21T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  repo.git(['merge', '-q', '--no-ff', '-m', message('Merge the draft dates', { request: 'iso-dates', tier: '2 — ISO dates' }), 'iso-dates-draft'],
+    { date: '2026-09-22T12:00:00Z' });
+  const merge = repo.head();
+  assert.ok(blocked(repo), 'the fixture: iso-dates is still unsigned after the merge');
+  const r = runAl(repo.dir, ['record', 'iso-dates', 'signoff', '--source', 'chat with the owner', '--yes'], { env: ENV });
+  assert.equal(r.code, 0, both(r));
+  const signed = repo.commit(message('Sign off iso-dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-23T12:00:00Z' });
+  const firstParent = repo.git(['rev-list', '--first-parent', 'main']).split('\n');
+  assert.ok(firstParent.indexOf(signed) < firstParent.indexOf(merge) && !firstParent.includes(draft),
+    'the fixture: the draft reached main\'s line with the merge, and the sign-off in a later main commit');
+  assert.equal(repo.git(['log', '--diff-filter=A', '--format=%H', '--', 'requests/iso-dates/origin/*signoff*']), signed,
+    'the fixture: that later commit added the first sign-off file');
+  repo.git(['checkout', '-q', '-b', 'iso-dates-part-2']);
+  repo.write('src/dates.js', 'export const format = "iso-8601";\n');
+  repo.commit(message('Dates, again', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-24T12:00:00Z' });
+  hint(check(repo, '--all'), 'note', 'before its first sign-off', draft.slice(0, 7), 'iso-dates');
+});
