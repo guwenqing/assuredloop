@@ -3,8 +3,8 @@
 // the current directory, as well as `-` for standard input.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { makeRepo, runAl, sha256, tempDir } from './helpers/fixture.js';
 import { assertFrame } from './helpers/output.js';
 
@@ -88,6 +88,37 @@ test('[TL-1] record origin --verify <absolute path of a snapshot> --from - with 
 test('[TL-1] record origin --verify <bare file name of a snapshot> --from - with the same text says "unchanged since"', (t) => {
   assertVerifiedUnchanged(t, () => SNAP);
 });
+
+// A valid snapshot outside the repo at absolute path P, and valid snapshots of
+// other text inside the repo at P without its leading slash: under the repo
+// top, under origin/, or both.
+const OUTSIDE = 'The page as fetched to a file outside the repo.\r\n✓';
+const SHADOW = 'A different page, kept inside the repo.';
+const snapshot = (fetched, text) => `Source: ${URL_31}\nFetched: ${fetched}\nSHA-256: ${sha256(text)}\n---\n${text}`;
+const SHADOWS = {
+  'the repo top': (p) => [p],
+  'origin/': (p) => [join(ORIGIN, p)],
+  'both the repo top and origin/': (p) => [p, join(ORIGIN, p)],
+};
+
+for (const [where, shadows] of Object.entries(SHADOWS)) {
+  test(`[TL-1] record origin --verify <absolute path> checks exactly that file, not one at the same path under ${where}`, (t) => {
+    const repo = requestWithSnapshot(t);
+    const p = join(tempDir(t), 'fetched/2026-09-22-page.md');
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, snapshot('2026-09-22T10:00Z', OUTSIDE));
+    for (const shadow of shadows(p.slice(1))) repo.write(shadow, snapshot('2026-09-21T10:00Z', SHADOW));
+    repo.commit('shadows of the outside snapshot');
+    const r = runAl(repo.dir, ['record', 'invoice-download', 'origin', '--verify', p, '--from', '-'],
+      { input: OUTSIDE, env: ENV });
+    assert.equal(r.code, 0, r.stdout + r.stderr);
+    assert.ok(r.stdout.includes('unchanged since 2026-09-22T10:00Z'), r.stdout);
+    assert.ok(!r.stdout.includes('2026-09-21'), `the shadow must not be read:\n${r.stdout}`);
+    assertFrame(r.stdout);
+    assert.equal(readFileSync(p, 'utf8'), snapshot('2026-09-22T10:00Z', OUTSIDE));
+    assert.equal(repo.git(['status', '--porcelain']), '');
+  });
+}
 
 test('[TL-1] new --from an absolute path that does not exist exits 2, names the path, and writes nothing', (t) => {
   const repo = makeRepo(t);
