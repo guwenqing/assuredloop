@@ -1,6 +1,6 @@
 // The commands built so far: new, record origin, context.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { Fail, git, isShallow, mainCommit, now, stamp } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
@@ -69,7 +69,7 @@ export const line = (label, text) => `${label.padEnd(10)}${text}`;
 function readInput(from, cwd) {
   if (from === undefined) throw new Fail('--from <file|-> is missing', 'pass the text with --from <file>, or --from - on standard input');
   try {
-    return from === '-' ? readFileSync(0) : readFileSync(join(cwd, from));
+    return from === '-' ? readFileSync(0) : readFileSync(resolve(cwd, from));
   } catch (e) {
     throw new Fail(`cannot read ${from}: ${e.code || e.message}`);
   }
@@ -146,9 +146,10 @@ export function recordOrigin(ctx) {
   let source = opts.url;
 
   if (opts.verify !== undefined) {
+    // An absolute path names exactly one file; a bare name is looked up in origin/ first.
     const inOrigin = `${dir}/origin/${opts.verify}`;
-    const path = tree.read(inOrigin) !== null ? inOrigin : opts.verify;
-    const bytes = tree.read(path) ?? (existsSync(join(cwd, path)) ? readFileSync(join(cwd, path)) : null);
+    const path = !isAbsolute(opts.verify) && tree.read(inOrigin) !== null ? inOrigin : opts.verify;
+    const bytes = (isAbsolute(path) ? null : tree.read(path)) ?? (existsSync(resolve(cwd, path)) ? readFileSync(resolve(cwd, path)) : null);
     if (bytes === null) throw new Fail(`no snapshot ${opts.verify}`, `ls ${dir}/origin`);
     const old = parseSnapshot(bytes);
     if (!old) throw new Fail(`${opts.verify} is not a valid snapshot: it needs Source, Fetched and SHA-256, then a --- line`);
