@@ -22,3 +22,15 @@ The tool's documentation MUST include a short table of what the tool checks,
 what its skill asks of the agent, and what the owner decides, so no reader
 takes a hint for a guarantee. The way of working (tests-first, review, the PR
 flow) belongs to the bots and is out of this table.
+
+## [TL-4] The formality budget
+The formality a request costs the AI (records written, commands run, output
+and skill read) SHOULD stay at or below about a fifth of the change (the lines
+changed plus the lines read to make them) at typical sizes. It MUST be
+measured on real work, with owner round trips reported apart. The skill MUST
+open with a quick path of fifteen lines or fewer for tiers 0 and 1.
+
+## [TL-5] Beyond code
+The records, states, links and hints SHOULD work on a repo of documents alone.
+There, "tests" are named checks of a kind (a deterministic check, a
+checklist, or a review), and results are the files those checks write.
