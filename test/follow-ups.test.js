@@ -66,9 +66,9 @@ const EMAIL = "import { emailLink } from './email-link.js';\nexport const emailB
 
 const ok = (r, what) => assert.equal(r.code, 0, `${what}:\n${both(r)}`);
 
-// The C10 fixture, as in part10-views.test.js; `extra` ({ path: text }) is
-// written with the email link's code, on main.
-function c10(t, { extra = {} } = {}) {
+// The C10 fixture, as in part10-views.test.js; the email link's code at
+// `link`; `extra` ({ path: text }) is written with it, on main.
+function c10(t, { extra = {}, link = 'src/email-link.js' } = {}) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file('# Invoices\n', INV1, INV2, INV3));
   repo.write('src/page.js', 'export const page = (inv) => `<h1>${inv.id}</h1>`;\n');
@@ -86,7 +86,7 @@ function c10(t, { extra = {} } = {}) {
   repo.write('test/export.test.js', EXPORT_TEST);
   repo.commit(message('CSV export of one invoice', { request: NAME, tier: TIER }), { date: '2026-09-22T12:00:00Z' });
 
-  repo.write('src/email-link.js', EMAIL_LINK);
+  repo.write(link, EMAIL_LINK);
   repo.write('src/email.js', EMAIL);
   for (const [path, text] of Object.entries(extra)) repo.write(path, text);
   repo.commit(message('Email link to the CSV download (part 3, started)', { request: NAME, tier: TIER }), { date: '2026-09-23T12:00:00Z' });
@@ -299,4 +299,38 @@ test('#89 (e) importers by a relative specifier, with or without the extension: 
   }
   assert.match(after, /required by [^;]*src\/legacy\.cjs/, `src/legacy.cjs requires it:\n${line}`);
   assert.ok(!line.includes('src/notes.js'), `src/notes.js only names it in a comment and a string:\n${line}`);
+});
+
+// PR #90 review: only real code is a caller, and a directory specifier resolves to its index file.
+
+// The note's text from the dropped file on.
+const liveNote = (repo, path = 'src/email-link.js') => {
+  const line = hint(check(repo, '--all'), 'note', /\blive\b/, path);
+  return { line, after: line.slice(line.indexOf(path)) };
+};
+
+test('#89 (e) PR #90: an import inside a string is not a caller: a file whose only code is export const example = "import \'./email-link.js\'" is not named', (t) => {
+  const repo = c10(t, { extra: { 'src/example.js': 'export const example = "import \'./email-link.js\'";\n' } });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/email\.js/, `the fixture: the note names importers:\n${line}`);
+  assert.ok(!line.includes('src/example.js'), `src/example.js holds the import only in a string:\n${line}`);
+});
+
+test('#89 (e) PR #90: a string does not hide code after it: an import() after a URL string with // on the same line is named, imported by src/loader.js', (t) => {
+  const repo = c10(t, { extra: { 'src/loader.js': "export const documentationUrl = 'https://example.invalid'; export const load = () => import('./email-link.js');\n" } });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/loader\.js/, `src/loader.js imports it after the URL:\n${line}`);
+});
+
+test('#89 (e) PR #90: a directory specifier resolves to its index file: with the dropped code in src/email-link/index.js, require(\'./email-link\') is named "required by", and an explicit ./email-link/index.js import "imported by"', (t) => {
+  const repo = c10(t, {
+    link: 'src/email-link/index.js',
+    extra: {
+      'src/email.js': "import { emailLink } from './email-link/index.js';\nexport const emailBody = (inv, base) => emailLink(inv, base);\n",
+      'src/directory.cjs': "const { emailLink } = require('./email-link');\nmodule.exports = { emailLink };\n",
+    },
+  });
+  const { line, after } = liveNote(repo, 'src/email-link/index.js');
+  assert.match(after, /imported by [^;]*src\/email\.js/, `src/email.js imports ./email-link/index.js:\n${line}`);
+  assert.match(after, /required by [^;]*src\/directory\.cjs/, `src/directory.cjs requires ./email-link, the folder:\n${line}`);
 });
