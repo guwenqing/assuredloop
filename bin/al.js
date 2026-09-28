@@ -20,7 +20,7 @@ const COMMANDS = {
       'builds-on': { type: 'string' }, accept: { type: 'boolean' }, decision: { type: 'string' },
     },
   },
-  context: { run: context, options: { at: { type: 'string' } } },
+  context: { run: context, options: { at: { type: 'string' }, diff: { type: 'string' }, for: { type: 'string' } } },
   spec: {
     run: spec,
     options: { at: { type: 'string' }, list: { type: 'boolean' }, 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } },
