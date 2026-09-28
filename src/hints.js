@@ -2,6 +2,7 @@
 // with its owners, so `check --strict` counts only what the branch serves or
 // archives, or what no request owns ([HNT-3]). One list feeds check, context
 // --diff and context <name>.
+import { posix } from 'node:path';
 import { git } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
@@ -175,11 +176,14 @@ export function hintsOf(top, b, { main }) {
     const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => entriesOf(p.md, 'Parts').map((e) => [p.name, e]))
       .find(([, e]) => live.some((l) => e.includes(l.split(':')[0])));
     // Ranked first among the notes: live code for dropped work is a hazard on main.
-    add('note', 11, [name], `code still live for dropped work of ${name}: ${live.join(', ')}; ${plans ? `a part of ${plans[0]} plans its removal: ${plans[1]}` : 'no part plans its removal'}`, `al context ${name}`);
+    const files = [...new Set(live.map((l) => l.split(':')[0]))];
+    const shown = files.map((f) => [live.filter((l) => l.startsWith(`${f}:`)).join(', '), ...importers(top, b.at ?? 'HEAD', f)].join(', '));
+    add('note', 11, [name], `code still live for dropped work of ${name}: ${shown.join(', ')}; ${plans ? `a part of ${plans[0]} plans its removal: ${plans[1]}` : 'no part plans its removal'}`, `al context ${name}`);
   }
   for (const name of b.served) {
     const s = signed.get(name);
-    if (!s?.blocked) continue;
+    // A blocked not ok already says it ([HNT-1]: one hint, not two).
+    if (!s?.blocked || out.some((h) => h.kind === 'not ok' && [8, 9].includes(h.rank) && h.owners.includes(name))) continue;
     add('note', 18, [name], s.signoff ? `${name} changed since its sign-off (${s.signoff.file})${s.changed?.length ? `: ${s.changed.join(', ')}` : ''}` : `${name} is not signed off yet: ${s.reason}`,
       `al record ${name} signoff --source <where> --words <quote> --yes`);
   }
@@ -238,4 +242,22 @@ export function hintLines(list, cap) {
   const shown = list.slice(0, cap).map(hintText);
   if (list.length > cap && shown.length) shown[shown.length - 1] += `; ${list.length - cap} more hidden, --all`;
   return shown.map((t, i) => line(i ? '' : 'Hint', t));
+}
+
+// The files at `at` that import or require `path` by a relative specifier, as
+// rough links with their reason ([LNK-1]); comments are skipped.
+function importers(top, at, path) {
+  const stem = posix.basename(path).replace(/\.[^.]*$/, '');
+  const found = git(top, ['grep', '-l', '-F', stem, at, '--', '*.js', '*.mjs', '*.cjs', '*.ts'], { allowFail: true }) ?? '';
+  const out = [];
+  for (const f of found.split('\n').filter(Boolean).map((l) => l.slice(at.length + 1)).filter((f) => f !== path)) {
+    const text = (git(top, ['show', `${at}:${f}`], { allowFail: true }) ?? '').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+    for (const [, how, spec] of text.matchAll(/\b(from|import\s*\(|require\s*\(|import)\s*['"](\.{1,2}\/[^'"]*)['"]/g)) {
+      const p = posix.join(posix.dirname(f), spec);
+      if (![p, `${p}.js`, `${p}.mjs`, `${p}.cjs`, `${p}.ts`, `${p}/index.js`].includes(path)) continue;
+      out.push(`${how.startsWith('require') ? 'required' : 'imported'} by ${f}`);
+      break;
+    }
+  }
+  return out;
 }
