@@ -131,3 +131,18 @@ test('[REC-9] a concluded request with a Dropped section: only the lines under t
   assert.equal(g.filter((l) => l.includes('Code still live')).length, 1, g.join('\n'));
   assertNoCommitIds(repo, archived);
 });
+
+test('[REC-9] a concluded request with nothing dropped writes no "Code still live" line, though its code is still live at HEAD', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S1, INV7));
+  addRequest(repo, 'csv-export', [block('[INV-7]@1 add in specs/invoices.md   for R1', { now: INV7 })]);
+  repo.commit('csv-export: request and spec', { date: '2026-09-20T12:00:00Z' });
+  repo.write('src/export.js', "export const header = ['number', 'total'];\nexport const rows = [];\n");
+  const code = repo.commit('CSV rows\n\nRequest: csv-export', { date: '2026-09-21T12:00:00Z' });
+  assertBlamed(repo, 'HEAD', 'src/export.js', [1, 2], BLAME, code);
+
+  const archived = conclude(repo, 'csv-export');
+  const g = outcome(archived).generated;
+  assert.ok(!g.some((l) => l.includes('Code still live')), `nothing was dropped:\n${g.join('\n')}`);
+  assert.equal(g.at(-1), '- Agent rulings: D2', g.join('\n'));
+});
