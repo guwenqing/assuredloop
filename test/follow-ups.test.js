@@ -210,6 +210,16 @@ for (const [what, unsigned] of [['changed since its sign-off', false], ['not sig
   });
 }
 
+test('#89 (g) pin: an unsigned request on main, served by no branch: context csv-export --all shows the BLOCKED header and no sign-off note (the note is for a served request)', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, INV3));
+  addRequest(repo, 'csv-export', [block('[INV-4]@1 add after [INV-3]   for R1', { now: INV4 })], { org: ORG3, signed: false });
+  repo.commit('csv-export: request', { date: '2026-09-21T12:00:00Z' });
+  const out = context(repo, 'csv-export', '--all');
+  assert.match(lines(out)[0], /^BLOCKED/, `the fixture: blocked:\n${out}`);
+  assert.deepEqual(signoffNotes(viewHints(out), 'csv-export'), [], `no sign-off note for an unserved request:\n${out}`);
+});
+
 // --- (d) the waiting block's target on the Spec line ---
 
 test('#89 (d) C10: the Spec line\'s count form names what the waiting block waits on: 1 waiting (INV-2@2 on INV-2@1)', (t) => {
