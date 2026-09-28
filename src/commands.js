@@ -8,6 +8,7 @@ import { sameSection } from './sections.js';
 import { changedParts, latestSignoff, organized, parts, signoffState } from './signoff.js';
 import { changeStates } from './states.js';
 import { recordSection } from './record-section.js';
+import { archivedLines, diffView, sectionView } from './views.js';
 
 const BAD = ['differs', 'broken link', 'base revised', 'base dropped', 'not found'];
 
@@ -36,18 +37,26 @@ export function decisionList(md) {
 
 // [STA-8]: whether a request is concluded on main, derived from main's history:
 // the commit on main's first-parent line where its archived request.md arrived
-// (for a merge, the merge commit); nothing records it.
-function concludedOnMain(top, name) {
+// (for a merge, the merge commit), as { sha, when }; else { none } saying why.
+// Nothing records it.
+export function concluding(top, name) {
   const path = `requests/archive/${name}/request.md`;
   const main = mainCommit(top);
-  if (!main || git(top, ['cat-file', '-e', `${main}:${path}`], { allowFail: true }) === null) return 'not on main yet';
+  if (!main || git(top, ['cat-file', '-e', `${main}:${path}`], { allowFail: true }) === null) return { none: 'not on main yet' };
   const unknown = `on main; which commit added ${path} is not known`;
-  if (isShallow(top)) return `${unknown}: history unavailable (shallow clone)`;
+  if (isShallow(top)) return { none: `${unknown}: history unavailable (shallow clone)`, shallow: true };
   const found = git(top, ['log', '--first-parent', '--no-renames', '--diff-filter=A', '--format=%H %ct', main, '--', path]);
-  if (!found) return unknown;
+  if (!found) return { none: unknown };
   const [sha, when] = found.split('\n')[0].split(' ');
-  return `on main at ${sha.slice(0, 7)} (${stamp(new Date(Number(when) * 1000))}), where ${path} arrived`;
+  return { sha, when: new Date(Number(when) * 1000) };
 }
+
+function concludedOnMain(top, name) {
+  const c = concluding(top, name);
+  return c.sha ? `on main at ${c.sha.slice(0, 7)} (${stamp(c.when)}), where requests/archive/${name}/request.md arrived` : c.none;
+}
+
+const ID_ARG = /^\[?([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]?$/;
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const TIERS = ['0', '1', '2', '3', 'S'];
@@ -235,6 +244,12 @@ const taken = (path) => {
 // al context <name> [--at <commit>]: where a request stands (minimal, [VW-2] comes later).
 export function context({ top, args, opts }) {
   const [name] = args;
+  if ((opts.diff !== undefined || ID_ARG.test(name ?? '')) && opts.at !== undefined) {
+    throw new Fail('--at is not built yet for al context <ID> or --diff', 'run it without --at, on a checkout of that commit');
+  }
+  if (opts.for !== undefined && (opts.for !== 'review' || opts.diff === undefined)) throw new Fail('--for review goes with --diff <range>', 'al context --diff main...HEAD --for review');
+  if (opts.diff !== undefined) return diffView(top, opts.diff, opts.for === 'review');
+  if (ID_ARG.test(name ?? '')) return sectionView(top, name.match(ID_ARG)[1]);
   if (name === undefined) throw new Fail('al context <name>: the list of all requests is not built yet', 'al context <name>');
   const tree = openTree(top, opts.at);
   const dir = findRequest(tree, name);
@@ -260,7 +275,7 @@ export function context({ top, args, opts }) {
   const body = [
     ...(state.blocked ? [`BLOCKED: ${state.reason}${changed}`] : []),
     `${name}  ${title}  ${head.join(' · ')}`,
-    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name))] : []),
+    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name)), ...archivedLines(top, name, opts.at)] : []),
     line('Require', state.blocked ? `${state.reason}${changed}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];

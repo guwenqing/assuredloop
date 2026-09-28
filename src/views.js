@@ -1,0 +1,286 @@
+// al context <ID> ([VW-3]), al context --diff <range> [--for review] ([VW-4]),
+// an archived request's sections ([VW-6]), and the code still live for
+// dropped work ([REC-9]), all from the rough links ([LNK-1], [LNK-2]).
+import { Fail, git, isShallow, resolveCommit } from './git.js';
+import { openTree } from './tree.js';
+import { rootOf, baseline } from './spec.js';
+import { allBlocks, changeStates, statesOf } from './states.js';
+import { sameSection } from './sections.js';
+import { latestSignoff, organized, parts } from './signoff.js';
+import { line, decisionList, entriesOf, concluding } from './commands.js';
+import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
+
+const HISTORY = 'history unavailable (shallow clone)';
+const isCode = (root) => (p) => !p.startsWith('requests/') && !p.startsWith(`${root}/`);
+const stateOf = (e) => `${e.block} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}`;
+const day = (d) => d.toISOString().slice(0, 10);
+const lineCount = (text) => text.replace(/\n+$/, '').split('\n').length;
+const skippedLine = (n) => line('Skipped', `${n} commit${n === 1 ? '' : 's'} over ${WIDE} files, not read for co-change`);
+const labelled = (label, items) => items.map((t, i) => line(i ? '' : label, t));
+const titles = (files) => new Map(files.flatMap((f) => f.sections).filter((s) => s.id).map((s) => [s.id, s.title]));
+
+// al context <ID>: the section, who holds it, who shaped it, the decisions
+// citing it, and the code linked to it, each link with its reason.
+export function sectionView(top, id) {
+  const tree = openTree(top);
+  const root = rootOf(top, tree);
+  const file = baseline(tree, root).find((f) => f.sections.some((s) => s.id === id));
+  const s = file?.sections.find((x) => x.id === id);
+  const requests = requestsIn(tree);
+  const held = changeStates(top).filter((e) => e.id === id);
+  const body = s ? [`[${id}] ${s.title}  in ${file.path}`, ...s.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`)]
+    : [`[${id}] not in the baseline`];
+  body.push(line('Held', held.length ? held.map(stateOf).join(' · ') : 'by no open change'));
+  const links = [];
+  let skipped = 0;
+  if (s && isShallow(top)) body.push(line('Shaped by', `${HISTORY}; co-change not read`));
+  else if (s) {
+    const seen = new Map();
+    const commits = [...new Set(blame(top, null, file.path, [[s.line, s.line + lineCount(s.text) - 1]], { code: false })
+      .map((b) => b.sha).filter((sha) => !/^0+$/.test(sha)))].map((sha) => requestOf(top, sha, requests, seen));
+    body.push(line('Shaped by', commits.map((c) => (c.names.length ? `${c.names.join(', ')} (${c.how}, ${day(c.when)})` : describe(c))).join(' · ')));
+    for (const c of commits) {
+      const files = filesOf(top, c.sha);
+      if (files.length > WIDE) skipped++;
+      else links.push(...files.filter(isCode(root)).map((p) => `${p}  changed together with [${id}] (${day(c.when)}, ${describe(c)})`));
+    }
+  }
+  const named = git(top, ['grep', '-n', '-z', '-F', `[${id}]`, '--', '.', ':!requests', `:!${root}`], { allowFail: true }) ?? '';
+  const byName = named.split('\n').filter(Boolean).map((l) => l.split('\0')).map(([p, n]) => `${p}:${n}  names [${id}]`);
+  const heading = s ? wordsOf(s.title) : new Set();
+  const byWord = paths(git(top, ['ls-files', '-z'])).filter(isCode(root)).flatMap((p) => {
+    const w = [...wordsOf(p)].find((x) => heading.has(x));
+    return w ? [`${p}  shares the word "${w}"`] : [];
+  });
+  const decided = requests.flatMap((r) => entriesOf(r.md, 'Decisions').filter((e) => /^- D\d+/.test(e) && cites(e, id))
+    .map((e) => `${r.name} ${e.match(/^- (D\d+)/)[1]}`));
+  body.push(line('Decisions', decided.length ? decided.join(' · ') : 'none cite it'));
+  body.push(...labelled('Links', [...byName, ...links, ...byWord]));
+  if (skipped) body.push(skippedLine(skipped));
+  return {
+    body,
+    next: held.length ? `al context ${held[0].request}` : 'al spec --list',
+    notKnown: ['whether the linked code does what the section says (tests and review judge that); ADRs and linked tests (not read yet)'],
+  };
+}
+
+// The hunks of `path` between two revs: old and new start and count.
+function hunks(top, base, head, path) {
+  return git(top, ['diff', '-U0', '--no-renames', base, head, '--', path]).split('\n').map((l) => l.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/))
+    .filter(Boolean).map((m) => ({ a: Number(m[1]), b: Number(m[2] ?? 1), c: Number(m[3]), d: Number(m[4] ?? 1) }));
+}
+
+// The links of one changed code file ([LNK-1]): lines of text, the section
+// IDs they reach, and the requests blame names.
+function fileLinks(top, base, head, path, { root, requests, seen, shallow, headings }) {
+  const text = git(top, ['show', `${head}:${path}`], { allowFail: true }) ?? '';
+  const fileLines = text.split('\n');
+  const out = [];
+  const ids = new Map();
+  const reach = (id, reason) => ids.has(id) || ids.set(id, reason);
+  const hs = hunks(top, base, head, path);
+  for (const h of hs) {
+    const at = h.d ? h.c : h.c + 1;
+    for (const { id, reason } of idNear(fileLines, at, Array.from({ length: h.d }, (_, i) => h.c + i))) {
+      out.push(`${path}:${at}  ${reason}`);
+      reach(id, `${path}:${at}  ${reason}`);
+    }
+  }
+  const blamed = new Set();
+  let skipped = 0;
+  if (shallow) out.push(`${path}  blame and co-change: ${HISTORY}`);
+  else {
+    const old = hs.filter((h) => h.b > 0).map((h) => [h.a, h.a + h.b - 1]);
+    const found = new Map();
+    for (const b of blame(top, base, path, old, { code: true, ignoreAt: head })) {
+      const c = requestOf(top, b.sha, requests, seen);
+      found.set(describe(c).replace(/ \(\w{7} .*\)$/, ''), c);
+      c.names.forEach((n) => blamed.add(n));
+    }
+    if (!old.length) out.push(`${path}  no old side: only new lines, not blamed`);
+    for (const c of found.values()) out.push(`${path}  last changed by ${c.names.length ? `${c.names.join(', ')} (${c.how})` : `a commit with ${describe(c)}`}`);
+    const co = changedWith(top, base, path);
+    skipped = co.skipped;
+    for (const { sha, files } of co.commits) {
+      const ids = sectionsChanged(top, `${sha}^`, sha, root, files);
+      const c = requestOf(top, sha, requests, seen);
+      const reason = `${path}  ${ids.map((id) => `[${id}]`).join(' ')} changed together (${day(c.when)}, ${describe(c)})`;
+      if (ids.length) out.push(reason);
+      ids.forEach((id) => reach(id, reason));
+    }
+  }
+  const words = wordsOf(path);
+  for (const [id, title] of headings) {
+    const w = [...wordsOf(title)].find((x) => words.has(x));
+    if (w) {
+      out.push(`${path}  [${id}] shares the word "${w}"`);
+      reach(id, `${path}  [${id}] shares the word "${w}"`);
+    }
+  }
+  return { out, ids, blamed, skipped };
+}
+
+// al context --diff <range> [--for review]: A...B from merge-base(A, B),
+// A..B from A, a single rev X as X...HEAD; commits only.
+export function diffView(top, range, forReview) {
+  const m = range.match(/^(.*?)(\.\.\.?)(.*)$/);
+  const [a, dots, b] = m ? [m[1] || 'HEAD', m[2], m[3] || 'HEAD'] : [range, '...', 'HEAD'];
+  const head = resolveCommit(top, b);
+  const from = resolveCommit(top, a);
+  const base = dots === '...' ? git(top, ['merge-base', from, head], { allowFail: true }) : from;
+  if (!base) throw new Fail(`${range}: ${a} and ${b} share no history`, 'al context --diff main...HEAD');
+  const shallow = isShallow(top);
+  const tree = openTree(top, head);
+  const root = rootOf(top, tree, head);
+  const requests = requestsIn(tree);
+  const seen = new Map();
+  const files = baseline(tree, root);
+  const headings = titles(files);
+  const commits = git(top, ['rev-list', '--reverse', `${base}..${head}`]).split('\n').filter(Boolean).map((c) => requestOf(top, c, requests, seen));
+  const served = new Map();
+  for (const c of commits) for (const n of c.names) if (!served.has(n)) served.set(n, c.how);
+  const none = commits.filter((c) => !c.names.length).length;
+  const serves = [...[...served].map(([n, how]) => `${n} (${how})`), ...(none ? [`${none} commit${none === 1 ? '' : 's'} with no request`] : [])];
+  const changed = paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, head]));
+  const states = changeStates(top, { at: head });
+  const changes = sectionsChanged(top, base, head, root, changed).map((id) => {
+    const holders = states.filter((e) => e.id === id);
+    return `[${id}] ${headings.get(id) ?? '(removed)'} · ${holders.length ? holders.map(stateOf).join(' · ') : 'held by no open change'}`;
+  });
+  const ctx = { root, requests, seen, shallow, headings };
+  const code = changed.filter(isCode(root)).map((path) => ({ path, ...fileLinks(top, base, head, path, ctx) }));
+  const nearby = [...new Set(code.flatMap((f) => [...f.ids.keys()]))];
+  const skipped = code.reduce((n, f) => n + f.skipped, 0);
+  const cited = [...new Set([...sectionsChanged(top, base, head, root, changed), ...nearby])];
+  const related = requests.filter((r) => !served.has(r.name) && cited.some((id) => cites(r.md, id) || cites(r.change, id))).map((r) => {
+    const status = r.md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '';
+    const rejects = entriesOf(r.md, 'Decisions').find((e) => cited.some((id) => cites(e, id)) && /rejected/i.test(e));
+    const why = /\bStatus:\s*dropped\b/.test(status) ? 'dropped' : rejects ? `rejected: ${rejects.match(/^- (D\d+)/)?.[1] ?? 'a decision'}` : '';
+    return { text: `${r.name}${why ? ` (${why})` : ''}`, rejected: Boolean(why) };
+  }).sort((x, y) => y.rejected - x.rejected).map((r) => r.text);
+
+  const body = [line('Serves', serves.join(' · ') || 'no commits in the range')];
+  if (forReview) body.push(...review(tree, files, served, code));
+  else {
+    body.push(...labelled('Changes', changes.length ? changes : ['no baseline section']));
+    body.push(...labelled('Links', code.flatMap((f) => f.out)));
+    body.push(line('Nearby', nearby.length ? nearby.map((id) => `[${id}] ${headings.get(id) ?? ''}`.trim()).join(' · ') : 'none'));
+    body.push(line('Related', related.length ? related.join(' · ') : 'none'));
+  }
+  if (skipped) body.push(skippedLine(skipped));
+  return {
+    tree: { label: `commits ${base.slice(0, 7)}..${head.slice(0, 7)}` },
+    body,
+    next: forReview ? 'al context <ID> for any section named here' : `al context --diff ${range} --for review`,
+    notKnown: ['uncommitted changes (the range reads commits only)', 'linked tests, test results and hints (not read yet)'],
+  };
+}
+
+// --for review: the intent (each served request's signed text verbatim, its
+// blocks and its decisions, agent rulings apart), then the evidence (each R's
+// linked files, or none; then the files linked to no served request).
+function review(tree, files, served, code) {
+  const mine = requestsIn(tree).filter((r) => served.has(r.name));
+  const all = allBlocks(tree);
+  const blocks = [...all.values()];
+  // A served request the branch archives still shows its blocks.
+  const states = statesOf(files, all, (b) => served.has(b.request));
+  const intent = ['Intent'];
+  const evidence = ['Evidence'];
+  for (const r of mine) {
+    const signed = latestSignoff(tree, r.dir, r.md).signoff;
+    intent.push(`${r.name}  ${signed ? `signed off origin/${signed.file}:` : 'not signed off'}`);
+    if (signed) intent.push(...signed.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`));
+    intent.push(line('Blocks', states.filter((e) => e.request === r.name).map(stateOf).join(' · ') || 'none'));
+    const decided = decisionList(r.md);
+    intent.push(line('Decided', decided.filter((d) => !d.agent).map((d) => `${d.id} ${d.date}`).join(' · ') || 'none'));
+    if (decided.some((d) => d.agent)) intent.push(line('Agent', `${decided.filter((d) => d.agent).map((d) => `${d.id} ${d.date}`).join(' · ')} (agent rulings)`));
+    evidence.push(r.name);
+    const org = organized(r.md);
+    for (const p of org ? parts(org.text).filter((x) => /^R\d+$/.test(x.key)) : []) {
+      const ids = new Set(blocks.filter((b) => b.request === r.name && b.forR.includes(p.key)).map((b) => b.id));
+      const found = code.flatMap((f) => [...f.ids].filter(([id]) => ids.has(id)).map(([, reason]) => reason));
+      evidence.push(`${p.text.split('\n')[0].replace(/^\s*#+\s+/, '')}`, ...(found.length ? found.map((f) => `  ${f}`) : ['  none found']));
+    }
+  }
+  const held = (id) => blocks.some((b) => b.id === id && served.has(b.request));
+  const unlinked = code.filter((f) => ![...f.blamed].some((n) => served.has(n)) && ![...f.ids.keys()].some(held)).map((f) => f.path);
+  evidence.push(line('Unlinked', unlinked.length ? `${unlinked.join(' · ')} (linked to no served request)` : 'none'));
+  return [...intent, ...evidence];
+}
+
+// [VW-6]: each section an archived request held, "as at conclusion" or what
+// changed it since, and the requests that follow it.
+// Under --at, everything is read at that commit, and the conclusion counts
+// only when that commit's history holds it.
+export function archivedLines(top, name, at) {
+  const tree = openTree(top, at);
+  const rev = at ? resolveCommit(top, at) : null;
+  const ids = [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))];
+  const found = concluding(top, name);
+  const c = found.sha && rev && git(top, ['merge-base', '--is-ancestor', found.sha, rev], { allowFail: true }) === null ? {} : found;
+  const root = rootOf(top, tree, at);
+  const now = baseline(tree, root);
+  const nowById = new Map(now.flatMap((f) => f.sections.filter((s) => s.id).map((s) => [s.id, { ...s, path: f.path }])));
+  const then = c.sha ? byIdAt(top, c.sha) : null;
+  const requests = requestsIn(tree);
+  const seen = new Map();
+  const say = (id) => {
+    if (!c.sha) return c.shallow ? HISTORY : 'as at conclusion';
+    const [was, is] = [then.get(id), nowById.get(id)];
+    if (!was && !is) return 'as at conclusion';
+    if (was && is && sameSection(was, is.text)) return 'as at conclusion';
+    if (!is) return 'removed since conclusion';
+    const later = [...new Set(blame(top, rev, is.path, [[is.line, is.line + lineCount(is.text) - 1]], { code: false }).map((b) => b.sha))]
+      .filter((sha) => !/^0+$/.test(sha) && git(top, ['merge-base', '--is-ancestor', sha, c.sha], { allowFail: true }) === null)
+      .map((sha) => requestOf(top, sha, requests, seen)).sort((x, y) => y.when - x.when);
+    return later.length ? `since changed by ${later.map((x) => `${x.names.join(', ') || 'no request'} (${day(x.when)})`).join(', ')}` : 'since changed (not committed yet)';
+  };
+  const out = ids.length ? [line('Sections', ids.map((id) => `${id} ${say(id)}`).join(' · '))] : [];
+  const followers = requests.filter((r) => (r.md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '').match(/\bFollows:\s*([^·]+)/)?.[1]
+    .split(/[\s,]+/).includes(name)).map((r) => r.name);
+  if (followers.length) out.push(`Followed by ${followers.join(' · ')}`);
+  return out;
+}
+
+// The baseline's sections by ID at a commit.
+function byIdAt(top, sha) {
+  const tree = openTree(top, sha);
+  return new Map(baseline(tree, rootOf(top, tree, sha)).flatMap((f) => [...byId(f.text)]));
+}
+
+// [REC-9]: the code still live at HEAD from the commits that map to `name`
+// by a Request: line or its folder, as `path:a-b`; only under the markers of
+// `onlyIds` when given.
+export function liveCode(top, name, root, onlyIds) {
+  const requests = requestsIn(openTree(top));
+  const seen = new Map();
+  const candidates = [
+    ...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', 'HEAD']).split('\n'),
+    ...git(top, ['log', '--format=%H', 'HEAD', '--', `requests/${name}/`, `requests/archive/${name}/`]).split('\n'),
+  ].filter(Boolean);
+  const mine = new Set([...new Set(candidates)].filter((sha) => requestOf(top, sha, requests, seen).names.includes(name)));
+  const found = new Set([...mine].flatMap((sha) => filesOf(top, sha)).filter(isCode(root)));
+  // Code moves: a later commit that changed one of these files may have taken
+  // its lines into its other files, so those are read too.
+  const history = git(top, ['rev-list', '--reverse', 'HEAD']).split('\n').filter(Boolean);
+  for (const sha of mine.size ? history.slice(history.findIndex((s) => mine.has(s)) + 1) : []) {
+    const files = filesOf(top, sha).filter(isCode(root));
+    if (files.some((f) => found.has(f))) files.forEach((f) => found.add(f));
+  }
+  const touched = [...found].sort();
+  const out = [];
+  for (const path of touched) {
+    const text = git(top, ['show', `HEAD:${path}`], { allowFail: true });
+    if (text === null) continue;
+    const fileLines = text.split('\n');
+    const under = (n) => {
+      for (let i = n; i >= 1; i--) if (idsOn(fileLines[i - 1]).length) return idsOn(fileLines[i - 1]);
+      return [];
+    };
+    const live = blame(top, 'HEAD', path, [[1, lineCount(text)]], { code: true })
+      .filter((b) => mine.has(b.sha) && (!onlyIds || under(b.line).some((id) => onlyIds.includes(id)))).map((b) => b.line);
+    out.push(...ranges(live).map((r) => `${path}:${r}`));
+  }
+  return out;
+}
