@@ -215,6 +215,22 @@ test('[HNT-3][LNK-2] with origin/main, check reads origin/main..HEAD: a commit o
   }
 });
 
+test('[HNT-3] a request whose folder the working tree changes, uncommitted, is served: csv-separator\'s differs counts and check --strict exits 1; without that edit it is information and exits 0', (t) => {
+  const repo = twoRequests(t);
+  const path = 'requests/csv-separator/request.md';
+  const md = repo.read(path).toString();
+  repo.write(path, `${md}\n## Parts\n\n1. Separator\n`);
+  assert.equal(repo.git(['status', '--porcelain']), `M ${path}`, 'the fixture: one uncommitted edit, in csv-separator\'s folder');
+  assert.ok(!repo.git(['log', '--format=%B', 'main..HEAD']).includes('csv-separator'), 'the fixture: no commit maps to csv-separator');
+  assertCounts(hint(check(repo, '--all'), 'not ok', 'reads differs', 'INV-4'));
+  strict(repo, 1);
+
+  repo.git(['checkout', '--', path]);
+  assert.equal(repo.git(['status', '--porcelain']), '', 'the fixture: the edit is gone');
+  assertInformation(hint(check(repo, '--all'), 'not ok', 'reads differs', 'INV-4'), 'csv-separator');
+  strict(repo, 0);
+});
+
 // Three ways the branch comes to serve csv-separator [LNK-2].
 const SERVES = {
   'a Request line': (repo) => {

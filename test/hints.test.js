@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { makeRepo, runAl, sha256 } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
-import { addRequest, both } from './helpers/request.js';
+import { addRequest, both, lineWith } from './helpers/request.js';
 import { contextOf, file, says } from './helpers/links.js';
 import { COMMAND, check, checkHints, hint, kindOf, message, namesThing, viewHints } from './helpers/hints.js';
 
@@ -81,6 +81,46 @@ test('[HNT-1] notes keep [HNT-2]\'s order: a hotfix, then no request linked, the
   const unlinked = at(hints, 'note', 'no request linked');
   const noTier = at(hints, 'note', 'no Tier line');
   assert.ok(hotfix < unlinked && unlinked < noTier, `expected hotfix, no request linked, no Tier line:\n${hints.join('\n')}`);
+});
+
+test('[HNT-1][HNT-2] among not oks that count, [HNT-2]\'s order: a duplicate ID (no request owns it) before a held ID that reads not found', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0));
+  repo.write('specs/more.md', '## [INV-3] Dates again\nAnother rule.\n');
+  addRequest(repo, 'invoice-download', [block('[INV-4]@1 modify   for R1', { was: INV4A, now: INV4B })]);
+  repo.commit('Records', { date: '2026-09-21T12:00:00Z' });
+  assert.ok(lineWith(contextOf(repo, 'invoice-download').stdout, 'INV-4', 'not found'), 'the fixture: INV-4 reads not found');
+  repo.git(['checkout', '-q', '-b', 'work']);
+  repo.write('src/export.js', 'export const rows = [];\n');
+  repo.commit(message('Rows', { request: 'invoice-download', tier: '2 — rows' }), { date: '2026-09-22T12:00:00Z' });
+  const hints = checkHints(check(repo, '--all'));
+  const duplicate = at(hints, 'not ok', 'duplicate ID', 'INV-3');
+  const notFound = at(hints, 'not ok', 'reads not found', 'INV-4');
+  for (const i of [duplicate, notFound]) assert.doesNotMatch(hints[i], /\binformation\b/, `both count:\n${hints[i]}`);
+  assert.ok(duplicate < notFound, `the duplicate ID before the held ID not found:\n${hints.join('\n')}`);
+});
+
+test('[HNT-1][HNT-2] among notes, [HNT-2]\'s order: a hotfix, then no request linked, then a snapshot not re-checked', (t) => {
+  const ISSUE = 'Rows, please.\n';
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S1));
+  addRequest(repo, 'iso-dates', [block('[INV-3]@1 modify   for R2', { was: S0, now: S1 })]);
+  addRequest(repo, 'csv-rows', null);
+  repo.write('requests/csv-rows/origin/2026-09-23-issue-40.md',
+    `Source: https://github.com/o/r/issues/40\nFetched: 2026-09-23T10:00Z\nSHA-256: ${sha256(ISSUE)}\n---\n${ISSUE}`);
+  repo.commit('Records', { date: '2026-09-21T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'work']);
+  // Serves csv-rows (its snapshot of an https source), and edits INV-3, held by
+  // iso-dates, which it does not serve, in a commit that maps to no request.
+  repo.write('src/rows.js', 'export const rows = [];\n');
+  repo.commit(message('Rows', { request: 'csv-rows', tier: '2 — rows' }), { date: '2026-09-22T12:00:00Z' });
+  repo.write('specs/invoices.md', file(INV1, S2));
+  repo.commit(message('Dates carry the time zone', { tier: '1 — dates carry the time zone' }), { date: '2026-09-23T12:00:00Z' });
+  const hints = checkHints(check(repo, '--all'));
+  const hotfix = at(hints, 'note', 'hotfix', 'INV-3');
+  const unlinked = at(hints, 'note', 'no request linked');
+  const stale = at(hints, 'note', 'not re-checked', '2026-09-23-issue-40.md');
+  assert.ok(hotfix < unlinked && unlinked < stale, `expected hotfix, no request linked, then not re-checked:\n${hints.join('\n')}`);
 });
 
 test('[HNT-1] each hint names the section, request, path, commit or (for the branch as a whole) main..HEAD involved, and a command (al … or git …), in check, context <name> and context --diff', (t) => {
