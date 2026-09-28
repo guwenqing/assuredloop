@@ -116,6 +116,28 @@ test('[REC-6][HNT-2] a branch that only writes blocked iso-dates\' own request.m
   strict(repo, 1);
 });
 
+test('[HNT-3][REC-6] check reads the working tree, untracked files too: an untracked change.md for blocked iso-dates, on a branch that commits nothing for it, is a counting "blocked" not ok and check --strict exits 1, as when it is staged', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0, INV4));
+  addRequest(repo, 'iso-dates', null, { signed: false });
+  repo.commit('iso-dates: request', { date: '2026-09-20T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'work']);
+  const path = 'requests/iso-dates/change.md';
+  repo.write(path, changeMd(block('[INV-3]@1 modify   for R2', { was: S0, now: S1 })));
+  assert.equal(repo.git(['rev-list', '--count', 'main..HEAD']), '0', 'the fixture: the branch commits nothing');
+  assert.equal(repo.git(['status', '--porcelain', '--untracked-files=all']), `?? ${path}`, 'the fixture: change.md is untracked');
+  assert.ok(blocked(repo), 'the fixture: iso-dates is blocked');
+  assert.ok(says(contextOf(repo, 'iso-dates').stdout, 'INV-3', 'pending'), 'the fixture: its INV-3 block is pending');
+  for (const state of ['untracked', 'staged']) {
+    if (state === 'staged') {
+      repo.git(['add', path]);
+      assert.equal(repo.git(['status', '--porcelain']), `A  ${path}`, 'the fixture: change.md is staged');
+    }
+    assertCounts(hint(check(repo, '--all'), 'not ok', 'blocked', /iso-dates|INV-3/));
+    strict(repo, 1);
+  }
+});
+
 // A branch that maps to no request changes INV-3 to `text`, claiming tier 1.
 function unmapped(t, text, opts) {
   const repo = base(t, opts);
@@ -206,4 +228,31 @@ test('C4 [HNT-2] contrast: the same history on a branch serving another request 
   repo.write('src/zone.js', 'export const zone = "Europe/Amsterdam";\n');
   repo.commit(message('Zones', { request: 'tz-dates', tier: '2 — zones' }), { date: '2026-09-24T12:00:00Z' });
   noHint(check(repo, '--all'), 'before its first sign-off');
+});
+
+test('C4 [HNT-2][REC-10] when work reached main is what counts: a draft committed before the sign-off on a branch that reached main in the same --no-ff merge as the sign-off is not "before its first sign-off"', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0, INV4));
+  addRequest(repo, 'iso-dates', null, { signed: false });
+  repo.commit('iso-dates: request', { date: '2026-09-20T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'iso-dates-part-1']);
+  repo.write('src/dates.js', 'export const format = "iso";\n');
+  const draft = repo.commit(message('Draft dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-21T12:00:00Z' });
+  const r = runAl(repo.dir, ['record', 'iso-dates', 'signoff', '--source', 'chat with the owner', '--yes'], { env: ENV });
+  assert.equal(r.code, 0, both(r));
+  const signed = repo.commit(message('Sign off iso-dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-22T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  repo.git(['merge', '-q', '--no-ff', '-m', message('Deliver the dates with the sign-off', { request: 'iso-dates', tier: '2 — ISO dates' }), 'iso-dates-part-1'],
+    { date: '2026-09-23T12:00:00Z' });
+  const merge = repo.head();
+  assert.ok(repo.git(['rev-list', signed]).split('\n').includes(draft), 'the fixture: the draft comes before the sign-off commit');
+  const firstParent = repo.git(['rev-list', '--first-parent', 'main']).split('\n');
+  assert.ok(firstParent.includes(merge) && !firstParent.includes(draft) && !firstParent.includes(signed),
+    'the fixture: the draft and the sign-off reached main\'s line only with the merge');
+  repo.git(['checkout', '-q', '-b', 'iso-dates-part-2']);
+  repo.write('src/dates.js', 'export const format = "iso-8601";\n');
+  repo.commit(message('Dates, again', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-24T12:00:00Z' });
+  const out = check(repo, '--all');
+  noHint(out, 'before its first sign-off', draft.slice(0, 7));
+  noHint(out, 'before its first sign-off', merge.slice(0, 7));
 });
