@@ -95,7 +95,7 @@ test('[REC-9] conclude --dropped with no code still live writes no such line: th
   const archived = conclude(repo, 'tz-dates', '--dropped', 'D4');
   const g = outcome(archived).generated;
   assert.ok(!g.some((l) => l.includes('Code still live')), `no code is still live:\n${g.join('\n')}`);
-  assert.equal(g.at(-1), '- Agent rulings: D2', g.join('\n'));
+  assert.equal(g.at(-1), '- ADRs superseded: none', g.join('\n'));
 });
 
 test('[REC-9] a concluded request with a Dropped section: only the lines under that section\'s marker are listed, not a consolidated or a Dropped-but-Kept section\'s', (t) => {
@@ -144,7 +144,7 @@ test('[REC-9] a concluded request with nothing dropped writes no "Code still liv
   const archived = conclude(repo, 'csv-export');
   const g = outcome(archived).generated;
   assert.ok(!g.some((l) => l.includes('Code still live')), `nothing was dropped:\n${g.join('\n')}`);
-  assert.equal(g.at(-1), '- Agent rulings: D2', g.join('\n'));
+  assert.equal(g.at(-1), '- ADRs superseded: none', g.join('\n'));
 });
 
 // `trial`, signed, holds one pending add (it retains nothing). Its "Request:
