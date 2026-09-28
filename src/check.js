@@ -9,7 +9,7 @@ import { git, isShallow, mainCommit } from './git.js';
 import { openTree } from './tree.js';
 import { line } from './commands.js';
 import { hintText, hintsOf, ranked, readBranch } from './hints.js';
-import { fileLinks } from './views.js';
+import { assertionsChanged, headNote, nearIds, resultLines, testLines } from './tests.js';
 
 const NOTE = 'append-only is checked per commit over main..HEAD; this protects a PR only when check runs on it';
 const APPEND_ONLY = ["Owner's words and dialog", 'Decisions'];
@@ -88,22 +88,20 @@ export function appendOnly(top, main, commits) {
 
 export function check({ top, opts }) {
   const main = mainCommit(top);
-  const notKnown = ['tests whose assertions changed, and test results (not read yet)'];
-  if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
-  const head = git(top, ['rev-parse', 'HEAD']);
   const base = main ? git(top, ['merge-base', main, 'HEAD'], { allowFail: true }) : null;
   const commits = main ? git(top, ['rev-list', '--reverse', '--topo-order', `${main}..HEAD`]).split('\n').filter(Boolean) : [];
   const b = readBranch(top, { base, commits, tree: openTree(top), range: 'main..HEAD' });
   const list = ranked(hintsOf(top, b, { main }), b);
+  const notKnown = headNote(top, b);
+  if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
   const body = [line('Serves', [...[...b.served].filter((n) => !b.archived.has(n)), ...[...b.archived].map((n) => `archives ${n}`)].join(' · ') || 'no request')];
   if (b.tier) {
-    // [REC-11]: the claim with its evidence, the spec edits and the sections near the changed code.
-    const ctx = { root: b.root, requests: b.requests, seen: b.seen, shallow: isShallow(top), headings: new Map() };
-    const code = base ? paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, head])).filter((p) => !p.startsWith('requests/') && !p.startsWith(`${b.root}/`)) : [];
-    const near = [...new Set(code.flatMap((p) => [...fileLinks(top, base, head, p, ctx).ids.keys()]))];
+    // [REC-11]: the claim with its evidence: the spec edits, the sections near the changed code, the tests whose assertions changed.
     body.push(line('Tier', b.tier), line('Evidence', [`edits ${b.changedIds.map((i) => `[${i}]`).join(', ') || 'no baseline section'}`,
-      `near the changed code: ${near.map((i) => `[${i}]`).join(', ') || 'none'}`].join(' · ')));
+      `near the changed code: ${nearIds(top, b).map((i) => `[${i}]`).join(', ') || 'none'}`,
+      `tests whose assertions changed: ${assertionsChanged(top, b).join(', ') || 'none'}`].join(' · ')));
   }
+  body.push(...testLines(top, b, false), ...resultLines(top, b));
   const cap = opts.all ? list.length : 5;
   body.push(...list.slice(0, cap).map(hintText));
   if (list.length > cap) body.push(`${list.length - cap} more hidden, --all`);
