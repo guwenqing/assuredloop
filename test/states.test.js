@@ -503,16 +503,17 @@ test('[STA-2][STA-4] real data: a copy of assuredloop-v1 and specs/ — REC-1..5
   const consolidated = ['REC-1', 'REC-2', 'REC-3', 'REC-4', 'REC-5', 'SPC-1', 'SPC-2', 'SPC-3', 'SPC-4'];
   for (const id of consolidated) expectState(list, `assuredloop-v1/${id}@1`, 'consolidated');
 
-  assert.ok(!inBaseline.has('VW-9'), '[VW-9] is now in specs/: this test\'s VW-9 expectations need updating');
-  expectState(list, 'assuredloop-v1/VW-9@1', 'pending', { retainsNothing: true });
-  expectState(list, 'assuredloop-v1/VW-9@2', 'waiting', { by: 'assuredloop-v1/VW-9@1', retainsNothing: true });
+  // Part 9 consolidates [VW-9] into specs/views.md at its @2, which carries @1.
+  assert.ok(inBaseline.has('VW-9'), '[VW-9] should be consolidated into specs/ by part 9');
+  expectState(list, 'assuredloop-v1/VW-9@2', 'consolidated');
+  expectState(list, 'assuredloop-v1/VW-9@1', 'carried', { by: 'assuredloop-v1/VW-9@2' });
 
   // Each ID's blocks in version order: in specs/, the latest is consolidated
   // and each earlier one carried by it; not in specs/, @1 is pending and each
   // later block waits on it.
   const byId = new Map();
   for (const e of [...list].sort((a, b) => a.n - b.n)) byId.set(e.id, [...(byId.get(e.id) ?? []), e]);
-  const others = [...byId.keys()].filter((id) => !consolidated.includes(id) && id !== 'VW-9');
+  const others = [...byId.keys()].filter((id) => !consolidated.includes(id));
   assert.ok(others.length > 30, `expected the rest of the sections: ${JSON.stringify(keys(list))}`);
   assert.ok(others.some((id) => !inBaseline.has(id)), 'some sections should still be pending');
   for (const id of others) {
