@@ -283,3 +283,26 @@ test('C4 [HNT-2][REC-10] the mirror: a draft that reached main in a --no-ff merg
   repo.commit(message('Dates, again', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-24T12:00:00Z' });
   hint(check(repo, '--all'), 'note', 'before its first sign-off', draft.slice(0, 7), 'iso-dates');
 });
+
+test('C4 [HNT-2][REC-6] a main commit before the first sign-off that writes only iso-dates\' own request.md and origin/ (its record) is not work: no "before its first sign-off" note for it; a code commit in the same place gets one', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0, INV4));
+  repo.commit('Initial spec', { date: '2026-09-19T12:00:00Z' });
+  addRequest(repo, 'iso-dates', null, { signed: false });
+  const record = repo.commit('iso-dates: request', { date: '2026-09-20T12:00:00Z' });
+  assert.deepEqual(repo.git(['show', '--name-only', '--format=', record]).split('\n'),
+    ['requests/iso-dates/origin/2026-09-20-owner-words.md', 'requests/iso-dates/request.md'], 'the fixture: the record commit writes only request.md and origin/');
+  repo.write('src/dates.js', 'export const format = "iso";\n');
+  const code = repo.commit(message('ISO dates code', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-21T12:00:00Z' });
+  const r = runAl(repo.dir, ['record', 'iso-dates', 'signoff', '--source', 'chat with the owner', '--yes'], { env: ENV });
+  assert.equal(r.code, 0, both(r));
+  const signed = repo.commit(message('Sign off iso-dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-22T12:00:00Z' });
+  assert.equal(repo.git(['log', '--diff-filter=A', '--format=%H', '--', 'requests/iso-dates/origin/*signoff*']), signed,
+    'the fixture: the first sign-off comes after both commits');
+  repo.git(['checkout', '-q', '-b', 'iso-dates-part-2']);
+  repo.write('src/dates.js', 'export const format = "iso-8601";\n');
+  repo.commit(message('Dates, again', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-24T12:00:00Z' });
+  const out = check(repo, '--all');
+  noHint(out, 'before its first sign-off', record.slice(0, 7));
+  hint(out, 'note', 'before its first sign-off', code.slice(0, 7), 'iso-dates');
+});
