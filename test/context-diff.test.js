@@ -11,7 +11,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo } from './helpers/fixture.js';
 import { block } from './helpers/change.js';
-import { addRequest, both, lineWith } from './helpers/request.js';
+import { addRequest, both, hasId, lineWith } from './helpers/request.js';
+import { lines } from './helpers/output.js';
 import { assertDiffFrame, contextDiff, file, labelled, says } from './helpers/links.js';
 
 const INV1 = '## [INV-1] Totals\nTotals MUST show two decimals.\n';
@@ -95,7 +96,7 @@ test('[VW-4][LNK-2] the requests served (by a Request line and by a folder), the
   hasNo(out, 'INV-1');
 });
 
-test('[VW-4][LNK-1] nearby sections are the ones the links reach: by an [ID] (1), by co-change (3), by a shared word (4), with the blame lines (2); not the spec file\'s neighbours; related history through a nearby section', (t) => {
+test('[VW-4][LNK-1] nearby sections are the ones the links reach, listed as sections: by an [ID] (1), by co-change (3), by a shared word (4), with the blame lines (2); not the spec file\'s neighbours; related history through a nearby section', (t) => {
   const INV7A = '## [INV-7] CSV rows\nOne row per invoice.\n';
   const INV7B = '## [INV-7] CSV rows\nOne row per line item.\n';
   const INV8 = '## [INV-8] Invoice page\nThe invoice page MUST offer the export.\n';
@@ -130,6 +131,11 @@ test('[VW-4][LNK-1] nearby sections are the ones the links reach: by an [ID] (1)
   has(out, 'src/rounding.js', 'no request');
   has(out, 'src/export.js', 'INV-7', 'changed together');
   has(out, 'src/rounding.js', 'INV-9', 'shares the word "rounding"');
+  // Each nearby section is listed as a section too: on a line of its own, holding no path and outside Related.
+  const related = new Set(lines(labelled(out, 'Related')));
+  for (const id of ['INV-3', 'INV-7', 'INV-9']) {
+    assert.ok(lines(out).some((l) => hasId(l, id) && !/\bsrc\//.test(l) && !related.has(l)), `${id} listed as a nearby section:\n${out}`);
+  }
   assert.ok(labelled(out, 'Related').includes('old-rounding'), `old-rounding cites the nearby INV-9:\n${out}`);
   assert.ok(!out.includes('invoice-page'), `invoice-page cites only the neighbour INV-8:\n${out}`);
   hasNo(out, 'INV-8');

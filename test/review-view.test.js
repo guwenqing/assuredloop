@@ -112,3 +112,44 @@ test('[VW-4][LNK-1] --for review, evidence: R1 has src/export.js with its reason
   }
   assert.ok(!evidence.slice(logger).join('\n').includes('src/export.js'), `src/export.js is linked to csv-export:\n${out}`);
 });
+
+test('[VW-4] --for review with two served requests: each one\'s signed text verbatim and its blocks in the intent part; each one\'s Rs with their evidence in the evidence part', (t) => {
+  const ISO_ORG = '## Organized requirement\n\n### R1 Time stamps\nInvoice times MUST show in ISO 8601.\n';
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0));
+  repo.commit('Initial spec', { date: '2026-09-01T12:00:00Z' });
+  repo.write('src/export.js', "// [INV-7] CSV rows\nexport function csvRow(invoice) {\n  return [invoice.number, invoice.total].join(',');\n}\n");
+  repo.write('src/dates.js', '// [INV-3] Dates\nexport function formatDate(d) {\n  return d.toLocaleDateString();\n}\n');
+  repo.write('src/logger.js', "export function log(line) {\n  process.stderr.write(line + '\\n');\n}\n");
+  repo.commit('Initial code', { date: '2026-09-10T12:00:00Z' });
+  addRequest(repo, 'csv-export', [block('[INV-7]@1 add in specs/invoices.md   for R1', { now: INV7 })], { decisions: DECIDED });
+  addRequest(repo, 'iso-dates', [block('[INV-3]@1 modify   for R1', { was: S0, now: S1 })], {
+    org: ISO_ORG, signedText: ISO_ORG, decisions: '\n## Decisions\n\n- D1, 2026-09-21. Source: the owner. ISO everywhere.\n',
+  });
+  repo.commit('Records', { date: '2026-09-22T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'invoices']);
+  repo.write('specs/invoices.md', file(INV1, S0, INV7));
+  repo.write('src/export.js', "// [INV-7] CSV rows\nexport function csvRow(invoice) {\n  return [invoice.number, invoice.total].join(';');\n}\n");
+  repo.commit('CSV rows\n\nRequest: csv-export', { date: '2026-09-23T12:00:00Z' });
+  repo.write('specs/invoices.md', file(INV1, S1, INV7));
+  repo.write('src/dates.js', '// [INV-3] Dates\nexport function formatDate(d) {\n  return d.toISOString().slice(0, 10);\n}\n');
+  repo.commit('ISO dates\n\nRequest: iso-dates', { date: '2026-09-23T13:00:00Z' });
+  repo.write('src/logger.js', "export function log(line) {\n  process.stderr.write(`${line}\\n`);\n}\n");
+  repo.commit('Logger', { date: '2026-09-23T14:00:00Z' });
+
+  const { out, intent, evidence } = review(repo);
+  const text = intent.map((l) => l.replace(/^\s*(?:>\s?)?/, '')).join('\n');
+  assert.ok(text.includes(ORG.trimEnd()), `csv-export's signed text, verbatim, in the intent part:\n${out}`);
+  assert.ok(text.includes(ISO_ORG.trimEnd()), `iso-dates' signed text, verbatim, in the intent part:\n${out}`);
+  assert.ok(says(text, 'INV-7', 'consolidated') && says(text, 'INV-3', 'consolidated'), `both requests' blocks with their states:\n${out}`);
+
+  const ev = evidence.join('\n');
+  for (const name of ['csv-export', 'iso-dates']) assert.ok(ev.includes(name), `the evidence part names ${name}:\n${out}`);
+  assert.ok(ev.includes('Time stamps'), `iso-dates' R1, Time stamps, in the evidence part:\n${out}`);
+  assert.ok(lineWith(ev, 'src/export.js', 'names [INV-7]'), `csv-export's R1 evidence:\n${out}`);
+  assert.ok(lineWith(ev, 'src/dates.js', 'names [INV-3]'), `iso-dates' R1 evidence:\n${out}`);
+  assert.ok(ev.includes('none found'), `csv-export's R2 and R3 have none:\n${out}`);
+  const logger = indexOf(evidence, /src\/logger\.js/);
+  assert.ok(logger > indexOf(evidence, /src\/export\.js/) && logger > indexOf(evidence, /src\/dates\.js/),
+    `src/logger.js comes after the Rs, as linked to no served request:\n${out}`);
+});
