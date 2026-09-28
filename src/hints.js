@@ -190,7 +190,8 @@ export function hintsOf(top, b, { main }) {
 
 // Work for a served request that reached main before its first sign-off,
 // judged by when each reached main: along main's first-parent line, where a
-// merge brings its branch's commits all at once.
+// merge brings its branch's commits all at once, after the first main-line
+// commit that holds the sign-off.
 function earlyWork(top, b, mainSha) {
   const out = [];
   let line = null;
@@ -199,7 +200,7 @@ function earlyWork(top, b, mainSha) {
     if (!r) continue;
     const signoffs = (b.tree.list(`${r.dir}/origin`) ?? []).filter((f) => (b.tree.read(`${r.dir}/origin/${f}`) ?? Buffer.alloc(0)).includes('\n--- signed text ---\n'));
     const places = signoffs.flatMap((f) => [`requests/${name}/origin/${f}`, `requests/archive/${name}/origin/${f}`]);
-    const first = places.length ? git(top, ['log', '--first-parent', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
+    const first = places.length ? git(top, ['log', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
     line ??= git(top, ['rev-list', '--first-parent', mainSha]).split('\n').filter(Boolean).map((c) => ({
       c, brought: git(top, ['rev-parse', '--verify', '--quiet', `${c}^2`], { allowFail: true }) ? git(top, ['rev-list', `${c}^1..${c}^2`]).split('\n').filter(Boolean) : [c],
     }));
