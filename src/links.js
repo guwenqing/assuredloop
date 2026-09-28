@@ -2,7 +2,7 @@
 // blame, files changed together, and shared words; and a commit's request
 // ([LNK-2]): a Request: line, else the request folder it touched, else an
 // issue number in a request's owner's words.
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { git } from './git.js';
 import { parseSections, sameSection } from './sections.js';
@@ -64,13 +64,23 @@ export function requestOf(top, sha, requests, seen = new Map()) {
 // `a, b by <how>`, or `no request (<sha> <date>)`.
 export const describe = (c) => (c.names.length ? `${c.names.join(', ')} by ${c.how}` : `no request (${c.sha.slice(0, 7)} ${c.when.toISOString().slice(0, 10)})`);
 
+// The commits .git-blame-ignore-revs lists, as it is at `at` (the working
+// tree when null), each one that git knows as `--ignore-rev <sha>`.
+function ignored(top, at) {
+  const file = join(top, '.git-blame-ignore-revs');
+  const text = at ? git(top, ['show', `${at}:.git-blame-ignore-revs`], { allowFail: true }) : existsSync(file) ? readFileSync(file, 'utf8') : null;
+  return (text ?? '').split('\n').map((l) => l.replace(/#.*/, '').trim()).filter(Boolean)
+    .filter((r) => git(top, ['rev-parse', '--verify', '--quiet', `${r}^{commit}`], { allowFail: true }))
+    .flatMap((r) => ['--ignore-rev', r]);
+}
+
 // Blame of `ranges` ([from, to] pairs) of `path` at `rev` (the working tree when
 // null): each line's commit and time. -w -M always, -C for code, and the
-// project's .git-blame-ignore-revs ([LNK-1] #2).
-export function blame(top, rev, path, ranges, { code }) {
+// project's .git-blame-ignore-revs as it is at `ignoreAt` (by default `rev`,
+// so a view of commits reads only committed records) ([LNK-1] #2).
+export function blame(top, rev, path, ranges, { code, ignoreAt = rev }) {
   if (!ranges.length) return [];
-  const ignore = existsSync(join(top, '.git-blame-ignore-revs')) ? ['--ignore-revs-file', join(top, '.git-blame-ignore-revs')] : [];
-  const out = git(top, ['blame', '--porcelain', '-w', '-M', ...(code ? ['-C'] : []), ...ignore,
+  const out = git(top, ['blame', '--porcelain', '-w', '-M', ...(code ? ['-C'] : []), ...ignored(top, ignoreAt),
     ...ranges.flatMap(([a, b]) => ['-L', `${a},${b}`]), ...(rev ? [rev] : []), '--', path], { allowFail: true }) ?? '';
   const result = [];
   const times = new Map();

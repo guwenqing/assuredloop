@@ -274,7 +274,7 @@ export function context({ top, args, opts }) {
   const body = [
     ...(state.blocked ? [`BLOCKED: ${state.reason}${changed}`] : []),
     `${name}  ${title}  ${head.join(' · ')}`,
-    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name)), ...archivedLines(top, name)] : []),
+    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name)), ...archivedLines(top, name, opts.at)] : []),
     line('Require', state.blocked ? `${state.reason}${changed}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
