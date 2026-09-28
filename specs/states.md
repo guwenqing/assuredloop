@@ -68,3 +68,11 @@ and moves the folder to `requests/archive/`. `conclude <name> --dropped Dn` sets
 `Status: dropped`; when every section retains nothing it needs no sign-off,
 and otherwise every retained section must be reverted or kept. It prints three
 lines or fewer, plus the Read, Next and Not known lines ([VW-9]).
+
+## [STA-8] Concluded, in history
+Whether a request is concluded on main MUST be derived from main's history:
+the commit that added `requests/archive/<name>/request.md`. No commit ID is
+recorded as evidence. A closed request MUST never be re-checked against
+today's baseline; today's baseline and blame answer whether it still holds.
+`check` MUST re-run `conclude`'s rules on the final state of every request a
+branch archives, and a check certifies only the snapshot it read.
