@@ -451,13 +451,13 @@ test('C2 [STA-6] a Kept section carried by a successor meets the rule through th
 });
 
 // `base` as above, carried by two successors that both build on it `for R2`:
-// `aaa`, never signed, and `zzz`, signed unless `zzzSigned` is false.
-function twoCarriers(t, { zzzSigned = true } = {}) {
+// `aaa`, signed only when `aaaSigned`, and `zzz`, signed unless `zzzSigned` is false.
+function twoCarriers(t, { aaaSigned = false, zzzSigned = true } = {}) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, S2));
   addRequest(repo, 'base', [block('[INV-3]@1 modify   Kept 2026-09-26 (D2)', { was: S0, now: S1 })]);
   const successor = [block('[INV-3]@1 modify   builds on base/INV-3@1   for R2', { was: S1, now: S2 })];
-  addRequest(repo, 'aaa', successor, { signed: false });
+  addRequest(repo, 'aaa', successor, { signed: aaaSigned });
   addRequest(repo, 'zzz', successor, { signed: zzzSigned });
   repo.commit('setup');
   return repo;
@@ -475,6 +475,15 @@ test('C2 [STA-6] a Kept section carried by two successors traces through any of 
 
   const repo = twoCarriers(t);
   // The fixture: the states name the unsigned aaa as the carrier, so a check of that one carrier alone refuses.
+  await expectState(repo, 'base/INV-3@1', 'carried', { by: 'aaa/INV-3@1' });
+  const r = conclude(repo, 'base', '--dropped', 'D4', '--yes');
+  ok(r);
+  assertShort(r);
+  assert.ok(outcome(archivedMd(repo, 'base')).generated.includes('- Kept: [INV-3]'), archivedMd(repo, 'base'));
+});
+
+test('C2 [STA-6] a Kept section carried by two successors traces through any of them, the mirror case: with the first one named (aaa) signed and the other (zzz) unsigned, --dropped passes', async (t) => {
+  const repo = twoCarriers(t, { aaaSigned: true, zzzSigned: false });
   await expectState(repo, 'base/INV-3@1', 'carried', { by: 'aaa/INV-3@1' });
   const r = conclude(repo, 'base', '--dropped', 'D4', '--yes');
   ok(r);
