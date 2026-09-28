@@ -192,3 +192,25 @@ test('C7 [REC-12] check: the move to requests/archive/ that also edits an origin
   const c = commit(repo, 'conclude inv, and edit the snapshot');
   assertNotOkAt(check(repo), c, 'origin/2026-09-20-owner-words.md');
 });
+
+test('C7 [REC-12] check reads non-ASCII names in origin/: an edit and a deletion are "not ok", naming the file as it is, not git-quoted; a new one is fine', (t) => {
+  const snap = (text) => `Source: chat with the owner\nFetched: 2026-09-20T09:00Z\nSHA-256: 0\n---\n${text}\n`;
+  const repo = makeRepo(t);
+  addRequest(repo, 'inv', null);
+  repo.write(MD, requestMd());
+  repo.write(`${DIR}/origin/é.md`, snap('résumé'));
+  repo.write(`${DIR}/origin/ü.md`, snap('über'));
+  commit(repo, 'open inv');
+  repo.git(['checkout', '-q', '-b', 'feature']);
+  repo.write(`${DIR}/origin/ñ.md`, snap('año'));
+  const added = commit(repo, 'a new snapshot, ñ.md');
+  repo.write(`${DIR}/origin/é.md`, snap('résumé, edited'));
+  const edited = commit(repo, 'edit é.md');
+  rmSync(join(repo.dir, `${DIR}/origin/ü.md`));
+  const deleted = commit(repo, 'delete ü.md');
+
+  const r = check(repo);
+  assertFine(r, added);
+  assertNotOkAt(r, edited, 'origin/é.md');
+  assertNotOkAt(r, deleted, 'origin/ü.md');
+});
