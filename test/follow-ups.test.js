@@ -334,3 +334,41 @@ test('#89 (e) PR #90: a directory specifier resolves to its index file: with the
   assert.match(after, /imported by [^;]*src\/email\.js/, `src/email.js imports ./email-link/index.js:\n${line}`);
   assert.match(after, /required by [^;]*src\/directory\.cjs/, `src/directory.cjs requires ./email-link, the folder:\n${line}`);
 });
+
+// PR #90 re-review: a template literal's ${…} expressions are code, and only
+// its literal text is skipped; ./index.js from inside the folder is the index file.
+
+test('#89 (e) PR #90: an import() inside a template\'s ${…} is code: src/template-load.js is named, imported by', (t) => {
+  const code = 'export const load = async () => `value: ${(await import("./email-link.js")).emailLink({id:7}, "")}`;\n';
+  const repo = c10(t, { extra: { 'src/template-load.js': code } });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/template-load\.js/, `src/template-load.js imports it inside \${…}:\n${line}`);
+});
+
+test('#89 (e) PR #90 contrast: a template whose literal text only reads like an import is not a caller: src/template-doc.js is not named', (t) => {
+  const repo = c10(t, { extra: { 'src/template-doc.js': "export const doc = `import './email-link.js'`;\n" } });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/email\.js/, `the fixture: the note names importers:\n${line}`);
+  assert.ok(!line.includes('src/template-doc.js'), `src/template-doc.js holds the import only in a template's text:\n${line}`);
+});
+
+test('#89 (e) PR #90: code after a template with ${…} on the same line is still seen: src/after-template.js is named, imported by', (t) => {
+  const code = "export const s = `a${1}b`; export const load = () => import('./email-link.js');\n";
+  const repo = c10(t, { extra: { 'src/after-template.js': code } });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/after-template\.js/, `src/after-template.js imports it after the template:\n${line}`);
+});
+
+test('#89 (e) PR #90: with the dropped code in src/email-link/index.js, a file in that folder requiring ./index.js is named "required by src/email-link/local.cjs"; require(\'./email-link\') from src/ still is', (t) => {
+  const repo = c10(t, {
+    link: 'src/email-link/index.js',
+    extra: {
+      'src/email.js': "import { emailLink } from './email-link/index.js';\nexport const emailBody = (inv, base) => emailLink(inv, base);\n",
+      'src/directory.cjs': "const { emailLink } = require('./email-link');\nmodule.exports = { emailLink };\n",
+      'src/email-link/local.cjs': "const { emailLink } = require('./index.js');\nmodule.exports = { emailLink };\n",
+    },
+  });
+  const { line, after } = liveNote(repo, 'src/email-link/index.js');
+  assert.match(after, /required by [^;]*src\/email-link\/local\.cjs/, `src/email-link/local.cjs requires ./index.js:\n${line}`);
+  assert.match(after, /required by [^;]*src\/directory\.cjs/, `src/directory.cjs requires ./email-link, the folder:\n${line}`);
+});
