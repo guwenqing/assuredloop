@@ -306,3 +306,45 @@ test('C4 [HNT-2][REC-6] a main commit before the first sign-off that writes only
   noHint(out, 'before its first sign-off', record.slice(0, 7));
   hint(out, 'note', 'before its first sign-off', code.slice(0, 7), 'iso-dates');
 });
+
+test('C4 [HNT-2][LNK-2] a --no-ff merge whose own message says "Request: iso-dates" maps the draft it brings (no Request line, no request folder): when the merge also brings the sign-off, no note; when the sign-off comes later, a "before its first sign-off" note names the merge', (t) => {
+  for (const signedInMerge of [true, false]) {
+    const repo = makeRepo(t);
+    repo.write('specs/invoices.md', file(INV1, S0, INV4));
+    repo.commit('Initial spec', { date: '2026-09-19T12:00:00Z' });
+    addRequest(repo, 'iso-dates', null, { signed: false });
+    repo.commit('iso-dates: request', { date: '2026-09-20T12:00:00Z' });
+    repo.git(['checkout', '-q', '-b', 'draft']);
+    repo.write('src/dates.js', 'export const format = "iso";\n');
+    const draft = repo.commit(message('Draft dates', { tier: '2 — ISO dates' }), { date: '2026-09-21T12:00:00Z' });
+    assert.equal(repo.git(['show', '--name-only', '--format=', draft]), 'src/dates.js', 'the fixture: the draft touches no request folder');
+    assert.ok(!repo.git(['log', '-1', '--format=%B', draft]).includes('Request:'), 'the fixture: the draft has no Request line');
+    const signOffAt = (date) => {
+      const r = runAl(repo.dir, ['record', 'iso-dates', 'signoff', '--source', 'chat with the owner', '--yes'], { env: ENV });
+      assert.equal(r.code, 0, both(r));
+      return repo.commit(message('Sign off iso-dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date });
+    };
+    if (signedInMerge) signOffAt('2026-09-22T12:00:00Z');
+    repo.git(['checkout', '-q', 'main']);
+    repo.git(['merge', '-q', '--no-ff', '-m', message('Deliver the draft dates', { request: 'iso-dates', tier: '2 — ISO dates' }), 'draft'],
+      { date: '2026-09-23T12:00:00Z' });
+    const merge = repo.head();
+    assert.equal(blocked(repo), !signedInMerge, `the fixture: iso-dates is ${signedInMerge ? 'signed' : 'still unsigned'} after the merge`);
+    if (!signedInMerge) {
+      const signed = signOffAt('2026-09-24T12:00:00Z');
+      const firstParent = repo.git(['rev-list', '--first-parent', 'main']).split('\n');
+      assert.ok(firstParent.indexOf(signed) < firstParent.indexOf(merge) && !firstParent.includes(draft),
+        'the fixture: the draft reached main\'s line with the merge, and the sign-off in a later main commit');
+    }
+    repo.git(['checkout', '-q', '-b', 'iso-dates-part-2']);
+    repo.write('src/dates.js', 'export const format = "iso-8601";\n');
+    repo.commit(message('Dates, again', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-25T12:00:00Z' });
+    const out = check(repo, '--all');
+    if (signedInMerge) {
+      noHint(out, 'before its first sign-off', merge.slice(0, 7));
+      noHint(out, 'before its first sign-off', draft.slice(0, 7));
+    } else {
+      hint(out, 'note', 'before its first sign-off', merge.slice(0, 7), 'iso-dates');
+    }
+  }
+});
