@@ -34,15 +34,19 @@ export function decisionList(md) {
   });
 }
 
-// [STA-8]: whether a request is concluded on main, derived from main's history
-// (the commit that added its archived request.md); nothing records it.
+// [STA-8]: whether a request is concluded on main, derived from main's history:
+// the commit on main's first-parent line where its archived request.md arrived
+// (for a merge, the merge commit); nothing records it.
 function concludedOnMain(top, name) {
   const path = `requests/archive/${name}/request.md`;
   const main = mainCommit(top);
   if (!main || git(top, ['cat-file', '-e', `${main}:${path}`], { allowFail: true }) === null) return 'not on main yet';
-  if (isShallow(top)) return `on main; which commit added ${path} is not known: history unavailable (shallow clone)`;
-  const [sha, when] = git(top, ['log', '--no-renames', '--diff-filter=A', '--format=%H %ct', main, '--', path]).split('\n')[0].split(' ');
-  return `on main at ${sha.slice(0, 7)} (${stamp(new Date(Number(when) * 1000))}), the commit that added ${path}`;
+  const unknown = `on main; which commit added ${path} is not known`;
+  if (isShallow(top)) return `${unknown}: history unavailable (shallow clone)`;
+  const found = git(top, ['log', '--first-parent', '--no-renames', '--diff-filter=A', '--format=%H %ct', main, '--', path]);
+  if (!found) return unknown;
+  const [sha, when] = found.split('\n')[0].split(' ');
+  return `on main at ${sha.slice(0, 7)} (${stamp(new Date(Number(when) * 1000))}), where ${path} arrived`;
 }
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
