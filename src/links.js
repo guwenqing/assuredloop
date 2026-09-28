@@ -80,7 +80,8 @@ function ignored(top, at) {
 // so a view of commits reads only committed records) ([LNK-1] #2).
 export function blame(top, rev, path, ranges, { code, ignoreAt = rev }) {
   if (!ranges.length) return [];
-  const out = git(top, ['blame', '--porcelain', '-w', '-M', ...(code ? ['-C'] : []), ...ignored(top, ignoreAt),
+  // --ignore-revs-file '' first clears any file git's own config names (blame.ignoreRevsFile).
+  const out = git(top, ['blame', '--porcelain', '-w', '-M', ...(code ? ['-C'] : []), '--ignore-revs-file', '', ...ignored(top, ignoreAt),
     ...ranges.flatMap(([a, b]) => ['-L', `${a},${b}`]), ...(rev ? [rev] : []), '--', path], { allowFail: true }) ?? '';
   const result = [];
   const times = new Map();
