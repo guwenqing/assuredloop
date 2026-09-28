@@ -13,6 +13,8 @@ import { organized, parts, signoffState } from './signoff.js';
 import { requestToWrite, decisionList, entriesOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
+import { requestsIn } from './links.js';
+import { adrsOf } from './adrs.js';
 
 const HELD = ['consolidated', 'carried'];
 const NOT_KNOWN = ['whether the code does what the spec says, and whether review agreed (conclude reads only the records)'];
@@ -54,7 +56,7 @@ export function outcomeFacts(org, fates) {
 }
 
 // The generated block of the Outcome ([REC-9]): content facts only.
-function outcome(md, org, fates, droppedBy, live) {
+function outcome(md, org, fates, droppedBy, live, adrs) {
   const { kinds, rs } = outcomeFacts(org, fates);
   const list = (ks) => [...kinds].filter(([, k]) => ks.includes(k)).map(([id]) => `[${id}]`).join(', ') || 'none';
   const lines = droppedBy ? [`- Dropped as a whole by ${droppedBy}`] : [];
@@ -63,6 +65,8 @@ function outcome(md, org, fates, droppedBy, live) {
   const all = decisionList(md);
   lines.push(`- Decisions: ${all.filter((d) => !d.agent).map((d) => d.id).join(', ') || 'none'}`);
   lines.push(`- Agent rulings: ${all.filter((d) => d.agent).map((d) => d.id).join(', ') || 'none'}`);
+  lines.push(`- ADRs added: ${adrs.added.map((a) => `${a.n}${a.status === 'proposed' ? ' (proposed)' : ''}`).join(', ') || 'none'}`);
+  lines.push(`- ADRs superseded: ${adrs.superseded.map((a) => a.n).join(', ') || 'none'}`);
   // Any code still live for dropped work: all the request's for a dropped
   // request, else only under the markers of its Dropped sections.
   const droppedIds = [...kinds].filter(([, k]) => k === 'Dropped').map(([id]) => id);
@@ -123,10 +127,12 @@ export function conclude({ top, args, opts }) {
 
   const status = dropped ? 'dropped' : 'concluded';
   const live = (ids) => liveCode(top, name, rootOf(top, tree), ids);
-  const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live));
+  const adrs = adrsOf(top, tree, undefined, name, requestsIn(tree));
+  const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs));
   const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])
     .filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
-  const note = children.length ? [`note: child request ${children.join(', ')} is still open`] : [];
+  const note = [...(children.length ? [`note: child request ${children.join(', ')} is still open`] : []),
+    ...adrs.added.filter((a) => a.status === 'proposed').map((a) => `note: ${a.path}, added by ${name}, is still proposed`)];
   const what = `the Outcome, Status: ${status}${moving ? `, and ${dir}/ moved to ${target}/` : ''}`;
   if (!opts.yes) return { body: [`Would conclude ${name}: ${what}`, ...note], next: 'run the same command with --yes to do it', notKnown: NOT_KNOWN };
 

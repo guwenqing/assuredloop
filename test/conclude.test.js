@@ -111,6 +111,8 @@ test('[REC-9] the Outcome: each R\'s fate in change.md order, the sections by ne
     '- Kept: [INV-5]',
     '- Decisions: D1, D3, D4',
     '- Agent rulings: D2',
+    '- ADRs added: none',
+    '- ADRs superseded: none',
   ]);
 });
 
@@ -133,6 +135,8 @@ test('[REC-9][STA-5] the Outcome lists a revised section once, by its net op: an
     '- Kept: none',
     '- Decisions: D1, D3, D4',
     '- Agent rulings: D2',
+    '- ADRs added: none',
+    '- ADRs superseded: none',
   ]);
 });
 
@@ -353,6 +357,8 @@ test('C2 [STA-6][REC-6] --dropped with nothing retained needs no sign-off: an un
     '- Kept: none',
     '- Decisions: D1, D3, D4',
     '- Agent rulings: D2',
+    '- ADRs added: none',
+    '- ADRs superseded: none',
   ]);
   assert.equal(read(repo, 'specs/invoices.md'), baseline, 'dropping never touches the baseline');
   assert.equal(read(repo, 'requests/cancel-invoices/request.md'), a.request, 'nor another request');
@@ -389,6 +395,8 @@ test('C2 [STA-6] --dropped with a Kept section and a reverted one passes: Kept l
     '- Kept: [INV-3]',
     '- Decisions: D1, D3, D4',
     '- Agent rulings: D2',
+    '- ADRs added: none',
+    '- ADRs superseded: none',
   ]);
   assert.equal(read(repo, 'specs/invoices.md'), baseline);
 });

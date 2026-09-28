@@ -8,20 +8,30 @@ import { line } from './commands.js';
 
 const PREFIX = /^[A-Z][A-Z0-9]*$/;
 
+// A path `.assuredloop` names must lie inside this repo: never absolute,
+// through `..`, or through a symlink.
+function inside(top, tree, at, key, raw) {
+  const path = raw.replace(/\/+$/, '');
+  const parts = path.split('/');
+  let ok = !isAbsolute(raw) && !parts.includes('..') && !parts.includes('.');
+  // No part of it may be a symlink, in the commit or the working tree.
+  if (ok) ok = at ? !tree.linkOn(path) : noSymlinkOn(top, path);
+  if (!ok) throw new Fail(`${key} must be inside this repo: ${raw} (from .assuredloop)`, `set \`${key}:\` in .assuredloop to a ${key === 'root' ? 'folder' : 'path'} in this repo`);
+  return path;
+}
+
+// The values of the `<key>: <path>` lines of `.assuredloop`, as written.
+const values = (tree, key) => [...(tree.read('.assuredloop')?.toString('utf8') ?? '').matchAll(new RegExp(`^${key}:[ \\t]*(.+?)[ \\t]*$`, 'gm'))].map((m) => m[1]);
+
+// The checked paths of the `tests:`, `results:` or `adrs:` lines ([LNK-3], [LNK-4]).
+export const configured = (top, tree, at, key) => values(tree, key).map((raw) => inside(top, tree, at, key, raw));
+
 // The baseline root: `specs`, or `root: <path>` in `.assuredloop` ([SPC-1]).
-// The baseline is on main, so the root must lie inside this repo: never
-// absolute, through `..`, or through a symlink.
+// The baseline is on main, so the root must lie inside this repo. Every
+// other path the file names is checked here too, so a bad one stops any command.
 export function rootOf(top, tree, at) {
-  const config = tree.read('.assuredloop')?.toString('utf8') ?? '';
-  const m = config.match(/^root:[ \t]*(.+?)[ \t]*$/m);
-  const raw = m ? m[1] : 'specs';
-  const root = raw.replace(/\/+$/, '');
-  const parts = root.split('/');
-  let inside = !isAbsolute(raw) && !parts.includes('..') && !parts.includes('.');
-  // No part of the root may be a symlink, in the commit or the working tree.
-  if (inside) inside = at ? !tree.linkOn(root) : noSymlinkOn(top, root);
-  if (!inside) throw new Fail(`root must be inside this repo: ${raw} (from .assuredloop)`, 'set `root:` in .assuredloop to a folder in this repo');
-  return root;
+  for (const key of ['tests', 'results', 'adrs']) configured(top, tree, at, key);
+  return inside(top, tree, at, 'root', values(tree, 'root')[0] ?? 'specs');
 }
 
 // The baseline's Markdown files, each with its sections.
