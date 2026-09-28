@@ -94,7 +94,7 @@ export function spec(ctx) {
     body.push(line(body.length ? '' : 'Map', f.path));
     for (const s of f.sections) body.push(`${' '.repeat(12)}${s.id ? `[${s.id}] ` : ''}${s.title}`, ...overlay(s).map((l) => `${' '.repeat(14)}${l}`));
   }
-  const into = [...new Set(loose.map((e) => blocks.get(e.block).path ?? 'no file named'))].map((p) => [p, loose.filter((e) => (blocks.get(e.block).path ?? 'no file named') === p)]);
+  const into = [...new Set(loose.map((e) => e.file ?? 'no file named'))].map((p) => [p, loose.filter((e) => (e.file ?? 'no file named') === p)]);
   for (const [p, list] of into) body.push(line('New', `${p} (not in the baseline yet)`), ...overlay({}, false, list).map((l) => `${' '.repeat(14)}${l}`));
   body.push(line('Covers', files.map((f) => `${f.path} (${f.sections.length} sections)`).join(' · ')));
   const hints = duplicates(files);
