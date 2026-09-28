@@ -69,7 +69,7 @@ const body = (text) => text.replace(/\r\n/g, '\n').split('\n').slice(1).map((l) 
 
 // Every block of every request (archived ones too, for chains), with the
 // request's status.
-function allBlocks(tree) {
+export function allBlocks(tree) {
   const blocks = new Map();
   const dirs = [
     ...(tree.list('requests') ?? []).filter((d) => d !== 'archive').map((d) => ({ dir: `requests/${d}`, name: d, open: true })),
@@ -101,18 +101,21 @@ function linkState(b, blocks) {
   return null;
 }
 
-// [STA-2]: the state of every block, and [STA-3]: whether it retains nothing.
+// [STA-2]: the state of every open block, and [STA-3]: whether it retains nothing.
 export function changeStates(top, { at } = {}) {
   const tree = openTree(top, at);
-  const root = rootOf(top, tree, at);
-  const files = baseline(tree, root);
+  return statesOf(baseline(tree, rootOf(top, tree, at)), allBlocks(tree));
+}
+
+// The states of the blocks `include` picks (the open ones by default), read
+// against `files`: the baseline's files, each with its sections.
+export function statesOf(files, blocks, include = (b) => b.open) {
   const sections = files.flatMap((f) => f.sections);
   const byId = new Map();
   const fileOf = new Map();
   for (const f of files) {
     for (const s of f.sections) if (s.id && !byId.has(s.id)) { byId.set(s.id, s.text); fileOf.set(s.id, f.path); }
   }
-  const blocks = allBlocks(tree);
   const links = new Map([...blocks.values()].map((b) => [b.key, linkState(b, blocks)]));
   const valid = (b) => b.base && links.get(b.key) === null;
   // Blocks this one reaches upwards through valid links, nearest first.
@@ -124,7 +127,7 @@ export function changeStates(top, { at } = {}) {
 
   const result = [];
   for (const b of blocks.values()) {
-    if (!b.open) continue;
+    if (!include(b)) continue;
     const base = byId.get(b.id);
     const atWas = b.op === 'add' ? base === undefined : same(base, b.was);
     const entry = (state, by = null, candidates = []) => ({
@@ -136,8 +139,8 @@ export function changeStates(top, { at } = {}) {
     if (link) { result.push(entry(link)); continue; }
     if (same(b.was, b.now)) { result.push(entry('no change yet')); continue; }
     if (b.op === 'remove' ? base === undefined : same(base, b.now)) { result.push(entry('consolidated')); continue; }
-    const carrier = [...blocks.values()].find((d) => d.key !== b.key && upward(d).includes(b) && same(base, d.now));
-    if (carrier) { result.push(entry('carried', carrier.key)); continue; }
+    const carriers = [...blocks.values()].filter((d) => d.key !== b.key && upward(d).includes(b) && same(base, d.now));
+    if (carriers.length) { result.push({ ...entry('carried', carriers[0].key), carriers: carriers.map((d) => d.key) }); continue; }
     const waitOn = upward(b).find((u) => (u.op === 'add' ? base === undefined : same(base, u.was)));
     if (waitOn) { result.push(entry('waiting', waitOn.key)); continue; }
     if (atWas) { result.push(entry('pending')); continue; }

@@ -23,3 +23,48 @@ root, decides the state. The first row that holds wins:
 5. it equals "was" (for an add: absent): **pending**;
 6. the ID is not found: **not found**, with candidates by body text;
 7. anything else: **differs**, align.
+
+## [STA-3] Retains nothing
+A block **retains nothing** only when this is shown positively from content,
+whatever the link state: its "was" equals its "now"; or the baseline equals
+its "was" exactly (for an add: the ID is absent); or it is **waiting**. Every
+other case is **possibly retained**, and MUST be reverted, or accepted and
+kept ([STA-6]). Retaining nothing MUST NOT be inferred from a failure to
+match "now".
+
+## [STA-4] Consolidate
+`consolidate <name> [--section ID] [--yes]` MUST validate everything first,
+show what it would write, and with `--yes` write atomically. It writes only
+sections that are **pending** and not marked Dropped: an add after its
+anchor (refused while the anchor itself is pending, unless both go
+together), a modify in place, a remove. It leaves
+**consolidated** and **carried** sections alone, and refuses every other
+state, and every request that is blocked. `consolidate --revert <ID>` puts "was"
+back, a remove after its recorded anchor, and is allowed while blocked. Anyone
+MAY consolidate another request's section; the output names its owner.
+
+## [STA-5] Revising and accepting
+Revising a section MUST keep the old block, marked `Revised <date> (Dn)`, and
+add the next version, which builds on it within the same request. Chains walk
+through revised blocks. `record section <ID> --accept` MUST keep "was", set
+"now" to the baseline's current text, and record a decision naming the change
+underneath.
+
+## [STA-6] Dropping and keeping
+A section is dropped by marking it `Dropped <date> (Dn)`. It MUST retain
+nothing ([STA-3]) or be reverted, or be kept. `Kept <date> (Dn)` MUST be
+allowed only for a section that is consolidated or carried, and whose text
+traces to a signed requirement (`for R<n>`, with a current sign-off) or to a
+decision whose source is the owner. A section that differs MUST be aligned
+before it can be kept. A section carried by a successor MUST NOT be reverted,
+only kept. Dropping never touches the baseline or another request.
+
+## [STA-7] Conclude
+`conclude <name>` MUST read the working tree and name what it read. It MUST
+refuse unless the organized section's sign-off is current and every held
+section is consolidated, carried, dropped while retaining nothing (or
+reverted), or kept. On success it writes the Outcome, sets `Status: concluded`,
+and moves the folder to `requests/archive/`. `conclude <name> --dropped Dn` sets
+`Status: dropped`; when every section retains nothing it needs no sign-off,
+and otherwise every retained section must be reverted or kept. It prints three
+lines or fewer, plus the Read, Next and Not known lines ([VW-9]).

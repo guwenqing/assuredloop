@@ -1,0 +1,149 @@
+// al conclude <name> [--dropped Dn] [--yes] ([STA-7], [STA-6], [REC-9]): it
+// refuses unless the sign-off is current and every held section is
+// consolidated, carried, dropped while retaining nothing ([STA-3]), or kept;
+// then it writes the Outcome, sets the Status and moves the folder to
+// requests/archive/. It prints three lines or fewer, plus the frame.
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { Fail } from './git.js';
+import { openTree, findRequest, noSymlinkOn } from './tree.js';
+import { rootOf, baseline } from './spec.js';
+import { allBlocks, statesOf } from './states.js';
+import { organized, parts, signoffState } from './signoff.js';
+import { requestToWrite, decisionList, entriesOf } from './commands.js';
+import { decisions } from './record-section.js';
+
+const HELD = ['consolidated', 'carried'];
+const NOT_KNOWN = ['whether the code does what the spec says, and whether review agreed (conclude reads only the records)'];
+
+// Each block's fate: held, kept or dropped, or why conclude refuses it.
+function fateOf(e, b, { name, dropped, blocks, signedR, ownerDecisions }) {
+  if (b.kept) {
+    if (!HELD.includes(e.state)) return { bad: `${e.block} is Kept but reads ${e.state}; align it before it is kept` };
+    // Its own signed R, or, when successors carry it, any one of theirs (design §5.4).
+    const traced = signedR(b) || (e.state === 'carried' && e.carriers.some((k) => signedR(blocks.get(k)))) || ownerDecisions.has(b.kept[1]);
+    return traced ? { fate: 'kept' } : { bad: `${e.block} is Kept, but traces to no signed requirement and no owner decision ([STA-6])` };
+  }
+  if (dropped || b.dropped) {
+    return e.retainsNothing ? { fate: 'dropped' }
+      : { bad: `${e.block} is dropped but possibly retained (${e.state}): al consolidate ${name} --revert ${e.id}, or keep it` };
+  }
+  return HELD.includes(e.state) ? { fate: 'held' }
+    : { bad: `${e.block} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}` };
+}
+
+// The generated block of the Outcome ([REC-9]): content facts only.
+function outcome(md, org, fates, droppedBy) {
+  const ids = new Map();
+  for (const f of fates) ids.set(f.b.id, [...(ids.get(f.b.id) ?? []), f]);
+  const kind = (fs) => {
+    const byN = [...fs].sort((x, y) => x.b.n - y.b.n);
+    if (fs.some((f) => f.fate === 'kept')) return 'Kept';
+    if (fs.some((f) => f.fate === 'dropped')) return 'Dropped';
+    return byN[0].b.op === 'add' ? 'Added' : byN.at(-1).b.op === 'remove' ? 'Removed' : 'Modified';
+  };
+  const kinds = new Map([...ids].map(([id, fs]) => [id, kind(fs)]));
+  const list = (ks) => [...kinds].filter(([, k]) => ks.includes(k)).map(([id]) => `[${id}]`).join(', ') || 'none';
+  const lines = droppedBy ? [`- Dropped as a whole by ${droppedBy}`] : [];
+  for (const p of org ? parts(org.text).filter((x) => /^R\d+$/.test(x.key)) : []) {
+    const title = p.text.split('\n')[0].replace(/^\s*#+\s+R\d+\s*/, '').trim();
+    const inIds = [...ids].filter(([id, fs]) => kinds.get(id) !== 'Dropped' && fs.some((f) => f.b.forR.includes(p.key))).map(([id]) => `[${id}]`);
+    lines.push(`- ${p.key}${title ? ` ${title}` : ''}: ${inIds.length ? `in ${inIds.join(', ')}` : 'in no section'}`);
+  }
+  for (const k of ['Added', 'Modified', 'Removed', 'Dropped', 'Kept']) lines.push(`- ${k}: ${list([k])}`);
+  const all = decisionList(md);
+  lines.push(`- Decisions: ${all.filter((d) => !d.agent).map((d) => d.id).join(', ') || 'none'}`);
+  lines.push(`- Agent rulings: ${all.filter((d) => d.agent).map((d) => d.id).join(', ') || 'none'}`);
+  return lines;
+}
+
+// request.md with the Outcome (re)generated at its place, or appended; the
+// text from its `Notes:` line on is kept.
+function withOutcome(md, generated) {
+  const block = `## Outcome\n\n${generated.join('\n')}\n\n`;
+  const m = md.match(/^## Outcome[ \t]*$/m);
+  if (!m) return `${md.replace(/\s+$/, '')}\n\n${block}Notes:\n`;
+  const after = m.index + m[0].length;
+  const next = md.slice(after).search(/^#{1,2}\s/m);
+  const end = next < 0 ? md.length : after + next;
+  const notes = md.slice(m.index, end).search(/^Notes:/m);
+  return md.slice(0, m.index) + block + (notes < 0 ? 'Notes:\n' : md.slice(m.index + notes, end)) + md.slice(end);
+}
+
+// The value of `Status:` on the request's status line set to `status`.
+function withStatus(md, status) {
+  const lines = md.split('\n');
+  const i = lines.findIndex((l) => /\bStatus:/.test(l));
+  if (i >= 0) lines[i] = lines[i].replace(/(\bStatus:\s*)[^·]*?(\s*(?:·|$))/, `$1${status}$2`);
+  else lines.splice(lines.findIndex((l) => l.startsWith('# ')) + 1, 0, `Status: ${status}`);
+  return lines.join('\n');
+}
+
+export function conclude({ top, args, opts }) {
+  const [name] = args;
+  const tree = openTree(top);
+  const dir = requestToWrite(top, tree, name);
+  const target = `requests/archive/${name}`;
+  const moving = dir !== target;
+  const md = tree.read(`${dir}/request.md`).toString('utf8');
+  const dropped = opts.dropped !== undefined;
+  if (dropped && !decisions(md).names.includes(opts.dropped)) {
+    throw new Fail(`--dropped ${opts.dropped}: name an entry of ## Decisions in ${dir}/request.md (the decision to drop it, with its source)`,
+      `write the decision, then al conclude ${name} --dropped Dn`);
+  }
+  if (!noSymlinkOn(top, `${dir}/request.md`) || !noSymlinkOn(top, target)) {
+    throw new Fail(`${dir} or ${target} is reached through a symlink; records are written only through real folders, and nothing was written`, 'make requests/ a real folder in this repo');
+  }
+  if (moving && existsSync(join(top, target))) throw new Fail(`${target} already exists; a request name is never reused`, `al context ${name}`);
+
+  const sign = signoffState(tree, dir, name);
+  const org = organized(md);
+  const blocks = allBlocks(tree);
+  const signed = new Map();
+  const signedRs = (request) => {
+    if (!signed.has(request)) {
+      const d = findRequest(tree, request);
+      const o = d && organized(tree.read(`${d}/request.md`).toString('utf8'));
+      signed.set(request, o && !signoffState(tree, d, request).blocked ? parts(o.text).map((p) => p.key) : []);
+    }
+    return signed.get(request);
+  };
+  const facts = {
+    name, dropped,
+    blocks,
+    // Whether a block's `for R<n>` names an R its request signed off, the sign-off current ([REC-5]).
+    signedR: (x) => x.forR.some((r) => signedRs(x.request).includes(r)),
+    ownerDecisions: new Set(decisionList(md).filter((d) => /\bowner\b/.test(d.source) && !d.agent).map((d) => d.id)),
+  };
+  const fates = statesOf(baseline(tree, rootOf(top, tree)), blocks, (b) => b.request === name)
+    .map((e) => ({ e, b: blocks.get(e.block), ...fateOf(e, blocks.get(e.block), facts) }));
+
+  // [REC-6]: blocked, only a drop where every section retains nothing goes ahead.
+  const body = [];
+  if (sign.blocked && !(dropped && fates.every((f) => f.fate === 'dropped'))) body.push(`refused: ${name} is blocked: ${sign.reason} ([REC-6])`);
+  const bad = fates.filter((f) => f.bad).map((f) => f.bad);
+  if (bad.length) body.push(`refused: ${bad.join(' · ')}`);
+  if (body.length) {
+    return {
+      refused: true, body,
+      next: sign.blocked && !dropped ? `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`
+        : `al context ${name}; then consolidate, revert or keep what is named`,
+      notKnown: NOT_KNOWN,
+    };
+  }
+
+  const status = dropped ? 'dropped' : 'concluded';
+  const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped));
+  const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])
+    .filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
+  const note = children.length ? [`note: child request ${children.join(', ')} is still open`] : [];
+  const what = `the Outcome, Status: ${status}${moving ? `, and ${dir}/ moved to ${target}/` : ''}`;
+  if (!opts.yes) return { body: [`Would conclude ${name}: ${what}`, ...note], next: 'run the same command with --yes to do it', notKnown: NOT_KNOWN };
+
+  writeFileSync(join(top, dir, 'request.md'), text);
+  if (moving) {
+    mkdirSync(join(top, 'requests/archive'), { recursive: true });
+    renameSync(join(top, dir), join(top, target));
+  }
+  return { body: [`Concluded ${name}: ${what}`, ...note], next: `review ${target}/request.md, then commit it`, notKnown: NOT_KNOWN };
+}
