@@ -33,8 +33,9 @@ function fateOf(e, b, { name, dropped, blocks, signedR, ownerDecisions }) {
     : { bad: `${e.block} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}` };
 }
 
-// The generated block of the Outcome ([REC-9]): content facts only.
-function outcome(md, org, fates, droppedBy, live) {
+// Each section's kind in the Outcome (by its blocks' net op, or Kept or
+// Dropped), and each R's sections ([REC-9]).
+export function outcomeFacts(org, fates) {
   const ids = new Map();
   for (const f of fates) ids.set(f.b.id, [...(ids.get(f.b.id) ?? []), f]);
   const kind = (fs) => {
@@ -44,13 +45,20 @@ function outcome(md, org, fates, droppedBy, live) {
     return byN[0].b.op === 'add' ? 'Added' : byN.at(-1).b.op === 'remove' ? 'Removed' : 'Modified';
   };
   const kinds = new Map([...ids].map(([id, fs]) => [id, kind(fs)]));
+  const rs = (org ? parts(org.text).filter((x) => /^R\d+$/.test(x.key)) : []).map((p) => ({
+    key: p.key,
+    title: p.text.split('\n')[0].replace(/^\s*#+\s+R\d+\s*/, '').trim(),
+    ids: [...ids].filter(([id, fs]) => kinds.get(id) !== 'Dropped' && fs.some((f) => f.b.forR.includes(p.key))).map(([id]) => `[${id}]`),
+  }));
+  return { kinds, rs };
+}
+
+// The generated block of the Outcome ([REC-9]): content facts only.
+function outcome(md, org, fates, droppedBy, live) {
+  const { kinds, rs } = outcomeFacts(org, fates);
   const list = (ks) => [...kinds].filter(([, k]) => ks.includes(k)).map(([id]) => `[${id}]`).join(', ') || 'none';
   const lines = droppedBy ? [`- Dropped as a whole by ${droppedBy}`] : [];
-  for (const p of org ? parts(org.text).filter((x) => /^R\d+$/.test(x.key)) : []) {
-    const title = p.text.split('\n')[0].replace(/^\s*#+\s+R\d+\s*/, '').trim();
-    const inIds = [...ids].filter(([id, fs]) => kinds.get(id) !== 'Dropped' && fs.some((f) => f.b.forR.includes(p.key))).map(([id]) => `[${id}]`);
-    lines.push(`- ${p.key}${title ? ` ${title}` : ''}: ${inIds.length ? `in ${inIds.join(', ')}` : 'in no section'}`);
-  }
+  for (const r of rs) lines.push(`- ${r.key}${r.title ? ` ${r.title}` : ''}: ${r.ids.length ? `in ${r.ids.join(', ')}` : 'in no section'}`);
   for (const k of ['Added', 'Modified', 'Removed', 'Dropped', 'Kept']) lines.push(`- ${k}: ${list([k])}`);
   const all = decisionList(md);
   lines.push(`- Decisions: ${all.filter((d) => !d.agent).map((d) => d.id).join(', ') || 'none'}`);
@@ -102,33 +110,8 @@ export function conclude({ top, args, opts }) {
   }
   if (moving && existsSync(join(top, target))) throw new Fail(`${target} already exists; a request name is never reused`, `al context ${name}`);
 
-  const sign = signoffState(tree, dir, name);
-  const org = organized(md);
-  const blocks = allBlocks(tree);
-  const signed = new Map();
-  const signedRs = (request) => {
-    if (!signed.has(request)) {
-      const d = findRequest(tree, request);
-      const o = d && organized(tree.read(`${d}/request.md`).toString('utf8'));
-      signed.set(request, o && !signoffState(tree, d, request).blocked ? parts(o.text).map((p) => p.key) : []);
-    }
-    return signed.get(request);
-  };
-  const facts = {
-    name, dropped,
-    blocks,
-    // Whether a block's `for R<n>` names an R its request signed off, the sign-off current ([REC-5]).
-    signedR: (x) => x.forR.some((r) => signedRs(x.request).includes(r)),
-    ownerDecisions: new Set(decisionList(md).filter((d) => /\bowner\b/.test(d.source) && !d.agent).map((d) => d.id)),
-  };
-  const fates = statesOf(baseline(tree, rootOf(top, tree)), blocks, (b) => b.request === name)
-    .map((e) => ({ e, b: blocks.get(e.block), ...fateOf(e, blocks.get(e.block), facts) }));
-
-  // [REC-6]: blocked, only a drop where every section retains nothing goes ahead.
-  const body = [];
-  if (sign.blocked && !(dropped && fates.every((f) => f.fate === 'dropped'))) body.push(`refused: ${name} is blocked: ${sign.reason} ([REC-6])`);
-  const bad = fates.filter((f) => f.bad).map((f) => f.bad);
-  if (bad.length) body.push(`refused: ${bad.join(' · ')}`);
+  const { sign, org, fates, refusals } = judge(top, tree, name, dir, dropped);
+  const body = refusals.map((r) => `refused: ${r}`);
   if (body.length) {
     return {
       refused: true, body,
@@ -153,4 +136,37 @@ export function conclude({ top, args, opts }) {
     renameSync(join(top, dir), join(top, target));
   }
   return { body: [`Concluded ${name}: ${what}`, ...note], next: `review ${target}/request.md, then commit it`, notKnown: NOT_KNOWN };
+}
+
+// conclude's rules on request `name` in `tree` (at commit `at`, or the working
+// tree): the refusals, none when it may conclude, and the facts they rest on.
+export function judge(top, tree, name, dir, dropped, at) {
+  const md = tree.read(`${dir}/request.md`).toString('utf8');
+  const sign = signoffState(tree, dir, name);
+  const org = organized(md);
+  const blocks = allBlocks(tree);
+  const signed = new Map();
+  const signedRs = (request) => {
+    if (!signed.has(request)) {
+      const d = findRequest(tree, request);
+      const o = d && organized(tree.read(`${d}/request.md`).toString('utf8'));
+      signed.set(request, o && !signoffState(tree, d, request).blocked ? parts(o.text).map((p) => p.key) : []);
+    }
+    return signed.get(request);
+  };
+  const facts = {
+    name, dropped,
+    blocks,
+    // Whether a block's `for R<n>` names an R its request signed off, the sign-off current ([REC-5]).
+    signedR: (x) => x.forR.some((r) => signedRs(x.request).includes(r)),
+    ownerDecisions: new Set(decisionList(md).filter((d) => /\bowner\b/.test(d.source) && !d.agent).map((d) => d.id)),
+  };
+  const fates = statesOf(baseline(tree, rootOf(top, tree, at)), blocks, (b) => b.request === name)
+    .map((e) => ({ e, b: blocks.get(e.block), ...fateOf(e, blocks.get(e.block), facts) }));
+  // [REC-6]: blocked, only a drop where every section retains nothing goes ahead.
+  const refusals = [];
+  if (sign.blocked && !(dropped && fates.every((f) => f.fate === 'dropped'))) refusals.push(`${name} is blocked: ${sign.reason} ([REC-6])`);
+  const bad = fates.filter((f) => f.bad).map((f) => f.bad);
+  if (bad.length) refusals.push(bad.join(' · '));
+  return { md, sign, org, fates, refusals };
 }

@@ -9,6 +9,7 @@ import { openTree, noSymlinkOn } from './tree.js';
 import { rootOf, baseline } from './spec.js';
 import { parseChange, takeText } from './states.js';
 import { requestToWrite } from './commands.js';
+import { headingFault } from './consolidate.js';
 
 const indent = (text) => text.replace(/\n+$/, '').split('\n').map((l) => (l ? `    ${l}` : '')).join('\n') + '\n';
 const render = (head, was, now) => `### ${head}\n` + (was != null ? `Was:\n\n${indent(was)}\n` : '') + (now != null ? `Now:\n\n${indent(now)}\n` : '');
@@ -104,8 +105,11 @@ export function recordSection({ top, args, opts }) {
     shown = [block.replace(/\n$/, '')];
   }
 
-  if (!opts.yes) return { body: ['Would write:', ...shown], next: 'run the same command with --yes to write it', notKnown };
+  // [SPC-5]: the request's blocks that break the one-heading rule, said; drafting is never refused.
+  const faults = (change ? parseChange(change, name) : []).flatMap((b) => [[b.now, 'Now'], [b.was, 'Was']].map(([t, side]) => t !== null && headingFault(b, t, side)))
+    .filter(Boolean).map((f) => `not ok: ${f}; fix it in ${changePath}, then al context ${name}`);
+  if (!opts.yes) return { body: ['Would write:', ...shown, ...faults], next: 'run the same command with --yes to write it', notKnown };
   writeFileSync(join(top, changePath), newChange);
   if (newRequest !== md) writeFileSync(join(top, reqPath), newRequest);
-  return { body: ['Wrote:', ...shown], next: `al context ${name}`, notKnown };
+  return { body: ['Wrote:', ...shown, ...faults], next: `al context ${name}`, notKnown };
 }

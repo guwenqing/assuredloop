@@ -1,9 +1,15 @@
-// al check: for now only the append-only records ([REC-12]), per commit over
-// main..HEAD, each commit against its first parent. The owner's words and the
-// decisions only grow at the end; a file in origin/ never changes or goes;
-// nothing changes under a request archived on main. The move to archive/ is
-// not an edit. check exits 0 ([HNT-3]).
+// al check [--strict] [--all]: every hint for the branch ([HNT-2]), ranked and
+// capped ([HNT-1]); the final state is the working tree, the commits are
+// main..HEAD. Among them, the append-only records ([REC-12]), per commit, each
+// commit against its first parent: the owner's words and the decisions only
+// grow at the end; a file in origin/ never changes or goes; nothing changes
+// under a request archived on main; the move to archive/ is not an edit.
+// check exits 0, and --strict exits 1 on a not ok that counts ([HNT-3]).
 import { git, isShallow, mainCommit } from './git.js';
+import { openTree } from './tree.js';
+import { line } from './commands.js';
+import { hintText, hintsOf, ranked, readBranch } from './hints.js';
+import { fileLinks } from './views.js';
 
 const NOTE = 'append-only is checked per commit over main..HEAD; this protects a PR only when check runs on it';
 const APPEND_ONLY = ["Owner's words and dialog", 'Decisions'];
@@ -44,7 +50,7 @@ function problems(top, parent, commit, name, frozen) {
   const before = filesOf(top, parent, name);
   const after = filesOf(top, commit, name);
   const out = [];
-  const bad = (path, what) => out.push(`not ok: ${commit.slice(0, 7)} ${path}: ${what} ([REC-12])`);
+  const bad = (path, what) => out.push({ kind: 'not ok', rank: 3, owners: [name], text: `${commit.slice(0, 7)} ${path}: ${what} ([REC-12])`, command: `git show ${commit.slice(0, 7)} -- ${path}` });
   if (frozen.has(name)) {
     const paths = new Set([...before.values(), ...after.values()].map((f) => f.path).filter((p) => p.startsWith('requests/archive/')));
     const sha = (files, p) => [...files.values()].find((f) => f.path === p)?.sha;
@@ -67,28 +73,48 @@ function problems(top, parent, commit, name, frozen) {
   return out;
 }
 
-export function check({ top }) {
-  const main = mainCommit(top);
-  const notKnown = ['uncommitted changes in the working tree (check reads commits only)'];
-  if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
-  if (!main) return { body: ['no main to compare with, so no commits were checked', NOTE], next: 'git fetch origin, or create main, then al check', notKnown };
-  const commits = git(top, ['rev-list', '--reverse', '--topo-order', `${main}..HEAD`]).split('\n').filter(Boolean);
+// The append-only hints of `commits` (main..HEAD), each owned by its request.
+export function appendOnly(top, main, commits) {
   const frozen = new Set(paths(git(top, ['ls-tree', '-z', '--name-only', `${main}:requests/archive`], { allowFail: true }) ?? ''));
-  const body = [];
+  const out = [];
   for (const commit of commits) {
     const parent = git(top, ['rev-parse', '--verify', '--quiet', `${commit}^1`], { allowFail: true });
     if (!parent) continue;
     const changed = paths(git(top, ['diff', '--name-only', '-z', '--no-renames', parent, commit, '--', 'requests/']));
-    for (const name of new Set(changed.map(requestOf).filter(Boolean))) body.push(...problems(top, parent, commit, name, frozen));
+    for (const name of new Set(changed.map(requestOf).filter(Boolean))) out.push(...problems(top, parent, commit, name, frozen));
   }
-  const bad = body.length > 0;
-  if (!bad) body.push(`append-only holds in the ${commits.length} commit(s) over main..HEAD`);
+  return out;
+}
+
+export function check({ top, opts }) {
+  const main = mainCommit(top);
+  const notKnown = ['tests whose assertions changed, and test results (not read yet)'];
+  if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
+  const head = git(top, ['rev-parse', 'HEAD']);
+  const base = main ? git(top, ['merge-base', main, 'HEAD'], { allowFail: true }) : null;
+  const commits = main ? git(top, ['rev-list', '--reverse', '--topo-order', `${main}..HEAD`]).split('\n').filter(Boolean) : [];
+  const b = readBranch(top, { base, commits, tree: openTree(top), range: 'main..HEAD' });
+  const list = ranked(hintsOf(top, b, { main }), b);
+  const body = [line('Serves', [...[...b.served].filter((n) => !b.archived.has(n)), ...[...b.archived].map((n) => `archives ${n}`)].join(' · ') || 'no request')];
+  if (b.tier) {
+    // [REC-11]: the claim with its evidence, the spec edits and the sections near the changed code.
+    const ctx = { root: b.root, requests: b.requests, seen: b.seen, shallow: isShallow(top), headings: new Map() };
+    const code = base ? git(top, ['diff', '--name-only', base, head]).split('\n').filter((p) => p && !p.startsWith('requests/') && !p.startsWith(`${b.root}/`)) : [];
+    const near = [...new Set(code.flatMap((p) => [...fileLinks(top, base, head, p, ctx).ids.keys()]))];
+    body.push(line('Tier', b.tier), line('Evidence', [`edits ${b.changedIds.map((i) => `[${i}]`).join(', ') || 'no baseline section'}`,
+      `near the changed code: ${near.map((i) => `[${i}]`).join(', ') || 'none'}`].join(' · ')));
+  }
+  const cap = opts.all ? list.length : 5;
+  body.push(...list.slice(0, cap).map(hintText));
+  if (list.length > cap) body.push(`${list.length - cap} more hidden, --all`);
+  if (!main) body.push('no main to compare with, so no commits were checked');
   body.push(NOTE);
+  const counting = list.filter((h) => h.counts).length;
   return {
-    tree: { label: `${commits.length} commit(s) over main..HEAD` },
+    tree: { label: `working tree and ${commits.length} commit(s) over main..HEAD` },
     body,
-    next: bad ? 'restore each record named as it was (a correction is a new entry), then al check'
-      : 'run al check again after each push; it certifies only the commits it read',
+    exit: opts.strict && counting ? 1 : 0,
+    next: counting ? 'fix or explain each not ok that counts, then al check --strict' : 'run al check again after each push; it certifies only what it read',
     notKnown,
   };
 }
