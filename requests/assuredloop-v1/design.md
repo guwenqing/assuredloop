@@ -758,6 +758,7 @@ more". Each is worded as an observation that names a command.
 | A held section reads "differs" / "base revised" / "base dropped": re-base | not ok (on the holding change) |
 | Two open changes hold one section and neither reaches the other through `builds on` links | not ok |
 | A baseline section this branch changed equals the "now" of a request that is blocked on sign-off | not ok (counts for the branch) |
+| The branch's final state delivers spec work or other work for a request still blocked in that state (ADR 0011); the sign-off in the same branch clears it | not ok (counts for the branch) |
 | A held section's ID is not found | not ok (for the holding request) |
 | An append-only part (the Original and Decisions lines, `origin/`, `archive/` beyond this branch's own archive) was edited, per commit | not ok |
 | Conflict markers, or Was:/Now: blocks, in the baseline | not ok |
@@ -772,13 +773,13 @@ more". Each is worded as an observation that names a command.
 | No tier line in the PR or commit | note |
 | A snapshot's text no longer matches its recorded sha256 | not ok |
 | A snapshot not re-checked since <date>, or its source updated since | note |
-| A change spec reached main before the requirement's first sign-off (tiers 2, 3, S) | note |
+| Work for a request reached main in an earlier commit than its first sign-off | note |
 | A section this branch edits changed on origin/main since the fork (by <request>): re-read | note |
 | Baseline sections changed with no request linked (fine for tier 0; say why) | note |
 | Code changed; its linked tests did not | note |
 | Assertion count changed, in a supported syntax, with no linked code or spec change | note |
 | Code from a dropped section or request still on main, given as `path:lines`, and saying whether any part plans its removal | note |
-| Requirement not signed off, or changed since sign-off: the request is blocked | not ok (for branches serving that request) |
+| A sign-off pending, or the requirement changed since it: the request is blocked | note |
 | A named child request is still open when the parent is about to conclude | note |
 | A test result with an unknown or older revision: not evidence for this change | note |
 
