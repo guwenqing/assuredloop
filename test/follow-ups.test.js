@@ -7,10 +7,13 @@
 //     suggests only a read command, al context <name> --audit, never al
 //     record [REC-1];
 // (g) the note "<name> changed since its sign-off" (or "is not signed off
-//     yet") never shows in context <name>, where the BLOCKED line says it;
-//     in check it does not show beside the blocked-delivery not ok for the
-//     same request, and it still shows when the branch delivers nothing for
-//     that request;
+//     yet") is dropped, in check and in context <name>, only where a not ok
+//     hint for the same request carries the same reason and the same al
+//     record <name> signoff command: the blocked-delivery not ok, or "[ID]
+//     changed on this branch equals the Now of <name>, which is blocked".
+//     The BLOCKED header is not a hint (the architect's ruling on [HNT-2]):
+//     for a served, blocked request with nothing delivering, the note stays,
+//     in context <name> --all too;
 // (d) the Spec line's count form names what a waiting block waits on,
 //     "1 waiting (INV-2@2 on INV-2@1)", with the <request>/ prefix only for
 //     another request's block; the list form reads "INV-2@2 waiting on …";
@@ -141,23 +144,14 @@ test('#89 (i) [REC-1] an archived request concluded on main: the Next line of co
 
 // --- (g) no repeated sign-off hint ---
 
-test('#89 (g) C10: context invoice-download, blocked, shows the BLOCKED line and no sign-off note, with or without --all', (t) => {
+test('#89 (g) C10: context invoice-download shows the blocked-delivery not ok and no sign-off note beside it, with or without --all', (t) => {
   const repo = c10(t);
   for (const args of [[], ['--all']]) {
     const out = context(repo, NAME, ...args);
     assert.match(lines(out)[0], /^BLOCKED/, `the fixture: blocked:\n${out}`);
+    hint(out, ...BLOCKED_DELIVERY(NAME));
     assert.deepEqual(signoffNotes(viewHints(out), NAME), [], `context ${args.join(' ')}: no sign-off note:\n${out}`);
   }
-});
-
-test('#89 (g) an unsigned request: context <name> --all shows the BLOCKED line and no "not signed off yet" note', (t) => {
-  const repo = makeRepo(t);
-  repo.write('specs/invoices.md', file(INV1, INV3));
-  addRequest(repo, 'csv-export', [block('[INV-4]@1 add after [INV-3]   for R1', { now: INV4 })], { org: ORG3, signed: false });
-  repo.commit('csv-export: request', { date: '2026-09-21T12:00:00Z' });
-  const out = context(repo, 'csv-export', '--all');
-  assert.match(lines(out)[0], /^BLOCKED/, `the fixture: blocked:\n${out}`);
-  assert.deepEqual(signoffNotes(viewHints(out), 'csv-export'), [], `no sign-off note:\n${out}`);
 });
 
 test('#89 (g) C10: check shows the blocked-delivery not ok for invoice-download and not the sign-off note beside it', (t) => {
@@ -167,21 +161,54 @@ test('#89 (g) C10: check shows the blocked-delivery not ok for invoice-download 
   assert.deepEqual(signoffNotes(checkHints(out), NAME), [], `no sign-off note beside the not ok:\n${out}`);
 });
 
-test('#89 (g) pin: a branch that only edits csv-export\'s organized requirement, so it is blocked but the branch delivers nothing for it: check gives the sign-off note, the only signal there', (t) => {
+test('#89 (g) the not ok "[INV-3] changed on this branch equals the Now of iso-dates, which is blocked" carries the sign-off too: no sign-off note for iso-dates, in check or in context iso-dates --all', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0));
+  addRequest(repo, 'iso-dates', [block('[INV-3]@1 modify   for R2', { was: S0, now: S1 })], { org: ORG3, signed: false });
+  repo.commit('iso-dates: request', { date: '2026-09-21T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'work']);
+  repo.write('specs/invoices.md', file(INV1, S1));
+  repo.commit(message('ISO dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-22T12:00:00Z' });
+  const out = check(repo, '--all');
+  hint(out, 'not ok', 'INV-3', /\bNow\b/, 'iso-dates', /\bblocked\b/);
+  assert.deepEqual(signoffNotes(checkHints(out), 'iso-dates'), [], `no sign-off note beside the not ok:\n${out}`);
+  const view = context(repo, 'iso-dates', '--all');
+  assert.deepEqual(signoffNotes(viewHints(view), 'iso-dates'), [], `no sign-off note in context:\n${view}`);
+});
+
+// Main: csv-export signed (or not, when `unsigned`). The branch serves it and
+// delivers nothing: it edits the organized requirement (so it changed since
+// its sign-off), or, unsigned, records a decision only.
+function servedNothingDelivered(t, { unsigned = false } = {}) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, INV3));
-  addRequest(repo, 'csv-export', null, { org: ORG3, signedText: ORG3 });
-  repo.commit('csv-export: request, signed', { date: '2026-09-21T12:00:00Z' });
+  addRequest(repo, 'csv-export', null, { org: ORG3, signedText: ORG3, signed: !unsigned });
+  repo.commit('csv-export: request', { date: '2026-09-21T12:00:00Z' });
   repo.git(['checkout', '-q', '-b', 'work']);
   const md = repo.read('requests/csv-export/request.md').toString();
-  repo.write('requests/csv-export/request.md', md.replace('as CSV.', 'as CSV or PDF.'));
-  repo.commit(message('csv-export: PDF too, for the owner to sign', { request: 'csv-export', tier: '2 — csv export' }), { date: '2026-09-22T12:00:00Z' });
-  const c = context(repo, 'csv-export');
-  assert.match(lines(c)[0], /^BLOCKED/, `the fixture: csv-export is blocked:\n${c}`);
-  const out = check(repo, '--all');
-  assert.ok(!checkHints(out).some((l) => kindOf(l) === 'not ok' && l.includes('delivers work for')), `the fixture: no blocked-delivery not ok:\n${out}`);
-  assert.equal(signoffNotes(checkHints(out), 'csv-export').length, 1, `the sign-off note should show:\n${out}`);
-});
+  repo.write('requests/csv-export/request.md', unsigned
+    ? `${md}- D5, 2026-09-22. Source: the owner. Keep the CSV header in English.\n`
+    : md.replace('as CSV.', 'as CSV or PDF.'));
+  repo.commit(message('csv-export: for the owner to sign', { request: 'csv-export', tier: '2 — csv export' }), { date: '2026-09-22T12:00:00Z' });
+  return repo;
+}
+
+for (const [what, unsigned] of [['changed since its sign-off', false], ['not signed off yet', true]]) {
+  test(`#89 (g) pin: csv-export ${what}, served by a branch that delivers nothing for it: check gives the sign-off note, the only hint there`, (t) => {
+    const repo = servedNothingDelivered(t, { unsigned });
+    const out = check(repo, '--all');
+    assert.ok(!checkHints(out).some((l) => kindOf(l) === 'not ok' && l.includes('csv-export')), `the fixture: no not ok for csv-export:\n${out}`);
+    assert.equal(signoffNotes(checkHints(out), 'csv-export').length, 1, `the sign-off note should show:\n${out}`);
+  });
+
+  test(`#89 (g) pin: csv-export ${what}, served by a branch that delivers nothing for it: context csv-export --all shows the BLOCKED header and the sign-off note beside it (the header is not a hint)`, (t) => {
+    const repo = servedNothingDelivered(t, { unsigned });
+    const out = context(repo, 'csv-export', '--all');
+    assert.match(lines(out)[0], /^BLOCKED/, `the fixture: csv-export is blocked:\n${out}`);
+    assert.ok(!viewHints(out).some((l) => kindOf(l) === 'not ok' && l.includes('csv-export')), `the fixture: no not ok for csv-export:\n${out}`);
+    assert.equal(signoffNotes(viewHints(out), 'csv-export').length, 1, `the sign-off note should show:\n${out}`);
+  });
+}
 
 // --- (d) the waiting block's target on the Spec line ---
 

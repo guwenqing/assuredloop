@@ -165,13 +165,24 @@ test('C4 [HNT-2][HNT-3] contrast: INV-3 changed to another text than blocked iso
   }
 });
 
-test('[HNT-2] a served request\'s sign-off pending is a note naming it; an unsigned request the branch does not serve gets none', (t) => {
+test('[HNT-2] a served request\'s sign-off pending is a note naming it when the branch delivers no work for it; an unsigned request the branch does not serve gets none', (t) => {
   const repo = base(t, { more: (r) => addRequest(r, 'tz-dates', null, { signed: false }) });
+  // The branch serves iso-dates with a decision only: no spec work, no code.
+  repo.write(MD, `${repo.read(MD).toString()}- D5, 2026-09-21. Source: the owner. Dates in the customer's zone.\n`);
+  repo.commit(message('iso-dates: a decision', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-21T12:00:00Z' });
+  const out = check(repo, '--all');
+  noHint(out, 'not ok', 'delivers work for', 'iso-dates');
+  hint(out, 'note', SIGN_OFF, PENDING, 'iso-dates');
+  noHint(out, 'note', SIGN_OFF, 'tz-dates');
+});
+
+test('[HNT-2] #89 (g) contrast: when the branch delivers code for unsigned iso-dates, the blocked-delivery not ok carries the signal and the sign-off note is not repeated beside it', (t) => {
+  const repo = base(t);
   repo.write('src/dates.js', 'export const format = "iso";\n');
   repo.commit(message('ISO dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-21T12:00:00Z' });
   const out = check(repo, '--all');
-  hint(out, 'note', SIGN_OFF, PENDING, 'iso-dates');
-  noHint(out, 'note', SIGN_OFF, 'tz-dates');
+  hint(out, 'not ok', 'delivers work for', 'iso-dates', /\bblocked\b/);
+  noHint(out, 'note', SIGN_OFF, PENDING, 'iso-dates');
 });
 
 test('[HNT-2] a served request whose organized requirement changed since its sign-off gets a note saying so; one still as signed gets no sign-off note', (t) => {
