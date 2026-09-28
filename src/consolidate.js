@@ -4,7 +4,7 @@
 // Dropped is written ([STA-6]); a blocked request ([REC-6]) and a duplicate ID
 // in the root ([SPC-3]) refuse.
 import { lstatSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, posix } from 'node:path';
 import { Fail } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, sameSection } from './sections.js';
@@ -73,6 +73,14 @@ function find(texts, id) {
   return null;
 }
 
+// [SPC-5]: a block holds exactly one heading, and it carries the block's own ID.
+function headingFault(b, text, side) {
+  const headings = parseSections(text);
+  if (headings.length !== 1) return `${b.key} holds ${headings.length} headings in its ${side}; a block holds exactly one ([SPC-5])`;
+  if (headings[0].id !== b.id) return `${b.key}'s heading carries ${headings[0].id ? `[${headings[0].id}]` : 'no ID'}, not [${b.id}] ([SPC-5])`;
+  return null;
+}
+
 const filesOf = (texts) => [...texts].sort(([a], [b]) => (a < b ? -1 : 1)).map(([path, text]) => ({ path, sections: parseSections(text) }));
 
 // Apply one pending block to `texts`: what it did, or why it cannot.
@@ -132,6 +140,8 @@ export function consolidate({ top, args, opts }) {
   }
   const todo = mine.filter((b) => !b.dropped);
   if (id !== undefined && !todo.length) return refuse([`every block of [${id}] in ${name} is marked Dropped, and a dropped section is not written`]);
+  const faults = todo.filter((b) => b.now !== null).map((b) => headingFault(b, b.now, 'Now')).filter(Boolean);
+  if (faults.length) return refuse(faults, `fix the blocks named in ${dir}/change.md`);
 
   // Write one pending block at a time, re-reading the states after each, so a
   // request's own chain and an add with its anchor go together.
@@ -167,6 +177,8 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
   const carried = statesOf(filesOf(texts), blocks, (b) => mine.includes(b))
     .find((e) => e.state === 'carried' && !e.by.startsWith(`${name}/`));
   if (carried) return refuse([`[${id}] is carried by ${carried.by}; a section carried by a successor is not reverted, only kept ([STA-6])`]);
+  const fault = first.was !== null && headingFault(first, first.was, 'Was');
+  if (fault) return refuse([fault], `fix the block named in its change.md`);
   const at = find(texts, id);
   let did = null;
   if (first.op === 'add') {
@@ -202,8 +214,8 @@ function write(top, root, original, texts, what, yes, name) {
   for (const [path] of changed) {
     let kind = null;
     try { kind = lstatSync(join(top, path)); } catch { /* not there yet */ }
-    if (!path.startsWith(`${root}/`) || !path.endsWith('.md') || !noSymlinkOn(top, path) || (kind && !kind.isFile())) {
-      throw new Fail(`${path}: consolidate writes only .md files under the baseline root ${root}/, inside this repo, not through a symlink and not over a folder; nothing was written`,
+    if (posix.normalize(path) !== path || !path.startsWith(`${root}/`) || !path.endsWith('.md') || !noSymlinkOn(top, path) || (kind && !kind.isFile())) {
+      throw new Fail(`${path}: consolidate writes only .md files under the baseline root ${root}/, named in plain form, inside this repo, not through a symlink and not over a folder; nothing was written`,
         `fix the path in the block's heading in change.md, e.g. add in ${root}/<area>.md`);
     }
   }
