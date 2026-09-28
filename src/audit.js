@@ -7,7 +7,7 @@ import { rootOf, baseline, configured } from './spec.js';
 import { allBlocks, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { parseSnapshot } from './snapshot.js';
-import { line, entriesOf, concludedOnMain } from './commands.js';
+import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
 import { blame, byId, filesOf, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
 import { adrsOf } from './adrs.js';
@@ -61,13 +61,18 @@ function trace(a, name) {
   const versions = a.gap ? [] : git(top, ['log', '--first-parent', '--format=%H', a.tip, '--', ...records]).split('\n').filter(Boolean);
   body.push(...(a.gap ? [line('Versions', a.gap)] : versions.map((sha) =>
     line('Version', `${commitLine(a, requestOf(top, sha, a.requests, a.seen))}: ${filesOf(top, sha).filter((p) => records.includes(p)).join(', ')}`))));
-  // Each block, with its state and when its "now" first reached the baseline on main.
+  // Each block, with its state and when it reached the baseline on main, read
+  // only over the request's own life there: its first record to its conclusion.
   const blocks = allBlocks(tree);
+  const order = new Map(a.gap ? [] : git(top, ['rev-list', '--first-parent', '--reverse', a.tip]).split('\n').map((sha, i) => [sha, i]));
+  const end = concluding(top, name, a.at).sha;
+  const [from, to] = [order.get(versions.at(-1)) ?? 0, end ? order.get(end) : Infinity];
+  const walk = history(a).map((c, i, all) => ({ ...c, before: all[i - 1] })).filter((c) => order.get(c.sha) >= from && order.get(c.sha) <= to);
   for (const e of statesOf(baseline(tree, a.root), blocks, (b) => b.request === name)) {
     const b = blocks.get(e.block);
-    // A removal lands where the section goes from present to absent (the last such commit).
-    const landed = b.op === 'remove' ? history(a).findLast((c, i) => i && !c.sections.has(b.id) && history(a)[i - 1].sections.has(b.id))
-      : history(a).find((c) => c.sections.has(b.id) && sameSection(c.sections.get(b.id), b.now ?? ''));
+    // A removal lands where the section goes from present to absent.
+    const landed = b.op === 'remove' ? walk.find((c) => !c.sections.has(b.id) && c.before?.sections.has(b.id))
+      : walk.find((c) => c.sections.has(b.id) && sameSection(c.sections.get(b.id), b.now ?? ''));
     body.push(line('Section', `${e.block} ${e.state}${e.by ? ` ${e.by}` : ''}; ${a.gap ?? (landed ? `consolidated on main at ${landed.sha.slice(0, 7)}` : 'not consolidated on main')}`));
   }
   // The linked commits ([LNK-2]) and the test files they changed.
