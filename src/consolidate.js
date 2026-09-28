@@ -74,7 +74,7 @@ function find(texts, id) {
 }
 
 // [SPC-5]: a block holds exactly one heading, and it carries the block's own ID.
-function headingFault(b, text, side) {
+export function headingFault(b, text, side) {
   const headings = parseSections(text);
   if (headings.length !== 1) return `${b.key} holds ${headings.length} headings in its ${side}; a block holds exactly one ([SPC-5])`;
   if (headings[0].id !== b.id) return `${b.key}'s heading carries ${headings[0].id ? `[${headings[0].id}]` : 'no ID'}, not [${b.id}] ([SPC-5])`;
