@@ -68,3 +68,42 @@ A request MAY list its parts as free text. A part MAY name a child request,
 whose state is then shown on the parent as a hint. The tool MUST NOT claim a
 part is done from the commits it finds; completion is only what someone
 reported.
+
+## [REC-9] The Outcome
+`conclude` MUST write an Outcome section: a generated block, followed by any
+notes people add, which are kept when it is regenerated. The generated block
+MUST hold content facts only: each requirement's fate (in which sections, or
+in none), the sections added, modified, removed, dropped and kept, the
+decisions (with the agent's own rulings listed apart), the ADRs added or
+superseded, and any code still live for dropped work. It MUST NOT list commit
+IDs; views derive commits from history.
+
+## [REC-10] Tiers
+Every change of work MUST fit one tier, chosen by the agent:
+- **0, fix**: no promise changes; no record; the commit says why.
+- **1, amend**: a small change to a promise; a short `request.md` and the
+  baseline edit in the same PR, which concludes itself once signed off.
+- **2, change**: needs a design; `request.md` and `change.md`.
+- **3, epic**: as tier 2, with `change.md` on main while parts land.
+- **S, spike**: a signed organized question and `findings.md`, which starts
+  with its Answer; no spec change.
+
+For every tier except 0, the organized section MUST be signed off. Spec work
+and later work MAY be drafted before the sign-off, but MUST be delivered with
+it (the same commit or PR) or after it (a later PR). Work MUST NOT land on
+main in an earlier commit than the sign-off.
+
+## [REC-11] The tier claim
+Every PR MUST state its tier and its claim in one line, for example
+`Tier: 0 — restores [INV-4]; no promise changes`. The tool MUST show the claim
+with its evidence (the spec sections near the changed code, the tests whose
+assertions changed, the spec edits) and flag what contradicts it: a tier-0
+claim with a baseline edit is `not ok`. Validating the claim is the
+reviewer's job under the bots' own review rule, not the tool's.
+
+## [REC-12] Append-only records
+The owner's words and dialog, the decisions, everything in `origin/`, and
+everything in `archive/` are append-only. A request archived in the same
+branch MAY still be edited before that branch merges. `check` MUST verify
+append-only per commit over `main..HEAD`, and say that this protects a PR
+only when `check` runs on it.
