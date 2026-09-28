@@ -4,7 +4,7 @@
 // Dropped is written ([STA-6]); a blocked request ([REC-6]) and a duplicate ID
 // in the root ([SPC-3]) refuse.
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { Fail } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, sameSection } from './sections.js';
@@ -75,15 +75,6 @@ function find(texts, id) {
 
 const filesOf = (texts) => [...texts].sort(([a], [b]) => (a < b ? -1 : 1)).map(([path, text]) => ({ path, sections: parseSections(text) }));
 
-// An `add in <path>` goes into a .md file under the root, inside the repo, through real folders.
-function checkPath(top, root, path) {
-  const parts = path.split('/');
-  if (isAbsolute(path) || parts.includes('..') || parts.includes('.') || !path.startsWith(`${root}/`) || !path.endsWith('.md') || !noSymlinkOn(top, path)) {
-    throw new Fail(`add in ${path}: an add goes into a .md file under the baseline root ${root}/, inside this repo and not through a symlink; nothing was written`,
-      `fix the path in the block's heading in change.md, e.g. add in ${root}/<area>.md`);
-  }
-}
-
 // Apply one pending block to `texts`: what it did, or why it cannot.
 function apply(texts, b, blocks) {
   const now = b.now === null ? null : tidy(b.now);
@@ -132,7 +123,7 @@ export function consolidate({ top, args, opts }) {
     return refuse(dups.map(([d, at]) => `duplicate ID [${d}] in ${at.join(' and ')}; no consolidate writes until it is fixed ([SPC-3])`),
       'rename one copy of each duplicate ID by hand, to a new ID; an ID is never reused');
   }
-  if (opts.revert !== undefined) return revert({ top, name, id, mine, blocks, texts, original, opts, refuse });
+  if (opts.revert !== undefined) return revert({ top, root, name, id, mine, blocks, texts, original, opts, refuse });
 
   const state = signoffState(tree, dir, name);
   if (state.blocked) {
@@ -141,7 +132,6 @@ export function consolidate({ top, args, opts }) {
   }
   const todo = mine.filter((b) => !b.dropped);
   if (id !== undefined && !todo.length) return refuse([`every block of [${id}] in ${name} is marked Dropped, and a dropped section is not written`]);
-  for (const b of todo) if (b.op === 'add' && b.path) checkPath(top, root, b.path);
 
   // Write one pending block at a time, re-reading the states after each, so a
   // request's own chain and an add with its anchor go together.
@@ -168,11 +158,11 @@ export function consolidate({ top, args, opts }) {
   });
   if (reasons.length) return refuse(reasons);
   if (!done.length) return { body: [`nothing to write: ${name}'s ${id === undefined ? 'sections are' : `[${id}] is`} consolidated or carried`], next: `al context ${name}`, notKnown: NOT_KNOWN };
-  return write(top, original, texts, done.map((d) => `${d.did}, from ${d.key}`), opts.yes, name);
+  return write(top, root, original, texts, done.map((d) => `${d.did}, from ${d.key}`), opts.yes, name);
 }
 
 // --revert <ID>: the "was" of the request's first block for the ID goes back.
-function revert({ top, name, id, mine, blocks, texts, original, opts, refuse }) {
+function revert({ top, root, name, id, mine, blocks, texts, original, opts, refuse }) {
   const first = mine.reduce((m, b) => (b.n < m.n ? b : m));
   const carried = statesOf(filesOf(texts), blocks, (b) => mine.includes(b))
     .find((e) => e.state === 'carried' && !e.by.startsWith(`${name}/`));
@@ -199,15 +189,19 @@ function revert({ top, name, id, mine, blocks, texts, original, opts, refuse }) 
     did = `[${id}] back after [${anchor}] in ${where.path}`;
   }
   if (!did) return { body: [`nothing to write: [${id}] already reads the "was" of ${first.key}`], next: `al context ${name}`, notKnown: NOT_KNOWN };
-  return write(top, original, texts, [`${did}, from ${first.key}`], opts.yes, name);
+  return write(top, root, original, texts, [`${did}, from ${first.key}`], opts.yes, name);
 }
 
 // Show the writes, or with --yes write every changed file at once: each to a
-// temporary file beside it, then all renamed into place.
-function write(top, original, texts, what, yes, name) {
+// temporary file beside it, then all renamed into place. Every file written is
+// a .md file under the root, reached through real folders inside the repo.
+function write(top, root, original, texts, what, yes, name) {
   const changed = [...texts].filter(([path, text]) => original.get(path) !== text);
   for (const [path] of changed) {
-    if (!noSymlinkOn(top, path)) throw new Fail(`${path} is reached through a symlink; nothing was written`, `make ${path} a real file in this repo`);
+    if (!path.startsWith(`${root}/`) || !path.endsWith('.md') || !noSymlinkOn(top, path)) {
+      throw new Fail(`${path}: consolidate writes only .md files under the baseline root ${root}/, inside this repo and not through a symlink; nothing was written`,
+        `fix the path in the block's heading in change.md, e.g. add in ${root}/<area>.md`);
+    }
   }
   if (!yes) return { body: what.map((w) => `Would write ${w}`), next: 'run the same command with --yes to write it', notKnown: NOT_KNOWN };
   const temps = [];

@@ -17,10 +17,11 @@ const HELD = ['consolidated', 'carried'];
 const NOT_KNOWN = ['whether the code does what the spec says, and whether review agreed (conclude reads only the records)'];
 
 // Each block's fate: held, kept or dropped, or why conclude refuses it.
-function fateOf(e, b, { name, dropped, signed, rKeys, ownerDecisions }) {
+function fateOf(e, b, { name, dropped, rKeys, ownerDecisions }) {
   if (b.kept) {
     if (!HELD.includes(e.state)) return { bad: `${e.block} is Kept but reads ${e.state}; align it before it is kept` };
-    const traced = (signed && b.forR.some((r) => rKeys.includes(r))) || ownerDecisions.has(b.kept[1]);
+    // A signed R counts only with the sign-off current: while blocked, the rule in conclude refuses.
+    const traced = b.forR.some((r) => rKeys.includes(r)) || ownerDecisions.has(b.kept[1]);
     return traced ? { fate: 'kept' } : { bad: `${e.block} is Kept, but traces to no signed requirement and no owner decision ([STA-6])` };
   }
   if (dropped || b.dropped) {
@@ -99,7 +100,7 @@ export function conclude({ top, args, opts }) {
   const org = organized(md);
   const blocks = allBlocks(tree);
   const facts = {
-    name, dropped, signed: !sign.blocked,
+    name, dropped,
     rKeys: org ? parts(org.text).map((p) => p.key) : [],
     ownerDecisions: new Set(decisionList(md).filter((d) => /\bowner\b/.test(d.source) && !d.agent).map((d) => d.id)),
   };
