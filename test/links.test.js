@@ -350,3 +350,28 @@ test('C1 [VW-9][LNK-1] --diff in a shallow clone: blame and co-change say "histo
   assert.doesNotMatch(r.stdout, /nothing found/i);
   has(r.stdout, 'src/dates.js', 'names [INV-3]', /\b2 lines above\b/);
 });
+
+test('[LNK-1] --diff reads .git-blame-ignore-revs from the commits it reads: an uncommitted one is not honoured; one committed at the head of the range is', (t) => {
+  const repo = base(t);
+  repo.write('src/dates.js', "export const pattern = 'local';\nexport const zone = 'UTC';\n");
+  const original = repo.commit('Local dates\n\nRequest: original', { date: '2026-02-01T12:00:00Z' });
+  change(repo, 'src/dates.js', "'local'", "'iso'");
+  const iso = repo.commit('ISO dates\n\nRequest: iso', { date: '2026-02-02T12:00:00Z' });
+  work(repo, [['src/dates.js', "'iso'", "'iso-8601'"]]);
+  assert.equal(repo.git(['merge-base', 'main', 'HEAD']), iso, 'the fixture: the range starts at iso\'s commit');
+  assertBlamed(repo, 'main', 'src/dates.js', [1, 1], ['-w', '-M', '-C'], iso);
+  repo.write('.git-blame-ignore-revs', `# iso's commit\n${iso}\n`);
+  assertBlamed(repo, 'main', 'src/dates.js', [1, 1], ['-w', '-M', '-C', '--ignore-revs-file', '.git-blame-ignore-revs'], original);
+  repo.git(['rm', '-q', '--cached', '--ignore-unmatch', '.git-blame-ignore-revs']);
+  assert.equal(repo.git(['status', '--porcelain', '--', '.git-blame-ignore-revs']), '?? .git-blame-ignore-revs', 'the fixture: the ignore file is only in the working tree');
+
+  const uncommitted = diffOk(repo);
+  has(uncommitted, 'src/dates.js', 'last changed by iso');
+  hasNo(uncommitted, 'src/dates.js', 'last changed by original');
+
+  repo.commit('Ignore iso\'s commit in blame', { date: '2026-06-02T12:00:00Z' });
+  assert.equal(repo.git(['show', '--name-only', '--format=', 'HEAD']), '.git-blame-ignore-revs', 'the fixture: the ignore file is committed at the head');
+  const committed = diffOk(repo);
+  has(committed, 'src/dates.js', 'last changed by original');
+  hasNo(committed, 'src/dates.js', 'last changed by iso');
+});

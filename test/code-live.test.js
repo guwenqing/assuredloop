@@ -146,3 +146,50 @@ test('[REC-9] a concluded request with nothing dropped writes no "Code still liv
   assert.ok(!g.some((l) => l.includes('Code still live')), `nothing was dropped:\n${g.join('\n')}`);
   assert.equal(g.at(-1), '- Agent rulings: D2', g.join('\n'));
 });
+
+// `trial`, signed, holds one pending add (it retains nothing). Its "Request:
+// trial" commit writes `files`; a later "Request: other" commit applies `move`.
+function trialMoved(t, files, move) {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0));
+  repo.commit('Initial spec', { date: '2026-09-01T12:00:00Z' });
+  addRequest(repo, 'trial', [block('[EM-2]@1 add in specs/email.md   for R3', { now: EM2 })]);
+  repo.commit('trial: request', { date: '2026-09-20T12:00:00Z' });
+  for (const [path, text] of Object.entries(files)) repo.write(path, text);
+  const trial = repo.commit('Trial code\n\nRequest: trial', { date: '2026-09-21T12:00:00Z' });
+  move(repo);
+  const other = repo.commit('Tidy the code\n\nRequest: other', { date: '2026-09-22T12:00:00Z' });
+  return { repo, trial, other };
+}
+
+test('[REC-9] code still live follows the code after a rename: trial\'s src/old.js, renamed by another request to src/new.js, is listed as src/new.js:1-2', (t) => {
+  const OLD = "export const trialA = 'the first line of the trial';\nexport const trialB = 'the second line of the trial';\n";
+  const { repo, trial } = trialMoved(t, { 'src/old.js': OLD }, (r) => r.git(['mv', 'src/old.js', 'src/new.js']));
+  assert.equal(repo.git(['show', '--name-status', '-M', '--format=', 'HEAD']), 'R100\tsrc/old.js\tsrc/new.js', 'the fixture: a pure rename');
+  assertBlamed(repo, 'HEAD', 'src/new.js', [1, 2], BLAME, trial);
+
+  const archived = conclude(repo, 'trial', '--dropped', 'D4');
+  assert.equal(outcome(archived).generated.at(-1), `${LIVE}src/new.js:1-2`, archived);
+  assertNoCommitIds(repo, archived);
+});
+
+test('[REC-9] code still live follows code moved into another file without a rename: the lines another request moved from trial\'s src/export.js into src/csv.js are listed under src/csv.js', (t) => {
+  const ROW = 'export function csvRowForInvoice(invoice) {\n  const cells = [invoice.number, invoice.customerName, invoice.totalAmount];\n' +
+    "  return cells.map((cell) => String(cell).replaceAll('\"', '\"\"')).join(',');\n}\n";
+  const REST = "export function exportInvoices(list) {\n  return list.map(csvRowForInvoice).join('\\n');\n}\n";
+  const { repo, trial, other } = trialMoved(t, { 'src/export.js': `import { formatDate } from './dates.js';\n${ROW}${REST}` }, (r) => {
+    r.write('src/export.js', `import { csvRowForInvoice } from './csv.js';\nimport { formatDate } from './dates.js';\n${REST}`);
+    r.write('src/csv.js', `// CSV helpers\n${ROW}`);
+  });
+  assert.equal(repo.git(['show', '--name-status', '-M', '--format=', 'HEAD']), 'A\tsrc/csv.js\nM\tsrc/export.js', 'the fixture: no rename');
+  assertBlamed(repo, 'HEAD', 'src/csv.js', [1, 1], BLAME, other);
+  assertBlamed(repo, 'HEAD', 'src/csv.js', [2, 5], BLAME, trial);
+  assertBlamed(repo, 'HEAD', 'src/export.js', [1, 1], BLAME, other);
+  assertBlamed(repo, 'HEAD', 'src/export.js', [2, 5], BLAME, trial);
+
+  const archived = conclude(repo, 'trial', '--dropped', 'D4');
+  const last = outcome(archived).generated.at(-1);
+  assert.ok(last.startsWith(LIVE), `the last generated line should start with "${LIVE}":\n${archived}`);
+  assert.deepEqual(last.slice(LIVE.length).split(', ').sort(), ['src/csv.js:2-5', 'src/export.js:2-5']);
+  assertNoCommitIds(repo, archived);
+});

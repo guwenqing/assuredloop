@@ -154,3 +154,32 @@ test('[VW-6][VW-9] in a shallow clone that lacks the concluding commit, the sect
   assert.ok(!r.stdout.includes('since changed by'), r.stdout);
   assert.doesNotMatch(r.stdout, /nothing found/i);
 });
+
+test('[VW-6][VW-8] context <archived-name> --at <commit> describes that commit\'s tree: at the concluding commit, INV-3 reads "as at conclusion", with no "since changed by later" and no "Followed by later"', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0));
+  addRequest(repo, 'old', [block('[INV-3]@1 modify   for R2', { was: S0, now: S1 })]);
+  repo.commit('old: request\n\nRequest: old', { date: '2026-09-21T12:00:00Z' });
+  repo.write('specs/invoices.md', file(INV1, S1));
+  archiveByHand(repo, 'old');
+  const concluding = repo.commit('Conclude old\n\nRequest: old', { date: '2026-09-23T12:00:00Z' });
+  addRequest(repo, 'later', [block('[INV-3]@1 modify   for R2', { was: S1, now: S2 })], { line: `${statusLine('open')} · Follows: old` });
+  repo.write('specs/invoices.md', file(INV1, S2));
+  repo.commit('Time zone in dates\n\nRequest: later', { date: '2026-10-05T12:00:00Z' });
+  assert.equal(repo.git(['log', '--diff-filter=A', '--format=%H', '--', 'requests/archive/old/request.md']), concluding,
+    'the fixture: the concluding commit added the archived request.md on main');
+
+  // Today: since changed by later, and followed by it.
+  const now = context(repo, 'old');
+  is(now, 'INV-3', /since changed by later/);
+  has(now, /Followed by/, 'later');
+
+  // At the concluding commit: neither.
+  const r = runAl(repo.dir, ['context', 'old', '--at', concluding]);
+  assert.equal(r.code, 0, both(r));
+  assertFrame(r.stdout, { read: concluding.slice(0, 7) });
+  is(r.stdout, 'INV-3', 'as at conclusion');
+  assert.ok(!r.stdout.includes('since changed by later'), `at the concluding commit nothing has changed INV-3 since:\n${r.stdout}`);
+  hasNo(r.stdout, /Followed by/, 'later');
+  assert.ok(!lines(r.stdout).some((l) => /^Spec\b/.test(l)) && !r.stdout.includes('differs'), r.stdout);
+});

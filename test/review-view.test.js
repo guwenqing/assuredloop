@@ -7,6 +7,8 @@
 // request).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { makeRepo, sha256 } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
@@ -152,4 +154,28 @@ test('[VW-4] --for review with two served requests: each one\'s signed text verb
   const logger = indexOf(evidence, /src\/logger\.js/);
   assert.ok(logger > indexOf(evidence, /src\/export\.js/) && logger > indexOf(evidence, /src\/dates\.js/),
     `src/logger.js comes after the Rs, as linked to no served request:\n${out}`);
+});
+
+test('[VW-4] --for review, intent: a served request the branch archives still shows its blocks with their states', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0));
+  addRequest(repo, 'iso', [block('[INV-3]@1 modify   for R2', { was: S0, now: S1 })], { decisions: DECIDED });
+  repo.commit('Records', { date: '2026-09-22T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'iso-part-1']);
+  repo.write('specs/invoices.md', file(INV1, S1));
+  repo.commit('Consolidate INV-3\n\nRequest: iso', { date: '2026-09-23T12:00:00Z' });
+  // Archived as conclude leaves it: the folder moved, the Status set, an Outcome.
+  mkdirSync(join(repo.dir, 'requests/archive'), { recursive: true });
+  repo.git(['mv', 'requests/iso', 'requests/archive/iso']);
+  const md = repo.read('requests/archive/iso/request.md').toString();
+  assert.ok(md.includes('Status: open'), 'the fixture: iso was open');
+  repo.write('requests/archive/iso/request.md', md.replace('Status: open', 'Status: concluded') + '\n## Outcome\n\n' +
+    '- R1 Invoice export: in no section\n- R2 Dates: in [INV-3]\n- R3 Email link: in no section\n' +
+    '- Added: none\n- Modified: [INV-3]\n- Removed: none\n- Dropped: none\n- Kept: none\n- Decisions: D1, D3\n- Agent rulings: D2\n');
+  repo.commit('Conclude iso\n\nRequest: iso', { date: '2026-09-23T13:00:00Z' });
+
+  const { out, intent } = review(repo);
+  const text = intent.join('\n');
+  assert.ok(text.includes('iso'), `the intent part names iso:\n${out}`);
+  assert.ok(says(text, 'INV-3', 'consolidated'), `iso's INV-3 block, consolidated, in the intent part:\n${out}`);
 });
