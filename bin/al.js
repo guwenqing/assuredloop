@@ -5,6 +5,9 @@ import { parseArgs } from 'node:util';
 import { Fail, mainRef, resolveCommit, topLevel } from '../src/git.js';
 import { newRequest, recordOrigin, context, line } from '../src/commands.js';
 import { spec } from '../src/spec.js';
+import { consolidate } from '../src/consolidate.js';
+import { conclude } from '../src/conclude.js';
+import { check } from '../src/check.js';
 
 const COMMANDS = {
   new: { run: newRequest, options: { from: { type: 'string' }, title: { type: 'string' }, tier: { type: 'string' } } },
@@ -22,8 +25,11 @@ const COMMANDS = {
     run: spec,
     options: { at: { type: 'string' }, list: { type: 'boolean' }, 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } },
   },
+  consolidate: { run: consolidate, options: { section: { type: 'string' }, revert: { type: 'string' }, yes: { type: 'boolean' } } },
+  conclude: { run: conclude, options: { dropped: { type: 'string' }, yes: { type: 'boolean' } } },
+  check: { run: check, options: {} },
 };
-const USAGE = 'al new | record | context | spec  (check, consolidate and conclude are not built yet)';
+const USAGE = 'al new | record | context | spec | consolidate | conclude | check';
 
 function main(argv) {
   const cwd = process.cwd();
@@ -48,7 +54,7 @@ function main(argv) {
     const out = command.run({ top, cwd, args: parsed.positionals, opts: parsed.values });
     if (out.tree) read = out.tree.label;
     print(out.body, read, mainRef(top), out.next, out.notKnown);
-    return 0;
+    return out.refused ? 1 : 0; // only consolidate and conclude refuse ([HNT-3])
   } catch (e) {
     if (!(e instanceof Fail)) throw e;
     let main = { label: 'no main read (not in a git repository)' };

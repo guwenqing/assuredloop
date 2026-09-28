@@ -12,7 +12,7 @@ import { recordSection } from './record-section.js';
 const BAD = ['differs', 'broken link', 'base revised', 'base dropped', 'not found'];
 
 // The entries of a `## <title>` section: its bullet or numbered items, each with its continuation lines.
-function entriesOf(text, title) {
+export function entriesOf(text, title) {
   const lines = text.split('\n');
   const at = lines.findIndex((l) => new RegExp(`^##\\s+${title}\\s*$`).test(l));
   if (at < 0) return [];
@@ -23,6 +23,30 @@ function entriesOf(text, title) {
     else if (l.trim() && out.length) out[out.length - 1] += ` ${l.trim()}`;
   }
   return out;
+}
+
+// The entries of `## Decisions`: each one's ID, date and Source clause (up to
+// its first ". "). A clause that names the agent makes it an agent ruling.
+export function decisionList(md) {
+  return entriesOf(md, 'Decisions').filter((e) => /^- D\d+/.test(e)).map((e) => {
+    const source = e.match(/Source:\s*([\s\S]*?)(?:\.\s|\.$|$)/)?.[1] ?? '';
+    return { id: e.match(/^- (D\d+)/)[1], date: e.match(/\d{4}-\d\d-\d\d/)?.[0] ?? '', source, agent: /\bagent\b/.test(source) };
+  });
+}
+
+// [STA-8]: whether a request is concluded on main, derived from main's history:
+// the commit on main's first-parent line where its archived request.md arrived
+// (for a merge, the merge commit); nothing records it.
+function concludedOnMain(top, name) {
+  const path = `requests/archive/${name}/request.md`;
+  const main = mainCommit(top);
+  if (!main || git(top, ['cat-file', '-e', `${main}:${path}`], { allowFail: true }) === null) return 'not on main yet';
+  const unknown = `on main; which commit added ${path} is not known`;
+  if (isShallow(top)) return `${unknown}: history unavailable (shallow clone)`;
+  const found = git(top, ['log', '--first-parent', '--no-renames', '--diff-filter=A', '--format=%H %ct', main, '--', path]);
+  if (!found) return unknown;
+  const [sha, when] = found.split('\n')[0].split(' ');
+  return `on main at ${sha.slice(0, 7)} (${stamp(new Date(Number(when) * 1000))}), where ${path} arrived`;
 }
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
@@ -235,15 +259,13 @@ export function context({ top, args, opts }) {
   const body = [
     ...(state.blocked ? [`BLOCKED: ${state.reason}${changed}`] : []),
     `${name}  ${title}  ${head.join(' · ')}`,
+    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name))] : []),
     line('Require', state.blocked ? `${state.reason}${changed}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
   // [VW-2]: the decisions, the held sections, the parts, and who else holds sections in the same files.
   const text = md.join('\n');
-  const decisions = entriesOf(text, 'Decisions').filter((e) => /^- D\d+/.test(e)).reverse().map((e) => {
-    const source = e.match(/Source:\s*([\s\S]*?)(?:\.\s|\.$|$)/)?.[1] ?? '';
-    return `${e.match(/^- (D\d+)/)[1]} ${e.match(/\d{4}-\d\d-\d\d/)?.[0] ?? ''}${/\bagent\b/.test(source) ? ' (agent ruling)' : ''}`.trim();
-  });
+  const decisions = decisionList(text).reverse().map((d) => `${d.id} ${d.date}${d.agent ? ' (agent ruling)' : ''}`.trim());
   if (decisions.length) body.push(line('Decided', decisions.join(' · ')));
   const all = changeStates(top, { at: opts.at });
   const held = all.filter((e) => e.request === name);

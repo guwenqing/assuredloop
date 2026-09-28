@@ -31,13 +31,18 @@ export function baseline(tree, root) {
     .map((f) => ({ ...f, sections: parseSections(f.text) }));
 }
 
-// `not ok` for every ID found more than once in the root ([SPC-3]).
-function duplicates(files) {
+// Every ID found more than once in the root, with where: [[id, ['path:line', ...]]] ([SPC-3]).
+export function duplicateIds(files) {
   const where = new Map();
   for (const f of files) {
     for (const s of f.sections) if (s.id) where.set(s.id, [...(where.get(s.id) ?? []), `${f.path}:${s.line}`]);
   }
-  const dups = [...where].filter(([, at]) => at.length > 1);
+  return [...where].filter(([, at]) => at.length > 1);
+}
+
+// `not ok` for every ID found more than once in the root ([SPC-3]).
+function duplicates(files) {
+  const dups = duplicateIds(files);
   const hints = dups.slice(0, 3).map(([id, at]) => line('Hint', `not ok: duplicate ID ${id} in ${at.join(' and ')}`));
   if (dups.length > 3) hints.push(line('Hint', `${dups.length - 3} more duplicate IDs hidden`));
   return hints;

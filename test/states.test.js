@@ -489,7 +489,7 @@ test('C2 [STA-3] a waiting block retains nothing; a partial revert differs and i
 
 // --- Real data ---
 
-test('[STA-2] real data: a copy of assuredloop-v1 and specs/ — REC-1..5 and SPC-1..4 consolidated, every other @1 consolidated when its ID is in specs/ and pending when not, VW-9@2 waiting on VW-9@1', async (t) => {
+test('[STA-2][STA-4] real data: a copy of assuredloop-v1 and specs/ — REC-1..5 and SPC-1..4 consolidated; for each ID in specs/ the latest block consolidated and each earlier one carried by it, for each ID not in specs/ @1 pending and each later block waiting on @1; STA-3..7 in specs/', async (t) => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const repo = makeRepo(t);
   cpSync(join(root, 'requests/assuredloop-v1'), join(repo.dir, 'requests/assuredloop-v1'), { recursive: true });
@@ -507,15 +507,33 @@ test('[STA-2] real data: a copy of assuredloop-v1 and specs/ — REC-1..5 and SP
   expectState(list, 'assuredloop-v1/VW-9@1', 'pending', { retainsNothing: true });
   expectState(list, 'assuredloop-v1/VW-9@2', 'waiting', { by: 'assuredloop-v1/VW-9@1', retainsNothing: true });
 
-  const others = list.filter((e) => e.n === 1 && !consolidated.includes(e.id) && e.id !== 'VW-9');
-  assert.ok(others.length > 30, `expected the rest of the @1 blocks: ${JSON.stringify(keys(list))}`);
-  assert.ok(others.some((e) => !inBaseline.has(e.id)), 'some @1 blocks should still be pending');
-  for (const e of others) {
-    assert.equal(e.state, inBaseline.has(e.id) ? 'consolidated' : 'pending', `${e.block}: ${JSON.stringify(pick(e))}`);
+  // Each ID's blocks in version order: in specs/, the latest is consolidated
+  // and each earlier one carried by it; not in specs/, @1 is pending and each
+  // later block waits on it.
+  const byId = new Map();
+  for (const e of [...list].sort((a, b) => a.n - b.n)) byId.set(e.id, [...(byId.get(e.id) ?? []), e]);
+  const others = [...byId.keys()].filter((id) => !consolidated.includes(id) && id !== 'VW-9');
+  assert.ok(others.length > 30, `expected the rest of the sections: ${JSON.stringify(keys(list))}`);
+  assert.ok(others.some((id) => !inBaseline.has(id)), 'some sections should still be pending');
+  for (const id of others) {
+    const blocks = byId.get(id);
+    if (inBaseline.has(id)) {
+      const latest = blocks.at(-1).block;
+      expectState(list, latest, 'consolidated');
+      for (const e of blocks.slice(0, -1)) expectState(list, e.block, 'carried', { by: latest });
+    } else {
+      expectState(list, blocks[0].block, 'pending');
+      for (const e of blocks.slice(1)) expectState(list, e.block, 'waiting', { by: blocks[0].block });
+    }
   }
   assert.deepEqual(entry(list, 'assuredloop-v1/REC-4@1').forR, ['R2', 'R3']);
   assert.equal(entry(list, 'assuredloop-v1/TL-1@1').op, 'add');
   assert.equal(entry(list, 'assuredloop-v1/VW-9@2').op, 'modify');
+
+  // Part 5 consolidates these into specs/states.md, [STA-4] as its @2.
+  for (const id of ['STA-3', 'STA-4', 'STA-5', 'STA-6', 'STA-7']) {
+    assert.ok(inBaseline.has(id), `[${id}] should be consolidated into specs/ by part 5`);
+  }
 });
 
 // --- Candidates keep indentation [SPC-4][STA-2] ---
