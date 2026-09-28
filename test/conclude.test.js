@@ -450,6 +450,38 @@ test('C2 [STA-6] a Kept section carried by a successor meets the rule through th
   assert.equal(read(repo, 'specs/invoices.md'), file(INV1, S2), 'the baseline is untouched');
 });
 
+// `base` as above, carried by two successors that both build on it `for R2`:
+// `aaa`, never signed, and `zzz`, signed unless `zzzSigned` is false.
+function twoCarriers(t, { zzzSigned = true } = {}) {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S2));
+  addRequest(repo, 'base', [block('[INV-3]@1 modify   Kept 2026-09-26 (D2)', { was: S0, now: S1 })]);
+  const successor = [block('[INV-3]@1 modify   builds on base/INV-3@1   for R2', { was: S1, now: S2 })];
+  addRequest(repo, 'aaa', successor, { signed: false });
+  addRequest(repo, 'zzz', successor, { signed: zzzSigned });
+  repo.commit('setup');
+  return repo;
+}
+
+test('C2 [STA-6] a Kept section carried by two successors traces through any of them: with the first one named (aaa) unsigned and the other (zzz) signed, --dropped passes; with both unsigned it refuses', async (t) => {
+  const unsigned = twoCarriers(t, { zzzSigned: false });
+  for (const extra of [[], ['--yes']]) {
+    const r = conclude(unsigned, 'base', '--dropped', 'D4', ...extra);
+    assert.equal(r.code, 1, both(r));
+    assert.ok(lineWith(both(r), 'INV-3'), `should name INV-3:\n${both(r)}`);
+    clean(unsigned);
+    assertShort(r);
+  }
+
+  const repo = twoCarriers(t);
+  // The fixture: the states name the unsigned aaa as the carrier, so a check of that one carrier alone refuses.
+  await expectState(repo, 'base/INV-3@1', 'carried', { by: 'aaa/INV-3@1' });
+  const r = conclude(repo, 'base', '--dropped', 'D4', '--yes');
+  ok(r);
+  assertShort(r);
+  assert.ok(outcome(archivedMd(repo, 'base')).generated.includes('- Kept: [INV-3]'), archivedMd(repo, 'base'));
+});
+
 test('C2 [STA-6][REC-6] --dropped with a Kept, unsigned change refuses, whether the Kept cites an R or the owner; signed, it passes', (t) => {
   const kept = (d) => [block(`[INV-3]@1 modify   Kept 2026-09-26 (${d})   for R2`, { was: S0, now: S1 })];
   for (const d of ['D2', 'D3']) {

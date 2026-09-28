@@ -429,6 +429,30 @@ for (const [label, path, link] of GUARDS) {
   });
 }
 
+test('[STA-4][SPC-5] add in a path not written in canonical form (specs/./a.md, specs//a.md) exits 2 and leaves specs/a.md byte-identical, with or without --yes; add in specs/a.md appends after INV-1 (exact bytes)', (t) => {
+  for (const path of ['specs/./a.md', 'specs//a.md']) {
+    const repo = makeRepo(t);
+    repo.write('specs/a.md', INV1);
+    addRequest(repo, 'inv', [block(`[INV-8]@1 add in ${path}`, { now: INV8 })]);
+    repo.commit('setup');
+    for (const extra of [[], ['--yes']]) {
+      const r = consolidate(repo, 'inv', ...extra);
+      assert.equal(r.code, 2, `add in ${path}:\n${both(r)}`);
+      assert.equal(spec(repo, 'specs/a.md'), INV1, `add in ${path}: specs/a.md is byte-identical`);
+      clean(repo);
+      assertFrame(r.stdout);
+    }
+  }
+
+  // The contrast: the canonical path appends.
+  const repo = makeRepo(t);
+  repo.write('specs/a.md', INV1);
+  addRequest(repo, 'inv', [block('[INV-8]@1 add in specs/a.md', { now: INV8 })]);
+  repo.commit('setup');
+  ok(consolidate(repo, 'inv', '--yes'));
+  assert.equal(spec(repo, 'specs/a.md'), file(INV1, INV8));
+});
+
 test('[STA-4][HNT-3] consolidate of an unknown request exits 2 and writes nothing; the known one exits 0', (t) => {
   const repo = setup(t, [block('[INV-3]@1 modify', { was: S0, now: S1 })]);
   for (const extra of [[], ['--yes']]) {
