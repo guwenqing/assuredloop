@@ -11,13 +11,16 @@ const APPEND_ONLY = ["Owner's words and dialog", 'Decisions'];
 // The request a path under requests/ belongs to.
 const requestOf = (path) => path.match(/^requests\/archive\/([^/]+)\//)?.[1] ?? path.match(/^requests\/(?!archive\/)([^/]+)\//)?.[1];
 
+// Git's path lists, NUL-separated, so every name comes as it is (never quoted).
+const paths = (out) => out.split('\0').filter(Boolean);
+
 // The files of request `name` at `rev`, by their path inside the request folder
 // (open or archived), each with its blob and full path.
 function filesOf(top, rev, name) {
-  const out = git(top, ['ls-tree', '-r', rev, '--', `requests/${name}/`, `requests/archive/${name}/`]);
+  const out = git(top, ['ls-tree', '-r', '-z', rev, '--', `requests/${name}/`, `requests/archive/${name}/`]);
   const files = new Map();
-  for (const l of out ? out.split('\n') : []) {
-    const [, sha, path] = l.match(/^\S+ \S+ (\S+)\t(.*)$/);
+  for (const l of paths(out)) {
+    const [, sha, path] = l.match(/^\S+ \S+ (\S+)\t([\s\S]*)$/);
     files.set(path.replace(/^requests\/(archive\/)?[^/]+\//, ''), { sha, path });
   }
   return files;
@@ -70,12 +73,12 @@ export function check({ top }) {
   if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
   if (!main) return { body: ['no main to compare with, so no commits were checked', NOTE], next: 'git fetch origin, or create main, then al check', notKnown };
   const commits = git(top, ['rev-list', '--reverse', '--topo-order', `${main}..HEAD`]).split('\n').filter(Boolean);
-  const frozen = new Set((git(top, ['ls-tree', '--name-only', `${main}:requests/archive`], { allowFail: true }) ?? '').split('\n').filter(Boolean));
+  const frozen = new Set(paths(git(top, ['ls-tree', '-z', '--name-only', `${main}:requests/archive`], { allowFail: true }) ?? ''));
   const body = [];
   for (const commit of commits) {
     const parent = git(top, ['rev-parse', '--verify', '--quiet', `${commit}^1`], { allowFail: true });
     if (!parent) continue;
-    const changed = git(top, ['diff', '--name-only', '--no-renames', parent, commit, '--', 'requests/']).split('\n').filter(Boolean);
+    const changed = paths(git(top, ['diff', '--name-only', '-z', '--no-renames', parent, commit, '--', 'requests/']));
     for (const name of new Set(changed.map(requestOf).filter(Boolean))) body.push(...problems(top, parent, commit, name, frozen));
   }
   const bad = body.length > 0;

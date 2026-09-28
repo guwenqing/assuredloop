@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Fail } from './git.js';
-import { openTree, noSymlinkOn } from './tree.js';
+import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, baseline } from './spec.js';
 import { allBlocks, statesOf } from './states.js';
 import { organized, parts, signoffState } from './signoff.js';
@@ -17,11 +17,11 @@ const HELD = ['consolidated', 'carried'];
 const NOT_KNOWN = ['whether the code does what the spec says, and whether review agreed (conclude reads only the records)'];
 
 // Each block's fate: held, kept or dropped, or why conclude refuses it.
-function fateOf(e, b, { name, dropped, rKeys, ownerDecisions }) {
+function fateOf(e, b, { name, dropped, blocks, signedR, ownerDecisions }) {
   if (b.kept) {
     if (!HELD.includes(e.state)) return { bad: `${e.block} is Kept but reads ${e.state}; align it before it is kept` };
-    // A signed R counts only with the sign-off current: while blocked, the rule in conclude refuses.
-    const traced = b.forR.some((r) => rKeys.includes(r)) || ownerDecisions.has(b.kept[1]);
+    // Its own signed R, or, when a successor carries it, the successor's (design §5.4).
+    const traced = signedR(b) || (e.state === 'carried' && signedR(blocks.get(e.by))) || ownerDecisions.has(b.kept[1]);
     return traced ? { fate: 'kept' } : { bad: `${e.block} is Kept, but traces to no signed requirement and no owner decision ([STA-6])` };
   }
   if (dropped || b.dropped) {
@@ -99,9 +99,20 @@ export function conclude({ top, args, opts }) {
   const sign = signoffState(tree, dir, name);
   const org = organized(md);
   const blocks = allBlocks(tree);
+  const signed = new Map();
+  const signedRs = (request) => {
+    if (!signed.has(request)) {
+      const d = findRequest(tree, request);
+      const o = d && organized(tree.read(`${d}/request.md`).toString('utf8'));
+      signed.set(request, o && !signoffState(tree, d, request).blocked ? parts(o.text).map((p) => p.key) : []);
+    }
+    return signed.get(request);
+  };
   const facts = {
     name, dropped,
-    rKeys: org ? parts(org.text).map((p) => p.key) : [],
+    blocks,
+    // Whether a block's `for R<n>` names an R its request signed off, the sign-off current ([REC-5]).
+    signedR: (x) => x.forR.some((r) => signedRs(x.request).includes(r)),
     ownerDecisions: new Set(decisionList(md).filter((d) => /\bowner\b/.test(d.source) && !d.agent).map((d) => d.id)),
   };
   const fates = statesOf(baseline(tree, rootOf(top, tree)), blocks, (b) => b.request === name)

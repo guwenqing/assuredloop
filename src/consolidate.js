@@ -3,7 +3,7 @@
 // --yes every changed file is written at once. Only a pending block not marked
 // Dropped is written ([STA-6]); a blocked request ([REC-6]) and a duplicate ID
 // in the root ([SPC-3]) refuse.
-import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { lstatSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { Fail } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
@@ -193,30 +193,43 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
 }
 
 // Show the writes, or with --yes write every changed file at once: each to a
-// temporary file beside it, then all renamed into place. Every file written is
-// a .md file under the root, reached through real folders inside the repo.
+// new temporary file beside it, then all renamed into place. Every file written
+// is a .md file under the root, reached through real folders inside the repo,
+// and is a regular file or not there yet. If any step fails, the files already
+// renamed are put back and the temporary files removed, so nothing is written.
 function write(top, root, original, texts, what, yes, name) {
   const changed = [...texts].filter(([path, text]) => original.get(path) !== text);
   for (const [path] of changed) {
-    if (!path.startsWith(`${root}/`) || !path.endsWith('.md') || !noSymlinkOn(top, path)) {
-      throw new Fail(`${path}: consolidate writes only .md files under the baseline root ${root}/, inside this repo and not through a symlink; nothing was written`,
+    let kind = null;
+    try { kind = lstatSync(join(top, path)); } catch { /* not there yet */ }
+    if (!path.startsWith(`${root}/`) || !path.endsWith('.md') || !noSymlinkOn(top, path) || (kind && !kind.isFile())) {
+      throw new Fail(`${path}: consolidate writes only .md files under the baseline root ${root}/, inside this repo, not through a symlink and not over a folder; nothing was written`,
         `fix the path in the block's heading in change.md, e.g. add in ${root}/<area>.md`);
     }
   }
   if (!yes) return { body: what.map((w) => `Would write ${w}`), next: 'run the same command with --yes to write it', notKnown: NOT_KNOWN };
   const temps = [];
+  const renamed = [];
   try {
     for (const [path, text] of changed) {
       mkdirSync(dirname(join(top, path)), { recursive: true });
       const tmp = join(top, dirname(path), `.${basename(path)}.al-${process.pid}`);
-      writeFileSync(tmp, text);
-      temps.push([tmp, join(top, path)]);
+      writeFileSync(tmp, text, { flag: 'wx' }); // a new file: never through or over what is there
+      temps.push([tmp, path]);
+    }
+    for (const [tmp, path] of temps) {
+      renameSync(tmp, join(top, path));
+      renamed.push(path);
     }
   } catch (e) {
+    for (const path of renamed) {
+      if (original.has(path)) writeFileSync(join(top, path), original.get(path));
+      else rmSync(join(top, path), { force: true });
+    }
     for (const [tmp] of temps) rmSync(tmp, { force: true });
-    throw e;
+    throw new Fail(`could not write the baseline (${e.code ?? e.message}${e.path ? ` at ${e.path}` : ''}); every file was put back as it was, and nothing was written`,
+      'remove what is in the way, then run the same command again');
   }
-  for (const [tmp, to] of temps) renameSync(tmp, to);
   return {
     body: what.map((w) => `Wrote ${w}`),
     next: `review the diff of ${changed.map(([p]) => p).join(', ')} and commit it; then al context ${name}`,
