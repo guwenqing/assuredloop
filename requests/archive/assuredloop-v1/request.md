@@ -213,8 +213,8 @@ Notes:
 
 The acceptance checks C9-C11 (design §11), run in part 10 (#66), 2026-09-28.
 The working material (the C10 fixture script, inputs, answers, ground truths
-and judge reports; the C11 scripts and data) is in the developer's work
-folder, outside any repository; these notes are the record.
+and judge reports; the C11 scripts and data) is in the bots repository, under
+bots/assuredloop/design/case-tests/part10-proofs/.
 
 - **C9, cost.** No runtime dependencies (`test/deps.test.js`). The CLI source,
   every line of the `.js` files in `src/` and `bin/`, is 3,056 lines, under
@@ -280,4 +280,9 @@ folder, outside any repository; these notes are the record.
   [INV-2]@2 waits on; the live-code note names the dropped code but not its
   live caller; Next does not name the live code; and the hidden hint repeats
   the BLOCKED line. ("Delivers work" firing for a branch that changes only
-  change.md is the rule as ruled in part 7: change.md is spec work.)
+  change.md is the rule as ruled in part 7: change.md is spec work.) Two more,
+  seen by the developer on this request's own archived view: it lists all 46
+  sections "as at conclusion" on one long line, without [VW-2]@2's
+  fit-or-count; and its Next line suggests `al record … origin` on an
+  archived request, which [REC-1] says is not edited once on main. Each is a
+  small fix for a later tier-0 or tier-1 request.
