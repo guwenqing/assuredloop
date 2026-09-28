@@ -416,6 +416,40 @@ test('C2 [STA-6] a section carried by a successor in another request: revert ref
   assert.equal(read(repo, 'requests/late-dates/change.md'), successor);
 });
 
+// `base` keeps INV-3 by the agent's ruling D2, citing no R; `successor` builds
+// on it `for R2` (or `forR`), signed unless `successorSigned` is false. The
+// baseline is the successor's "now", so base reads carried by successor/INV-3@1.
+function carriedKept(t, { successorSigned = true, forR = 'for R2' } = {}) {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S2));
+  addRequest(repo, 'base', [block('[INV-3]@1 modify   Kept 2026-09-26 (D2)', { was: S0, now: S1 })]);
+  addRequest(repo, 'successor', [block(`[INV-3]@1 modify   builds on base/INV-3@1   ${forR}`, { was: S1, now: S2 })], { signed: successorSigned });
+  repo.commit('setup');
+  return repo;
+}
+
+test('C2 [STA-6] a Kept section carried by a successor meets the rule through the successor\'s signed, current R-line (design §5.4): --dropped passes; with the successor unsigned, or citing an R its requirement does not hold, it refuses', async (t) => {
+  for (const opts of [{ successorSigned: false }, { forR: 'for R9' }]) {
+    const repo = carriedKept(t, opts);
+    await expectState(repo, 'base/INV-3@1', 'carried', { by: 'successor/INV-3@1' });
+    for (const extra of [[], ['--yes']]) {
+      const r = conclude(repo, 'base', '--dropped', 'D4', ...extra);
+      assert.equal(r.code, 1, `${JSON.stringify(opts)}:\n${both(r)}`);
+      assert.ok(lineWith(both(r), 'INV-3'), `should name INV-3:\n${both(r)}`);
+      clean(repo);
+      assertShort(r);
+    }
+  }
+
+  const repo = carriedKept(t);
+  await expectState(repo, 'base/INV-3@1', 'carried', { by: 'successor/INV-3@1' });
+  const r = conclude(repo, 'base', '--dropped', 'D4', '--yes');
+  ok(r);
+  assertShort(r);
+  assert.ok(outcome(archivedMd(repo, 'base')).generated.includes('- Kept: [INV-3]'), archivedMd(repo, 'base'));
+  assert.equal(read(repo, 'specs/invoices.md'), file(INV1, S2), 'the baseline is untouched');
+});
+
 test('C2 [STA-6][REC-6] --dropped with a Kept, unsigned change refuses, whether the Kept cites an R or the owner; signed, it passes', (t) => {
   const kept = (d) => [block(`[INV-3]@1 modify   Kept 2026-09-26 (${d})   for R2`, { was: S0, now: S1 })];
   for (const d of ['D2', 'D3']) {
