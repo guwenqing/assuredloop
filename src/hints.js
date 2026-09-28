@@ -99,7 +99,8 @@ export function hintsOf(top, b, { main }) {
     const rKeys = org ? parts(org.text).map((p) => p.key) : null;
     for (const x of [...b.blocks.values()].filter((y) => y.request === r.name)) {
       if (x.anchor && !known(x.anchor)) add('not ok', 5, [r.name], `${r.name} cites [${x.anchor}] as the anchor of ${x.key}, which is in no section or block`, `al context ${r.name}`);
-      for (const k of rKeys ? x.forR.filter((y) => !rKeys.includes(y)) : []) add('not ok', 5, [r.name], `${r.name} cites ${k} in ${x.key}, which its organized requirement lacks`, `al context ${r.name}`);
+      // D6: a block marked Dropped (and not Kept) records the drop; its R-lines are not checked.
+      for (const k of rKeys && !(x.dropped && !x.kept) ? x.forR.filter((y) => !rKeys.includes(y)) : []) add('not ok', 5, [r.name], `${r.name} cites ${k} in ${x.key}, which its organized requirement lacks`, `al context ${r.name}`);
       for (const [text, side] of [[x.now, 'Now'], [x.was, 'Was']]) {
         const fault = text !== null && headingFault(x, text, side);
         if (fault) add('not ok', 5, [r.name], fault, `al context ${r.name}`);
@@ -127,12 +128,12 @@ export function hintsOf(top, b, { main }) {
   for (const id of b.changedIds) {
     for (const x of b.blocks.values()) {
       if (x.open && x.id === id && signed.get(x.request)?.blocked && x.now && b.now.has(id) && sameSection(b.now.get(id), x.now)) {
-        add('not ok', 8, [x.request], `[${id}] changed on this branch equals the Now of ${x.key}, and ${x.request} is blocked (${signed.get(x.request).reason})`, `al record ${x.request} signoff --source <where> --yes`, true);
+        add('not ok', 8, [x.request], `[${id}] changed on this branch equals the Now of ${x.key}, and ${x.request} is blocked (${signed.get(x.request).reason})`, `al record ${x.request} signoff --source <where> --words <quote> --yes`, true);
       }
     }
   }
   for (const name of b.delivered) {
-    if (signed.get(name)?.blocked) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, `al record ${name} signoff --source <where> --yes`, true);
+    if (signed.get(name)?.blocked) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, `al record ${name} signoff --source <where> --words <quote> --yes`, true);
   }
   if (b.tier && /^0\b/.test(b.tier) && b.changed.some((p) => p.startsWith(`${b.root}/`))) {
     add('not ok', 10, [], `the claim is tier 0, but ${b.range} edits the baseline${b.changedIds.length ? `: ${b.changedIds.map((i) => `[${i}]`).join(', ')}` : ''}`, `al context --diff ${b.range}`);
@@ -173,13 +174,14 @@ export function hintsOf(top, b, { main }) {
     if (!live.length) continue;
     const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => entriesOf(p.md, 'Parts').map((e) => [p.name, e]))
       .find(([, e]) => live.some((l) => e.includes(l.split(':')[0])));
-    add('note', 17, [name], `code still live for dropped work of ${name}: ${live.join(', ')}; ${plans ? `a part of ${plans[0]} plans its removal: ${plans[1]}` : 'no part plans its removal'}`, `al context ${name}`);
+    // Ranked first among the notes: live code for dropped work is a hazard on main.
+    add('note', 11, [name], `code still live for dropped work of ${name}: ${live.join(', ')}; ${plans ? `a part of ${plans[0]} plans its removal: ${plans[1]}` : 'no part plans its removal'}`, `al context ${name}`);
   }
   for (const name of b.served) {
     const s = signed.get(name);
     if (!s?.blocked) continue;
     add('note', 18, [name], s.signoff ? `${name} changed since its sign-off (${s.signoff.file})${s.changed?.length ? `: ${s.changed.join(', ')}` : ''}` : `${name} is not signed off yet: ${s.reason}`,
-      `al record ${name} signoff --source <where> --yes`);
+      `al record ${name} signoff --source <where> --words <quote> --yes`);
   }
   if (b.commits.length && !b.tier) add('note', 22, [], `no Tier line in ${b.range}`, 'add "Tier: <n> — <claim>" to the PR, e.g. with git commit --amend');
   out.push(...testHints(top, b), ...adrHints(top, b));

@@ -334,7 +334,9 @@ export function context({ top, args, opts }) {
   const held = all.filter((e) => e.request === name);
   const count = (id) => held.filter((e) => e.id === id).length;
   const label = (e) => (count(e.id) > 1 ? `${e.id}@${e.n}` : e.id);
-  if (held.length) body.push(fitOrCount('Spec', held, (e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`, label));
+  // [VW-2]: a block marked Dropped or Kept shows by its marker, not its content state.
+  const shown = held.map((e) => (e.mark ? { ...e, state: e.mark, by: null } : e));
+  if (held.length) body.push(fitOrCount('Spec', shown, (e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`, label));
   const parts = entriesOf(text, 'Parts');
   if (parts.length) body.push(line('Parts', parts.map((p) => p.replace(/\s+/g, ' ')).join(' · ')));
   const mine = new Set(held.map((e) => e.file).filter(Boolean));

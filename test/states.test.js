@@ -4,10 +4,10 @@
 // classification. Expected states are worked out by hand from design §5.2.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, readdirSync, readFileSync } from 'node:fs';
+import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeRepo } from './helpers/fixture.js';
+import { makeRepo, runAl } from './helpers/fixture.js';
 import { block, changeMd, requestMd, indent, fence, CHANGE_PROSE } from './helpers/change.js';
 
 // Loaded per test, so a missing module fails each test rather than the file.
@@ -489,52 +489,42 @@ test('C2 [STA-3] a waiting block retains nothing; a partial revert differs and i
 
 // --- Real data ---
 
-test('[STA-2][STA-4] real data: a copy of assuredloop-v1 and specs/ — REC-1..5 and SPC-1..4 consolidated; for each ID in specs/ the latest block consolidated and each earlier one carried by it, for each ID not in specs/ @1 pending and each later block waiting on @1; STA-3..7 in specs/', async (t) => {
+// The archived request is append-only [REC-12] and never re-checked against
+// today's baseline [STA-8], which later requests will change. So its change.md
+// is copied back under requests/ onto the empty baseline it started from
+// [SPC-1], and the rules run on that real text: every block pending or
+// waiting, then one consolidate, then every block consolidated or carried.
+test('[STA-2][STA-4] real data: the archived assuredloop-v1 copied back under requests/ onto an empty baseline — each ID\'s @1 pending and each later block waiting on it; after al consolidate --yes, each ID\'s latest block consolidated and each earlier one carried by it', async (t) => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const repo = makeRepo(t);
-  cpSync(join(root, 'requests/assuredloop-v1'), join(repo.dir, 'requests/assuredloop-v1'), { recursive: true });
-  cpSync(join(root, 'specs'), join(repo.dir, 'specs'), { recursive: true });
-  // The IDs the copied baseline holds, read here from the headings (parts consolidate more as they land).
-  const inBaseline = new Set(readdirSync(join(repo.dir, 'specs'), { recursive: true })
-    .filter((f) => f.endsWith('.md'))
-    .flatMap((f) => [...readFileSync(join(repo.dir, 'specs', f), 'utf8').matchAll(/^#+ \[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/gm)].map((m) => m[1])));
-  const list = await states(repo);
+  cpSync(join(root, 'requests/archive/assuredloop-v1'), join(repo.dir, 'requests/assuredloop-v1'), { recursive: true });
+  repo.commit('The archived request, copied back', { date: '2026-09-28T12:00:00Z' });
+  let list = await states(repo);
   assert.ok(list.every((e) => e.request === 'assuredloop-v1'), JSON.stringify(keys(list)));
-  const consolidated = ['REC-1', 'REC-2', 'REC-3', 'REC-4', 'REC-5', 'SPC-1', 'SPC-2', 'SPC-3', 'SPC-4'];
-  for (const id of consolidated) expectState(list, `assuredloop-v1/${id}@1`, 'consolidated');
 
-  // Part 9 consolidates [VW-9] into specs/views.md at its @2, which carries @1.
-  assert.ok(inBaseline.has('VW-9'), '[VW-9] should be consolidated into specs/ by part 9');
-  expectState(list, 'assuredloop-v1/VW-9@2', 'consolidated');
-  expectState(list, 'assuredloop-v1/VW-9@1', 'carried', { by: 'assuredloop-v1/VW-9@2' });
-
-  // Each ID's blocks in version order: in specs/, the latest is consolidated
-  // and each earlier one carried by it; not in specs/, @1 is pending and each
-  // later block waits on it.
+  // Each ID's blocks in version order.
   const byId = new Map();
   for (const e of [...list].sort((a, b) => a.n - b.n)) byId.set(e.id, [...(byId.get(e.id) ?? []), e]);
-  const others = [...byId.keys()].filter((id) => !consolidated.includes(id));
-  assert.ok(others.length > 30, `expected the rest of the sections: ${JSON.stringify(keys(list))}`);
-  assert.ok(others.some((id) => !inBaseline.has(id)), 'some sections should still be pending');
-  for (const id of others) {
-    const blocks = byId.get(id);
-    if (inBaseline.has(id)) {
-      const latest = blocks.at(-1).block;
-      expectState(list, latest, 'consolidated');
-      for (const e of blocks.slice(0, -1)) expectState(list, e.block, 'carried', { by: latest });
-    } else {
-      expectState(list, blocks[0].block, 'pending');
-      for (const e of blocks.slice(1)) expectState(list, e.block, 'waiting', { by: blocks[0].block });
-    }
+  assert.ok(byId.size > 40, `expected every section of v1: ${JSON.stringify(keys(list))}`);
+  assert.ok([...byId.values()].some((bs) => bs.length > 1), 'some sections were revised: VW-9, STA-4 and others have an @2');
+  for (const blocks of byId.values()) {
+    expectState(list, blocks[0].block, 'pending');
+    for (const e of blocks.slice(1)) expectState(list, e.block, 'waiting', { by: blocks[0].block });
   }
+
+  const r = runAl(repo.dir, ['consolidate', 'assuredloop-v1', '--yes']);
+  assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`);
+  list = await states(repo);
+  for (const blocks of byId.values()) {
+    const latest = blocks.at(-1).block;
+    expectState(list, latest, 'consolidated');
+    for (const e of blocks.slice(0, -1)) expectState(list, e.block, 'carried', { by: latest });
+  }
+  expectState(list, 'assuredloop-v1/VW-9@2', 'consolidated');
+  expectState(list, 'assuredloop-v1/VW-9@1', 'carried', { by: 'assuredloop-v1/VW-9@2' });
   assert.deepEqual(entry(list, 'assuredloop-v1/REC-4@1').forR, ['R2', 'R3']);
   assert.equal(entry(list, 'assuredloop-v1/TL-1@1').op, 'add');
   assert.equal(entry(list, 'assuredloop-v1/VW-9@2').op, 'modify');
-
-  // Part 5 consolidates these into specs/states.md, [STA-4] as its @2.
-  for (const id of ['STA-3', 'STA-4', 'STA-5', 'STA-6', 'STA-7']) {
-    assert.ok(inBaseline.has(id), `[${id}] should be consolidated into specs/ by part 5`);
-  }
 });
 
 // --- Candidates keep indentation [SPC-4][STA-2] ---

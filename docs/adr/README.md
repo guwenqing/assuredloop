@@ -20,9 +20,12 @@ changes only its status.
 | [0012](0012-a-deterministic-script-under-3500-lines.md) | A deterministic script, Node, no dependencies, under 3,500 lines | accepted |
 
 **Where the cited material lives.**
-- The design as agreed: `requests/assuredloop-v1/design.md`.
+- The design as agreed: `requests/archive/assuredloop-v1/design.md`.
 - Earlier drafts, the adversary's challenges, the case tests, and the
   research notes cited as [A]-[L] and [G]: the bots repository, under
   `bots/assuredloop/design/` and `bots/assuredloop/research/`.
 - "input N": the owner's inputs, snapshotted in
-  `requests/assuredloop-v1/origin/2026-09-27-owner-inputs.md`.
+  `requests/archive/assuredloop-v1/origin/2026-09-27-owner-inputs.md`.
+- The request concluded on 2026-09-28 and moved to
+  `requests/archive/assuredloop-v1/`. The ADRs keep the paths they were
+  written with, under `requests/assuredloop-v1/`.
