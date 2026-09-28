@@ -10,7 +10,7 @@ import { configured } from './spec.js';
 import { line } from './commands.js';
 import { fileLinks } from './views.js';
 import { adrFolders } from './adrs.js';
-import { changedWith, idsOn, paths } from './links.js';
+import { changedWith, idNear, idsOn, paths } from './links.js';
 
 const DIR = /(^|\/)(test|tests|__tests__|spec)\//;
 const NAME = /^test_|\.(test|spec)\.|_test\.|Tests?\.[^.]+$/;
@@ -19,6 +19,8 @@ const JS = /\.[cm]?[jt]sx?$/;
 const ASSERT = /(?<![\w$.])(?:t\.)?assert(?:\.\w+)*\s*\(|(?<![\w$.])expect\s*\(/g;
 const REVISION = /\brevision:[ \t]*([0-9a-f]{7,40})\b/i;
 const stem = (p) => basename(p).replace(MARK, '').replace(/\..*$/, '');
+// The text with comments and string contents blanked, lines kept, so only code holds calls.
+const codeOf = (t) => t.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\[\s\S]|[^`\\])*`/g, (m) => m.replace(/[^\n]/g, ' '));
 
 // Whether a path is a test file; never one under the baseline root or requests/.
 export const testMatcher = (root, named) => (p) => !p.startsWith(`${root}/`) && !p.startsWith('requests/') &&
@@ -28,29 +30,48 @@ export const testMatcher = (root, named) => (p) => !p.startsWith(`${root}/`) && 
 // counts, and the assertion lines added and removed; other syntax is skipped.
 function observe(path, before, after) {
   if (!JS.test(path)) return { path, skipped: 'not JS/TS, the syntax al counts' };
-  const lines = (t) => (t ?? '').split('\n').map((l) => l.trim()).filter((l) => l.match(ASSERT));
+  const lines = (t) => { const src = (t ?? '').split('\n'); return codeOf(t ?? '').split('\n').flatMap((l, i) => (l.match(ASSERT) ? [src[i].trim()] : [])); };
   const minus = (x, y) => { const left = [...y]; return x.filter((l) => { const i = left.indexOf(l); return i < 0 || !left.splice(i, 1); }); };
-  const count = (t) => (t ?? '').match(ASSERT)?.length ?? 0;
+  const count = (t) => codeOf(t ?? '').match(ASSERT)?.length ?? 0;
   const [a, b] = [lines(before), lines(after)];
   return { path, was: count(before), now: count(after), added: minus(b, a).length, removed: minus(a, b).length };
 }
 const moved = (o) => !o.skipped && (o.added || o.removed);
 const observation = (o) => (o.skipped ? `${o.path}  skipped (${o.skipped})` : `${o.path}  ${o.was} → ${o.now} assertions (+${o.added} -${o.removed} lines)`);
 
-// A result file's counts and failing test names: JUnit XML's testcases, or
-// TAP's points (a SKIP or TODO is neither); null when it is neither.
+// A result file's counts and its passing and failing test names: JUnit XML's
+// testcases, or TAP's points (a SKIP or TODO is neither), each named under
+// its `# Subtest:` parents, and whether the TAP is incomplete (it bails out,
+// or its plan is missing or unmet); null when it is neither.
 function parse(text) {
-  const r = { passed: 0, failed: 0, failing: new Set() };
-  const note = (name, failed) => (failed ? (r.failed++, r.failing.add(name)) : r.passed++);
+  const r = { passed: 0, failed: 0, failing: new Set(), passing: new Set() };
+  const note = (name, failed) => (failed ? (r.failed++, r.failing.add(name)) : (r.passed++, r.passing.add(name)));
   if (/<testcase\b/.test(text)) {
     for (const [, attrs, inner = ''] of text.matchAll(/<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g)) {
       if (!/<skipped\b/.test(inner)) note(attrs.match(/\bname="([^"]*)"/)?.[1] ?? '', /<(failure|error)\b/.test(inner));
     }
     return r;
   }
-  const points = [...text.matchAll(/^[ \t]*(not )?ok\b[ \t]*\d*[ \t]*(?:-[ \t]*)?(.*)$/gm)];
-  for (const [, not, rest] of points) if (!/(^|\s)#\s*(skip|todo)\b/i.test(rest)) note(rest.trim(), Boolean(not));
-  return points.length ? r : null;
+  const parents = [];
+  let [points, top, plan, bail] = [0, 0, null, false];
+  for (const l of text.split('\n')) {
+    const at = l.match(/^[ \t]*/)[0].length;
+    const sub = l.match(/^[ \t]*# Subtest: (.*)$/);
+    const point = l.match(/^[ \t]*(not )?ok\b[ \t]*\d*[ \t]*(?:-[ \t]*)?(.*)$/);
+    if (sub) {
+      while (parents.at(-1)?.at >= at) parents.pop();
+      parents.push({ at, name: sub[1].trim() });
+    } else if (/^Bail out!/.test(l)) bail = true;
+    else if (!at && /^1\.\.\d+/.test(l)) plan = Number(l.match(/^1\.\.(\d+)/)[1]);
+    else if (point) {
+      points++;
+      if (!at) top++;
+      const name = [...parents.filter((p) => p.at < at).map((p) => p.name), point[2].replace(/\s+#\s*(skip|todo)\b.*$/i, '').trim()].join(' > ');
+      if (!/(^|\s)#\s*(skip|todo)\b/i.test(point[2])) note(name, Boolean(point[1]));
+    }
+  }
+  r.incomplete = bail ? 'incomplete: bail out' : plan === null ? 'incomplete: no plan' : top < plan ? `incomplete: ${top} of a plan of ${plan}` : null;
+  return points ? r : null;
 }
 
 // The files `results:` names, read from the working tree, each classed by its
@@ -93,8 +114,10 @@ export function testFacts(top, b) {
   const links = new Map();
   const near = new Map();
   for (const c of b.base ? code : []) {
-    // An untracked file has no history to link it by, only its stem.
-    const reached = tracked.has(c) ? [...fileLinks(top, b.base, head, c, ctx).ids.keys()] : [];
+    // check reads the working tree; an untracked file has no history, only its own [ID] lines.
+    const lines = (text(c) ?? '').split('\n');
+    const reached = tracked.has(c) ? [...fileLinks(top, b.base, b.at ? head : null, c, ctx).ids.keys()]
+      : [...new Set(idNear(lines, 1, lines.map((_, i) => i + 1)).map((x) => x.id))];
     near.set(c, reached);
     const together = tracked.has(c) ? changedWith(top, head, c).commits : [];
     links.set(c, tests.flatMap((t) => {
@@ -150,11 +173,11 @@ export function testLines(top, b, linked) {
 export function resultLines(top, b) {
   const rs = testFacts(top, b).results;
   const out = rs.map((r) => (r.missing ? `${r.path}  not found` : !r.tests ? `${r.path}  not a format al reads (TAP, JUnit XML): skipped`
-    : `${r.path}  at ${r.rev ? r.rev.slice(0, 7) : 'no revision'} (${r.cls}${['older', 'unknown'].includes(r.cls) ? ', not evidence for this change' : ''}): ${r.tests.passed} passed, ${r.tests.failed} failed`));
-  const failing = (cls) => (rs.some((r) => r.cls === cls && r.tests) ? new Set(rs.filter((r) => r.cls === cls && r.tests).flatMap((r) => [...r.tests.failing])) : null);
-  const [h, was] = [failing('head'), failing('base')];
+    : `${r.path}  at ${r.rev ? r.rev.slice(0, 7) : 'no revision'} (${r.cls}${['older', 'unknown'].includes(r.cls) ? ', not evidence for this change' : ''}): ${r.tests.passed} passed, ${r.tests.failed} failed${r.tests.incomplete ? `; ${r.tests.incomplete}` : ''}`));
+  const names = (cls, kind) => (rs.some((r) => r.cls === cls && r.tests) ? new Set(rs.filter((r) => r.cls === cls && r.tests).flatMap((r) => [...r.tests[kind]])) : null);
+  const [h, was, passing] = [names('head', 'failing'), names('base', 'failing'), names('head', 'passing')];
   const list = (xs) => xs.join(', ') || 'none';
-  if (h && was) out.push(`new failures: ${list([...h].filter((n) => !was.has(n)))} · already failing at base: ${list([...h].filter((n) => was.has(n)))} · fixed: ${list([...was].filter((n) => !h.has(n)))}`);
+  if (h && was) out.push(`new failures: ${list([...h].filter((n) => !was.has(n)))} · already failing at base: ${list([...h].filter((n) => was.has(n)))} · fixed: ${list([...was].filter((n) => passing.has(n) && !h.has(n)))}`);
   return (out.length ? out : ['no result files named (add results: <path> to .assuredloop)']).map((t, i) => line(i ? '' : 'Results', t));
 }
 

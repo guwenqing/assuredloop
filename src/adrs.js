@@ -38,9 +38,11 @@ export function adrsOf(top, tree, at, name, requests) {
   const all = adrsIn(top, tree, at);
   const addedIn = new Map();
   let sha = null;
-  for (const l of (git(top, ['log', '--diff-filter=A', '--name-only', '--format=>%H', at ?? 'HEAD', '--', ...adrFolders(top, tree, at)], { allowFail: true }) ?? '').split('\n')) {
-    if (l.startsWith('>')) sha = l.slice(1);
-    else if (l && !addedIn.has(l)) addedIn.set(l, sha);
+  // -z keeps each path literal: `>sha`, then its paths, each ended by NUL.
+  for (const l of paths(git(top, ['log', '--diff-filter=A', '--name-only', '-z', '--format=>%H', at ?? 'HEAD', '--', ...adrFolders(top, tree, at)], { allowFail: true }))) {
+    const p = l.replace(/^\n/, '');
+    if (p.startsWith('>')) sha = p.slice(1);
+    else if (!addedIn.has(p)) addedIn.set(p, sha);
   }
   // A commit that touched several request folders maps to none of them here.
   const seen = new Map();
@@ -58,12 +60,13 @@ export function adrHints(top, b) {
   const all = adrsIn(top, b.tree, b.at);
   const byN = new Map();
   for (const a of all) byN.set(a.n, [...(byN.get(a.n) ?? []), a]);
-  // A number's file names over history, a rename keeping its number's name.
+  // A number's file names over history. A rename that keeps the number
+  // replaces its name; a renumbering leaves the old number used.
   const names = new Map();
   const log = paths(git(top, ['log', '--reverse', '-M', '--diff-filter=AR', '--name-status', '-z', '--format=', b.at ?? 'HEAD', '--', ...adrFolders(top, b.tree, b.at)], { allowFail: true }));
   for (let i = 0; i < log.length; i += log[i][0] === 'R' ? 3 : 2) {
     const [was, p] = log[i][0] === 'R' ? [log[i + 1], log[i + 2]] : [null, log[i + 1]];
-    if (was) names.get(numberOf(was))?.delete(was);
+    if (was && numberOf(was) === numberOf(p)) names.get(numberOf(was))?.delete(was);
     if (numberOf(p)) names.set(numberOf(p), (names.get(numberOf(p)) ?? new Set()).add(p));
   }
   for (const a of all) names.set(a.n, (names.get(a.n) ?? new Set()).add(a.path));
