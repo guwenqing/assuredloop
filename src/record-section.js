@@ -26,7 +26,7 @@ function range(lines, id, n) {
 
 // The D-numbers of the entries in request.md's `## Decisions` (to the next
 // level-1/2 heading), and where the next entry goes.
-function decisions(md) {
+export function decisions(md) {
   const lines = md.split('\n');
   const at = lines.findIndex((l) => /^##\s+Decisions\s*$/.test(l));
   let end = lines.length;
