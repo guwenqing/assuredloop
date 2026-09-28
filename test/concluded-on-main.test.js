@@ -97,6 +97,25 @@ test('[STA-8] once the archiving commit reaches main (fast-forward), context nam
   assertNoStates(later);
 });
 
+test('[STA-8] after a --no-ff merge, context names the merge commit, where the archived request.md arrived on main\'s first-parent line, not the branch commit that added it', (t) => {
+  const repo = openRequest(t);
+  repo.git(['checkout', '-q', '-b', 'conclude-inv']);
+  archiveByHand(repo);
+  const archivedAt = repo.commit('conclude inv', { date: '2026-09-22T10:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  repo.write('README.md', 'fixture, while inv was concluding\n');
+  repo.commit('meanwhile on main', { date: '2026-09-22T11:00:00Z' });
+  repo.git(['merge', '-q', '--no-ff', '-m', 'Merge conclude-inv', 'conclude-inv'], { date: '2026-09-22T12:00:00Z' });
+  const merge = repo.head();
+  assert.equal(repo.git(['rev-parse', 'HEAD^2']), archivedAt, 'the fixture: the archiving commit is the merge\'s second parent');
+
+  const r = context(repo);
+  assertOnMain(r, merge);
+  assert.ok(!concluded(r).includes(archivedAt.slice(0, 7)), `should not name the branch commit ${archivedAt.slice(0, 7)}:\n${concluded(r)}`);
+  assertNoStates(r);
+  assertFrame(r.stdout);
+});
+
 test('C2 [STA-8][REC-9] after a squash merge, a fresh clone derives the concluding commit (the squash), and the Outcome holds none of the repo\'s commit IDs', (t) => {
   const repo = openRequest(t, file(INV1, S0));
   repo.git(['checkout', '-q', '-b', 'inv-part-1']);
