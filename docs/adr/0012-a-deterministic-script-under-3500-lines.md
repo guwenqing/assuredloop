@@ -81,9 +81,12 @@ Supersedes: [ADR 0009](0009-a-deterministic-script-node-zero-dependencies.md).
   - some parsing (Markdown sections, JUnit) is written by hand;
   - a larger tool than first planned: about 3,000 lines expected, against the
     2,000 first estimated.
-- Revisit if: the estimate for a part is exceeded by more than a third, or the
-  total passes 3,500. Then cut a part's scope, or bring the budget back to the
-  owner. Confidence: medium. The remaining parts are estimated, not measured.
+- Revisit if:
+  - a real need for semantic linking appears. Then it goes in a skill, not the
+    script. Confidence: high (carried over from ADR 0009).
+  - the estimate for a part is exceeded by more than a third, or the total
+    passes 3,500. Then cut a part's scope, or bring the budget back to the
+    owner. Confidence: medium. The remaining parts are estimated, not measured.
 - Checked by: C9 in part 10 (no runtime dependencies; the line count of
   `src/*.js` and `bin/*.js`), and C7 (offline). Each part's PR states the line
   count after it.
