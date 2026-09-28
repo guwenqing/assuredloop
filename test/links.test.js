@@ -375,3 +375,22 @@ test('[LNK-1] --diff reads .git-blame-ignore-revs from the commits it reads: an 
   has(committed, 'src/dates.js', 'last changed by original');
   hasNo(committed, 'src/dates.js', 'last changed by iso');
 });
+
+test('[LNK-1] an ignore list that also names a commit git does not know (left from rewritten history) still skips the real sweep: the changed line is last changed by the request that wrote it', (t) => {
+  const GONE = '0123456789abcdef0123456789abcdef01234567';
+  const repo = base(t);
+  repo.write('src/dates.js', DATES('  ', "'"));
+  const wrote = repo.commit('ISO dates\n\nRequest: invoice-dates', { date: '2026-02-01T12:00:00Z' });
+  repo.write('src/dates.js', DATES('  ', '"'));
+  const sweep = repo.commit('Prettier: double quotes', { date: '2026-02-02T12:00:00Z' });
+  repo.write('.git-blame-ignore-revs', `# From before the history rewrite\n${GONE}\n\n# The quote sweep\n${sweep}\n`);
+  repo.commit('Ignore the sweeps in blame', { date: '2026-02-03T12:00:00Z' });
+  assert.throws(() => repo.git(['cat-file', '-e', GONE]), 'the fixture: git does not know the listed commit');
+  assertBlamed(repo, 'HEAD', 'src/dates.js', [2, 2], ['-w', '-M', '-C'], sweep);
+  assertBlamed(repo, 'HEAD', 'src/dates.js', [2, 2], ['-w', '-M', '-C', '--ignore-revs-file', '.git-blame-ignore-revs'], wrote);
+  work(repo, [['src/dates.js', 'const sep = "-";', 'const sep = "/";']]);
+
+  const out = diffOk(repo);
+  has(out, 'src/dates.js', 'last changed by invoice-dates');
+  hasNo(out, 'src/dates.js', 'no request');
+});

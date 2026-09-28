@@ -48,8 +48,9 @@ function archiveByHand(repo, name) {
 }
 
 // iso-dates holds INV-3 and INV-7. A branch consolidates both and archives
-// it; main takes it as a squash on 2026-09-23, the concluding commit.
-function concluded(t) {
+// it; main takes it as a squash on 2026-09-23, the concluding commit. The
+// branch is deleted unless `keepBranch`.
+function concluded(t, { keepBranch = false } = {}) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, S0));
   addRequest(repo, 'iso-dates', [
@@ -63,7 +64,7 @@ function concluded(t) {
   repo.commit('Consolidate and conclude\n\nRequest: iso-dates', { date: '2026-09-22T12:00:00Z' });
   repo.git(['checkout', '-q', 'main']);
   const squash = squashMerge(repo, 'iso-dates-part-1', '2026-09-23T12:00:00Z');
-  repo.git(['branch', '-q', '-D', 'iso-dates-part-1']);
+  if (!keepBranch) repo.git(['branch', '-q', '-D', 'iso-dates-part-1']);
   assert.equal(repo.git(['log', '--diff-filter=A', '--format=%H', '--', 'requests/archive/iso-dates/request.md']), squash,
     'the fixture: the squash added the archived request.md on main');
   return repo;
@@ -155,7 +156,9 @@ test('[VW-6][VW-9] in a shallow clone that lacks the concluding commit, the sect
   assert.doesNotMatch(r.stdout, /nothing found/i);
 });
 
-test('[VW-6][VW-8] context <archived-name> --at <commit> describes that commit\'s tree: at the concluding commit, INV-3 reads "as at conclusion", with no "since changed by later" and no "Followed by later"', (t) => {
+// `old` concluded on main by commit C (2026-09-23); then `later`, which
+// follows it, changes INV-3 on main (commit L, 2026-10-05).
+function oldThenLater(t) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, S0));
   addRequest(repo, 'old', [block('[INV-3]@1 modify   for R2', { was: S0, now: S1 })]);
@@ -168,6 +171,11 @@ test('[VW-6][VW-8] context <archived-name> --at <commit> describes that commit\'
   repo.commit('Time zone in dates\n\nRequest: later', { date: '2026-10-05T12:00:00Z' });
   assert.equal(repo.git(['log', '--diff-filter=A', '--format=%H', '--', 'requests/archive/old/request.md']), concluding,
     'the fixture: the concluding commit added the archived request.md on main');
+  return { repo, concluding, later: repo.head() };
+}
+
+test('[VW-6][VW-8] context <archived-name> --at <commit> describes that commit\'s tree: at the concluding commit, INV-3 reads "as at conclusion", with no "since changed by later" and no "Followed by later"', (t) => {
+  const { repo, concluding } = oldThenLater(t);
 
   // Today: since changed by later, and followed by it.
   const now = context(repo, 'old');
@@ -182,4 +190,44 @@ test('[VW-6][VW-8] context <archived-name> --at <commit> describes that commit\'
   assert.ok(!r.stdout.includes('since changed by later'), `at the concluding commit nothing has changed INV-3 since:\n${r.stdout}`);
   hasNo(r.stdout, /Followed by/, 'later');
   assert.ok(!lines(r.stdout).some((l) => /^Spec\b/.test(l)) && !r.stdout.includes('differs'), r.stdout);
+});
+
+test('[VW-6][VW-8] --at a branch commit whose history lacks main\'s concluding commit compares with that commit\'s tree: INV-3 reads "as at conclusion", with no "since changed"', (t) => {
+  const S3 = '## [INV-3] Dates\nDates MUST show in ISO 8601, to the second.\n';
+  const repo = concluded(t, { keepBranch: true });
+  const squash = repo.git(['log', '--diff-filter=A', '--format=%H', '--', 'requests/archive/iso-dates/request.md']);
+  // B2: after the archiving commit on the branch, a change to INV-3 there.
+  repo.git(['checkout', '-q', 'iso-dates-part-1']);
+  repo.write('specs/invoices.md', file(INV1, S3, INV7));
+  const b2 = repo.commit('Seconds in dates\n\nRequest: branch-dates', { date: '2026-09-24T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  laterChange(repo);
+  assert.ok(repo.git(['ls-tree', '--name-only', b2, 'requests/archive/']).includes('requests/archive/iso-dates'), 'the fixture: archived at B2');
+  assert.ok(!repo.git(['rev-list', b2]).split('\n').includes(squash), 'the fixture: main\'s squash is not in B2\'s history');
+
+  // Today, on main: since changed by tz-dates (the contrast).
+  is(context(repo), 'INV-3', /since changed by tz-dates/);
+
+  const r = runAl(repo.dir, ['context', 'iso-dates', '--at', b2]);
+  assert.equal(r.code, 0, both(r));
+  assertFrame(r.stdout, { read: b2.slice(0, 7) });
+  is(r.stdout, 'INV-3', 'as at conclusion');
+  assert.ok(!r.stdout.includes('since changed'), `B2's tree is the comparison, so nothing changed INV-3 since:\n${r.stdout}`);
+  assert.ok(!lines(r.stdout).some((l) => /^Spec\b/.test(l)) && !r.stdout.includes('differs'), r.stdout);
+});
+
+test('[VW-6][VW-8] --at blames at that commit, not at HEAD: --at L names later, not later2, whose change to INV-3 comes after L', (t) => {
+  const { repo, later } = oldThenLater(t);
+  repo.write('specs/invoices.md', file(INV1, '## [INV-3] Dates\nDates MUST show in ISO 8601, to the second.\n'));
+  repo.commit('Seconds in dates\n\nRequest: later2', { date: '2026-10-12T12:00:00Z' });
+  const line5 = (rev) => repo.git(['blame', '-w', '-M', '--porcelain', '-L', '5,5', rev, '--', 'specs/invoices.md']).slice(0, 40);
+  assert.equal(line5(later), later, 'the fixture: at L, INV-3\'s body blames to L');
+  assert.notEqual(line5('HEAD'), later, 'the fixture: at HEAD, INV-3\'s body blames to later2');
+
+  const r = runAl(repo.dir, ['context', 'old', '--at', later]);
+  assert.equal(r.code, 0, both(r));
+  assertFrame(r.stdout, { read: later.slice(0, 7) });
+  is(r.stdout, 'INV-3', /since changed by later \(2026-10-05/);
+  isNot(r.stdout, 'INV-3', /later2/);
+  assert.ok(!r.stdout.includes('2026-10-12'), `later2's change comes after L:\n${r.stdout}`);
 });
