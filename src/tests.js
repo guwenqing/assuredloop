@@ -19,8 +19,37 @@ const JS = /\.[cm]?[jt]sx?$/;
 const ASSERT = /(?<![\w$.])(?:t\.)?assert(?:\.\w+)*\s*\(|(?<![\w$.])expect\s*\(/g;
 const REVISION = /\brevision:[ \t]*([0-9a-f]{7,40})\b/i;
 const stem = (p) => basename(p).replace(MARK, '').replace(/\..*$/, '');
-// The text with comments and string contents blanked, lines kept, so only code holds calls.
-const codeOf = (t) => t.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\[\s\S]|[^`\\])*`/g, (m) => m.replace(/[^\n]/g, ' '));
+const COMMENT = /\/\/[^\n]*|\/\*[\s\S]*?\*\//y;
+const STRING = /'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"/y;
+const TEXT = /(?:\\[\s\S]|[^`\\$]|\$(?!\{))*(?:`|\$\{)?/y;
+const REGEX = /\/(?![*/])(?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\n[])+\/[a-z]*/y;
+// A `/` starts a regex after these, not after a value (where it divides).
+const OPERAND = /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|do|else|in|of|new|delete|void|throw|yield|await)) ?$/;
+
+// The code of JS/TS text: comments, string and regex contents and template
+// text blanked, lines kept, so only code holds calls; a template's `${…}` stays code.
+function codeOf(t) {
+  const blank = (s) => s.replace(/[^\n]/g, ' ');
+  const open = []; // one per `{`: a plain brace, or a template's `${`
+  let [out, i, prev] = ['', 0, '']; // prev: the last code characters, spaces squeezed, a value as x
+  const take = (re) => { re.lastIndex = i; return re.exec(t)?.[0] || null; };
+  const skip = (m, value) => { out += blank(m); i += m.length; if (value) prev = `${prev}x`.slice(-8); };
+  // Template text up to its closing backtick, or up to a `${`, whose code follows.
+  const text = () => { const m = take(TEXT) ?? ''; skip(m, m.endsWith('`')); if (m.endsWith('${')) open.push('template'); };
+  while (i < t.length) {
+    const m = take(COMMENT);
+    if (m) { skip(m); continue; }
+    const v = take(STRING) ?? (t[i] === '/' && OPERAND.test(prev) ? take(REGEX) : null);
+    if (v) { skip(v, true); continue; }
+    const c = t[i++];
+    if (c === '`') { out += ' '; text(); continue; }
+    if (c === '}' && open.pop() === 'template') { out += ' '; text(); continue; }
+    if (c === '{') open.push('brace');
+    out += c;
+    if (!/\s/.test(c) || !prev.endsWith(' ')) prev = `${prev}${/\s/.test(c) ? ' ' : c}`.slice(-8);
+  }
+  return out;
+}
 
 // Whether a path is a test file; never one under the baseline root or requests/.
 export const testMatcher = (root, named) => (p) => !p.startsWith(`${root}/`) && !p.startsWith('requests/') &&
@@ -41,8 +70,9 @@ const observation = (o) => (o.skipped ? `${o.path}  skipped (${o.skipped})` : `$
 
 // A result file's counts and its passing and failing test names: JUnit XML's
 // testcases, or TAP's points (a SKIP or TODO is neither), each named under
-// its `# Subtest:` parents, and whether the TAP is incomplete (it bails out,
-// or its plan is missing or unmet); null when it is neither.
+// its `# Subtest:` parents, and whether the TAP is incomplete or invalid: it
+// bails out, or a stream (the root, or a subtest's by its indent) has no plan
+// or a count of points other than its plan; null when it is neither.
 function parse(text) {
   const r = { passed: 0, failed: 0, failing: new Set(), passing: new Set() };
   const note = (name, failed) => (failed ? (r.failed++, r.failing.add(name)) : (r.passed++, r.passing.add(name)));
@@ -52,8 +82,20 @@ function parse(text) {
     }
     return r;
   }
-  const parents = [];
-  let [points, top, plan, bail] = [0, 0, null, false];
+  const [parents, streams] = [[], []];
+  let [points, bail, bad] = [0, false, null];
+  // The streams deeper than `at` end: each needs its plan met.
+  const close = (at) => {
+    while (streams.at(-1)?.at > at) {
+      const { plan, n } = streams.pop();
+      bad ??= plan === null ? 'incomplete: no plan' : n < plan ? `incomplete: ${n} of a plan of ${plan}` : n > plan ? `invalid: ${n} points for a plan of ${plan}` : null;
+    }
+  };
+  const stream = (at) => {
+    close(at);
+    if (streams.at(-1)?.at !== at) streams.push({ at, plan: null, n: 0 });
+    return streams.at(-1);
+  };
   for (const l of text.split('\n')) {
     const at = l.match(/^[ \t]*/)[0].length;
     const sub = l.match(/^[ \t]*# Subtest: (.*)$/);
@@ -61,16 +103,17 @@ function parse(text) {
     if (sub) {
       while (parents.at(-1)?.at >= at) parents.pop();
       parents.push({ at, name: sub[1].trim() });
-    } else if (/^Bail out!/.test(l)) bail = true;
-    else if (!at && /^1\.\.\d+/.test(l)) plan = Number(l.match(/^1\.\.(\d+)/)[1]);
+    } else if (/^[ \t]*Bail out!/.test(l)) bail = true;
+    else if (/^[ \t]*1\.\.\d+/.test(l)) stream(at).plan = Number(l.match(/1\.\.(\d+)/)[1]);
     else if (point) {
       points++;
-      if (!at) top++;
+      stream(at).n++;
       const name = [...parents.filter((p) => p.at < at).map((p) => p.name), point[2].replace(/\s+#\s*(skip|todo)\b.*$/i, '').trim()].join(' > ');
       if (!/(^|\s)#\s*(skip|todo)\b/i.test(point[2])) note(name, Boolean(point[1]));
     }
   }
-  r.incomplete = bail ? 'incomplete: bail out' : plan === null ? 'incomplete: no plan' : top < plan ? `incomplete: ${top} of a plan of ${plan}` : null;
+  close(-1);
+  r.incomplete = bail ? 'incomplete: bail out' : bad;
   return points ? r : null;
 }
 
