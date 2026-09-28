@@ -4,12 +4,14 @@
 // in twelve lines or fewer, keeping the BLOCKED first line [REC-6].
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync } from 'node:fs';
+import { cpSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, runAl, sha256 } from './helpers/fixture.js';
 import { assertFrame, lines } from './helpers/output.js';
 import { block, changeMd } from './helpers/change.js';
+import { says } from './helpers/links.js';
+import { count } from './helpers/evidence.js';
 
 const WORDS = 'Customers keep asking to download their invoices.\n';
 const ORG = '## Organized requirement\n\n### R1 Invoice export\nA customer MUST be able to export one invoice as CSV.\n\n' +
@@ -272,16 +274,48 @@ test('[VW-2][REC-6] the 12-line cap with every optional line at once: blocked, d
   assert.match(r.stdout, /not ok/, `at least one not-ok hint should fit:\n${r.stdout}`);
 });
 
-test('[VW-2] real data: context of a copy of assuredloop-v1 shows its sections\' states and D1 as the agent\'s ruling, in twelve lines', (t) => {
+// Real data. The archived request is append-only [REC-12]; its view reads
+// the history that archived it [STA-8], never today's baseline. The IDs it
+// holds are read here from its change.md's block headings.
+const V1 = 'requests/archive/assuredloop-v1';
+function heldIds(root) {
+  const change = readFileSync(join(root, V1, 'change.md'), 'utf8');
+  const blocks = [...change.matchAll(/^### \[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]@(\d+)/gm)].map((m) => ({ id: m[1], n: Number(m[2]) }));
+  return { ids: [...new Set(blocks.map((b) => b.id))], later: blocks.filter((b) => b.n > 1) };
+}
+
+test('[VW-2] real data: the archived assuredloop-v1 copied back under requests/ onto an empty baseline: context gives the count in each state (every @1 pending, each later block waiting and named) and D1 as the agent\'s ruling, in twelve lines', (t) => {
   const root = fileURLToPath(new URL('..', import.meta.url));
+  const { ids, later } = heldIds(root);
+  assert.ok(ids.length > 40 && later.length > 0, `the fixture: v1 holds every section, some revised: ${ids.length}, ${later.length}`);
   const repo = makeRepo(t);
-  cpSync(join(root, 'requests/assuredloop-v1'), join(repo.dir, 'requests/assuredloop-v1'), { recursive: true });
-  cpSync(join(root, 'specs'), join(repo.dir, 'specs'), { recursive: true });
+  cpSync(join(root, V1), join(repo.dir, 'requests/assuredloop-v1'), { recursive: true });
   const r = context(repo, 'assuredloop-v1');
   assert.equal(r.code, 0, r.stderr);
   assert.ok(!r.stdout.includes('BLOCKED'), r.stdout);
-  assert.ok(lines(r.stdout).some((l) => l.includes('consolidated')), r.stdout);
-  assert.ok(lines(r.stdout).some((l) => l.includes('pending')), r.stdout);
+  const spec = lines(r.stdout).find((l) => /^Spec\b/.test(l));
+  assert.ok(spec, `expected a line starting with Spec:\n${r.stdout}`);
+  assert.match(spec, count(ids.length, 'pending'), spec);
+  assert.match(spec, count(later.length, 'waiting'), spec);
+  for (const { id, n } of later) assert.ok(spec.includes(`${id}@${n}`), `the Spec line should name ${id}@${n}:\n${spec}`);
+  assert.match(segment(decided(r.stdout), 'D1'), /agent/i);
+  assertCap(r);
+  assertFrame(r.stdout);
+});
+
+test('[VW-6][STA-8] real data: the archived assuredloop-v1, committed to a fixture\'s main with specs/, is concluded on main at that commit, shows each section it held as at conclusion, and D1 as the agent\'s ruling, in twelve lines', (t) => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const { ids } = heldIds(root);
+  const repo = makeRepo(t);
+  cpSync(join(root, V1), join(repo.dir, V1), { recursive: true });
+  cpSync(join(root, 'specs'), join(repo.dir, 'specs'), { recursive: true });
+  const archived = repo.commit('Archive assuredloop-v1', { date: '2026-09-28T15:05:00Z' });
+  const r = context(repo, 'assuredloop-v1');
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(lines(r.stdout)[0], /assuredloop-v1.*\bconcluded\b/, r.stdout);
+  assert.ok(lines(r.stdout).some((l) => /concluded on main/i.test(l) && l.includes(archived.slice(0, 7))),
+    `a line should say it concluded on main at ${archived.slice(0, 7)}:\n${r.stdout}`);
+  for (const id of ids) assert.ok(says(r.stdout, id, /as at conclusion/), `${id} should read as at conclusion:\n${r.stdout}`);
   assert.match(segment(decided(r.stdout), 'D1'), /agent/i);
   assertCap(r);
   assertFrame(r.stdout);
