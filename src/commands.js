@@ -9,6 +9,8 @@ import { changedParts, latestSignoff, organized, parts, signoffState } from './s
 import { changeStates } from './states.js';
 import { recordSection } from './record-section.js';
 import { archivedLines, diffView, sectionView } from './views.js';
+import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
+import { decisions as decisionIds } from './record-section.js';
 
 const BAD = ['differs', 'broken link', 'base revised', 'base dropped', 'not found'];
 
@@ -130,7 +132,8 @@ export function recordOrigin(ctx) {
   const [name, kind] = args;
   if (kind === 'signoff') return recordSignoff(ctx);
   if (kind === 'section') return recordSection(ctx);
-  if (kind !== 'origin') throw new Fail(`record ${kind ?? ''}: only "record <name> origin|signoff|section" is built so far`, 'al record <name> origin --url <source> --from -');
+  if (kind === 'decision' || kind === 'part') return recordEntry(ctx, kind);
+  if (kind !== 'origin') throw new Fail(`record ${kind ?? ''}: al record <name> origin|signoff|section|decision|part`, 'al record <name> origin --url <source> --from -');
   const tree = openTree(top);
   const dir = requestToWrite(top, tree, name);
   const origin = `${dir}/origin`;
@@ -237,6 +240,34 @@ function recordSignoff({ top, args, opts }) {
   return { body, next: `al context ${name}`, notKnown };
 }
 
+// al record <name> decision --source <who> --text <decision> [--yes] ([REC-7]),
+// and al record <name> part --text <part> [--yes] ([REC-8]): one new entry at
+// the end of ## Decisions (the next literal Dn, dated) or ## Parts (the next
+// number), the section created at the end when missing. Nothing else changes.
+function recordEntry({ top, args, opts }, kind) {
+  const [name] = args;
+  const usage = kind === 'decision' ? `al record ${name} decision --source <who> --text <decision> --yes` : `al record ${name} part --text <part> --yes`;
+  if (opts.text === undefined || (kind === 'decision' && opts.source === undefined)) throw new Fail(`record ${kind} needs ${kind === 'decision' ? '--source and ' : ''}--text`, usage);
+  const tree = openTree(top);
+  const dir = requestToWrite(top, tree, name);
+  if (!noSymlinkOn(top, `${dir}/request.md`)) throw new Fail(`${dir} is reached through a symlink; records are written only through real folders, and nothing was written`, `make ${dir} a real folder in this repo`);
+  const md = tree.read(`${dir}/request.md`).toString('utf8');
+  const title = kind === 'decision' ? 'Decisions' : 'Parts';
+  const lines = md.split('\n');
+  const at = lines.findIndex((l) => new RegExp(`^##\\s+${title}\\s*$`).test(l));
+  let end = at < 0 ? lines.length : lines.findIndex((l, i) => i > at && /^#{1,2}\s/.test(l));
+  if (end < 0) end = lines.length;
+  let last = end;
+  while (at >= 0 && last > at + 1 && !lines[last - 1].trim()) last--;
+  const n = kind === 'decision' ? Math.max(0, ...decisionIds(md).ids) + 1
+    : at < 0 ? 1 : Math.max(0, ...lines.slice(at + 1, end).map((l) => Number(l.match(/^(\d+)\.\s/)?.[1] ?? 0))) + 1;
+  const entry = kind === 'decision' ? `- D${n}, ${stamp(now()).slice(0, 10)}. Source: ${opts.source}. ${opts.text}` : `${n}. ${opts.text}`;
+  const next = at < 0 ? `${md.replace(/\n*$/, '\n')}\n## ${title}\n\n${entry}\n` : [...lines.slice(0, last), entry, ...lines.slice(last)].join('\n');
+  if (!opts.yes) return { body: [`Would add to ${dir}/request.md, ## ${title}:`, entry], next: 'run the same command with --yes to write it', notKnown: [] };
+  writeFileSync(join(top, dir, 'request.md'), next);
+  return { body: [`Added to ${dir}/request.md, ## ${title}:`, entry], next: `al context ${name}`, notKnown: [] };
+}
+
 const taken = (path) => {
   try { lstatSync(path); return true; } catch { return false; }
 };
@@ -248,7 +279,7 @@ export function context({ top, args, opts }) {
     throw new Fail('--at is not built yet for al context <ID> or --diff', 'run it without --at, on a checkout of that commit');
   }
   if (opts.for !== undefined && (opts.for !== 'review' || opts.diff === undefined)) throw new Fail('--for review goes with --diff <range>', 'al context --diff main...HEAD --for review');
-  if (opts.diff !== undefined) return diffView(top, opts.diff, opts.for === 'review');
+  if (opts.diff !== undefined) return diffView(top, opts.diff, opts.for === 'review', opts.all);
   if (ID_ARG.test(name ?? '')) return sectionView(top, name.match(ID_ARG)[1]);
   if (name === undefined) throw new Fail('al context <name>: the list of all requests is not built yet', 'al context <name>');
   const tree = openTree(top, opts.at);
@@ -296,17 +327,24 @@ export function context({ top, args, opts }) {
   const others = all.filter((e) => e.request !== name && mine.has(e.file));
   if (others.length) body.push(line('Same file', others.map((e) => `${e.request} holds ${e.id} in ${e.file} (${e.state})`).join(' · ')));
 
-  const hints = [];
-  if (field('Tier') === '0') hints.push(`note: ${TIER0}`);
-  for (const [f, why] of bad) hints.push(`not ok: origin/${f} ${why}`);
-  for (const e of held.filter((x) => BAD.includes(x.state))) {
-    hints.push(`not ok: ${label(e)} ${e.state}${e.candidates.length ? `; candidates: ${e.candidates.join(', ')}` : ''}`);
-  }
-  // Twelve lines at most ([VW-2]): the hints get what is left after the Read, Next and Not known lines.
-  const room = Math.max(0, Math.min(3, 12 - body.length - 3));
-  const shown = hints.slice(0, room);
-  if (room && hints.length > room) shown[room - 1] += ` (+${hints.length - room} more)`;
-  body.push(...shown.map((h) => line('Hint', h)));
+  // [HNT-1]: the hints this request owns, from the list check makes; then each
+  // named child's state ([REC-8]). Three at most, in twelve lines, or --all.
+  const main = opts.at ? null : mainCommit(top);
+  const base = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
+  const commits = base ? git(top, ['rev-list', '--reverse', `${main}..HEAD`]).split('\n').filter(Boolean) : [];
+  const b = readBranch(top, { base, commits, tree, at: opts.at, range: 'main..HEAD' });
+  // conclude's rules re-run on an archived request are check's ([STA-8]); a view never re-checks one.
+  const hints = ranked(hintsOf(top, b, { main }), b).filter((h) => h.owners.includes(name) && h.rank !== 7);
+  if (field('Tier') === '0') hints.push({ kind: 'note', text: TIER0, command: `al new ${name} --tier 1 for a change of promise` });
+  entriesOf(text, 'Parts').forEach((p, k) => {
+    for (const [, c] of p.matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)) {
+      const d = findRequest(tree, c);
+      const status = d && tree.read(`${d}/request.md`).toString('utf8').match(/\bStatus:\s*(\w+)/)?.[1];
+      const now = !d ? null : d.startsWith('requests/archive/') ? status : signoffState(tree, d, c).blocked ? 'blocked' : 'open';
+      if (now) hints.push({ kind: 'note', text: `part ${k + 1} names request ${c}: ${now}`, command: `al context ${c}` });
+    }
+  });
+  body.push(...hintLines(hints, opts.all ? hints.length : Math.max(0, Math.min(3, 12 - body.length - 3))));
   return {
     tree,
     body,
