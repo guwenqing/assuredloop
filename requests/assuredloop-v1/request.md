@@ -169,3 +169,9 @@ Signed off: 2026-09-27 owner ("Signed in best my knowledge"), origin/2026-09-27-
   [VW-9] makes every output also name what it read and end with Next and Not
   known, which is three lines on its own. [STA-7]@2 says three lines or fewer
   plus those. No requirement changes, so no new sign-off.
+- D4, 2026-09-28. Source: the owner (snapshot
+  origin/2026-09-28-chat-with-the-owner-architect-session-claude-code.md).
+  The size check C9 is raised from under 2,000 to under 3,500 lines of CLI
+  source, counted as every line in `src/` and `bin/`. After 6 of 10 parts the
+  source was 2,115 lines, and about 3,000 are expected at the end. Recorded as
+  ADR 0012, which supersedes ADR 0009. No requirement changes.
