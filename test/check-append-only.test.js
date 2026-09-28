@@ -214,3 +214,15 @@ test('C7 [REC-12] check reads non-ASCII names in origin/: an edit and a deletion
   assertNotOkAt(r, edited, 'origin/é.md');
   assertNotOkAt(r, deleted, 'origin/ü.md');
 });
+
+test('C7 [REC-12][REC-1] check: a note appended under a request archived on main whose folder name is not ASCII (requests/archive/réq/) is "not ok", naming the file as it is', (t) => {
+  const repo = makeRepo(t);
+  const md = 'requests/archive/réq/request.md';
+  addRequest(repo, 'réq', null, { dir: 'requests/archive/réq' });
+  repo.write(md, requestMd({ status: 'concluded', rest: OUTCOME }));
+  commit(repo, 'réq, archived');
+  repo.git(['checkout', '-q', '-b', 'feature']);
+  repo.write(md, `${repo.read(md).toString()}The owner asked for PDF later.\n`);
+  const note = commit(repo, 'a note on réq');
+  assertNotOkAt(check(repo), note, md);
+});

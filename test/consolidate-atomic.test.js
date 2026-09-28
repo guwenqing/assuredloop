@@ -11,6 +11,7 @@ import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { makeRepo, tempDir, runAl } from './helpers/fixture.js';
 import { block } from './helpers/change.js';
+import { lines } from './helpers/output.js';
 import { ENV, addRequest, both } from './helpers/request.js';
 
 const A0 = '## [INV-1] Totals\nTotals show two decimals.\n';
@@ -119,4 +120,58 @@ test('[STA-4] a rename that fails partway (the second one, EIO): consolidate fai
   await inProcess(repo);
   assert.equal(read(repo, 'specs/a.md'), `${A1}\n${B}`);
   assert.equal(read(repo, 'specs/new.md'), NEW);
+});
+
+test('[STA-4] validate first, the preview included: with a folder at an add-in target, consolidate without --yes exits 2, prints no "Would" line and says nothing is written; without the folder the preview shows the write', (t) => {
+  const blocks = [MODIFY, block('[INV-8]@1 add in specs/z.md', { now: NEW })];
+  const repo = setup(t, blocks, (r) => r.write('specs/z.md/keep.txt', 'a folder named z.md\n'));
+  const r = runAl(repo.dir, ['consolidate', 'inv'], { env: ENV });
+  assert.equal(r.code, 2, both(r));
+  assert.ok(!lines(both(r)).some((l) => /^Would/.test(l)), `no "Would" line for a write that cannot happen:\n${both(r)}`);
+  assert.match(both(r), /nothing\b.*\bwritten/i, 'should say nothing is written');
+  clean(repo);
+
+  // The contrast: without the folder, the preview shows what it would write.
+  const plain = setup(t, blocks);
+  const ok = runAl(plain.dir, ['consolidate', 'inv'], { env: ENV });
+  assert.equal(ok.code, 0, both(ok));
+  assert.ok(lines(ok.stdout).some((l) => l.startsWith('Would')), `a line should start with "Would":\n${ok.stdout}`);
+  clean(plain);
+});
+
+test('[STA-4] the rollback removes a new file already renamed into place: two new files, the second rename fails (EIO); consolidate fails, neither new file exists, no temporary file is left, the other baseline files are byte-identical', async (t) => {
+  const N2 = '## [INV-9] Export name\nThe file MUST be named after the invoice number.\n';
+  const blocks = [block('[INV-8]@1 add in specs/n1.md', { now: NEW }), block('[INV-9]@1 add in specs/n2.md', { now: N2 })];
+  const repo = setup(t, blocks, (r) => r.write('specs/b.md', B.replace('INV-2', 'INV-5')));
+  const before = { 'specs/a.md': read(repo, 'specs/a.md'), 'specs/b.md': read(repo, 'specs/b.md') };
+
+  // node:fs as CommonJS sees it, so the patch reaches the ESM named exports too.
+  const fs = createRequire(import.meta.url)('node:fs');
+  const real = fs.renameSync;
+  let calls = 0;
+  fs.renameSync = function renameSync(...args) {
+    calls += 1;
+    if (calls === 2) throw Object.assign(new Error('EIO: i/o error, rename'), { code: 'EIO', errno: -5, syscall: 'rename' });
+    return real.apply(this, args);
+  };
+  syncBuiltinESMExports();
+  const restore = () => { fs.renameSync = real; syncBuiltinESMExports(); };
+  t.after(restore);
+  let e;
+  try {
+    e = await thrown(repo);
+  } finally {
+    restore();
+  }
+  assert.ok(calls >= 2, `the fixture: consolidate should rename each of its two new files into place (renames seen: ${calls})`);
+  for (const rel of ['specs/n1.md', 'specs/n2.md']) assert.ok(!existsSync(join(repo.dir, rel)), `${rel} should not exist`);
+  for (const [rel, bytes] of Object.entries(before)) assert.equal(read(repo, rel), bytes, `${rel} is byte-identical`);
+  assert.deepEqual(temps(repo), [], 'no temporary file is left');
+  clean(repo);
+  await assertFail(e);
+
+  // The contrast: with renames working, the same call writes both.
+  await inProcess(repo);
+  assert.equal(read(repo, 'specs/n1.md'), NEW);
+  assert.equal(read(repo, 'specs/n2.md'), N2);
 });
