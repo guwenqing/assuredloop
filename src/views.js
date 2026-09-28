@@ -4,7 +4,7 @@
 import { Fail, git, isShallow, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, baseline } from './spec.js';
-import { allBlocks, changeStates } from './states.js';
+import { allBlocks, changeStates, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { latestSignoff, organized, parts } from './signoff.js';
 import { line, decisionList, entriesOf, concluding } from './commands.js';
@@ -92,7 +92,7 @@ function fileLinks(top, base, head, path, { root, requests, seen, shallow, headi
   else {
     const old = hs.filter((h) => h.b > 0).map((h) => [h.a, h.a + h.b - 1]);
     const found = new Map();
-    for (const b of blame(top, base, path, old, { code: true })) {
+    for (const b of blame(top, base, path, old, { code: true, ignoreAt: head })) {
       const c = requestOf(top, b.sha, requests, seen);
       found.set(describe(c).replace(/ \(\w{7} .*\)$/, ''), c);
       c.names.forEach((n) => blamed.add(n));
@@ -160,7 +160,7 @@ export function diffView(top, range, forReview) {
   }).sort((x, y) => y.rejected - x.rejected).map((r) => r.text);
 
   const body = [line('Serves', serves.join(' · ') || 'no commits in the range')];
-  if (forReview) body.push(...review(top, head, tree, served, states, code));
+  if (forReview) body.push(...review(tree, files, served, code));
   else {
     body.push(...labelled('Changes', changes.length ? changes : ['no baseline section']));
     body.push(...labelled('Links', code.flatMap((f) => f.out)));
@@ -179,9 +179,12 @@ export function diffView(top, range, forReview) {
 // --for review: the intent (each served request's signed text verbatim, its
 // blocks and its decisions, agent rulings apart), then the evidence (each R's
 // linked files, or none; then the files linked to no served request).
-function review(top, head, tree, served, states, code) {
+function review(tree, files, served, code) {
   const mine = requestsIn(tree).filter((r) => served.has(r.name));
-  const blocks = [...allBlocks(tree).values()];
+  const all = allBlocks(tree);
+  const blocks = [...all.values()];
+  // A served request the branch archives still shows its blocks.
+  const states = statesOf(files, all, (b) => served.has(b.request));
   const intent = ['Intent'];
   const evidence = ['Evidence'];
   for (const r of mine) {
@@ -208,11 +211,15 @@ function review(top, head, tree, served, states, code) {
 
 // [VW-6]: each section an archived request held, "as at conclusion" or what
 // changed it since, and the requests that follow it.
-export function archivedLines(top, name) {
-  const tree = openTree(top);
+// Under --at, everything is read at that commit, and the conclusion counts
+// only when that commit's history holds it.
+export function archivedLines(top, name, at) {
+  const tree = openTree(top, at);
+  const rev = at ? resolveCommit(top, at) : null;
   const ids = [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))];
-  const c = concluding(top, name);
-  const root = rootOf(top, tree);
+  const found = concluding(top, name);
+  const c = found.sha && rev && git(top, ['merge-base', '--is-ancestor', found.sha, rev], { allowFail: true }) === null ? {} : found;
+  const root = rootOf(top, tree, at);
   const now = baseline(tree, root);
   const nowById = new Map(now.flatMap((f) => f.sections.filter((s) => s.id).map((s) => [s.id, { ...s, path: f.path }])));
   const then = c.sha ? byIdAt(top, c.sha) : null;
@@ -224,7 +231,7 @@ export function archivedLines(top, name) {
     if (!was && !is) return 'as at conclusion';
     if (was && is && sameSection(was, is.text)) return 'as at conclusion';
     if (!is) return 'removed since conclusion';
-    const later = [...new Set(blame(top, null, is.path, [[is.line, is.line + lineCount(is.text) - 1]], { code: false }).map((b) => b.sha))]
+    const later = [...new Set(blame(top, rev, is.path, [[is.line, is.line + lineCount(is.text) - 1]], { code: false }).map((b) => b.sha))]
       .filter((sha) => !/^0+$/.test(sha) && git(top, ['merge-base', '--is-ancestor', sha, c.sha], { allowFail: true }) === null)
       .map((sha) => requestOf(top, sha, requests, seen)).sort((x, y) => y.when - x.when);
     return later.length ? `since changed by ${later.map((x) => `${x.names.join(', ') || 'no request'} (${day(x.when)})`).join(', ')}` : 'since changed (not committed yet)';
@@ -253,7 +260,15 @@ export function liveCode(top, name, root, onlyIds) {
     ...git(top, ['log', '--format=%H', 'HEAD', '--', `requests/${name}/`, `requests/archive/${name}/`]).split('\n'),
   ].filter(Boolean);
   const mine = new Set([...new Set(candidates)].filter((sha) => requestOf(top, sha, requests, seen).names.includes(name)));
-  const touched = [...new Set([...mine].flatMap((sha) => filesOf(top, sha)))].filter(isCode(root)).sort();
+  const found = new Set([...mine].flatMap((sha) => filesOf(top, sha)).filter(isCode(root)));
+  // Code moves: a later commit that changed one of these files may have taken
+  // its lines into its other files, so those are read too.
+  const history = git(top, ['rev-list', '--reverse', 'HEAD']).split('\n').filter(Boolean);
+  for (const sha of mine.size ? history.slice(history.findIndex((s) => mine.has(s)) + 1) : []) {
+    const files = filesOf(top, sha).filter(isCode(root));
+    if (files.some((f) => found.has(f))) files.forEach((f) => found.add(f));
+  }
+  const touched = [...found].sort();
   const out = [];
   for (const path of touched) {
     const text = git(top, ['show', `HEAD:${path}`], { allowFail: true });
