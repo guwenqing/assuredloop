@@ -218,6 +218,30 @@ test('[VW-3][LNK-1] the baseline\'s blame honours -w and .git-blame-ignore-revs:
   assert.ok(!r.stdout.includes('2026-03-01') && !r.stdout.includes('2026-03-02'), `the sweeps are skipped:\n${r.stdout}`);
 });
 
+test('[VW-3][LNK-1] the baseline\'s blame reads an ignore list that also names a commit git does not know: the listed sweep is still skipped, and shaped-by names iso-dates alone', (t) => {
+  const GONE = '0123456789abcdef0123456789abcdef01234567';
+  const repo = makeRepo(t);
+  const INV3 = (b) => `## [INV-3] Dates\nDates MUST show in ISO 8601.\nThe time zone is ${b}.\n`;
+  repo.write('specs/invoices.md', INV1);
+  repo.commit('Initial spec', { date: '2026-01-10T12:00:00Z' });
+  repo.write('specs/invoices.md', file(INV1, INV3("the customer's")));
+  const wrote = repo.commit('ISO dates\n\nRequest: iso-dates', { date: '2026-02-10T12:00:00Z' });
+  repo.write('specs/invoices.md', file(INV1, INV3('the customer’s')));
+  const sweep = repo.commit('Typographic apostrophes', { date: '2026-03-02T12:00:00Z' });
+  repo.write('.git-blame-ignore-revs', `# From before the history rewrite\n${GONE}\n\n# The apostrophe sweep\n${sweep}\n`);
+  repo.commit('Ignore the sweeps in blame', { date: '2026-03-03T12:00:00Z' });
+  assert.throws(() => repo.git(['cat-file', '-e', GONE]), 'the fixture: git does not know the listed commit');
+  assertBlamed(repo, 'HEAD', 'specs/invoices.md', [6, 6], ['-w', '-M'], sweep);
+  assertBlamed(repo, 'HEAD', 'specs/invoices.md', [4, 6], ['-w', '-M', '--ignore-revs-file', '.git-blame-ignore-revs'], wrote);
+
+  const r = contextOf(repo, 'INV-3');
+  ok(r);
+  has(r.stdout, 'iso-dates', 'Request: line', '2026-02-10');
+  assert.ok(!r.stdout.includes('no request'), `the sweep is skipped:\n${r.stdout}`);
+  assert.ok(!r.stdout.includes('2026-03-02'), `the sweep is skipped:\n${r.stdout}`);
+  assertFrame(r.stdout);
+});
+
 test('[VW-3][LNK-1] link 3 skips and counts a commit over 30 files; a narrow commit still links', (t) => {
   const repo = makeRepo(t);
   const INV9 = (a, b) => `## [INV-9] Rounding\nTotals MUST round ${a}.\nTaxes MUST round ${b}.\n`;
