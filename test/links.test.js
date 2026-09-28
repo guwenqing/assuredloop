@@ -319,14 +319,15 @@ test('C5 [LNK-1] co-change skips and counts a 200-file commit ("over 30 files", 
 
 // --- A shallow clone ---
 
-test('C1 [VW-9][LNK-1] --diff in a shallow clone: blame and co-change say "history unavailable", never a false "no request"; the ID link still shows', (t) => {
+test('C1 [VW-9][LNK-1] --diff in a shallow clone: blame and co-change say "history unavailable", never a false "no request"; the ID link and the in-range commit\'s own mapping still show', (t) => {
   const repo = base(t);
   repo.write('src/dates.js', '// [INV-3] Dates\nexport function formatDate(d) {\n  return d.toISOString().slice(0, 10);\n}\n');
   repo.commit('ISO dates\n\nRequest: iso-dates', { date: '2026-02-01T12:00:00Z' });
   change(repo, 'specs/invoices.md', 'two decimals', 'two decimals, always');
   const tidy = repo.commit('Tidy the spec', { date: '2026-02-02T12:00:00Z' });
   change(repo, 'src/dates.js', 'slice(0, 10)', 'slice(0, 19)');
-  repo.commit('Dates with the time\n\nRequest: tz-dates', { date: '2026-02-03T12:00:00Z' });
+  // In the range, and present in the clone: it truly maps to no request, and Serves may say so.
+  repo.commit('Dates with the time', { date: '2026-02-03T12:00:00Z' });
   const clone = cloneRepo(t, repo, { depth: 2 });
   assert.equal(clone.git(['rev-parse', '--is-shallow-repository']), 'true');
   assert.equal(clone.git(['rev-list', '--count', 'HEAD']), '2', 'the fixture clone holds two commits');
@@ -342,7 +343,10 @@ test('C1 [VW-9][LNK-1] --diff in a shallow clone: blame and co-change say "histo
   ok(r);
   assertDiffFrame(r.stdout, 'origin/main');
   assert.ok(r.stdout.includes('history unavailable'), r.stdout);
-  assert.ok(!r.stdout.includes('no request'), `blame in a shallow clone gives no request to report:\n${r.stdout}`);
+  // The history-based links of the changed file: no blame result, and no co-change.
+  hasNo(r.stdout, 'src/dates.js', 'no request');
+  hasNo(r.stdout, 'src/dates.js', 'last changed by');
+  hasNo(r.stdout, 'src/dates.js', 'changed together');
   assert.doesNotMatch(r.stdout, /nothing found/i);
   has(r.stdout, 'src/dates.js', 'names [INV-3]', /\b2 lines above\b/);
 });
