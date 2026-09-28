@@ -11,7 +11,7 @@
 // Acceptance C4.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, runAl } from './helpers/fixture.js';
+import { makeRepo, runAl, sha256 } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { block, changeMd } from './helpers/change.js';
 import { ENV, addRequest, both } from './helpers/request.js';
@@ -91,6 +91,30 @@ for (const [kind, [path, text]] of Object.entries(WORK)) {
     strict(repo, 0);
   });
 }
+
+test('[REC-6][HNT-2] a branch that only writes blocked iso-dates\' own request.md (an owner\'s words entry) and origin/ (a snapshot) delivers no work: no "blocked", check --strict exits 0, the sign-off note stays; a change.md edit on top is "blocked"', (t) => {
+  const repo = base(t);
+  const entry = '- 2026-09-20 owner chat, snapshot origin/2026-09-20-owner-words.md\n';
+  const md = repo.read(MD).toString();
+  assert.ok(md.includes(entry), 'the fixture: the owner\'s words entry');
+  repo.write(MD, md.replace(entry, `${entry}- 2026-09-22 owner call, snapshot origin/2026-09-22-call.md\n`));
+  const call = 'One invoice at a time, for now.\n';
+  const snapshot = 'requests/iso-dates/origin/2026-09-22-call.md';
+  repo.write(snapshot, `Source: chat with the owner\nFetched: 2026-09-22T09:00Z\nSHA-256: ${sha256(call)}\n---\n${call}`);
+  repo.commit(message('The owner\'s call', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-21T12:00:00Z' });
+  assert.deepEqual(repo.git(['diff', '--name-only', 'main', 'HEAD']).split('\n'), [snapshot, MD], 'the fixture: only request.md and origin/ change');
+  assert.ok(blocked(repo), 'the fixture: iso-dates is still blocked');
+  const out = check(repo, '--all');
+  noHint(out, 'not ok', 'blocked');
+  hint(out, 'note', SIGN_OFF, PENDING, 'iso-dates');
+  strict(repo, 0);
+
+  const [path, text] = WORK['spec work in its change.md'];
+  repo.write(path, text);
+  repo.commit(message('INV-4 block', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-22T12:00:00Z' });
+  assertCounts(hint(check(repo, '--all'), 'not ok', 'blocked', /iso-dates|INV-3/));
+  strict(repo, 1);
+});
 
 // A branch that maps to no request changes INV-3 to `text`, claiming tier 1.
 function unmapped(t, text, opts) {
