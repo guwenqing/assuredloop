@@ -20,14 +20,14 @@ const COMMANDS = {
       'builds-on': { type: 'string' }, accept: { type: 'boolean' }, decision: { type: 'string' }, text: { type: 'string' },
     },
   },
-  context: { run: context, options: { at: { type: 'string' }, diff: { type: 'string' }, for: { type: 'string' }, all: { type: 'boolean' } } },
+  context: { run: context, options: { at: { type: 'string' }, diff: { type: 'string' }, for: { type: 'string' }, all: { type: 'boolean' }, audit: { type: 'boolean' } } },
   spec: {
     run: spec,
     options: { at: { type: 'string' }, list: { type: 'boolean' }, 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } },
   },
   consolidate: { run: consolidate, options: { section: { type: 'string' }, revert: { type: 'string' }, yes: { type: 'boolean' } } },
   conclude: { run: conclude, options: { dropped: { type: 'string' }, yes: { type: 'boolean' } } },
-  check: { run: check, options: { strict: { type: 'boolean' }, all: { type: 'boolean' } } },
+  check: { run: check, options: { at: { type: 'string' }, strict: { type: 'boolean' }, all: { type: 'boolean' } } },
 };
 const USAGE = 'al new | record | context | spec | consolidate | conclude | check';
 
@@ -67,7 +67,7 @@ function main(argv) {
 
 function print(body, read, main, next, notKnown) {
   const unknown = main.unknown ? [...notKnown, main.unknown] : notKnown;
-  const text = [...body, line('Read', `${read} · ${main.label}`), line('Next', next), line('Not known', unknown.join('; '))]
+  const text = [...body, line('Read', `${read} · ${main.label}`), line('Next', next), line('Not known', unknown.join('; ') || 'nothing beyond what is shown')]
     .join('\n');
   process.stdout.write(text + '\n');
 }

@@ -5,6 +5,8 @@ import { Fail, git, historyGap, isShallow } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, numberHeadings } from './sections.js';
 import { line } from './commands.js';
+import { allBlocks, statesOf } from './states.js';
+import { sameSection } from './sections.js';
 
 const PREFIX = /^[A-Z][A-Z0-9]*$/;
 
@@ -68,16 +70,32 @@ export function spec(ctx) {
   if (!files.length) {
     return { tree, body: [`no baseline yet; requests add sections as they go (root: ${root}/)`], next: 'al new <name> --from <file|->', notKnown };
   }
+  // [VW-5]: each open change under the section it holds; an add not in the
+  // baseline yet under the section it is added after.
+  const blocks = allBlocks(tree);
+  const held = statesOf(files, blocks);
+  const ids = new Set(files.flatMap((f) => f.sections.map((s) => s.id)));
+  const under = (id) => held.filter((e) => e.id === id || (!ids.has(e.id) && blocks.get(e.block).anchor === id));
+  const overlay = (s, text) => under(s.id).flatMap((e) => {
+    const now = blocks.get(e.block).now;
+    const same = now && e.id === s.id && sameSection(now, s.text);
+    return [`>> ${e.block} ${e.state}${e.by ? ` ${e.by}` : ''}${!text ? '' : !now ? ', removes it' : same ? ', now as above' : ', now:'}`,
+      ...(text && now && !same ? now.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`) : [])];
+  });
   const body = [];
   for (const f of files) {
     body.push(line(body.length ? '' : 'Map', f.path));
-    for (const s of f.sections) body.push(`${' '.repeat(12)}${s.id ? `[${s.id}] ` : ''}${s.title}`);
+    for (const s of f.sections) body.push(`${' '.repeat(12)}${s.id ? `[${s.id}] ` : ''}${s.title}`, ...overlay(s).map((l) => `${' '.repeat(14)}${l}`));
   }
   body.push(line('Covers', files.map((f) => `${f.path} (${f.sections.length} sections)`).join(' · ')));
   const hints = duplicates(files);
   body.push(...hints);
   if (!opts.list) {
-    for (const f of files) body.push('', `==> ${f.path}`, f.text.replace(/\n$/, ''));
+    for (const f of files) {
+      const preamble = f.text.slice(0, f.text.length - f.sections.reduce((n, s) => n + s.text.length, 0));
+      body.push('', `==> ${f.path}`, ...(preamble ? [preamble.replace(/\n$/, '')] : []));
+      for (const s of f.sections) body.push(s.text.replace(/\n$/, ''), ...overlay(s, true));
+    }
     body.push('');
   }
   return {
