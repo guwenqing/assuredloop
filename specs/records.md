@@ -42,3 +42,29 @@ section as signed, and its SHA-256. `request.md` MUST point to it with a
 `Signed off:` line. The latest sign-off counts. A child request that copies
 some of the parent's signed requirements word for word inherits the parent's
 latest sign-off for them.
+
+## [REC-6] The blocked state
+A request is **blocked** while its organized section has no sign-off, or
+differs from the text last signed off. Work MAY be drafted while it is
+blocked, but MUST be delivered with the sign-off or after it. While a request
+is blocked: `consolidate` and `conclude` MUST refuse for it, except
+`consolidate --revert` and `conclude --dropped` when every section retains
+nothing ([STA-3]); `context` MUST show the blocked state first; and `check`
+MUST report `not ok` for a branch whose final state delivers spec work or
+other work for the request while it is still blocked in that state. A branch
+that brings the sign-off with the work is not blocked. `record signoff` MUST
+show only what changed since the last sign-off.
+
+## [REC-7] Decisions
+Decisions made after the request MUST be recorded in `request.md` as numbered,
+dated, append-only entries (D1, D2…), each with its source: the owner, a
+review, or the agent. A decision MAY supersede an earlier one, cite the
+section IDs it concerns, or point to the ADR it produced. The kinds (scope,
+approved change, implementation-only, rejected) are a writing convention; no
+check depends on them.
+
+## [REC-8] Parts
+A request MAY list its parts as free text. A part MAY name a child request,
+whose state is then shown on the parent as a hint. The tool MUST NOT claim a
+part is done from the commits it finds; completion is only what someone
+reported.
