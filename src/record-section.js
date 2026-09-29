@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { Fail, now, stamp } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { rootOf, baseline } from './spec.js';
-import { blockFault, parseChange, takeText } from './states.js';
+import { blockFault, parseChange, takeText, withRepeats } from './states.js';
 import { requestToWrite } from './commands.js';
 import { headingFault } from './consolidate.js';
 
@@ -106,7 +106,7 @@ export function recordSection({ top, args, opts }) {
   }
 
   // [SPC-5]: the request's blocks that break the one-heading rule, said; drafting is never refused.
-  const faults = (change ? parseChange(change, name) : []).flatMap((b) => [blockFault(b), ...[[b.now, 'Now'], [b.was, 'Was']].map(([t, side]) => t !== null && headingFault(b, t, side))])
+  const faults = withRepeats(change ? parseChange(change, name) : []).flatMap((b) => [blockFault(b), ...[[b.now, 'Now'], [b.was, 'Was']].map(([t, side]) => t !== null && headingFault(b, t, side))])
     .filter(Boolean).map((f) => `not ok: ${f}; fix it in ${changePath}, then al context ${name}`);
   if (!opts.yes) return { body: ['Would write:', ...shown, ...faults], next: 'run the same command with --yes to write it', notKnown };
   writeFileSync(join(top, changePath), newChange);

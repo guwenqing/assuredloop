@@ -131,6 +131,9 @@ export function consolidate({ top, args, opts }) {
     return refuse(dups.map(([d, at]) => `duplicate ID [${d}] in ${at.join(' and ')}; no consolidate writes until it is fixed ([SPC-3])`),
       'rename one copy of each duplicate ID by hand, to a new ID; an ID is never reused');
   }
+  // [SPC-5]: a block that can't be read as written is fixed before any write, a revert included.
+  const unreadable = mine.map(blockFault).filter(Boolean);
+  if (unreadable.length) return refuse(unreadable, `fix the blocks named in ${dir}/change.md`);
   if (opts.revert !== undefined) return revert({ top, root, name, id, mine, blocks, texts, original, opts, refuse });
 
   const state = signoffState(tree, dir, name);
@@ -140,7 +143,7 @@ export function consolidate({ top, args, opts }) {
   }
   const todo = mine.filter((b) => !b.dropped);
   if (id !== undefined && !todo.length) return refuse([`every block of [${id}] in ${name} is marked Dropped, and a dropped section is not written`]);
-  const faults = [...mine.map(blockFault), ...todo.filter((b) => b.now !== null).map((b) => headingFault(b, b.now, 'Now'))].filter(Boolean);
+  const faults = todo.filter((b) => b.now !== null).map((b) => headingFault(b, b.now, 'Now')).filter(Boolean);
   if (faults.length) return refuse(faults, `fix the blocks named in ${dir}/change.md`);
 
   // Write one pending block at a time, re-reading the states after each, so a
