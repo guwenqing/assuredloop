@@ -40,7 +40,7 @@ export function parseChange(text, request) {
       b = {
         request, id, n: Number(n), key: `${request}/${id}@${n}`,
         // [SPC-5]'s ops, the whole token matched; any other is a fault (blockFault), never a remove.
-        op: OPS[rest.split(/\s+/)[0]] ?? null,
+        op: OPS.get(rest.split(/\s+/)[0]) ?? null,
         opWord: rest.split(/\s+/)[0] ?? '',
         path: rest.match(/^add in (\S+)/)?.[1] ?? null,
         anchor: rest.match(/^(?:add after|remove, was after) \[([^\]]+)\]/)?.[1] ?? null,
@@ -103,7 +103,8 @@ export function blockFault(b) {
 }
 
 // The op tokens of [SPC-5]: `modify`, `add in|after …`, `remove, was after …`.
-const OPS = { modify: 'modify', add: 'add', 'remove,': 'remove', remove: 'remove' };
+// A Map, so no name an object inherits (constructor, toString…) reads as one.
+const OPS = new Map([['modify', 'modify'], ['add', 'add'], ['remove,', 'remove'], ['remove', 'remove']]);
 
 // Blocks with a repeated request/ID@n marked `repeated`, the first kept ([SPC-5]).
 export function withRepeats(list) {
