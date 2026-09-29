@@ -265,29 +265,32 @@ function importers(top, at, path) {
 
 // The relative specifiers `text` imports or requires, as [how, spec], read left
 // to right: comments and the text of strings and templates are skipped whole,
-// and a template's ${…} expressions are read as code.
-// `from` only as an ESM clause, never a call; nothing after a `.` (a method).
-const SPEC = /(?<![\w$.])(?:(from)\s*|(import)\s*\(?\s*|(require)\s*\(\s*)(['"])(\.{1,2}\/[^'"\n]*)\4/y;
+// and a template's ${…} expressions are read as code. `from` counts only as an
+// ESM clause, never a call, and nothing whose last code before it is a `.` (a
+// method, whatever spaces or comments come between).
+const SPEC = /(?<![\w$])(?:(from)\s*|(import)\s*\(?\s*|(require)\s*\(\s*)(['"])(\.{1,2}\/[^'"\n]*)\4/y;
 function specifiers(text) {
   const out = [];
   const braces = []; // for each ${ we are inside, the { depth within it
   let inTemplate = false;
+  let last = ''; // the last character of code read, spaces and comments aside
   for (let i = 0; i < text.length;) {
     const c = text[i];
     const two = text.slice(i, i + 2);
     if (inTemplate) {
       if (c === '\\') i += 2;
-      else if (c === '`') { inTemplate = false; i++; }
-      else if (two === '${') { braces.push(0); inTemplate = false; i += 2; }
+      else if (c === '`') { inTemplate = false; last = c; i++; }
+      else if (two === '${') { braces.push(0); inTemplate = false; last = '{'; i += 2; }
       else i++;
       continue;
     }
     SPEC.lastIndex = i;
-    const m = 'fir'.includes(c) && SPEC.exec(text);
-    if (m) { out.push([m[1] ?? m[2] ?? m[3], m[5]]); i = SPEC.lastIndex; }
-    else if (two === '//') { const n = text.indexOf('\n', i); i = n < 0 ? text.length : n; }
-    else if (two === '/*') { const n = text.indexOf('*/', i + 2); i = n < 0 ? text.length : n + 2; }
-    else if (c === '"' || c === "'") {
+    const m = last !== '.' && 'fir'.includes(c) && SPEC.exec(text);
+    if (m) { out.push([m[1] ?? m[2] ?? m[3], m[5]]); last = text[SPEC.lastIndex - 1]; i = SPEC.lastIndex; continue; }
+    if (two === '//') { const n = text.indexOf('\n', i); i = n < 0 ? text.length : n; continue; }
+    if (two === '/*') { const n = text.indexOf('*/', i + 2); i = n < 0 ? text.length : n + 2; continue; }
+    if (!/\s/.test(c)) last = c;
+    if (c === '"' || c === "'") {
       let j = i + 1;
       while (j < text.length && text[j] !== c && text[j] !== '\n') j += text[j] === '\\' ? 2 : 1;
       i = j + 1;
