@@ -24,7 +24,7 @@ Signed off: 2026-09-29 owner, origin/2026-09-29-signoff.md
 
 ## Outcome
 
-- R1 Grouped by default, everything on request: in no section
+- R1 Grouped by default, everything on request: in [VW-2], [VW-6]
 - Added: none
 - Modified: none
 - Removed: none
@@ -37,8 +37,4 @@ Signed off: 2026-09-29 owner, origin/2026-09-29-signoff.md
 
 Notes:
 
-R1 amends [VW-2] and [VW-6] (the `Amends:` line), which this request's PR
-edits in specs/views.md. The generated fate reads "in no section" because the
-tool reads a requirement's fate from `for R<n>` in change.md blocks, and a
-tier-1 request has no change.md; design.md counts `Amends:` as citing, but no
-spec section or code does yet. Raised with the architect as a follow-up.
+R1's fate first read "in no section", since `Amends:` counted nowhere; fixed by the tier-0 PR #93 before this merged.
