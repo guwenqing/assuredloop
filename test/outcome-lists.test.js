@@ -17,7 +17,7 @@ import { makeRepo, runAl } from './helpers/fixture.js';
 import { block } from './helpers/change.js';
 import { ENV, addRequest, both, outcome } from './helpers/request.js';
 import { file } from './helpers/links.js';
-import { check, hint, message, noHint } from './helpers/hints.js';
+import { check, checkHints, hint, kindOf, message, noHint } from './helpers/hints.js';
 
 const sec = (id, text) => `## [${id}] Rule ${id}\n${text}\n`;
 const A1 = sec('A-1', 'The view MAY group repeated output.');
@@ -132,7 +132,11 @@ const listOf = (repo, name, kind) => {
   return generated.find((g) => g.startsWith(`- ${kind}:`));
 };
 
-test('[REC-9][LNK-2] PR #94: two tier-1 requests concluded on one branch each list only their own work: grouping Modified [A-1], exporting Modified [A-2]; check gives neither a note for the other\'s section', (t) => {
+// Main: grouping (Amends: [A-1]) and exporting (Amends: [A-2]), both signed
+// tier-1. On the branch `both`: the A-1 edit committed for grouping, then
+// grouping concluded and committed; the A-2 edit committed for exporting,
+// then exporting concluded and committed.
+function twoRequests(t) {
   const repo = makeRepo(t);
   repo.write('specs/rules.md', file(A1, A2));
   for (const [name, id] of [['grouping', 'A-1'], ['exporting', 'A-2']]) {
@@ -149,6 +153,11 @@ test('[REC-9][LNK-2] PR #94: two tier-1 requests concluded on one branch each li
   };
   step('grouping', file(A1B, A2), '29');
   step('exporting', file(A1B, A2B), '30');
+  return repo;
+}
+
+test('[REC-9][LNK-2] PR #94: two tier-1 requests concluded on one branch each list only their own work: grouping Modified [A-1], exporting Modified [A-2]; check gives neither a note for the other\'s section', (t) => {
+  const repo = twoRequests(t);
   assert.equal(listOf(repo, 'grouping', 'Modified'), '- Modified: [A-1]');
   assert.equal(listOf(repo, 'exporting', 'Modified'), '- Modified: [A-2]');
   const out = check(repo, '--all');
@@ -168,4 +177,40 @@ test('[REC-9][HNT-2] PR #94: the fallback is for a request with no change.md, no
   assert.ok(repo.read('requests/archive/grouping/change.md').toString().includes('## Spec changes'), 'the fixture: change.md with an empty ## Spec changes');
   assert.deepEqual(lists, ['- Added: none', '- Modified: none', '- Removed: none']);
   noHint(check(repo, '--all'), 'note', /Amends/);
+});
+
+// --- PR #94 re-review: "did not change" is about the section; --at reads history up to X ---
+
+test('[HNT-2] PR #94: A-1 edited and grouping concluded, the edit not yet committed: check gives no note that its Amends: names [A-1] "which did not change"; nor once the same bytes are committed', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/rules.md', file(A1, A2));
+  const org = organized('[A-1]');
+  addRequest(repo, 'grouping', null, { line: TIER1, org, signedText: org, decisions: '' });
+  repo.commit(message('grouping: request', { request: 'grouping', tier: '1 — grouping' }), { date: '2026-09-28T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'grouping']);
+  repo.write('specs/rules.md', file(A1B, A2));
+  ok(al(repo, 'conclude', 'grouping', '--yes'), 'conclude');
+  assert.notEqual(repo.git(['status', '--porcelain', '--', 'specs/rules.md']), '', 'the fixture: the A-1 edit is not committed');
+  noHint(check(repo, '--all'), 'note', 'A-1', /Amends/);
+  repo.commit(message('grouping: amend and conclude', { request: 'grouping', tier: '1 — grouping' }), { date: '2026-09-29T12:00:00Z' });
+  noHint(check(repo, '--all'), 'note', 'A-1', /Amends/);
+});
+
+test('[VW-8][HNT-2] PR #94: check --at X scans the commits from the fork to X only: a later commit that edits A-2 for grouping does not add a "grouping changes [A-2]" note to the same check --all --at X', (t) => {
+  const repo = twoRequests(t);
+  const x = repo.head();
+  const atX = () => {
+    const r = runAl(repo.dir, ['check', '--all', '--at', x]);
+    assert.equal(r.code, 0, both(r));
+    const read = r.stdout.split('\n').find((l) => /^Read\b/.test(l));
+    assert.ok(read && read.includes(x.slice(0, 7)), `the Read line should name ${x.slice(0, 7)}:\n${r.stdout}`);
+    return { out: r.stdout, read };
+  };
+  const before = atX();
+  assert.deepEqual(checkHints(before.out).filter((l) => kindOf(l) === 'note' && /Amends/.test(l)), [], `no Amends: note at X:\n${before.out}`);
+  repo.write('specs/rules.md', file(A1B, sec('A-2', 'Groups keep their first-seen order, always.')));
+  repo.commit(message('grouping: A-2 too', { request: 'grouping', tier: '1 — grouping' }), { date: '2026-10-01T12:00:00Z' });
+  const after = atX();
+  assert.deepEqual(checkHints(after.out).filter((l) => kindOf(l) === 'note' && /Amends/.test(l)), [], `a commit after X changes nothing at X:\n${after.out}`);
+  assert.equal(after.read, before.read, 'both runs read the same commit');
 });
