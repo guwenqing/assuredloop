@@ -9,7 +9,7 @@ import { sameSection } from './sections.js';
 import { latestSignoff, organized, parts } from './signoff.js';
 import { line, lines, grouped, decisionList, entriesOf, concluding, fitOrCount } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
-import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
+import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
 import { headNote, resultLines, testLines, testMatcher } from './tests.js';
 import { adrFolders, governing } from './adrs.js';
 
@@ -304,12 +304,10 @@ function byIdAt(top, sha) {
 // tree's records, by default).
 export function liveCode(top, name, root, onlyIds, at = 'HEAD') {
   const requests = requestsIn(openTree(top, at === 'HEAD' ? undefined : at));
-  const seen = new Map();
-  const candidates = [
-    ...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', at]).split('\n'),
-    ...git(top, ['log', '--format=%H', at, '--', `requests/${name}/`, `requests/archive/${name}/`]).split('\n'),
-  ].filter(Boolean);
-  const mine = new Set([...new Set(candidates)].filter((sha) => requestOf(top, sha, requests, seen).names.includes(name)));
+  // Every route [LNK-2] maps by, the issue numbers in its owner's words included.
+  const md = requests.find((r) => r.name === name)?.md ?? '';
+  const issues = [...new Set(entriesOf(md, "Owner's words and dialog").join('\n').match(/#\d+/g) ?? [])];
+  const mine = new Set(requestCommits(top, name, issues, at, requests).map((c) => c.sha));
   const found = new Set([...mine].flatMap((sha) => filesOf(top, sha)).filter(isCode(root)));
   // Code moves: a later commit that changed one of these files may have taken
   // its lines into its other files, so those are read too.
