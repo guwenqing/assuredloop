@@ -1,5 +1,6 @@
-// al context <name> for an archived request [VW-6]: one line per held
-// section, "as at conclusion" when today's baseline section equals its text
+// al context <name> for an archived request [VW-6]: each held section, on
+// the Sections line grouped by what is said of it (request context-all,
+// R1), "as at conclusion" when today's baseline section equals its text
 // at the concluding commit on main [STA-8], else "since changed by <request>
 // (<date>)" from blame of today's section lines, taking commits after the
 // concluding one [LNK-2]; a request archived only on this branch compares
@@ -13,7 +14,8 @@ import { makeRepo, cloneRepo, runAl } from './helpers/fixture.js';
 import { assertFrame, lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
 import { addRequest, both, lineWith, statusLine } from './helpers/request.js';
-import { file, says, squashMerge } from './helpers/links.js';
+import { file, squashMerge } from './helpers/links.js';
+import { stateOf } from './helpers/grouped.js';
 
 const INV1 = '## [INV-1] Totals\nTotals MUST show two decimals.\n';
 const S0 = "## [INV-3] Dates\nDates show in the customer's local format.\n";
@@ -27,9 +29,15 @@ const OUTCOME = '\n## Outcome\n\n' +
 
 const has = (out, ...parts) => assert.ok(lineWith(out, ...parts), `expected a line with ${parts.map(String).join(' and ')}:\n${out}`);
 const hasNo = (out, ...parts) => assert.ok(!lineWith(out, ...parts), `expected no line with ${parts.map(String).join(' and ')}:\n${out}`);
-// The section `id` said to be `word` (a string or RegExp), or not.
-const is = (out, id, word) => assert.ok(says(out, id, word), `expected ${id} to read ${word}:\n${out}`);
-const isNot = (out, id, word) => assert.ok(!says(out, id, word), `expected ${id} not to read ${word}:\n${out}`);
+// The section `id` said to be `word` (a string or RegExp), or not: the
+// state of its group on the Sections line, grouped by what [VW-6] says
+// (request context-all, R1).
+const reads = (out, id, word) => {
+  const state = stateOf(out, 'Sections', id);
+  return state !== null && (word instanceof RegExp ? word.test(state) : state.includes(word));
+};
+const is = (out, id, word) => assert.ok(reads(out, id, word), `expected ${id} to read ${word}:\n${out}`);
+const isNot = (out, id, word) => assert.ok(!reads(out, id, word), `expected ${id} not to read ${word}:\n${out}`);
 function context(repo, name = 'iso-dates') {
   const r = runAl(repo.dir, ['context', name]);
   assert.equal(r.code, 0, both(r));

@@ -4,8 +4,8 @@
 // reason; a repo with no baseline says "no baseline yet; requests add
 // sections as they go"; --at <commit> lists them as at that commit [VW-8].
 // And the Spec line of al context <name> [VW-2]@2: each held section with its
-// state, or, when they do not fit on one line, the count in each state with
-// every section named except those consolidated, carried or pending.
+// state, or, when they do not fit on one line, every section grouped by
+// state, "<count> <state>: <ids>", none left out (request context-all, R1).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, runAl } from './helpers/fixture.js';
@@ -14,6 +14,7 @@ import { block } from './helpers/change.js';
 import { ORG, addRequest, both, hasId } from './helpers/request.js';
 import { file } from './helpers/links.js';
 import { count, short } from './helpers/evidence.js';
+import { stateOf } from './helpers/grouped.js';
 
 const INV1 = '## [INV-1] Totals\nTotals MUST show two decimals.\n';
 const S0 = "## [INV-3] Dates\nDates show in the customer's local format.\n";
@@ -169,25 +170,26 @@ test('[VW-2] a request holding a few sections: the Spec line names each with its
   assert.ok(hasId(spec, 'INV-4') && spec.includes('pending'), `INV-4 pending:\n${spec}`);
 });
 
-test('[VW-2]@2 a request holding 30 sections: the Spec line is one line, far shorter than the full list, gives the count in each state, and names every section except the consolidated, carried or pending ones', (t) => {
+test('[VW-2]@2 a request holding 30 sections: the Spec line is one line, far shorter than the full list, gives the count in each state, and names every section in its state\'s group, none left out (context-all R1)', (t) => {
   const repo = bigRequest(t);
   const r = project(repo, 'big-change');
   ok(r);
   const spec = specLine(r.stdout);
   // One line, far shorter than listing all 30: under a quarter of the list
   // form's length, each section as "INV-n <state> (R1)" joined by " · ".
-  // The shortest honest one here is about 165, the waiting block naming what
-  // it waits on (#89 (d)); the list is about 750.
+  // Grouped, with every section named, runs of IDs ranged (INV-11–30) and
+  // the waiting block naming what it waits on (#89 (d)), it is about 175;
+  // the list is about 750.
   const list = Object.entries(STATES).flatMap(([state, ns]) => ns.map((n) => `INV-${n} ${state} (R1)`)).join(' · ');
   assert.ok(spec.length < list.length / 4, `the Spec line should be far shorter than the full list (${list.length} characters), under a quarter of it, got ${spec.length}:\n${spec}`);
   for (const [state, ns] of Object.entries(STATES)) {
     assert.match(spec, count(ns.length, state), `the Spec line should give ${ns.length} ${state}:\n${spec}`);
   }
-  for (const n of [...STATES.differs, ...STATES['not found'], ...STATES.waiting, ...STATES['no change yet']]) {
-    assert.ok(hasId(spec, `INV-${n}`), `the Spec line should name INV-${n}:\n${spec}`);
-  }
-  for (const n of [...STATES.consolidated, ...STATES.pending]) {
-    assert.ok(!hasId(spec, `INV-${n}`), `the Spec line should not name INV-${n}:\n${spec}`);
+  for (const [state, ns] of Object.entries(STATES)) {
+    for (const n of ns) {
+      const key = state === 'waiting' ? `INV-${n}@1` : `INV-${n}`;
+      assert.equal(stateOf(spec, 'Spec', key), state, `the Spec line should name ${key} as ${state}:\n${spec}`);
+    }
   }
   assertFrame(r.stdout);
 });

@@ -9,10 +9,13 @@ tier and state; its owner's words and snapshots, with whether each was
 re-checked; its sign-off state, and which requirements changed since, if any;
 the decisions, newest first, with agent rulings marked; each held section
 with its state and its requirement, or, when they do not fit on one line,
-the count in each state with every section named except those
-consolidated, carried or pending; the parts; other changes holding sections
-in the same file; at most three hints; then a Next line (the command to run)
-and a Not known line (what could not be checked).
+every held section grouped by state; the parts; other changes holding
+sections in the same file; at most three hints; then a Next line (the command
+to run) and a Not known line (what could not be checked). It MAY group
+repeated output, but MUST NOT leave out a section. `al context <name> --all`
+MUST show everything in full, beyond twelve lines if need be: each held
+section on its own line with its state and its requirement, each decision
+with its text, and every hint.
 
 ## [VW-3] Everything about one section
 `al context <ID>` MUST show the section's text, the open changes holding it,
@@ -35,8 +38,9 @@ then the text, with each open change's "now" and state under the section it
 holds. A partial baseline MUST say which areas it covers.
 
 ## [VW-6] Archived requests
-An archived request MUST show each of its sections "as at conclusion", and
-what has changed it since (from blame), and MUST list the later requests that
+An archived request MUST show each of its sections "as at conclusion", or
+what has changed it since (from blame), grouped by what it says with none left
+out, and one per line with `--all`; and it MUST list the later requests that
 follow it.
 
 ## [VW-7] Audit on demand

@@ -20,10 +20,11 @@ import assert from 'node:assert/strict';
 import { makeRepo, runAl } from './helpers/fixture.js';
 import { assertFrame, lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
-import { addRequest, both, hasId } from './helpers/request.js';
+import { addRequest, both } from './helpers/request.js';
 import { file, says } from './helpers/links.js';
 import { check, checkHints, hint, kindOf, message, noHint, viewHints } from './helpers/hints.js';
 import { count } from './helpers/evidence.js';
+import { stateOf } from './helpers/grouped.js';
 
 const NAME = 'invoice-download';
 const DIR = `requests/${NAME}`;
@@ -197,10 +198,10 @@ test('[HNT-1] C10: the default context invoice-download (no --all) shows the not
 
 // --- 3. [VW-2]@2 the Spec line: dropped and kept ---
 
-test('[VW-2]@2 C10: the Spec line, in the count form, shows INV-5 as 1 dropped (INV-5), not as pending: 1 pending, 1 consolidated, 1 waiting', (t) => {
+test('[VW-2]@2 C10: the Spec line, grouped, shows INV-5 as 1 dropped: INV-5, not as pending: 1 pending, 1 consolidated, 1 waiting', (t) => {
   const repo = c10(t);
   const spec = specLine(context(repo));
-  assert.match(spec, /\b1 dropped \(INV-5(@1)?\)/, `INV-5 should read 1 dropped (INV-5):\n${spec}`);
+  assert.equal(stateOf(spec, 'Spec', 'INV-5'), 'dropped', `INV-5 should read dropped:\n${spec}`);
   assert.match(spec, count(1, 'pending'), `only INV-2@1 is pending:\n${spec}`);
   assert.doesNotMatch(spec, /\b2 pending\b/, `a dropped add is not folded into pending:\n${spec}`);
   assert.match(spec, count(1, 'consolidated'), spec);
@@ -224,7 +225,7 @@ test('[VW-2]@2 the Spec line, in the list form: a kept block reads kept, not con
   assert.ok(says(spec, 'INV-4', 'consolidated'), `INV-4 consolidated:\n${spec}`);
 });
 
-test('[VW-2]@2 the Spec line, in the count form: 1 dropped (INV-5) and 1 kept (INV-7), each named; the consolidated and pending ones are not named', (t) => {
+test('[VW-2]@2 the Spec line, grouped: 1 dropped: INV-5 and 1 kept: INV-7; the consolidated and pending ones are named too, none left out (context-all R1)', (t) => {
   const W = (n) => `## [INV-${n}] Rule ${n}\nRule ${n} holds.\n`;
   const N = (n) => `## [INV-${n}] Rule ${n}\nRule ${n} MUST hold.\n`;
   const repo = makeRepo(t);
@@ -237,13 +238,12 @@ test('[VW-2]@2 the Spec line, in the count form: 1 dropped (INV-5) and 1 kept (I
   ], { org: ORG_NO_R3, signedText: ORG_NO_R3, decisions: `\n## Decisions\n\n${D1}` });
   repo.commit('Fourteen sections', { date: '2026-09-21T12:00:00Z' });
   const spec = specLine(context(repo, 'many'));
-  assert.match(spec, /\b1 dropped \(INV-5(@1)?\)/, `1 dropped (INV-5):\n${spec}`);
-  assert.match(spec, /\b1 kept \(INV-7(@1)?\)/, `1 kept (INV-7):\n${spec}`);
+  assert.equal(stateOf(spec, 'Spec', 'INV-5'), 'dropped', `INV-5 should read dropped:\n${spec}`);
+  assert.equal(stateOf(spec, 'Spec', 'INV-7'), 'kept', `INV-7 should read kept:\n${spec}`);
   assert.match(spec, count(6, 'consolidated'), spec);
   assert.match(spec, count(6, 'pending'), spec);
-  for (const n of [11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25, 26]) {
-    assert.ok(!hasId(spec, `INV-${n}`), `the Spec line should not name INV-${n}:\n${spec}`);
-  }
+  for (const n of [11, 12, 13, 14, 15, 16]) assert.equal(stateOf(spec, 'Spec', `INV-${n}`), 'consolidated', `INV-${n}:\n${spec}`);
+  for (const n of [21, 22, 23, 24, 25, 26]) assert.equal(stateOf(spec, 'Spec', `INV-${n}`), 'pending', `INV-${n}:\n${spec}`);
 });
 
 // --- 4. the sign-off hint passes --words ---
