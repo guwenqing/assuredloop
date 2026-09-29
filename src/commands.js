@@ -81,6 +81,35 @@ export function fitOrCount(label, held, text, id) {
     .map(([s, es]) => `${es.length} ${s}${['consolidated', 'carried', 'pending'].includes(s) ? '' : ` (${es.map(id).join(', ')})`}`).join(' · '));
 }
 
+// [VW-2], [VW-6]: items grouped by state, `<count> <state>: <ids>`, none left
+// out. IDs of one prefix whose last numbers run on read as a range, REC-1–3;
+// an item marked `alone` (an ID@n, a waiting block) is never ranged.
+const ID_PARTS = /^([A-Z][A-Z0-9]*)-(\d+(?:\.\d+)*)$/;
+export function grouped(label, items) {
+  const groups = [...new Set(items.map((x) => x.state))].map((s) => {
+    const xs = items.filter((x) => x.state === s);
+    const names = [];
+    let run = null;
+    const flush = () => { if (run) names.push(run.first === run.last ? run.first : `${run.first}–${run.last.slice(run.prefix.length + 1)}`); run = null; };
+    for (const x of xs) {
+      const m = !x.alone && x.text.match(ID_PARTS);
+      const nums = m ? m[2].split('.').map(Number) : null;
+      const next = run && m && run.prefix === m[1] && run.nums.length === nums.length
+        && run.nums.slice(0, -1).join('.') === nums.slice(0, -1).join('.') && nums.at(-1) === run.nums.at(-1) + 1;
+      if (next) { run.last = x.text; run.nums = nums; continue; }
+      flush();
+      if (m) run = { prefix: m[1], first: x.text, last: x.text, nums };
+      else names.push(x.text);
+    }
+    flush();
+    return `${xs.length} ${s}: ${names.join(', ')}`;
+  });
+  return line(label, groups.join(' · '));
+}
+
+// A labelled block of lines: the label on the first, the rest under it.
+export const lines = (label, texts) => texts.map((t, i) => line(i ? '' : label, t));
+
 function readInput(from, cwd) {
   if (from === undefined) throw new Fail('--from <file|-> is missing', 'pass the text with --from <file>, or --from - on standard input');
   try {
@@ -322,14 +351,16 @@ export function context({ top, args, opts }) {
   const body = [
     ...(state.blocked ? [`BLOCKED: ${state.reason}${changed}`] : []),
     `${name}  ${title}  ${head.join(' · ')}`,
-    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name, opts.at)), ...archivedLines(top, name, opts.at)] : []),
+    ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name, opts.at)), ...archivedLines(top, name, opts.at, opts.all)] : []),
     line('Require', state.blocked ? `${state.reason}${changed}${changed && state.signoff ? `; al record ${name} signoff --source <where> shows what changed` : ''}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
   // [VW-2]: the decisions, the held sections, the parts, and who else holds sections in the same files.
   const text = md.join('\n');
   const decisions = decisionList(text).reverse().map((d) => `${d.id} ${d.date}${d.agent ? ' (agent ruling)' : ''}`.trim());
-  if (decisions.length) body.push(line('Decided', decisions.join(' · ')));
+  // --all, the verbose mode ([VW-2]): each decision in full, newest first.
+  if (opts.all) body.push(...lines('Decided', entriesOf(text, 'Decisions').filter((e) => /^- D\d+/.test(e)).reverse().map((e) => e.slice(2))));
+  else if (decisions.length) body.push(line('Decided', decisions.join(' · ')));
   const all = changeStates(top, { at: opts.at });
   const held = all.filter((e) => e.request === name);
   const count = (id) => held.filter((e) => e.id === id).length;
@@ -337,8 +368,15 @@ export function context({ top, args, opts }) {
   // [VW-2]: a block marked Dropped or Kept shows by its marker, not its content state.
   const shown = held.map((e) => (e.mark ? { ...e, state: e.mark, by: null } : e));
   const own = (key) => (key.startsWith(`${name}/`) ? key.slice(name.length + 1) : key);
-  if (held.length) body.push(fitOrCount('Spec', shown, (e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`,
-    (e) => (e.state === 'waiting' ? `${e.id}@${e.n} on ${own(e.by)}` : label(e))));
+  const full = (e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${own(e.by)}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`;
+  // [VW-2]: one section per line with --all; else the list while it fits in
+  // 100 characters; else every section grouped by state, none left out.
+  const list = line('Spec', shown.map(full).join(' · '));
+  if (held.length) {
+    body.push(...(opts.all ? lines('Spec', shown.map(full)) : list.length <= 100 ? [list]
+      : [grouped('Spec', shown.map((e) => (e.state === 'waiting' ? { state: e.state, text: `${e.id}@${e.n} on ${own(e.by)}`, alone: true }
+        : { state: e.state, text: label(e), alone: count(e.id) > 1 })))]));
+  }
   const parts = entriesOf(text, 'Parts');
   if (parts.length) body.push(line('Parts', parts.map((p) => p.replace(/\s+/g, ' ')).join(' · ')));
   const mine = new Set(held.map((e) => e.file).filter(Boolean));

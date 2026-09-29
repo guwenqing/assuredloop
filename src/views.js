@@ -7,7 +7,7 @@ import { rootOf, baseline, configured } from './spec.js';
 import { allBlocks, changeStates, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { latestSignoff, organized, parts } from './signoff.js';
-import { line, decisionList, entriesOf, concluding, fitOrCount } from './commands.js';
+import { line, lines, grouped, decisionList, entriesOf, concluding, fitOrCount } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
 import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
 import { headNote, resultLines, testLines, testMatcher } from './tests.js';
@@ -244,7 +244,7 @@ function review(tree, files, served, code, tier, changedIds) {
 // changed it since, and the requests that follow it.
 // Under --at, everything is read at that commit, and the conclusion counts
 // only when that commit's history holds it.
-export function archivedLines(top, name, at) {
+export function archivedLines(top, name, at, all) {
   const tree = openTree(top, at);
   const rev = at ? resolveCommit(top, at) : null;
   const ids = [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))];
@@ -267,7 +267,9 @@ export function archivedLines(top, name, at) {
       .map((sha) => requestOf(top, sha, requests, seen)).sort((x, y) => y.when - x.when);
     return later.length ? `since changed by ${later.map((x) => `${x.names.join(', ') || 'no request'} (${day(x.when)})`).join(', ')}` : 'since changed (not committed yet)';
   };
-  const out = ids.length ? [line('Sections', ids.map((id) => `${id} ${say(id)}`).join(' · '))] : [];
+  // [VW-6]: grouped by what each says, none left out; one per line with --all.
+  const said = ids.map((id) => ({ text: id, state: say(id) }));
+  const out = !ids.length ? [] : all ? lines('Sections', said.map((x) => `${x.text} ${x.state}`)) : [grouped('Sections', said)];
   const followers = requests.filter((r) => (r.md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '').match(/\bFollows:\s*([^·]+)/)?.[1]
     .split(/[\s,]+/).includes(name)).map((r) => r.name);
   if (followers.length) out.push(`Followed by ${followers.join(' · ')}`);
