@@ -82,23 +82,21 @@ export function fitOrCount(label, held, text, id) {
 }
 
 // [VW-2], [VW-6]: items grouped by state, `<count> <state>: <ids>`, none left
-// out. IDs of one prefix whose last numbers run on read as a range, REC-1–3;
-// an item marked `alone` (an ID@n, a waiting block) is never ranged.
-const ID_PARTS = /^([A-Z][A-Z0-9]*)-(\d+(?:\.\d+)*)$/;
+// out. IDs the same up to a last number that runs on read as a range, REC-1–3,
+// so it expands back to the exact IDs: the text before it the same, and no
+// leading zero. An item marked `alone` (an ID@n, a waiting block) never is.
+const ID_RUN = /^([A-Z][A-Z0-9]*-(?:\d+\.)*)(0|[1-9]\d*)$/;
 export function grouped(label, items) {
   const groups = [...new Set(items.map((x) => x.state))].map((s) => {
     const xs = items.filter((x) => x.state === s);
     const names = [];
     let run = null;
-    const flush = () => { if (run) names.push(run.first === run.last ? run.first : `${run.first}–${run.last.slice(run.prefix.length + 1)}`); run = null; };
+    const flush = () => { if (run) names.push(run.first === run.last ? run.first : `${run.first}–${run.last.slice(run.last.indexOf('-') + 1)}`); run = null; };
     for (const x of xs) {
-      const m = !x.alone && x.text.match(ID_PARTS);
-      const nums = m ? m[2].split('.').map(Number) : null;
-      const next = run && m && run.prefix === m[1] && run.nums.length === nums.length
-        && run.nums.slice(0, -1).join('.') === nums.slice(0, -1).join('.') && nums.at(-1) === run.nums.at(-1) + 1;
-      if (next) { run.last = x.text; run.nums = nums; continue; }
+      const m = !x.alone && x.text.match(ID_RUN);
+      if (run && m && run.stem === m[1] && Number(m[2]) === run.n + 1) { run.last = x.text; run.n += 1; continue; }
       flush();
-      if (m) run = { prefix: m[1], first: x.text, last: x.text, nums };
+      if (m) run = { stem: m[1], first: x.text, last: x.text, n: Number(m[2]) };
       else names.push(x.text);
     }
     flush();
