@@ -372,3 +372,38 @@ test('#89 (e) PR #90: with the dropped code in src/email-link/index.js, a file i
   assert.match(after, /required by [^;]*src\/email-link\/local\.cjs/, `src/email-link/local.cjs requires ./index.js:\n${line}`);
   assert.match(after, /required by [^;]*src\/directory\.cjs/, `src/directory.cjs requires ./email-link, the folder:\n${line}`);
 });
+
+// PR #90, third review: `from` counts only as an ESM clause, never as a
+// call, and a method call is not an import or require.
+
+test('#89 (e) PR #90: Buffer.from(\'./email-link.js\') is a call, not an ESM from clause: src/buffer-from.js is not named', (t) => {
+  const repo = c10(t, { extra: { 'src/buffer-from.js': "export const example = Buffer.from('./email-link.js');\n" } });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/email\.js/, `the fixture: the note names importers:\n${line}`);
+  assert.ok(!line.includes('src/buffer-from.js'), `src/buffer-from.js only calls Buffer.from:\n${line}`);
+});
+
+test('#89 (e) PR #90: a method named require or import is not a caller: loader.require(\'./email-link\') and loader.import(\'./email-link.js\') are not named', (t) => {
+  const repo = c10(t, {
+    extra: {
+      'src/method-require.js': "export const r = loader.require('./email-link');\n",
+      'src/method-import.js': "export const m = loader.import('./email-link.js');\n",
+    },
+  });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/email\.js/, `the fixture: the note names importers:\n${line}`);
+  assert.ok(!line.includes('src/method-require.js'), `src/method-require.js only calls loader.require:\n${line}`);
+  assert.ok(!line.includes('src/method-import.js'), `src/method-import.js only calls loader.import:\n${line}`);
+});
+
+test('#89 (e) PR #90 pin: the real ESM forms stay named: a side-effect import \'./email-link.js\' and a re-export from \'./email-link.js\'', (t) => {
+  const repo = c10(t, {
+    extra: {
+      'src/side-effect.js': "import './email-link.js';\nexport const ready = true;\n",
+      'src/reexport.js': "export { emailLink } from './email-link.js';\n",
+    },
+  });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/side-effect\.js/, `src/side-effect.js imports it for its side effects:\n${line}`);
+  assert.match(after, /imported by [^;]*src\/reexport\.js/, `src/reexport.js re-exports from it:\n${line}`);
+});
