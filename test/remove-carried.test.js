@@ -89,3 +89,21 @@ test('#100 contrast: a remove that does not build on first, consolidated, does n
   assert.ok(!repo.read('specs/ex.md').toString().includes('[EX-1]'), 'the fixture: EX-1 removed');
   assert.doesNotMatch(ex1(context(repo, 'first')), /carried/, context(repo, 'first'));
 });
+
+// --- PR #121 review: a successor carries a block only when it holds the same section ---
+
+test('PR #121 [STA-2] a remove of another ID, EX-2, built on first/EX-1@1 with a Was copying EX-1\'s now, never carries EX-1: context first does not read "carried by second/EX-2@1"; conclude first --yes refuses, exit 1, files unchanged', (t) => {
+  const EX2 = '## [EX-2] Other\nThe other MUST stay.\n';
+  const repo = makeRepo(t);
+  repo.write('specs/ex.md', file(EX0, EX2));
+  addRequest(repo, 'first', [FIRST]);
+  addRequest(repo, 'second', [block('[EX-2]@1 remove, was after [EX-0]   builds on first/EX-1@1   for R1', { was: NEW })]);
+  repo.commit('first and second', { date: '2026-09-21T12:00:00Z' });
+  const spec = repo.read('specs/ex.md').toString();
+  assert.ok(spec.includes('[EX-2]') && !spec.includes('[EX-1]'), 'the fixture: EX-2 in the baseline, EX-1 absent');
+  const line = ex1(context(repo, 'first'));
+  assert.doesNotMatch(line, /carried/, `EX-1 is not carried by a block of another section:\n${line}`);
+  const r = al(repo, 'conclude', 'first', '--yes');
+  assert.equal(r.code, 1, `conclude first should refuse:\n${both(r)}`);
+  assert.equal(status(repo), '', 'nothing written, first not archived');
+});
