@@ -13,7 +13,7 @@ import { organized, parts, signoffState } from './signoff.js';
 import { requestToWrite, decisionList, entriesOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
-import { byId, requestsIn } from './links.js';
+import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
 import { sameSection } from './sections.js';
 import { adrsOf } from './adrs.js';
 
@@ -75,13 +75,30 @@ const amends = (text) => [...text.matchAll(/\bAmends:([^\n]*)/g)]
 // modified and removed, from `was` (the baseline at its fork) to `now`, both
 // maps of ID to text; and, against the IDs its Amends: names, the changed ones
 // it doesn't name and the named ones that didn't change.
-export function baselineLists(was, now, org) {
+export function baselineLists(was, now, org, own) {
   const named = org ? amends(org.text).map((x) => x.slice(1, -1)) : [];
-  const ids = [...new Set([...was.keys(), ...now.keys()])].filter((id) => !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
+  const ids = [...new Set([...was.keys(), ...now.keys()])]
+    .filter((id) => own.has(id) && !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
   return {
     Added: ids.filter((id) => !was.has(id)), Modified: ids.filter((id) => was.has(id) && now.has(id)), Removed: ids.filter((id) => !now.has(id)),
     unnamed: ids.filter((id) => !named.includes(id)), unchanged: [...new Set(named)].filter((id) => !ids.includes(id)),
   };
+}
+
+// The baseline IDs request `name`'s own work changed ([LNK-2]): in the commits
+// fork..HEAD that map to it, merges left out, and, when `working`, in the
+// working tree's changes not yet committed.
+export function ownIds(top, name, fork, root, requests, working) {
+  const ids = new Set();
+  const seen = new Map();
+  for (const sha of fork ? git(top, ['rev-list', '--no-merges', `${fork}..HEAD`]).split('\n').filter(Boolean) : []) {
+    if (requestOf(top, sha, requests, seen).names.includes(name)) sectionsChanged(top, `${sha}^`, sha, root, filesOf(top, sha)).forEach((id) => ids.add(id));
+  }
+  if (working) {
+    const files = [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];
+    sectionsChanged(top, 'HEAD', null, root, files, openTree(top)).forEach((id) => ids.add(id));
+  }
+  return ids;
 }
 
 // The baseline's sections by ID in `tree`.
@@ -164,7 +181,8 @@ export function conclude({ top, args, opts }) {
   const adrs = adrsOf(top, tree, undefined, name, requestsIn(tree));
   const main = mainCommit(top);
   const fork = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
-  const lists = fates.length ? null : baselineLists(fork ? sectionsOf(top, openTree(top, fork), fork) : sectionsOf(top, tree), sectionsOf(top, tree), org);
+  const lists = tree.read(`${dir}/change.md`) !== null ? null : baselineLists(fork ? sectionsOf(top, openTree(top, fork), fork) : sectionsOf(top, tree), sectionsOf(top, tree), org,
+    ownIds(top, name, fork, rootOf(top, tree), requestsIn(tree), true));
   const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs, lists));
   const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])
     .filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);

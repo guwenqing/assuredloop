@@ -12,7 +12,7 @@ import { organized, parts, signoffState } from './signoff.js';
 import { parseSnapshot } from './snapshot.js';
 import { entriesOf, line } from './commands.js';
 import { headingFault } from './consolidate.js';
-import { baselineLists, judge, outcomeFacts } from './conclude.js';
+import { baselineLists, judge, outcomeFacts, ownIds } from './conclude.js';
 import { appendOnly } from './check.js';
 import { liveCode } from './views.js';
 import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
@@ -192,8 +192,8 @@ export function hintsOf(top, b, { main }) {
   if (mainSha) out.push(...earlyWork(top, b, mainSha));
   for (const [name, { r, j }] of facts) {
     // A record with no change.md should name what it changes with Amends: ([REC-9]).
-    if (!j.fates.length) {
-      const l = baselineLists(b.was, b.now, j.org);
+    if (b.tree.read(`${r.dir}/change.md`) === null) {
+      const l = baselineLists(b.was, b.now, j.org, ownIds(top, name, b.base, b.root, b.requests, false));
       for (const id of l.unnamed) add('note', 24, [name], `${name} changes [${id}], which its Amends: does not name`, `al context ${name}`);
       for (const id of l.unchanged) add('note', 24, [name], `${name}'s Amends: names [${id}], which did not change`, `al context ${name}`);
     }
