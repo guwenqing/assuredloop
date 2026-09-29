@@ -5,7 +5,7 @@
 // requests/archive/. It prints three lines or fewer, plus the frame.
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Fail } from './git.js';
+import { Fail, git, mainCommit } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, baseline } from './spec.js';
 import { allBlocks, statesOf } from './states.js';
@@ -13,7 +13,8 @@ import { organized, parts, signoffState } from './signoff.js';
 import { requestToWrite, decisionList, entriesOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
-import { requestsIn } from './links.js';
+import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
+import { sameSection } from './sections.js';
 import { adrsOf } from './adrs.js';
 
 const HELD = ['consolidated', 'carried'];
@@ -70,10 +71,47 @@ export function outcomeFacts(org, fates) {
 const amends = (text) => [...text.matchAll(/\bAmends:([^\n]*)/g)]
   .flatMap((m) => [...m[1].matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g)].map((x) => `[${x[1]}]`));
 
+// A request with no change.md ([REC-9]): the sections its branch added,
+// modified and removed, from `was` (the baseline at its fork) to `now`, both
+// maps of ID to text; and, against the IDs its Amends: names, the changed ones
+// it doesn't name and the named ones that didn't change.
+export function baselineLists(was, now, org, own) {
+  const named = org ? amends(org.text).map((x) => x.slice(1, -1)) : [];
+  const changed = [...new Set([...was.keys(), ...now.keys()])].filter((id) => !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
+  const ids = changed.filter((id) => own.has(id));
+  return {
+    Added: ids.filter((id) => !was.has(id)), Modified: ids.filter((id) => was.has(id) && now.has(id)), Removed: ids.filter((id) => !now.has(id)),
+    unnamed: ids.filter((id) => !named.includes(id)),
+    // "Did not change" is said of the section itself, whoever changed it.
+    unchanged: [...new Set(named)].filter((id) => !changed.includes(id)),
+  };
+}
+
+// The baseline IDs request `name`'s own work changed ([LNK-2]): in the commits
+// fork..tip that map to it, merges left out, and, when `working`, in the
+// working tree's changes not yet committed.
+export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
+  const ids = new Set();
+  const seen = new Map();
+  for (const sha of fork ? git(top, ['rev-list', '--no-merges', `${fork}..${tip}`]).split('\n').filter(Boolean) : []) {
+    if (requestOf(top, sha, requests, seen).names.includes(name)) sectionsChanged(top, `${sha}^`, sha, root, filesOf(top, sha)).forEach((id) => ids.add(id));
+  }
+  if (working) {
+    const files = [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];
+    sectionsChanged(top, 'HEAD', null, root, files, openTree(top)).forEach((id) => ids.add(id));
+  }
+  return ids;
+}
+
+// The baseline's sections by ID in `tree`.
+const sectionsOf = (top, tree, at) => new Map(baseline(tree, rootOf(top, tree, at)).flatMap((f) => [...byId(f.text)]));
+
 // The generated block of the Outcome ([REC-9]): content facts only.
-function outcome(md, org, fates, droppedBy, live, adrs) {
+function outcome(md, org, fates, droppedBy, live, adrs, lists) {
   const { kinds, rs } = outcomeFacts(org, fates);
-  const list = (ks) => [...kinds].filter(([, k]) => ks.includes(k)).map(([id]) => `[${id}]`).join(', ') || 'none';
+  // With no change.md, the added, modified and removed come from the baseline itself.
+  const list = (ks) => (lists && ks[0] in lists ? lists[ks[0]] : [...kinds].filter(([, k]) => ks.includes(k)).map(([id]) => id))
+    .map((id) => `[${id}]`).join(', ') || 'none';
   const lines = droppedBy ? [`- Dropped as a whole by ${droppedBy}`] : [];
   for (const r of rs) lines.push(`- ${r.key}${r.title ? ` ${r.title}` : ''}: ${r.ids.length ? `in ${r.ids.join(', ')}` : 'in no section'}`);
   for (const k of ['Added', 'Modified', 'Removed', 'Dropped', 'Kept']) lines.push(`- ${k}: ${list([k])}`);
@@ -143,7 +181,11 @@ export function conclude({ top, args, opts }) {
   const status = dropped ? 'dropped' : 'concluded';
   const live = (ids) => liveCode(top, name, rootOf(top, tree), ids);
   const adrs = adrsOf(top, tree, undefined, name, requestsIn(tree));
-  const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs));
+  const main = mainCommit(top);
+  const fork = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
+  const lists = tree.read(`${dir}/change.md`) !== null ? null : baselineLists(fork ? sectionsOf(top, openTree(top, fork), fork) : sectionsOf(top, tree), sectionsOf(top, tree), org,
+    ownIds(top, name, fork, rootOf(top, tree), requestsIn(tree), true));
+  const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs, lists));
   const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])
     .filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
   const note = [...(children.length ? [`note: child request ${children.join(', ')} is still open`] : []),
