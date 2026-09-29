@@ -16,7 +16,7 @@ import { makeRepo, runAl } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { ENV, addRequest, both } from './helpers/request.js';
 import { assertDiffFrame, contextDiff, indexOf } from './helpers/links.js';
-import { check, message, noHint } from './helpers/hints.js';
+import { check, hint, message, noHint } from './helpers/hints.js';
 
 const TIER1 = 'Type: story · Tier: 1 · Status: open';
 const R1 = '### R1 Invoice export\nA customer MUST be able to export one invoice as CSV from the invoice page.\n';
@@ -110,6 +110,10 @@ function reviewed(t, org) {
   repo.git(['checkout', '-q', '-b', 'work']);
   repo.write('src/email.js', 'export const link = (inv) => `/invoices/${inv.id}.csv`;\n');
   repo.commit(message('The email link', { request: 'child', tier: '1 — email link' }), { date: '2026-09-22T12:00:00Z' });
+  return intentOf(repo);
+}
+// The review view's Intent part, up to its Evidence part.
+function intentOf(repo) {
   const r = contextDiff(repo, 'main...HEAD', '--for', 'review');
   ok(r, 'context --diff --for review');
   assertDiffFrame(r.stdout);
@@ -155,4 +159,55 @@ test('[REC-10][HNT-2] check: child work that reached main after the parent\'s si
   repo.commit(message('The email link, again', { request: 'child', tier: '1 — email link' }), { date: '2026-09-23T12:00:00Z' });
   assertInherits(context(repo, 'child'), 'parent');
   noHint(check(repo, '--all'), 'before its first sign-off');
+});
+
+// --- PR #120 review ---
+
+test('PR #120 [REC-5][HNT-2] a parent\'s sign-off counts for a child only where the child inherits it: a child with entirely its own text, whose code reached main before its own sign-off, gets the note "before its first sign-off"', (t) => {
+  const own = '## Organized requirement\n\n### R1 Link expiry\nThe link MUST work for 30 days.\n\nOut: renewal.\n\nAssumed:\n- one link per invoice.\n';
+  const repo = makeRepo(t);
+  parent(repo);
+  repo.commit('parent, signed', { date: '2026-09-20T12:00:00Z' });
+  child(repo, own);
+  repo.commit('child: request', { date: '2026-09-21T12:00:00Z' });
+  repo.write('src/expiry.js', 'export const days = 30;\n');
+  const early = repo.commit(message('Link expiry', { request: 'child', tier: '1 — expiry' }), { date: '2026-09-22T12:00:00Z' });
+  ok(al(repo, 'record', 'child', 'signoff', '--source', 'chat with the owner', '--yes'), 'record child signoff');
+  repo.commit(message('Sign off child', { request: 'child', tier: '1 — expiry' }), { date: '2026-09-23T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'more']);
+  repo.write('src/expiry.js', 'export const days = 31;\n');
+  repo.commit(message('Link expiry, again', { request: 'child', tier: '1 — expiry' }), { date: '2026-09-24T12:00:00Z' });
+  hint(check(repo, '--all'), 'note', 'before its first sign-off', early.slice(0, 7));
+});
+
+// Main: the request promise, signed with R1 "The promise MUST hold.". The
+// branch changes R1 to "The promise MUST now change." and commits code with
+// `Request: promise`.
+function changedOnBranch(t) {
+  const org = '## Organized requirement\n\n### R1 The promise\nThe promise MUST hold.\n\nOut: none.\n';
+  const repo = makeRepo(t);
+  addRequest(repo, 'promise', null, { line: TIER1, org, signedText: org, decisions: '' });
+  repo.commit('promise: request, signed', { date: '2026-09-21T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'work']);
+  const md = 'requests/promise/request.md';
+  repo.write(md, repo.read(md).toString().replace('The promise MUST hold.', 'The promise MUST now change.'));
+  repo.write('src/promise.js', 'export const promise = "change";\n');
+  repo.commit(message('The promise changes', { request: 'promise', tier: '1 — promise' }), { date: '2026-09-22T12:00:00Z' });
+  return repo;
+}
+
+test('PR #120 [VW-4][REC-6] --for review, a request whose organized text changed on the branch since its intact sign-off: the intent says it is blocked, with its reason, and keeps the last signed text verbatim with its file', (t) => {
+  const { intent } = intentOf(changedOnBranch(t));
+  assert.match(intent, /\bblocked\b/i, `the intent says blocked:\n${intent}`);
+  assert.match(intent, /changed since/i, `with its reason:\n${intent}`);
+  assert.ok(intent.includes('The promise MUST hold.'), `the last signed text, verbatim:\n${intent}`);
+  assert.ok(intent.includes('origin/2026-09-21-signoff.md'), `the sign-off file:\n${intent}`);
+});
+
+test('PR #120 [VW-4][REC-5] --for review, a blocked child with an inherited part and an unsigned own part: the intent says blocked and still shows R1 through parent, origin/2026-09-21-signoff.md', (t) => {
+  const org = `## Organized requirement\n\n${R3.replace('### R3', '### R1')}\n### R2 Link expiry\nThe link MUST work for 30 days.\n\nOut: PDF export.\n`;
+  const { intent } = reviewed(t, org);
+  assert.match(intent, /\bblocked\b|not signed off/i, `the child is blocked by its unsigned R2:\n${intent}`);
+  assert.ok(intent.split('\n').some((l) => /\bR1\b/.test(l) && l.includes('through parent') && l.includes('origin/2026-09-21-signoff.md')),
+    `R1 with its source, through parent, origin/2026-09-21-signoff.md:\n${intent}`);
 });
