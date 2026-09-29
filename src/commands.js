@@ -323,7 +323,7 @@ export function context({ top, args, opts }) {
     ...(state.blocked ? [`BLOCKED: ${state.reason}${changed}`] : []),
     `${name}  ${title}  ${head.join(' · ')}`,
     ...(dir.startsWith('requests/archive/') ? [line('Concluded', concludedOnMain(top, name, opts.at)), ...archivedLines(top, name, opts.at)] : []),
-    line('Require', state.blocked ? `${state.reason}${changed}` : `signed off ${signedBy}${through}; unchanged since`),
+    line('Require', state.blocked ? `${state.reason}${changed}${changed && state.signoff ? `; al record ${name} signoff --source <where> shows what changed` : ''}` : `signed off ${signedBy}${through}; unchanged since`),
     line('Words', files.length ? `${files.join(' · ')} (SHA-256 checked: ${files.length - bad.length} of ${files.length} match)` : 'no snapshots in origin/'),
   ];
   // [VW-2]: the decisions, the held sections, the parts, and who else holds sections in the same files.
@@ -336,7 +336,9 @@ export function context({ top, args, opts }) {
   const label = (e) => (count(e.id) > 1 ? `${e.id}@${e.n}` : e.id);
   // [VW-2]: a block marked Dropped or Kept shows by its marker, not its content state.
   const shown = held.map((e) => (e.mark ? { ...e, state: e.mark, by: null } : e));
-  if (held.length) body.push(fitOrCount('Spec', shown, (e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`, label));
+  const own = (key) => (key.startsWith(`${name}/`) ? key.slice(name.length + 1) : key);
+  if (held.length) body.push(fitOrCount('Spec', shown, (e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`,
+    (e) => (e.state === 'waiting' ? `${e.id}@${e.n} on ${own(e.by)}` : label(e))));
   const parts = entriesOf(text, 'Parts');
   if (parts.length) body.push(line('Parts', parts.map((p) => p.replace(/\s+/g, ' ')).join(' · ')));
   const mine = new Set(held.map((e) => e.file).filter(Boolean));
@@ -366,7 +368,9 @@ export function context({ top, args, opts }) {
   return {
     tree,
     body,
-    next: (state.blocked ? `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`
+    // [REC-1]: an archived request is not edited; its Next is a read command.
+    next: (dir.startsWith('requests/archive/') ? `al context ${name} --audit for the whole trace`
+      : state.blocked ? `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`
       : bad.length
       ? `re-fetch the source of origin/${bad[0][0]}, then al record ${name} origin ${bad[0][1].startsWith('no longer') ? `--verify ${bad[0][0]}` : '--url <source>'} --from -`
       : `al record ${name} origin --url <source> --from - to snapshot a new original`) + hidden,
