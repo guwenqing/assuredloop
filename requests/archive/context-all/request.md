@@ -26,7 +26,7 @@ Signed off: 2026-09-29 owner, origin/2026-09-29-signoff.md
 
 - R1 Grouped by default, everything on request: in [VW-2], [VW-6]
 - Added: none
-- Modified: none
+- Modified: [VW-2], [VW-6]
 - Removed: none
 - Dropped: none
 - Kept: none
@@ -37,4 +37,4 @@ Signed off: 2026-09-29 owner, origin/2026-09-29-signoff.md
 
 Notes:
 
-R1's fate first read "in no section", since `Amends:` counted nowhere; fixed by the tier-0 PR #93 before this merged.
+The Outcome first read R1 "in no section" and "Modified: none", since a tier-1 record's sections counted nowhere; fixed by the tier-0 PRs #93 (Amends:) and #94 (the section lists) before this merged.
