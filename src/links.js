@@ -99,10 +99,11 @@ export const byId = (text) => new Map(parseSections(text).filter((s) => s.id).ma
 
 // The IDs of the baseline sections that differ between two revs (or that one
 // of them lacks), over the root's Markdown files among `files`.
-export function sectionsChanged(top, from, to, root, files) {
+export function sectionsChanged(top, from, to, root, files, tree) {
   const ids = [];
   for (const f of files.filter((p) => p.startsWith(`${root}/`) && p.endsWith('.md'))) {
-    const show = (rev) => byId(rev ? git(top, ['show', `${rev}:${f}`], { allowFail: true }) ?? '' : '');
+    // `to` null with a `tree`: the working tree's text.
+    const show = (rev) => byId(rev ? git(top, ['show', `${rev}:${f}`], { allowFail: true }) ?? '' : tree?.read(f)?.toString('utf8') ?? '');
     const [a, b] = [show(from), show(to)];
     for (const id of new Set([...a.keys(), ...b.keys()])) if (!(a.has(id) && b.has(id) && sameSection(a.get(id), b.get(id)))) ids.push(id);
   }

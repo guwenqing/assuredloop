@@ -12,7 +12,7 @@ import { organized, parts, signoffState } from './signoff.js';
 import { parseSnapshot } from './snapshot.js';
 import { entriesOf, line } from './commands.js';
 import { headingFault } from './consolidate.js';
-import { judge, outcomeFacts } from './conclude.js';
+import { baselineLists, judge, outcomeFacts, ownIds } from './conclude.js';
 import { appendOnly } from './check.js';
 import { liveCode } from './views.js';
 import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
@@ -50,7 +50,7 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   for (const p of changed) if (/^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(p)) delivered.add(folderOf(p));
   const tiers = commits.map((sha) => [...git(top, ['show', '-s', '--format=%B', sha]).matchAll(/^[ \t]*Tier:[ \t]*(.+?)[ \t]*$/gm)].at(-1)?.[1]);
   const tier = tiers.filter(Boolean).at(-1) ?? null;
-  return { root, files, now, changedIds, changed, requests, blocks: allBlocks(tree), seen, mapped, served, archived, delivered, work, tier, base, commits, tree, at, range };
+  return { root, files, was, now, changedIds, changed, requests, blocks: allBlocks(tree), seen, mapped, served, archived, delivered, work, tier, base, commits, tree, at, range };
 }
 
 // Every hint for branch `b` ([HNT-2]), unranked: { kind, rank (HNT-2's list
@@ -191,6 +191,12 @@ export function hintsOf(top, b, { main }) {
   out.push(...testHints(top, b), ...adrHints(top, b));
   if (mainSha) out.push(...earlyWork(top, b, mainSha));
   for (const [name, { r, j }] of facts) {
+    // A record with no change.md should name what it changes with Amends: ([REC-9]).
+    if (b.tree.read(`${r.dir}/change.md`) === null) {
+      const l = baselineLists(b.was, b.now, j.org, ownIds(top, name, b.base, b.root, b.requests, false, b.at ?? 'HEAD'));
+      for (const id of l.unnamed) add('note', 24, [name], `${name} changes [${id}], which its Amends: does not name`, `al context ${name}`);
+      for (const id of l.unchanged) add('note', 24, [name], `${name}'s Amends: names [${id}], which did not change`, `al context ${name}`);
+    }
     for (const x of outcomeFacts(j.org, j.fates).rs.filter((y) => !y.ids.length)) add('note', 24, [name], `${name} ${x.key}${x.title ? ` ${x.title}` : ''} is in no section at conclusion`, `al context ${name}`);
     for (const c of childrenOf(r.md).filter((n) => open.some((o) => o.name === n))) add('note', 25, [name], `${name} concludes while its child ${c} is still open`, `al context ${c}`);
     for (const a of adrsOf(top, b.tree, b.at, name, b.requests).added.filter((x) => x.status === 'proposed')) add('note', 24, [name], `${name} concludes with ${a.path} still proposed`, 'set its Status line, then al check');
