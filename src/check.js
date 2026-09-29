@@ -5,7 +5,7 @@
 // grow at the end; a file in origin/ never changes or goes; nothing changes
 // under a request archived on main; the move to archive/ is not an edit.
 // check exits 0, and --strict exits 1 on a not ok that counts ([HNT-3]).
-import { git, isShallow, mainCommit, resolveCommit } from './git.js';
+import { git, hasCommits, isShallow, mainCommit, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
 import { line } from './commands.js';
 import { hintText, hintsOf, ranked, readBranch } from './hints.js';
@@ -97,6 +97,7 @@ export function check({ top, opts }) {
   // Under --at, main is read only up to X's fork point, so no later commit leaks in.
   const list = ranked(hintsOf(top, b, { main: opts.at ? base : main }), b);
   const notKnown = [...headNote(top, b), ...(opts.at ? ["main after X's fork point (read only up to it under --at)"] : [])];
+  if (!hasCommits(top)) notKnown.push('no commits yet, so no history');
   if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
   const body = [line('Serves', [...[...b.served].filter((n) => !b.archived.has(n)), ...[...b.archived].map((n) => `archives ${n}`)].join(' · ') || 'no request')];
   if (b.tier) {

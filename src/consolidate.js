@@ -9,7 +9,7 @@ import { Fail } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, sameSection } from './sections.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
-import { allBlocks, statesOf } from './states.js';
+import { allBlocks, blockFault, statesOf } from './states.js';
 import { signoffState } from './signoff.js';
 import { requestToWrite } from './commands.js';
 
@@ -131,6 +131,9 @@ export function consolidate({ top, args, opts }) {
     return refuse(dups.map(([d, at]) => `duplicate ID [${d}] in ${at.join(' and ')}; no consolidate writes until it is fixed ([SPC-3])`),
       'rename one copy of each duplicate ID by hand, to a new ID; an ID is never reused');
   }
+  // [SPC-5]: a block that can't be read as written is fixed before any write, a revert included.
+  const unreadable = mine.map(blockFault).filter(Boolean);
+  if (unreadable.length) return refuse(unreadable, `fix the blocks named in ${dir}/change.md`);
   if (opts.revert !== undefined) return revert({ top, root, name, id, mine, blocks, texts, original, opts, refuse });
 
   const state = signoffState(tree, dir, name);

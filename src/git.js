@@ -55,6 +55,9 @@ function isSingleBranch(top) {
 }
 
 // Main as the tool reads it: origin/main when there is one, else local main.
+// Whether HEAD names a commit: a repo with none yet has no history to read.
+export const hasCommits = (top) => git(top, ['rev-parse', '--verify', '--quiet', 'HEAD'], { allowFail: true }) !== null;
+
 export function mainCommit(top) {
   for (const ref of ['refs/remotes/origin/main', 'refs/heads/main']) {
     if (git(top, ['rev-parse', '--verify', '--quiet', ref], { allowFail: true }) !== null) return ref;
