@@ -247,7 +247,13 @@ function review(tree, files, served, code, tier, changedIds) {
 export function archivedLines(top, name, at, all) {
   const tree = openTree(top, at);
   const rev = at ? resolveCommit(top, at) : null;
-  const ids = [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))];
+  const dir = `requests/archive/${name}`;
+  // A request with no change.md (tier 1): the sections its Outcome lists as
+  // added, modified or removed, which conclude derived from its own work ([REC-9]).
+  const ids = tree.read(`${dir}/change.md`) !== null
+    ? [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))]
+    : [...new Set((tree.read(`${dir}/request.md`)?.toString('utf8') ?? '').split('\n')
+      .filter((l) => /^- (Added|Modified|Removed):/.test(l)).flatMap((l) => [...l.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])))];
   const found = concluding(top, name);
   const c = found.sha && rev && git(top, ['merge-base', '--is-ancestor', found.sha, rev], { allowFail: true }) === null ? {} : found;
   const root = rootOf(top, tree, at);
