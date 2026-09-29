@@ -39,7 +39,9 @@ export function parseChange(text, request) {
       const marker = (name) => rest.match(new RegExp(`${name} (\\S+) \\((D\\d+)\\)`))?.slice(1, 3) ?? null;
       b = {
         request, id, n: Number(n), key: `${request}/${id}@${n}`,
-        op: /^modify\b/.test(rest) ? 'modify' : /^add\b/.test(rest) ? 'add' : 'remove',
+        // [SPC-5]'s ops, matched exactly; any other word is a fault (blockFault), never a remove.
+        op: /^modify\b/.test(rest) ? 'modify' : /^add\b/.test(rest) ? 'add' : /^remove\b/.test(rest) ? 'remove' : null,
+        opWord: rest.split(/\s+/)[0] ?? '',
         path: rest.match(/^add in (\S+)/)?.[1] ?? null,
         anchor: rest.match(/^(?:add after|remove, was after) \[([^\]]+)\]/)?.[1] ?? null,
         base: on ? (on.startsWith('@') ? `${request}/${id}${on}` : on) : Number(n) > 1 ? `${request}/${id}@${Number(n) - 1}` : null,
@@ -80,9 +82,28 @@ export function allBlocks(tree) {
     if (!text) continue;
     const md = tree.read(`${dir}/request.md`)?.toString('utf8') ?? '';
     const dropped = /\bStatus:\s*dropped\b/.test(md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '');
-    for (const b of parseChange(text, name)) blocks.set(b.key, { ...b, open, requestDropped: dropped });
+    for (const b of parseChange(text, name)) {
+      // A repeated request/ID@n is a fault (blockFault); the first is kept, and says so.
+      const first = blocks.get(b.key);
+      if (first) first.repeated = (first.repeated ?? 1) + 1;
+      else blocks.set(b.key, { ...b, open, requestDropped: dropped });
+    }
   }
   return blocks;
+}
+
+// [SPC-5]: why a block can't be read as written, or null: its request/ID@n
+// repeated, an op outside the grammar, a remove with no anchor, or Was:/Now:
+// against its op. check says so; consolidate and conclude refuse.
+export function blockFault(b) {
+  if (b.repeated) return `${b.key} appears ${b.repeated} times in change.md; each version of a section is one block ([SPC-5])`;
+  if (!b.op) return `${b.key}: "${b.opWord}" is not an op; use modify, add in <path>, add after [ID], or remove, was after [ID] ([SPC-5])`;
+  if (b.op === 'add' && !b.path && !b.anchor) return `${b.key}: an add names neither "in <path>" nor "after [ID]" ([SPC-5])`;
+  if (b.op === 'remove' && !b.anchor) return `${b.key}: a remove names no "was after [ID]" ([SPC-5])`;
+  if (b.op === 'add' && b.was !== null) return `${b.key}: an add has no Was: ([SPC-5])`;
+  if (b.op === 'remove' && b.now !== null) return `${b.key}: a remove has no Now: ([SPC-5])`;
+  if (b.op === 'modify' && (b.was === null || b.now === null)) return `${b.key}: a modify has both Was: and Now: ([SPC-5])`;
+  return null;
 }
 
 // [STA-1]: the link of a block that builds on another, checked first.

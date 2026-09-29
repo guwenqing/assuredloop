@@ -9,7 +9,7 @@ import { Fail } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, sameSection } from './sections.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
-import { allBlocks, statesOf } from './states.js';
+import { allBlocks, blockFault, statesOf } from './states.js';
 import { signoffState } from './signoff.js';
 import { requestToWrite } from './commands.js';
 
@@ -140,7 +140,7 @@ export function consolidate({ top, args, opts }) {
   }
   const todo = mine.filter((b) => !b.dropped);
   if (id !== undefined && !todo.length) return refuse([`every block of [${id}] in ${name} is marked Dropped, and a dropped section is not written`]);
-  const faults = todo.filter((b) => b.now !== null).map((b) => headingFault(b, b.now, 'Now')).filter(Boolean);
+  const faults = [...mine.map(blockFault), ...todo.filter((b) => b.now !== null).map((b) => headingFault(b, b.now, 'Now'))].filter(Boolean);
   if (faults.length) return refuse(faults, `fix the blocks named in ${dir}/change.md`);
 
   // Write one pending block at a time, re-reading the states after each, so a

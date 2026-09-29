@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { Fail, git, mainCommit } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, baseline } from './spec.js';
-import { allBlocks, statesOf } from './states.js';
+import { allBlocks, blockFault, statesOf } from './states.js';
 import { organized, parts, signoffState } from './signoff.js';
 import { requestToWrite, decisionList, entriesOf } from './commands.js';
 import { decisions } from './record-section.js';
@@ -229,6 +229,9 @@ export function judge(top, tree, name, dir, dropped, at) {
   // [REC-6]: blocked, only a drop where every section retains nothing goes ahead.
   const refusals = [];
   if (sign.blocked && !(dropped && fates.every((f) => f.fate === 'dropped'))) refusals.push(`${name} is blocked: ${sign.reason} ([REC-6])`);
+  // [SPC-5]: a block that can't be read as written is fixed before anything is judged.
+  const unreadable = [...blocks.values()].filter((b) => b.request === name).map(blockFault).filter(Boolean);
+  if (unreadable.length) refusals.push(unreadable.join(' · '));
   const bad = fates.filter((f) => f.bad).map((f) => f.bad);
   if (bad.length) refusals.push(bad.join(' · '));
   return { md, sign, org, fates, refusals };
