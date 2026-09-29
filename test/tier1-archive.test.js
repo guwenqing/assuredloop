@@ -105,3 +105,63 @@ test('#102 [VW-6] the sections come from the request\'s own work, not its Amends
   assert.equal(stateOf(out, 'Sections', 'VW-6'), 'as at conclusion', `VW-6 is its work, though Amends: does not name it:\n${out}`);
   assert.equal(stateOf(out, 'Sections', 'VW-1'), null, `VW-1 is named by Amends: but not changed:\n${out}`);
 });
+
+// --- PR #118 review: only the Outcome's generated lines count, not the notes ---
+
+const A1 = '## [A-1] Grouping\nThe view MAY group repeated output.\n';
+const A1B = '## [A-1] Grouping\nThe view MAY group repeated output, and MUST NOT leave a section out.\n';
+const A2 = '## [A-2] Order\nGroups keep their first-seen order.\n';
+
+// Main: specs/rules.md with A-1 and A-2, and the signed tier-1 request
+// notes (Amends: [A-1]). Its branch changes A-1 only (Request: notes),
+// concludes (so the Outcome says "- Modified: [A-1]"), then appends `note`
+// to the archived request.md, after the Outcome's "Notes:" line; commits;
+// and is merged into main with --no-ff.
+function withNote(t, note) {
+  const repo = makeRepo(t);
+  repo.write('specs/rules.md', file(A1, A2));
+  const org = organized('[A-1]');
+  addRequest(repo, 'notes', null, { line: TIER1, org, signedText: org, decisions: '' });
+  repo.commit('notes: request', { date: '2026-09-28T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'notes']);
+  repo.write('specs/rules.md', file(A1B, A2));
+  repo.commit(message('Group', { request: 'notes', tier: '1 — notes' }), { date: '2026-09-29T12:00:00Z' });
+  ok(al(repo, 'conclude', 'notes', '--yes'), 'conclude');
+  const md = 'requests/archive/notes/request.md';
+  const text = repo.read(md).toString();
+  assert.ok(text.includes('\n- Modified: [A-1]\n'), `the fixture: the Outcome says Modified [A-1]:\n${text}`);
+  assert.match(text, /^Notes:\s*$/m, `the fixture: the Outcome has a Notes: line:\n${text}`);
+  repo.write(md, `${text.replace(/\n*$/, '\n')}\n${note}`);
+  repo.commit(message('A note on the Outcome', { request: 'notes', tier: '1 — notes' }), { date: '2026-09-29T13:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  repo.git(['merge', '-q', '--no-ff', '--no-edit', 'notes'], { date: '2026-09-29T14:00:00Z' });
+  return repo;
+}
+
+const NOTES = {
+  'a note quoting "- Modified: [A-2]" in a fenced block': 'The first draft read:\n\n```text\n- Modified: [A-2]\n```\n',
+  'a heading after the notes, then "- Modified: [A-2]"': 'A clean note.\n\n## Follow-up\n\n- Modified: [A-2]\n',
+};
+
+for (const [label, note] of Object.entries(NOTES)) {
+  test(`PR #118 [REC-9][VW-6] ${label}: context notes lists only A-1, as at conclusion; A-2, untouched, is not listed`, (t) => {
+    const repo = withNote(t, note);
+    const out = context(repo, 'notes');
+    assert.equal(stateOf(out, 'Sections', 'A-1'), 'as at conclusion', out);
+    assert.equal(stateOf(out, 'Sections', 'A-2'), null, `A-2 is named only outside the generated lines:\n${out}`);
+  });
+
+  test(`PR #118 [REC-9][VW-6] ${label}: --all lists one section, "A-1 as at conclusion"`, (t) => {
+    const repo = withNote(t, note);
+    const out = context(repo, 'notes', '--all');
+    const sections = lines(out).filter((l) => /^(Sections\s+|\s+)[A-Z][A-Z0-9]*-\d+ /.test(l)).map((l) => l.replace(/^Sections\s+/, '').trim());
+    assert.deepEqual(sections, ['A-1 as at conclusion'], `only A-1:\n${out}`);
+  });
+}
+
+test('PR #118 [VW-6] control: the same request with a clean note lists only A-1', (t) => {
+  const repo = withNote(t, 'A clean note.\n');
+  const out = context(repo, 'notes');
+  assert.equal(stateOf(out, 'Sections', 'A-1'), 'as at conclusion', out);
+  assert.equal(stateOf(out, 'Sections', 'A-2'), null, out);
+});
