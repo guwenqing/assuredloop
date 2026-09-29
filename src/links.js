@@ -41,6 +41,18 @@ export function filesOf(top, sha) {
 }
 
 // The request a commit maps to ([LNK-2]): { names, how, when }, cached in `seen`.
+// The commits up to `rev` that map to request `name`, by every route [LNK-2]
+// maps by: a Request: line, its folder, an issue number in its owner's words
+// (`issues`, such as ['#123']). Each as requestOf gives it.
+export function requestCommits(top, name, issues, rev, requests, seen = new Map()) {
+  const shas = [...new Set([
+    ...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', rev]).split('\n'),
+    ...git(top, ['log', '--format=%H', rev, '--', `requests/${name}/`, `requests/archive/${name}/`]).split('\n'),
+    ...issues.flatMap((n) => git(top, ['log', '-E', `--grep=${n}([^0-9]|$)`, '--format=%H', rev]).split('\n')),
+  ].filter(Boolean))];
+  return shas.map((sha) => requestOf(top, sha, requests, seen)).filter((c) => c.names.includes(name));
+}
+
 export function requestOf(top, sha, requests, seen = new Map()) {
   if (seen.has(sha)) return seen.get(sha);
   const [when, ...body] = git(top, ['show', '-s', '--format=%ct%n%B', sha]).split('\n');
