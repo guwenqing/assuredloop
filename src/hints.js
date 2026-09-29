@@ -2,6 +2,7 @@
 // with its owners, so `check --strict` counts only what the branch serves or
 // archives, or what no request owns ([HNT-3]). One list feeds check, context
 // --diff and context <name>.
+import { posix } from 'node:path';
 import { git } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
@@ -175,11 +176,14 @@ export function hintsOf(top, b, { main }) {
     const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => entriesOf(p.md, 'Parts').map((e) => [p.name, e]))
       .find(([, e]) => live.some((l) => e.includes(l.split(':')[0])));
     // Ranked first among the notes: live code for dropped work is a hazard on main.
-    add('note', 11, [name], `code still live for dropped work of ${name}: ${live.join(', ')}; ${plans ? `a part of ${plans[0]} plans its removal: ${plans[1]}` : 'no part plans its removal'}`, `al context ${name}`);
+    const files = [...new Set(live.map((l) => l.split(':')[0]))];
+    const shown = files.map((f) => [live.filter((l) => l.startsWith(`${f}:`)).join(', '), ...importers(top, b.at ?? 'HEAD', f)].join(', '));
+    add('note', 11, [name], `code still live for dropped work of ${name}: ${shown.join(', ')}; ${plans ? `a part of ${plans[0]} plans its removal: ${plans[1]}` : 'no part plans its removal'}`, `al context ${name}`);
   }
   for (const name of b.served) {
     const s = signed.get(name);
-    if (!s?.blocked) continue;
+    // A blocked not ok already says it ([HNT-1]: one hint, not two).
+    if (!s?.blocked || out.some((h) => h.kind === 'not ok' && [8, 9].includes(h.rank) && h.owners.includes(name))) continue;
     add('note', 18, [name], s.signoff ? `${name} changed since its sign-off (${s.signoff.file})${s.changed?.length ? `: ${s.changed.join(', ')}` : ''}` : `${name} is not signed off yet: ${s.reason}`,
       `al record ${name} signoff --source <where> --words <quote> --yes`);
   }
@@ -238,4 +242,65 @@ export function hintLines(list, cap) {
   const shown = list.slice(0, cap).map(hintText);
   if (list.length > cap && shown.length) shown[shown.length - 1] += `; ${list.length - cap} more hidden, --all`;
   return shown.map((t, i) => line(i ? '' : 'Hint', t));
+}
+
+// The files at `at` that import or require `path` by a relative specifier, as
+// rough links with their reason ([LNK-1]).
+function importers(top, at, path) {
+  const base = posix.basename(path).replace(/\.[^.]*$/, '');
+  // An index file is named by itself, or by its folder in a directory specifier.
+  const stems = base === 'index' && posix.dirname(path) !== '.' ? [base, posix.basename(posix.dirname(path))] : [base];
+  const found = git(top, ['grep', '-l', '-F', ...stems.flatMap((s) => ['-e', s]), at, '--', '*.js', '*.mjs', '*.cjs', '*.ts'], { allowFail: true }) ?? '';
+  const out = [];
+  for (const f of found.split('\n').filter(Boolean).map((l) => l.slice(at.length + 1)).filter((f) => f !== path)) {
+    for (const [how, spec] of specifiers(git(top, ['show', `${at}:${f}`], { allowFail: true }) ?? '')) {
+      const p = posix.join(posix.dirname(f), spec);
+      if (![p, `${p}.js`, `${p}.mjs`, `${p}.cjs`, `${p}.ts`, `${p}/index.js`].includes(path)) continue;
+      out.push(`${how === 'require' ? 'required' : 'imported'} by ${f}`);
+      break;
+    }
+  }
+  return out;
+}
+
+// The relative specifiers `text` imports or requires, as [how, spec], read left
+// to right: comments and the text of strings and templates are skipped whole,
+// and a template's ${…} expressions are read as code. `from` counts only as an
+// ESM clause, never a call, and nothing whose last code before it is a `.` (a
+// method, whatever spaces or comments come between).
+const SPEC = /(?<![\w$])(?:(from)\s*|(import)\s*\(?\s*|(require)\s*\(\s*)(['"])(\.{1,2}\/[^'"\n]*)\4/y;
+function specifiers(text) {
+  const out = [];
+  const braces = []; // for each ${ we are inside, the { depth within it
+  let inTemplate = false;
+  let last = ''; // the last character of code read, spaces and comments aside
+  for (let i = 0; i < text.length;) {
+    const c = text[i];
+    const two = text.slice(i, i + 2);
+    if (inTemplate) {
+      if (c === '\\') i += 2;
+      else if (c === '`') { inTemplate = false; last = c; i++; }
+      else if (two === '${') { braces.push(0); inTemplate = false; last = '{'; i += 2; }
+      else i++;
+      continue;
+    }
+    SPEC.lastIndex = i;
+    const m = last !== '.' && 'fir'.includes(c) && SPEC.exec(text);
+    if (m) { out.push([m[1] ?? m[2] ?? m[3], m[5]]); last = text[SPEC.lastIndex - 1]; i = SPEC.lastIndex; continue; }
+    if (two === '//') { const n = text.indexOf('\n', i); i = n < 0 ? text.length : n; continue; }
+    if (two === '/*') { const n = text.indexOf('*/', i + 2); i = n < 0 ? text.length : n + 2; continue; }
+    if (!/\s/.test(c)) last = c;
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < text.length && text[j] !== c && text[j] !== '\n') j += text[j] === '\\' ? 2 : 1;
+      i = j + 1;
+    } else if (c === '`') { inTemplate = true; i++; }
+    else if (c === '{') { if (braces.length) braces[braces.length - 1]++; i++; }
+    else if (c === '}') {
+      if (braces.length && braces[braces.length - 1] === 0) { braces.pop(); inTemplate = true; }
+      else if (braces.length) braces[braces.length - 1]--;
+      i++;
+    } else i++;
+  }
+  return out;
 }

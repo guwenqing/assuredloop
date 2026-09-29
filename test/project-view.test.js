@@ -174,9 +174,12 @@ test('[VW-2]@2 a request holding 30 sections: the Spec line is one line, far sho
   const r = project(repo, 'big-change');
   ok(r);
   const spec = specLine(r.stdout);
-  // One line, far shorter than listing all 30 (about 800 characters): the
-  // shortest honest one here is about 125.
-  assert.ok(spec.length < 160, `the Spec line should be far shorter than the full list, under 160 characters, got ${spec.length}:\n${spec}`);
+  // One line, far shorter than listing all 30: under a quarter of the list
+  // form's length, each section as "INV-n <state> (R1)" joined by " · ".
+  // The shortest honest one here is about 165, the waiting block naming what
+  // it waits on (#89 (d)); the list is about 750.
+  const list = Object.entries(STATES).flatMap(([state, ns]) => ns.map((n) => `INV-${n} ${state} (R1)`)).join(' · ');
+  assert.ok(spec.length < list.length / 4, `the Spec line should be far shorter than the full list (${list.length} characters), under a quarter of it, got ${spec.length}:\n${spec}`);
   for (const [state, ns] of Object.entries(STATES)) {
     assert.match(spec, count(ns.length, state), `the Spec line should give ${ns.length} ${state}:\n${spec}`);
   }
