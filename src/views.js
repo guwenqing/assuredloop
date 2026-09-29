@@ -6,7 +6,7 @@ import { openTree } from './tree.js';
 import { rootOf, baseline, configured } from './spec.js';
 import { allBlocks, changeStates, statesOf } from './states.js';
 import { sameSection } from './sections.js';
-import { latestSignoff, organized, parts } from './signoff.js';
+import { organized, parts, samePart, signoffState } from './signoff.js';
 import { line, lines, grouped, decisionList, entriesOf, concluding, fitOrCount } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
 import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
@@ -217,9 +217,19 @@ function review(tree, files, served, code, tier, changedIds) {
   const intent = ['Intent', ...(tier ? [line('Tier', tier)] : [])];
   const evidence = ['Evidence'];
   for (const r of mine) {
-    const signed = latestSignoff(tree, r.dir, r.md).signoff;
-    intent.push(`${r.name}  ${signed ? `signed off origin/${signed.file}:` : 'not signed off'}`);
-    if (signed) intent.push(...signed.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`));
+    // [REC-5]: signed by its own sign-off, or through its parent's for the parts it copies.
+    const s = signoffState(tree, r.dir, r.name);
+    const asked = organized(r.md);
+    if (s.blocked || !asked) intent.push(`${r.name}  not signed off (${s.reason ?? 'no organized requirement'})`);
+    else if (!s.parent) intent.push(`${r.name}  signed off origin/${s.signoff.file}:`, ...s.signoff.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`));
+    else {
+      intent.push(`${r.name}  signed off, part by part:`);
+      for (const p of parts(asked.text)) {
+        const own = s.signoff && parts(s.signoff.text).some((q) => samePart(p, q));
+        intent.push(`  ${p.key}: ${own ? `origin/${s.signoff.file}` : `through ${s.parent}, origin/${s.parentSignoff.file}`}`,
+          ...p.text.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`));
+      }
+    }
     // The spec changes: the blocks whose sections this branch changes ([VW-2]'s rule for the line).
     const changing = states.filter((e) => e.request === r.name && changedIds.includes(e.id));
     intent.push(changing.length ? fitOrCount('Blocks', changing, stateOf, (e) => e.block) : line('Blocks', 'none changed by this branch'));

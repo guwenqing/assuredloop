@@ -48,7 +48,7 @@ export function parts(text) {
 
 // The same part, ignoring the number in `### R<n>` (a child renumbers what it copies).
 const unnumbered = (text) => text.replace(/^(\s*#+\s+)R\d+\b/, '$1R');
-const samePart = (a, b) => sameSection(unnumbered(a.text), unnumbered(b.text));
+export const samePart = (a, b) => sameSection(unnumbered(a.text), unnumbered(b.text));
 
 // The sign-off that counts: the one with the latest Fetched among those whose
 // signed text still matches its SHA-256. On a tie, the one the `Signed off:`
@@ -71,11 +71,15 @@ export function latestSignoff(tree, dir, md) {
   return chosen ? { signoff: chosen } : { signoff: null, tie: last };
 }
 
-// The request whose `## Parts` section names `name` as `request <name>`.
-function parentOf(tree, name) {
-  for (const other of tree.list('requests') ?? []) {
-    if (other === 'archive') continue;
-    const md = tree.read(`requests/${other}/request.md`)?.toString('utf8');
+// The request whose `## Parts` section names `name` as `request <name>`: an
+// open one first, else an archived one, since [REC-5] sets no condition that
+// the parent stays open.
+export function parentOf(tree, name) {
+  const dirs = [...(tree.list('requests') ?? []).filter((d) => d !== 'archive').map((d) => ['requests', d]),
+    ...(tree.list('requests/archive') ?? []).map((d) => ['requests/archive', d])];
+  for (const [at, other] of dirs) {
+    if (other === name) continue;
+    const md = tree.read(`${at}/${other}/request.md`)?.toString('utf8');
     if (!md) continue;
     const sections = parseSections(md);
     const i = sections.findIndex((s) => s.level <= 2 && s.title === 'Parts');
@@ -85,7 +89,7 @@ function parentOf(tree, name) {
       if (text && s.level <= 2) break;
       text += s.text;
     }
-    if (new RegExp(`\\brequest ${name}(?![\\w-])`).test(text)) return { name: other, dir: `requests/${other}`, md };
+    if (new RegExp(`\\brequest ${name}(?![\\w-])`).test(text)) return { name: other, dir: `${at}/${other}`, md };
   }
   return null;
 }

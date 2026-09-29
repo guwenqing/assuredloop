@@ -8,7 +8,7 @@ import { openTree } from './tree.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
 import { allBlocks, blockFault, statesOf } from './states.js';
 import { sameSection } from './sections.js';
-import { organized, parts, signoffState } from './signoff.js';
+import { organized, parentOf, parts, signoffState } from './signoff.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
 import { entriesOf, line } from './commands.js';
 import { headingFault } from './consolidate.js';
@@ -216,8 +216,11 @@ function earlyWork(top, b, mainSha) {
   for (const name of b.served) {
     const r = b.requests.find((x) => x.name === name);
     if (!r) continue;
-    const signoffs = (b.tree.list(`${r.dir}/origin`) ?? []).filter((f) => isSignoff(parseSnapshot(b.tree.read(`${r.dir}/origin/${f}`) ?? Buffer.alloc(0))));
-    const places = signoffs.flatMap((f) => [`requests/${name}/origin/${f}`, `requests/archive/${name}/origin/${f}`]);
+    // Its own sign-offs, and a parent's that it inherits ([REC-5]).
+    const signoffsOf = (n, dir) => (b.tree.list(`${dir}/origin`) ?? []).filter((f) => isSignoff(parseSnapshot(b.tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0))))
+      .flatMap((f) => [`requests/${n}/origin/${f}`, `requests/archive/${n}/origin/${f}`]);
+    const parent = parentOf(b.tree, name);
+    const places = [...signoffsOf(name, r.dir), ...(parent ? signoffsOf(parent.name, parent.dir) : [])];
     const first = places.length ? git(top, ['log', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
     line ??= git(top, ['rev-list', '--first-parent', mainSha]).split('\n').filter(Boolean).map((c) => ({
       c, brought: git(top, ['rev-parse', '--verify', '--quiet', `${c}^2`], { allowFail: true }) ? [c, ...git(top, ['rev-list', `${c}^1..${c}^2`]).split('\n').filter(Boolean)] : [c],
