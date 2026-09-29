@@ -177,8 +177,10 @@ export function statesOf(files, blocks, include = (b) => b.open) {
     if (link) { result.push(entry(link)); continue; }
     if (same(b.was, b.now)) { result.push(entry('no change yet')); continue; }
     if (b.op === 'remove' ? base === undefined : same(base, b.now)) { result.push(entry('consolidated')); continue; }
-    // [STA-2] row 3: a successor's "now" is in the baseline; for a remove, as in row 2, its ID is absent.
-    const carriers = [...blocks.values()].filter((d) => d.key !== b.key && upward(d).includes(b) && (d.op === 'remove' ? base === undefined : same(base, d.now)));
+    // [STA-2] row 3: a successor of the same section whose "now" is in the
+    // baseline; for a remove, as in row 2, the ID is absent.
+    const carriers = [...blocks.values()].filter((d) => d.key !== b.key && d.id === b.id && upward(d).includes(b)
+      && (d.op === 'remove' ? base === undefined : same(base, d.now)));
     if (carriers.length) { result.push({ ...entry('carried', carriers[0].key), carriers: carriers.map((d) => d.key) }); continue; }
     const waitOn = upward(b).find((u) => (u.op === 'add' ? base === undefined : same(base, u.was)));
     if (waitOn) { result.push(entry('waiting', waitOn.key)); continue; }
