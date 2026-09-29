@@ -32,16 +32,16 @@ const INV20 = '## [INV-20] Credit notes\nA credit note MUST name its invoice.\n'
 const al = (repo, ...args) => runAl(repo.dir, args, { env: ENV });
 const status = (repo) => repo.git(['status', '--porcelain', '--untracked-files=all']);
 
-// Main: specs/invoices.md holding `baseline`, and the signed request
-// export. The branch `work` commits its change.md of `blocks`, with a
-// Request: line, so the branch serves it.
-function served(t, blocks, baseline) {
+// Main: specs/invoices.md holding `baseline`, and the request export,
+// signed unless `signed` is false. The branch `work` commits its change.md
+// of `blocks`, with a Request: line, so the branch serves it.
+function served(t, blocks, baseline, { signed = true } = {}) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', baseline);
-  addRequest(repo, 'export', null);
+  addRequest(repo, 'export', null, { signed });
   repo.commit('export: request', { date: '2026-09-21T12:00:00Z' });
   repo.git(['checkout', '-q', '-b', 'work']);
-  addRequest(repo, 'export', blocks);
+  addRequest(repo, 'export', blocks, { signed });
   repo.commit(message('export: change spec', { request: 'export', tier: '2 — export' }), { date: '2026-09-22T12:00:00Z' });
   return repo;
 }
@@ -73,6 +73,23 @@ const FAULTS = {
   'a modify with no Was:': {
     key: 'INV-1@1', block: block('[INV-1]@1 modify   for R1', { now: PDF }),
     before: file(CSV, INV2), after: file(PDF, INV2),
+  },
+  // PR #116 review: both sides of each op, and the whole op token.
+  'PR #116 a remove with neither Was: nor Now:': {
+    key: 'INV-1@1', block: block('[INV-1]@1 remove, was after [INV-2]   for R1', {}),
+    before: file(INV2, CSV), after: file(INV2),
+  },
+  'PR #116 an add in <path> with no Now:': {
+    key: 'INV-20@1', block: block('[INV-20]@1 add in specs/invoices.md   for R1', {}),
+    before: file(CSV, INV2), after: file(CSV, INV2),
+  },
+  'PR #116 an op with a suffix, "modify-typo"': {
+    key: 'INV-1@1', block: block('[INV-1]@1 modify-typo   for R1', { was: CSV, now: PDF }),
+    before: file(CSV, INV2), after: file(PDF, INV2),
+  },
+  'PR #116 an op with a suffix, "add-in"': {
+    key: 'INV-9@1', block: block('[INV-9]@1 add-in specs/invoices.md   for R1', { now: INV9 }),
+    before: file(CSV, INV2), after: file(CSV, INV2, INV9),
   },
 };
 
@@ -183,4 +200,38 @@ test('#114 [HNT-3] pin: a repo with no commits: context and spec exit 0', (t) =>
     const r = al(repo, ...args);
     assert.equal(r.code, 0, `${args.join(' ')}:\n${both(r)}`);
   }
+});
+
+// --- PR #116 review: revert validates too; record section shows the fault and still drafts ---
+
+// Two export/INV-1@1 modify blocks, both Now PDF, Was CSV and TEXT.
+const REPEATED_PDF = [
+  block('[INV-1]@1 modify   for R1', { was: CSV, now: PDF }),
+  block('[INV-1]@1 modify   for R1', { was: TEXT, now: PDF }),
+];
+
+test('PR #116 [STA-4] consolidate --revert validates too: with the repeated INV-1@1 pair and the baseline at PDF, consolidate export --revert INV-1 --yes refuses, exit 1, the baseline byte for byte', (t) => {
+  const repo = served(t, REPEATED_PDF, file(PDF, INV2));
+  const r = al(repo, 'consolidate', 'export', '--revert', 'INV-1', '--yes');
+  assert.equal(r.code, 1, `revert should refuse:\n${both(r)}`);
+  assert.equal(status(repo), '', 'nothing written');
+  assert.equal(repo.read('specs/invoices.md').toString(), file(PDF, INV2));
+});
+
+test('PR #116 [STA-4] contrast: a valid revert still works while the request is blocked: consolidate export --revert INV-1 --yes puts back CSV', (t) => {
+  const repo = served(t, [block('[INV-1]@1 modify   for R1', { was: CSV, now: PDF })], file(PDF, INV2), { signed: false });
+  const r = al(repo, 'consolidate', 'export', '--revert', 'INV-1', '--yes');
+  assert.equal(r.code, 0, both(r));
+  assert.equal(repo.read('specs/invoices.md').toString(), file(CSV, INV2));
+});
+
+test('PR #116 [SPC-5][TL-1] record export section INV-2 on a change.md with the repeated INV-1@1 pair: the preview shows a not ok naming INV-1@1, and --yes still writes the block (drafting is never refused)', (t) => {
+  const repo = served(t, REPEATED_PDF, file(PDF, INV2));
+  const preview = al(repo, 'record', 'export', 'section', 'INV-2');
+  assert.equal(preview.code, 0, both(preview));
+  assert.ok(lines(preview.stdout).some((l) => /not ok/.test(l) && l.includes('INV-1@1')), `the preview should show a not ok naming INV-1@1:\n${preview.stdout}`);
+  assert.equal(status(repo), '', 'the preview writes nothing');
+  const r = al(repo, 'record', 'export', 'section', 'INV-2', '--yes');
+  assert.equal(r.code, 0, both(r));
+  assert.match(repo.read('requests/export/change.md').toString(), /^### \[INV-2\]@1 modify/m, 'the INV-2 block is written');
 });
