@@ -193,7 +193,7 @@ export function hintsOf(top, b, { main }) {
   for (const [name, { r, j }] of facts) {
     // A record with no change.md should name what it changes with Amends: ([REC-9]).
     if (b.tree.read(`${r.dir}/change.md`) === null) {
-      const l = baselineLists(b.was, b.now, j.org, ownIds(top, name, b.base, b.root, b.requests, false));
+      const l = baselineLists(b.was, b.now, j.org, ownIds(top, name, b.base, b.root, b.requests, false, b.at ?? 'HEAD'));
       for (const id of l.unnamed) add('note', 24, [name], `${name} changes [${id}], which its Amends: does not name`, `al context ${name}`);
       for (const id of l.unchanged) add('note', 24, [name], `${name}'s Amends: names [${id}], which did not change`, `al context ${name}`);
     }

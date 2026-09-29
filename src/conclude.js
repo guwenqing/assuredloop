@@ -77,21 +77,23 @@ const amends = (text) => [...text.matchAll(/\bAmends:([^\n]*)/g)]
 // it doesn't name and the named ones that didn't change.
 export function baselineLists(was, now, org, own) {
   const named = org ? amends(org.text).map((x) => x.slice(1, -1)) : [];
-  const ids = [...new Set([...was.keys(), ...now.keys()])]
-    .filter((id) => own.has(id) && !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
+  const changed = [...new Set([...was.keys(), ...now.keys()])].filter((id) => !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
+  const ids = changed.filter((id) => own.has(id));
   return {
     Added: ids.filter((id) => !was.has(id)), Modified: ids.filter((id) => was.has(id) && now.has(id)), Removed: ids.filter((id) => !now.has(id)),
-    unnamed: ids.filter((id) => !named.includes(id)), unchanged: [...new Set(named)].filter((id) => !ids.includes(id)),
+    unnamed: ids.filter((id) => !named.includes(id)),
+    // "Did not change" is said of the section itself, whoever changed it.
+    unchanged: [...new Set(named)].filter((id) => !changed.includes(id)),
   };
 }
 
 // The baseline IDs request `name`'s own work changed ([LNK-2]): in the commits
-// fork..HEAD that map to it, merges left out, and, when `working`, in the
+// fork..tip that map to it, merges left out, and, when `working`, in the
 // working tree's changes not yet committed.
-export function ownIds(top, name, fork, root, requests, working) {
+export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
   const ids = new Set();
   const seen = new Map();
-  for (const sha of fork ? git(top, ['rev-list', '--no-merges', `${fork}..HEAD`]).split('\n').filter(Boolean) : []) {
+  for (const sha of fork ? git(top, ['rev-list', '--no-merges', `${fork}..${tip}`]).split('\n').filter(Boolean) : []) {
     if (requestOf(top, sha, requests, seen).names.includes(name)) sectionsChanged(top, `${sha}^`, sha, root, filesOf(top, sha)).forEach((id) => ids.add(id));
   }
   if (working) {
