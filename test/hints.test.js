@@ -100,7 +100,7 @@ test('[HNT-1][HNT-2] among not oks that count, [HNT-2]\'s order: a duplicate ID 
   assert.ok(duplicate < notFound, `the duplicate ID before the held ID not found:\n${hints.join('\n')}`);
 });
 
-test('[HNT-1][HNT-2] among notes, [HNT-2]\'s order: a hotfix, then no request linked, then a snapshot not re-checked', (t) => {
+test('[HNT-1][HNT-2] among notes, [HNT-2]\'s order: a hotfix, then no request linked, then a snapshot with no re-check recorded', (t) => {
   const ISSUE = 'Rows, please.\n';
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, S1));
@@ -119,8 +119,8 @@ test('[HNT-1][HNT-2] among notes, [HNT-2]\'s order: a hotfix, then no request li
   const hints = checkHints(check(repo, '--all'));
   const hotfix = at(hints, 'note', 'hotfix', 'INV-3');
   const unlinked = at(hints, 'note', 'no request linked');
-  const stale = at(hints, 'note', 'not re-checked', '2026-09-23-issue-40.md');
-  assert.ok(hotfix < unlinked && unlinked < stale, `expected hotfix, no request linked, then not re-checked:\n${hints.join('\n')}`);
+  const stale = at(hints, 'note', 'no re-check recorded', '2026-09-23-issue-40.md');
+  assert.ok(hotfix < unlinked && unlinked < stale, `expected hotfix, no request linked, then no re-check recorded:\n${hints.join('\n')}`);
 });
 
 test('[HNT-1] each hint names the section, request, path, commit or (for the branch as a whole) main..HEAD involved, and a command (al … or git …), in check, context <name> and context --diff', (t) => {

@@ -3,7 +3,8 @@
 // to no request; code still live for dropped work, as path:lines, and whether
 // a part plans its removal (for requests the branch serves or archives, by
 // [REC-9]'s rule); a served request's snapshot of an http(s) source, "fetched
-// <date>, not re-checked since", naming al record <name> origin --verify.
+// <date>; no re-check recorded (an unchanged --verify writes nothing)",
+// naming al record <name> origin --verify.
 // Notes never count: check --strict ignores them [HNT-3].
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -201,11 +202,11 @@ test('[HNT-2][REC-9] context --diff over a fixed range reads code still live at 
   hint(range(), 'note', 'code still live', LINE1);
 });
 
-// --- snapshots not re-checked ---
+// --- snapshots with no re-check recorded ---
 
 const snap = (source, fetched, text) => `Source: ${source}\nFetched: ${fetched}\nSHA-256: ${sha256(text)}\n---\n${text}`;
 
-test('[HNT-2][REC-3] a served request\'s snapshot of an http(s) source is a note: fetched <date>, not re-checked, naming al record <name> origin --verify; chats, files, standard input and requests not served get none', (t) => {
+test('[HNT-2][REC-3] a served request\'s snapshot of an http(s) source is a note: fetched <date>, no re-check recorded, naming al record <name> origin --verify; chats, files, standard input and requests not served get none', (t) => {
   const repo = makeRepo(t);
   addRequest(repo, 'invoice-download', null);
   const origin = 'requests/invoice-download/origin';
@@ -220,9 +221,9 @@ test('[HNT-2][REC-3] a served request\'s snapshot of an http(s) source is a note
   repo.commit(message('Rows', { request: 'invoice-download', tier: '2 — rows' }), { date: '2026-09-26T12:00:00Z' });
 
   const out = check(repo, '--all');
-  hint(out, 'note', 'not re-checked', '2026-09-23-issue-31.md', /fetched:? 2026-09-23/i, 'al record invoice-download origin --verify');
-  hint(out, 'note', 'not re-checked', '2026-09-24-wiki.md', /fetched:? 2026-09-24/i, 'al record invoice-download origin --verify');
+  hint(out, 'note', 'no re-check recorded (an unchanged --verify writes nothing)', '2026-09-23-issue-31.md', /fetched:? 2026-09-23/i, 'al record invoice-download origin --verify');
+  hint(out, 'note', 'no re-check recorded (an unchanged --verify writes nothing)', '2026-09-24-wiki.md', /fetched:? 2026-09-24/i, 'al record invoice-download origin --verify');
   for (const f of ['2026-09-22-call-notes.md', '2026-09-20-owner-words.md', '2026-09-21-signoff.md', '2026-09-25-issue-40.md']) {
-    noHint(out, 'not re-checked', f);
+    noHint(out, 'no re-check recorded', f);
   }
 });

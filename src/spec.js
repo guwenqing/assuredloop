@@ -67,14 +67,14 @@ export function spec(ctx) {
   const root = rootOf(top, tree, opts.at);
   const files = baseline(tree, root);
   const notKnown = [isShallow(top) && 'history unavailable (shallow clone)', 'whether the code does what the spec says (tests and review judge that)'].filter(Boolean);
-  if (!files.length) {
-    return { tree, body: [`no baseline yet; requests add sections as they go (root: ${root}/)`], next: 'al new <name> --from <file|->', notKnown };
-  }
   // [VW-5]: each open change under the section it holds; an add not in the
   // baseline yet under the baseline section its chain of anchors starts
-  // from; the rest (a new file) after the text.
+  // from; the rest (a new file) after the text. With no baseline yet, the
+  // open changes still show.
   const blocks = allBlocks(tree);
   const held = statesOf(files, blocks);
+  const empty = `no baseline yet; requests add sections as they go (root: ${root}/)`;
+  if (!files.length && !held.length) return { tree, body: [empty], next: 'al new <name> --from <file|->', notKnown };
   const ids = new Set(files.flatMap((f) => f.sections.map((s) => s.id)));
   const placed = (e, n = 0) => {
     const anchor = blocks.get(e.block).anchor;
@@ -89,14 +89,14 @@ export function spec(ctx) {
     return [`>> ${e.block} ${e.state}${e.by ? ` ${e.by}` : ''}${!text ? '' : !now ? ', removes it' : same ? ', now as above' : ', now:'}`,
       ...(text && now && !same ? now.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`) : [])];
   });
-  const body = [];
+  const body = files.length ? [] : [empty];
   for (const f of files) {
     body.push(line(body.length ? '' : 'Map', f.path));
     for (const s of f.sections) body.push(`${' '.repeat(12)}${s.id ? `[${s.id}] ` : ''}${s.title}`, ...overlay(s).map((l) => `${' '.repeat(14)}${l}`));
   }
   const into = [...new Set(loose.map((e) => e.file ?? 'no file named'))].map((p) => [p, loose.filter((e) => (e.file ?? 'no file named') === p)]);
   for (const [p, list] of into) body.push(line('New', `${p} (not in the baseline yet)`), ...overlay({}, false, list).map((l) => `${' '.repeat(14)}${l}`));
-  body.push(line('Covers', files.map((f) => `${f.path} (${f.sections.length} sections)`).join(' · ')));
+  if (files.length) body.push(line('Covers', files.map((f) => `${f.path} (${f.sections.length} sections)`).join(' · ')));
   const hints = duplicates(files);
   body.push(...hints);
   if (!opts.list) {

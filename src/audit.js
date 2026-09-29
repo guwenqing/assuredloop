@@ -8,7 +8,7 @@ import { allBlocks, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
 import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
-import { blame, byId, filesOf, requestOf, requestsIn } from './links.js';
+import { blame, byId, filesOf, requestCommits, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
 import { adrsOf } from './adrs.js';
 
@@ -81,10 +81,7 @@ function trace(a, name) {
     const rev = a.at ?? 'HEAD';
     // Every route [LNK-2] maps by: a Request: line, the folder, an issue number in the owner's words.
     const issues = [...new Set(entriesOf(md, "Owner's words and dialog").join('\n').match(/#\d+/g) ?? [])];
-    const shas = [...new Set([...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', rev]).split('\n'),
-      ...git(top, ['log', '--format=%H', rev, '--', ...place('')]).split('\n'),
-      ...issues.flatMap((n) => git(top, ['log', '-E', `--grep=${n}([^0-9]|$)`, '--format=%H', rev]).split('\n'))].filter(Boolean))];
-    const mine = shas.map((sha) => requestOf(top, sha, a.requests, a.seen)).filter((c) => c.names.includes(name));
+    const mine = requestCommits(top, name, issues, rev, a.requests, a.seen);
     body.push(...mine.map((c) => line('Commit', commitLine(a, c))));
     const isTest = testMatcher(a.root, configured(top, tree, a.at, 'tests'));
     body.push(line('Tests', [...new Set(mine.flatMap((c) => filesOf(top, c.sha)).filter(isTest))].sort().join(' · ') || 'none changed by its commits'));

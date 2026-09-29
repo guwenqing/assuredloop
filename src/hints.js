@@ -149,7 +149,7 @@ export function hintsOf(top, b, { main }) {
       if (!s) add('not ok', 11, [r.name], `origin/${f} of ${r.name} is not a valid snapshot: it needs Source, Fetched and SHA-256, then ---`, `al record ${r.name} origin --url <source> --from -`);
       else if (!s.intact) add('not ok', 11, [r.name], `origin/${f} of ${r.name} no longer matches its SHA-256`, `al record ${r.name} origin --verify ${f} --from -`);
       else if (b.served.has(r.name) && /^https?:\/\//.test(s.fields.Source)) {
-        add('note', 19, [r.name], `origin/${f} of ${r.name}, fetched ${s.fields.Fetched}, not re-checked since`, `al record ${r.name} origin --verify ${f} --from -`);
+        add('note', 19, [r.name], `origin/${f} of ${r.name}, fetched ${s.fields.Fetched}; no re-check recorded (an unchanged --verify writes nothing)`, `al record ${r.name} origin --verify ${f} --from -`);
       }
     }
   }
