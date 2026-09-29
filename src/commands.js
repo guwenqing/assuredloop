@@ -1,7 +1,7 @@
 // The commands built so far: new, record origin, context.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
-import { Fail, git, isShallow, mainCommit, now, resolveCommit, stamp } from './git.js';
+import { Fail, git, hasCommits, isShallow, mainCommit, now, resolveCommit, stamp } from './git.js';
 import { openTree, findRequest, isName, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
 import { sameSection } from './sections.js';
@@ -118,7 +118,7 @@ function readInput(from, cwd) {
 }
 
 function historyNote(top) {
-  return isShallow(top) ? 'history unavailable (shallow clone)' : null;
+  return !hasCommits(top) ? 'no commits yet, so no history' : isShallow(top) ? 'history unavailable (shallow clone)' : null;
 }
 
 // al new <name> --from <file|-> [--title <t>] [--tier <t>]
