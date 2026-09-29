@@ -121,8 +121,8 @@ export function signoffState(tree, dir, name) {
   const dropped = own ? parts(own.text).filter((p) => !now.some((c) => samePart(p, c))).map((p) => p.key) : [];
   if (!uncovered.length && !dropped.length) return { blocked: false, signoff: own, parent: parent.name, parentSignoff };
   const changed = [...uncovered, ...dropped];
-  if (own) return { blocked: true, reason: `changed since ${own.file}`, signoff: own, parent: parent.name, changed };
-  return { blocked: true, reason: `awaiting owner sign-off (not in ${parent.name}'s signed text)`, parent: parent.name, changed };
+  if (own) return { blocked: true, reason: `changed since ${own.file}`, signoff: own, parent: parent.name, parentSignoff, changed };
+  return { blocked: true, reason: `awaiting owner sign-off (not in ${parent.name}'s signed text)`, parent: parent.name, parentSignoff, changed };
 }
 
 // The parts added, changed or removed between the signed text and now.

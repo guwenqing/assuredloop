@@ -220,13 +220,18 @@ function review(tree, files, served, code, tier, changedIds) {
     // [REC-5]: signed by its own sign-off, or through its parent's for the parts it copies.
     const s = signoffState(tree, r.dir, r.name);
     const asked = organized(r.md);
-    if (s.blocked || !asked) intent.push(`${r.name}  not signed off (${s.reason ?? 'no organized requirement'})`);
-    else if (!s.parent) intent.push(`${r.name}  signed off origin/${s.signoff.file}:`, ...s.signoff.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`));
-    else {
-      intent.push(`${r.name}  signed off, part by part:`);
+    // [VW-4]: what the owner signed stays in view, verbatim with its file, while the draft is blocked.
+    const status = s.blocked ? `blocked (${s.reason}), not signed off as it stands` : 'signed off';
+    if (!asked) intent.push(`${r.name}  not signed off (${s.reason ?? 'no organized requirement'})`);
+    else if (!s.parent) {
+      intent.push(`${r.name}  ${status}${s.signoff ? `; signed text, origin/${s.signoff.file}:` : ''}`);
+      if (s.signoff) intent.push(...s.signoff.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`));
+    } else {
+      intent.push(`${r.name}  ${status}, part by part:`);
       for (const p of parts(asked.text)) {
         const own = s.signoff && parts(s.signoff.text).some((q) => samePart(p, q));
-        intent.push(`  ${p.key}: ${own ? `origin/${s.signoff.file}` : `through ${s.parent}, origin/${s.parentSignoff.file}`}`,
+        const inherited = s.parentSignoff && parts(s.parentSignoff.text).some((q) => samePart(p, q));
+        intent.push(`  ${p.key}: ${own ? `origin/${s.signoff.file}` : inherited ? `through ${s.parent}, origin/${s.parentSignoff.file}` : 'not signed'}`,
           ...p.text.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`));
       }
     }
