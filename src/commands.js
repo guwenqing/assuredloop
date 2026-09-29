@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { Fail, git, isShallow, mainCommit, now, resolveCommit, stamp } from './git.js';
-import { openTree, findRequest, noSymlinkOn } from './tree.js';
+import { openTree, findRequest, isName, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
 import { sameSection } from './sections.js';
 import { changedParts, latestSignoff, organized, parts, signoffState } from './signoff.js';
@@ -63,7 +63,7 @@ export function concludedOnMain(top, name, at) {
 
 const ID_ARG = /^\[?([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]?$/;
 
-const NAME = /^[a-z0-9][a-z0-9-]*$/;
+const BAD_NAME = (name) => `${JSON.stringify(name ?? '')} is not a request name: a name is lowercase letters, digits and hyphens, never a path ([REC-1])`;
 const TIERS = ['0', '1', '2', '3', 'S'];
 const TIER0 = 'tier 0 has no record ([REC-10]): if this is a fix, say why in the commit and drop the record; otherwise its tier is 1 or higher';
 const FETCHED = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
@@ -124,7 +124,7 @@ function historyNote(top) {
 // al new <name> --from <file|-> [--title <t>] [--tier <t>]
 export function newRequest({ top, cwd, args, opts }) {
   const [name] = args;
-  if (name === undefined || !NAME.test(name) || name === 'archive') {
+  if (!isName(name)) {
     throw new Fail(`bad request name ${JSON.stringify(name ?? '')}: use lowercase letters, digits and hyphens`, 'al new <name> --from <file|->');
   }
   if (opts.tier !== undefined && !TIERS.includes(opts.tier)) throw new Fail(`bad tier ${opts.tier}: one of ${TIERS.join(', ')}`);
@@ -225,7 +225,8 @@ export function recordOrigin(ctx) {
 // The folder of a request the tool may write: it exists, and is not archived on
 // main ([REC-1]; one archived on this branch still may be, [REC-12]).
 export function requestToWrite(top, tree, name) {
-  const dir = findRequest(tree, name ?? '');
+  if (!isName(name)) throw new Fail(BAD_NAME(name), 'al context for the requests there are');
+  const dir = findRequest(tree, name);
   if (!dir) throw new Fail(`no request named ${name ?? ''}`, 'al new <name> --from <file|->');
   const main = mainCommit(top);
   if (dir.startsWith('requests/archive/') && main && git(top, ['cat-file', '-e', `${main}:${dir}/request.md`], { allowFail: true }) !== null) {
@@ -322,6 +323,7 @@ export function context({ top, args, opts }) {
     return audit(top, ID_ARG.test(name) ? name.match(ID_ARG)[1] : name, opts.at);
   }
   if (/:\d+$/.test(name ?? '')) throw new Fail(`${name}: path:line goes with --audit`, `al context ${name} --audit`);
+  if (name !== undefined && !ID_ARG.test(name) && !isName(name)) throw new Fail(BAD_NAME(name), 'al context for the requests there are');
   if (opts.diff !== undefined) return diffView(top, opts.diff, opts.for === 'review', opts.all, opts.at);
   if (ID_ARG.test(name ?? '')) return sectionView(top, name.match(ID_ARG)[1], opts.at);
   if (name === undefined) return projectView(top, opts.at);
