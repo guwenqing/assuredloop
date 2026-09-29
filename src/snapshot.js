@@ -11,8 +11,9 @@ export function formatSnapshot({ source, fetched, updated, text }) {
   return Buffer.concat([Buffer.from(header.join('\n')), text]);
 }
 
-// The header fields, the text, and whether the text still matches its hash.
-// Null when the header lacks Source, Fetched or SHA-256, or the separator.
+// The header fields, the separator line, the text, and whether the text still
+// matches its hash. Null when the header lacks Source, Fetched or SHA-256, or
+// the separator.
 export function parseSnapshot(bytes) {
   const fields = {};
   let pos = 0;
@@ -25,13 +26,18 @@ export function parseSnapshot(bytes) {
       const text = bytes.subarray(Math.min(pos, bytes.length));
       const recorded = (fields['SHA-256'] || '').split(/\s/)[0].toLowerCase();
       if (!recorded || !fields.Source || !fields.Fetched) return null;
-      return { fields, text, recorded, intact: sha256(text) === recorded };
+      return { fields, separator: line, text, recorded, intact: sha256(text) === recorded };
     }
     const m = line.match(/^([^:]+):\s?(.*)$/);
     if (m) fields[m[1]] = m[2];
   }
   return null;
 }
+
+// A parsed snapshot is a sign-off ([REC-5]) only when its header ends with this
+// line, as record signoff writes it; the marker quoted in a text is not one.
+export const SIGNED = '--- signed text ---';
+export const isSignoff = (s) => s?.separator === SIGNED;
 
 // A file-name part from a source: `https://github.com/o/r/issues/31` gives
 // `github-com-o-r-issues-31`.

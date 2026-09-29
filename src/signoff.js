@@ -2,7 +2,7 @@
 // state ([REC-6]). Everything is judged from the text in the files, never from
 // commits, so a squash changes nothing.
 import { parseSections, sameSection } from './sections.js';
-import { parseSnapshot } from './snapshot.js';
+import { isSignoff, parseSnapshot } from './snapshot.js';
 
 const ORGANIZED = /^Organized (requirement|question)$/;
 const SIGNED_OFF = /^Signed off:/;
@@ -57,9 +57,8 @@ export function latestSignoff(tree, dir, md) {
   const signoffs = [];
   for (const file of tree.list(`${dir}/origin`) ?? []) {
     const bytes = tree.read(`${dir}/origin/${file}`);
-    if (!bytes || !bytes.includes('\n--- signed text ---\n')) continue;
-    const s = parseSnapshot(bytes);
-    if (s?.intact) signoffs.push({ file, fetched: s.fields.Fetched, text: s.text.toString('utf8') });
+    const s = bytes && parseSnapshot(bytes);
+    if (isSignoff(s) && s.intact) signoffs.push({ file, fetched: s.fields.Fetched, text: s.text.toString('utf8') });
   }
   if (!signoffs.length) return { signoff: null };
   const last = signoffs.reduce((m, s) => (s.fetched > m ? s.fetched : m), '');

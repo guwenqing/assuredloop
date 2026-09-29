@@ -6,7 +6,7 @@ import { openTree, findRequest } from './tree.js';
 import { rootOf, baseline, configured } from './spec.js';
 import { allBlocks, statesOf } from './states.js';
 import { sameSection } from './sections.js';
-import { parseSnapshot } from './snapshot.js';
+import { isSignoff, parseSnapshot } from './snapshot.js';
 import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
 import { blame, byId, filesOf, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
@@ -52,7 +52,7 @@ function trace(a, name) {
     const bytes = tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0);
     const s = parseSnapshot(bytes);
     const ok = !s ? 'not ok: not a valid snapshot' : s.intact ? 'SHA-256 matches' : 'not ok: no longer matches its SHA-256';
-    if (s && bytes.includes('\n--- signed text ---\n')) body.push(line('Sign-off', `origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
+    if (isSignoff(s)) body.push(line('Sign-off', `origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
     else body.push(line('Snapshot', `origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
   }
   body.push(...entriesOf(md, 'Decisions').map((e) => line('Decision', e)));

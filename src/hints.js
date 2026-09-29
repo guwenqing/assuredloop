@@ -9,7 +9,7 @@ import { rootOf, baseline, duplicateIds } from './spec.js';
 import { allBlocks, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { organized, parts, signoffState } from './signoff.js';
-import { parseSnapshot } from './snapshot.js';
+import { isSignoff, parseSnapshot } from './snapshot.js';
 import { entriesOf, line } from './commands.js';
 import { headingFault } from './consolidate.js';
 import { baselineLists, judge, outcomeFacts, ownIds } from './conclude.js';
@@ -214,7 +214,7 @@ function earlyWork(top, b, mainSha) {
   for (const name of b.served) {
     const r = b.requests.find((x) => x.name === name);
     if (!r) continue;
-    const signoffs = (b.tree.list(`${r.dir}/origin`) ?? []).filter((f) => (b.tree.read(`${r.dir}/origin/${f}`) ?? Buffer.alloc(0)).includes('\n--- signed text ---\n'));
+    const signoffs = (b.tree.list(`${r.dir}/origin`) ?? []).filter((f) => isSignoff(parseSnapshot(b.tree.read(`${r.dir}/origin/${f}`) ?? Buffer.alloc(0))));
     const places = signoffs.flatMap((f) => [`requests/${name}/origin/${f}`, `requests/archive/${name}/origin/${f}`]);
     const first = places.length ? git(top, ['log', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
     line ??= git(top, ['rev-list', '--first-parent', mainSha]).split('\n').filter(Boolean).map((c) => ({
