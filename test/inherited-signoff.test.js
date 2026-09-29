@@ -211,3 +211,26 @@ test('PR #120 [VW-4][REC-5] --for review, a blocked child with an inherited part
   assert.ok(intent.split('\n').some((l) => /\bR1\b/.test(l) && l.includes('through parent') && l.includes('origin/2026-09-21-signoff.md')),
     `R1 with its source, through parent, origin/2026-09-21-signoff.md:\n${intent}`);
 });
+
+test('PR #120 [VW-4][REC-6] --for review, a blocked child with its own intact sign-off: the intent says blocked, labels R2\'s draft as not signed, and keeps the child\'s signed text verbatim ("… MUST last 30 days.") with its file', (t) => {
+  const own = (days) => `## Organized requirement\n\n${R1}\n### R2 Child capability\nThe child capability MUST last ${days} days.\n\nOut: PDF export.\n`;
+  const repo = makeRepo(t);
+  parent(repo);
+  child(repo, own(30));
+  ok(al(repo, 'record', 'child', 'signoff', '--source', 'chat with the owner', '--yes'), 'record child signoff');
+  repo.commit('parent and child, both signed', { date: '2026-09-24T12:00:00Z' });
+  const signoff = repo.git(['ls-files', 'requests/child/origin']).split('\n').find((f) => /signoff/.test(f));
+  assert.ok(signoff, 'the fixture: the child\'s own sign-off file');
+  const file = `origin/${signoff.split('/').pop()}`;
+  assert.notEqual(file, 'origin/2026-09-21-signoff.md', 'the fixture: the child\'s file is not named like the parent\'s');
+  repo.git(['checkout', '-q', '-b', 'work']);
+  const md = 'requests/child/request.md';
+  repo.write(md, repo.read(md).toString().replace('MUST last 30 days.', 'MUST last 60 days.'));
+  repo.write('src/child.js', 'export const days = 60;\n');
+  repo.commit(message('Sixty days', { request: 'child', tier: '1 — child' }), { date: '2026-09-25T12:00:00Z' });
+  const { intent } = intentOf(repo);
+  assert.match(intent, /\bblocked\b/i, `the intent says blocked:\n${intent}`);
+  assert.ok(intent.split('\n').some((l) => /\bR2\b/.test(l) && /not signed/i.test(l)), `R2's draft labelled not signed:\n${intent}`);
+  assert.ok(intent.includes('The child capability MUST last 30 days.'), `the child's signed text, verbatim:\n${intent}`);
+  assert.ok(intent.includes(file), `the child's sign-off file, ${file}:\n${intent}`);
+});
