@@ -51,12 +51,17 @@ export function outcomeFacts(org, fates) {
   // R<n>, for R<n>; anywhere else in the organized section, for every R-line.
   const all = org ? parts(org.text) : [];
   const isR = (x) => /^R\d+$/.test(x.key);
-  const everyR = all.filter((x) => !isR(x)).flatMap((x) => amends(x.text));
+  const level = (x) => x.text.match(/^\s*(#+)\s/)?.[1].length ?? 0;
+  // A part under a deeper heading inside R<n> stays in R<n>'s scope.
+  let r = null;
+  const scope = all.map((x) => (r = isR(x) ? x : r && level(x) > level(r) ? r : null)?.key ?? null);
+  const under = (key) => all.filter((x, i) => scope[i] === key).flatMap((x) => amends(x.text));
+  const everyR = under(null);
   const rs = all.filter(isR).map((p) => ({
     key: p.key,
     title: p.text.split('\n')[0].replace(/^\s*#+\s+R\d+\s*/, '').trim(),
     ids: [...new Set([...[...ids].filter(([id, fs]) => kinds.get(id) !== 'Dropped' && fs.some((f) => f.b.forR.includes(p.key))).map(([id]) => `[${id}]`),
-      ...amends(p.text), ...everyR])],
+      ...under(p.key), ...everyR])],
   }));
   return { kinds, rs };
 }
