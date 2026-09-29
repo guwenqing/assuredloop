@@ -117,3 +117,42 @@ test('C9 [TL-1][TL-4] the CLI takes every --flag the skill passes: al never answ
   }
   assert.ok(flags > 0, `${SKILL} should pass at least one --flag (--yes, at least)`);
 });
+
+// --- #109 [REC-4]: the quick path writes the organized requirement as REC-4 asks ---
+
+// The quick path's lines: its heading through the line before the next ## heading.
+function quickPath() {
+  const { body } = parts();
+  const heads = h2(body);
+  return body.slice(heads[0], heads[1] ?? body.length).join('\n');
+}
+
+test('#109 [REC-4][TL-4] the tier-1 quick path names the organized requirement\'s parts: a "### R1" sub-section, "Out:" and "Assumed:", with "Amends: [ID]"', () => {
+  const quick = quickPath();
+  for (const part of ['### R1', 'Out:', 'Assumed:', 'Amends: [']) {
+    assert.ok(quick.includes(part), `the quick path should name ${JSON.stringify(part)}:\n${quick}`);
+  }
+});
+
+test('#109 [REC-4][REC-9] the quick path walked through the CLI: new --tier 1, an organized requirement with ### R1, Amends: [A-1], Out: and Assumed:, signoff, the baseline edit, conclude: R1\'s fate is in [A-1]', (t) => {
+  const env = { SOURCE_DATE_EPOCH: '1790206200' };
+  const al = (repo, args, input) => {
+    const r = runAl(repo.dir, args, { input, env });
+    assert.equal(r.code, 0, `al ${args.join(' ')}:\n${both(r)}`);
+    return r;
+  };
+  const repo = makeRepo(t);
+  repo.write('specs/rules.md', '## [A-1] Promise\nThe promise MUST say old.\n');
+  repo.commit('Baseline');
+  repo.git(['checkout', '-q', '-b', 'promise']);
+  al(repo, ['new', 'promise', '--tier', '1', '--from', '-'], 'Make the promise say new.\n');
+  const md = 'requests/promise/request.md';
+  repo.write(md, `${repo.read(md).toString()}\n## Organized requirement\n\n### R1 The promise says new\n` +
+    'The promise MUST say new. Amends: [A-1]\n\nOut: nothing else.\n\nAssumed:\n- one promise.\n');
+  al(repo, ['record', 'promise', 'signoff', '--source', 'chat with the owner', '--words', '"OK"', '--yes']);
+  repo.write('specs/rules.md', '## [A-1] Promise\nThe promise MUST say new.\n');
+  al(repo, ['conclude', 'promise', '--yes']);
+  const archived = repo.read('requests/archive/promise/request.md').toString();
+  const outcome = archived.slice(archived.indexOf('## Outcome'));
+  assert.ok(outcome.split('\n').includes('- R1 The promise says new: in [A-1]'), `R1's fate:\n${outcome}`);
+});
