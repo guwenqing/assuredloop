@@ -266,7 +266,8 @@ function importers(top, at, path) {
 // The relative specifiers `text` imports or requires, as [how, spec], read left
 // to right: comments and the text of strings and templates are skipped whole,
 // and a template's ${…} expressions are read as code.
-const SPEC = /\b(from|import|require)\s*\(?\s*(['"])(\.{1,2}\/[^'"\n]*)\2/y;
+// `from` only as an ESM clause, never a call; nothing after a `.` (a method).
+const SPEC = /(?<![\w$.])(?:(from)\s*|(import)\s*\(?\s*|(require)\s*\(\s*)(['"])(\.{1,2}\/[^'"\n]*)\4/y;
 function specifiers(text) {
   const out = [];
   const braces = []; // for each ${ we are inside, the { depth within it
@@ -283,7 +284,7 @@ function specifiers(text) {
     }
     SPEC.lastIndex = i;
     const m = 'fir'.includes(c) && SPEC.exec(text);
-    if (m) { out.push([m[1], m[3]]); i = SPEC.lastIndex; }
+    if (m) { out.push([m[1] ?? m[2] ?? m[3], m[5]]); i = SPEC.lastIndex; }
     else if (two === '//') { const n = text.indexOf('\n', i); i = n < 0 ? text.length : n; }
     else if (two === '/*') { const n = text.indexOf('*/', i + 2); i = n < 0 ? text.length : n + 2; }
     else if (c === '"' || c === "'") {
