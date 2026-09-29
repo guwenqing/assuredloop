@@ -407,3 +407,36 @@ test('#89 (e) PR #90 pin: the real ESM forms stay named: a side-effect import \'
   assert.match(after, /imported by [^;]*src\/side-effect\.js/, `src/side-effect.js imports it for its side effects:\n${line}`);
   assert.match(after, /imported by [^;]*src\/reexport\.js/, `src/reexport.js re-exports from it:\n${line}`);
 });
+
+// PR #90, fourth review: a member call is not an import or require, whatever
+// lies between the dot and the name.
+
+test('#89 (e) PR #90: loader.<newline>import(\'./email-link.js\') is a member call: src/method-spaced.js is not named', (t) => {
+  const code = "const loader = { import: (text) => text };\nexport const example = loader.\nimport('./email-link.js');\n";
+  const repo = c10(t, { extra: { 'src/method-spaced.js': code } });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/email\.js/, `the fixture: the note names importers:\n${line}`);
+  assert.ok(!line.includes('src/method-spaced.js'), `src/method-spaced.js only calls loader.import:\n${line}`);
+});
+
+test('#89 (e) PR #90: member calls with spaces, a comment, or ?. before the name are not callers: loader . require(…), loader./* c */import(…), loader?.import(…)', (t) => {
+  const repo = c10(t, {
+    extra: {
+      'src/method-spaces.js': "const loader = { require: (text) => text };\nexport const r = loader . require('./email-link');\n",
+      'src/method-comment.js': "const loader = { import: (text) => text };\nexport const c = loader./* c */import('./email-link.js');\n",
+      'src/method-optional.js': "const loader = { import: (text) => text };\nexport const o = loader?.import('./email-link.js');\n",
+    },
+  });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/email\.js/, `the fixture: the note names importers:\n${line}`);
+  for (const path of ['src/method-spaces.js', 'src/method-comment.js', 'src/method-optional.js']) {
+    assert.ok(!line.includes(path), `${path} only makes a member call:\n${line}`);
+  }
+});
+
+test('#89 (e) PR #90 pin: a statement ending in ;, then a newline, then import(\'./email-link.js\'): src/after-statement.js is named, imported by', (t) => {
+  const code = "export const before = 1;\nimport('./email-link.js');\n";
+  const repo = c10(t, { extra: { 'src/after-statement.js': code } });
+  const { line, after } = liveNote(repo);
+  assert.match(after, /imported by [^;]*src\/after-statement\.js/, `a line end alone does not hide the import():\n${line}`);
+});
