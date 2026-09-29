@@ -29,6 +29,7 @@ import { block } from './helpers/change.js';
 import { DECISIONS, addRequest, both } from './helpers/request.js';
 import { file } from './helpers/links.js';
 import { viewHints } from './helpers/hints.js';
+import { expanded, groups } from './helpers/grouped.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const V1 = 'requests/archive/assuredloop-v1';
@@ -64,43 +65,6 @@ function labelBlock(out, label) {
   return got;
 }
 
-// --- reading the grouped form ---
-
-// A line's groups: [{ count, state, items }] from "<count> <state>: <a>, <b> · …".
-function groups(line, label) {
-  const text = line.replace(new RegExp(`^${label}\\s+`), '');
-  return text.split(' · ').map((g) => {
-    const m = g.match(/^(\d+) (.+?): (.+)$/);
-    assert.ok(m, `each group should read "<count> <state>: <ids>", got ${JSON.stringify(g)} in:\n${line}`);
-    return { count: Number(m[1]), state: m[2], items: m[3].split(', ') };
-  });
-}
-// An item's IDs: "REC-1–3" gives REC-1, REC-2, REC-3; "INV-3.1–3.2" gives
-// INV-3.1, INV-3.2; "VW-1@2 on VW-1@1" gives VW-1@2; anything else itself.
-function expand(item) {
-  const first = item.split(' on ')[0];
-  const m = first.match(/^([A-Z][A-Z0-9]*-)([\d.]+)–([\d.]+)$/);
-  if (!m) return [first];
-  const [prefix, from, to] = [m[1], m[2].split('.'), m[3].split('.')];
-  assert.equal(from.length, to.length, `a range joins IDs of one shape: ${item}`);
-  assert.deepEqual(from.slice(0, -1), to.slice(0, -1), `a range differs only in its last number: ${item}`);
-  const head = from.slice(0, -1).map((x) => `${x}.`).join('');
-  const out = [];
-  for (let n = Number(from.at(-1)); n <= Number(to.at(-1)); n++) out.push(`${prefix}${head}${n}`);
-  assert.ok(out.length >= 2, `a range covers two IDs or more: ${item}`);
-  return out;
-}
-// Each group's count matches its IDs, no count is 0; returns { state: [ids] }.
-function expanded(gs, line) {
-  const out = {};
-  for (const g of gs) {
-    const ids = g.items.flatMap(expand);
-    assert.ok(g.count > 0, `an empty group is left out: ${g.state} in:\n${line}`);
-    assert.equal(ids.length, g.count, `"${g.count} ${g.state}" should name ${g.count} sections, names ${ids.join(', ')}:\n${line}`);
-    out[g.state] = ids;
-  }
-  return out;
-}
 const sorted = (xs) => [...xs].sort();
 
 // --- an open request whose sections do not fit one line ---
@@ -192,7 +156,7 @@ test('#91 [VW-2] --all: Spec has one held section per line, "<ID or ID@n> <state
   for (const [id, state] of Object.entries(expected)) {
     assert.ok(spec.includes(`${id} ${state} (R1)`), `expected the line "${id} ${state} (R1)":\n${spec.join('\n')}`);
   }
-  assert.doesNotMatch(spec.join('\n'), /\d+ consolidated|–/, `--all neither counts nor ranges:\n${spec.join('\n')}`);
+  assert.doesNotMatch(spec.join('\n'), /(?:^|· )\d+ [a-z]|–/m, `--all neither counts nor ranges:\n${spec.join('\n')}`);
 });
 
 test('#91 [VW-2] --all: Decided has one decision per line with its full text as written, newest first; D2, written over two lines, on one', (t) => {

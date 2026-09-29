@@ -14,8 +14,8 @@
 //     The BLOCKED header is not a hint (the architect's ruling on [HNT-2]):
 //     for a served, blocked request with nothing delivering, the note stays,
 //     in context <name> --all too;
-// (d) the Spec line's count form names what a waiting block waits on,
-//     "1 waiting (INV-2@2 on INV-2@1)", with the <request>/ prefix only for
+// (d) the Spec line's grouped form names what a waiting block waits on,
+//     "1 waiting: INV-2@2 on INV-2@1" (the form context-all R1 set), with the <request>/ prefix only for
 //     another request's block; the list form reads "INV-2@2 waiting on …";
 // (a) when the request changed since its sign-off, the Require line names
 //     the command that shows what changed, al record <name> signoff --source
@@ -222,10 +222,10 @@ test('#89 (g) pin: an unsigned request on main, served by no branch: context csv
 
 // --- (d) the waiting block's target on the Spec line ---
 
-test('#89 (d) C10: the Spec line\'s count form names what the waiting block waits on: 1 waiting (INV-2@2 on INV-2@1)', (t) => {
+test('#89 (d) C10: the Spec line\'s grouped form names what the waiting block waits on: 1 waiting: INV-2@2 on INV-2@1', (t) => {
   const repo = c10(t);
   const spec = labelLine(context(repo), 'Spec');
-  assert.ok(spec.includes('1 waiting (INV-2@2 on INV-2@1)'), `the Spec line:\n${spec}`);
+  assert.ok(spec.includes('1 waiting: INV-2@2 on INV-2@1'), `the Spec line:\n${spec}`);
 });
 
 // Main: INV-1, INV-3 (S0) and rules 11-16 (six pending blocks, so the count
@@ -249,9 +249,9 @@ function builtOn(t, { many }) {
   return repo;
 }
 
-test('#89 (d) the count form keeps the <request>/ prefix for another request\'s block: 1 waiting (INV-3@1 on cancel-invoices/INV-3@1)', (t) => {
+test('#89 (d) the grouped form keeps the <request>/ prefix for another request\'s block: 1 waiting: INV-3@1 on cancel-invoices/INV-3@1', (t) => {
   const spec = labelLine(context(builtOn(t, { many: true }), 'dates'), 'Spec');
-  assert.ok(spec.includes('1 waiting (INV-3@1 on cancel-invoices/INV-3@1)'), `the Spec line:\n${spec}`);
+  assert.ok(spec.includes('1 waiting: INV-3@1 on cancel-invoices/INV-3@1'), `the Spec line:\n${spec}`);
 });
 
 test('#89 (d) pin: the list form reads "INV-3@1 waiting on cancel-invoices/INV-3@1"', (t) => {
