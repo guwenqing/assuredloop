@@ -234,6 +234,8 @@ function review(tree, files, served, code, tier, changedIds) {
         intent.push(`  ${p.key}: ${own ? `origin/${s.signoff.file}` : inherited ? `through ${s.parent}, origin/${s.parentSignoff.file}` : 'not signed'}`,
           ...p.text.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`));
       }
+      // Blocked with its own sign-off: what it signed, changed or removed parts included.
+      if (s.blocked && s.signoff) intent.push(`  signed text, origin/${s.signoff.file}:`, ...s.signoff.text.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`));
     }
     // The spec changes: the blocks whose sections this branch changes ([VW-2]'s rule for the line).
     const changing = states.filter((e) => e.request === r.name && changedIds.includes(e.id));
