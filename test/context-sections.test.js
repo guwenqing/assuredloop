@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { makeRepo, runAl, sha256 } from './helpers/fixture.js';
 import { assertFrame, lines } from './helpers/output.js';
 import { block, changeMd } from './helpers/change.js';
-import { says } from './helpers/links.js';
+import { stateOf } from './helpers/grouped.js';
 import { count } from './helpers/evidence.js';
 
 const WORDS = 'Customers keep asking to download their invoices.\n';
@@ -315,7 +315,7 @@ test('[VW-6][STA-8] real data: the archived assuredloop-v1, committed to a fixtu
   assert.match(lines(r.stdout)[0], /assuredloop-v1.*\bconcluded\b/, r.stdout);
   assert.ok(lines(r.stdout).some((l) => /concluded on main/i.test(l) && l.includes(archived.slice(0, 7))),
     `a line should say it concluded on main at ${archived.slice(0, 7)}:\n${r.stdout}`);
-  for (const id of ids) assert.ok(says(r.stdout, id, /as at conclusion/), `${id} should read as at conclusion:\n${r.stdout}`);
+  for (const id of ids) assert.equal(stateOf(r.stdout, 'Sections', id), 'as at conclusion', `${id} should read as at conclusion:\n${r.stdout}`);
   assert.match(segment(decided(r.stdout), 'D1'), /agent/i);
   assertCap(r);
   assertFrame(r.stdout);
