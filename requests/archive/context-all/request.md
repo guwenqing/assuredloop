@@ -1,5 +1,5 @@
 # context groups its output, and --all shows everything
-Tier: 1 · Status: open
+Tier: 1 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -21,3 +21,18 @@ Assumed:
 - `--all` is the verbose mode. The default view already offers it for hidden
   hints ("N more hidden, --all"), so it adds no new switch.
 Signed off: 2026-09-29 owner, origin/2026-09-29-signoff.md
+
+## Outcome
+
+- R1 Grouped by default, everything on request: in no section
+- Added: none
+- Modified: none
+- Removed: none
+- Dropped: none
+- Kept: none
+- Decisions: none
+- Agent rulings: none
+- ADRs added: none
+- ADRs superseded: none
+
+Notes:
