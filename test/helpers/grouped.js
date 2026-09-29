@@ -24,7 +24,8 @@ export function expand(item) {
   if (!m) return [first];
   const [prefix, from, to] = [m[1], m[2].split('.'), m[3].split('.')];
   assert.equal(from.length, to.length, `a range joins IDs of one shape: ${item}`);
-  assert.deepEqual(from.slice(0, -1), to.slice(0, -1), `a range differs only in its last number: ${item}`);
+  assert.deepEqual(from.slice(0, -1), to.slice(0, -1), `a range differs only in its last number, written the same before it: ${item}`);
+  assert.ok(!/^0\d/.test(from.at(-1)) && !/^0\d/.test(to.at(-1)), `a range's last numbers have no leading zeros, so it expands back to the IDs as written: ${item}`);
   const head = from.slice(0, -1).map((x) => `${x}.`).join('');
   const out = [];
   for (let n = Number(from.at(-1)); n <= Number(to.at(-1)); n++) out.push(`${prefix}${head}${n}`);

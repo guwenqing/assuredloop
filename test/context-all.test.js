@@ -270,3 +270,48 @@ test('#91 [VW-6] real data, archived, --all: Decided has every decision, D7 to D
   const decided = labelBlock(context(archived(t), 'assuredloop-v1', '--all'), 'Decided');
   assert.deepEqual(decided, [...entries].reverse());
 });
+
+// --- PR #92 review: a range expands back to the exact IDs ---
+
+// Two IDs share a run only when the text before their last number is the
+// same (INV-03 is not INV-3), their last numbers are consecutive, and each
+// is written without leading zeros (INV-02 is not ranged with INV-1).
+const RUN = [11, 12, 13, 14].map((n) => `INV-${n}`);
+const CASES = {
+  'INV-03.1 and INV-3.2: the text before the last number differs': [['INV-03.1', 'INV-3.2', ...RUN], ['INV-03.1', 'INV-3.2', 'INV-11–14']],
+  'control, INV-03.1 and INV-03.2: the same text before it': [['INV-03.1', 'INV-03.2', ...RUN], ['INV-03.1–03.2', 'INV-11–14']],
+  'INV-1 and INV-02: a leading zero in the last number': [['INV-1', 'INV-02', ...RUN], ['INV-1', 'INV-02', 'INV-11–14']],
+};
+
+// The signed request `zeros` holding a modify block for each of `ids`; the
+// baseline has each "was" (pending), or, when `archived`, each "now", and
+// the request is concluded with the tool and committed on main.
+function zeros(t, ids, { archived = false } = {}) {
+  const repo = makeRepo(t);
+  repo.write('specs/rules.md', file(...ids.map((id) => (archived ? N(id) : W(id)))));
+  addRequest(repo, 'zeros', ids.map((id) => modify(id)));
+  repo.commit('zeros: request', { date: '2026-09-27T12:00:00Z' });
+  if (archived) {
+    ok(runAl(repo.dir, ['conclude', 'zeros', '--yes']), 'conclude');
+    repo.commit('Conclude zeros\n\nRequest: zeros', { date: '2026-09-28T12:00:00Z' });
+  }
+  return repo;
+}
+
+for (const [label, [ids, items]] of Object.entries(CASES)) {
+  test(`#91 PR #92 [VW-2] the open view's Spec line: ${label}; every ID expands back exactly`, (t) => {
+    const line = labelLine(context(zeros(t, ids), 'zeros'), 'Spec');
+    const gs = groups(line, 'Spec');
+    assert.deepEqual(gs.map((g) => g.state), ['pending'], line);
+    assert.deepEqual(sorted(gs[0].items), sorted(items), `the pending group:\n${line}`);
+    assert.deepEqual(sorted(expanded(gs, line).pending), sorted(ids), `the IDs as written:\n${line}`);
+  });
+
+  test(`#91 PR #92 [VW-6] the archived view's Sections line: ${label}; every ID expands back exactly`, (t) => {
+    const line = labelLine(context(zeros(t, ids, { archived: true }), 'zeros'), 'Sections');
+    const gs = groups(line, 'Sections');
+    assert.deepEqual(gs.map((g) => g.state), ['as at conclusion'], line);
+    assert.deepEqual(sorted(gs[0].items), sorted(items), `the as-at-conclusion group:\n${line}`);
+    assert.deepEqual(sorted(expanded(gs, line)['as at conclusion']), sorted(ids), `the IDs as written:\n${line}`);
+  });
+}
