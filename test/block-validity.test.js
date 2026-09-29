@@ -91,6 +91,12 @@ const FAULTS = {
     key: 'INV-9@1', block: block('[INV-9]@1 add-in specs/invoices.md   for R1', { now: INV9 }),
     before: file(CSV, INV2), after: file(CSV, INV2, INV9),
   },
+  // PR #116 re-review: names every JS object inherits are not ops either.
+  ...Object.fromEntries(['constructor', 'toString', '__proto__', 'hasOwnProperty', 'valueOf'].map((op) => [
+    `PR #116 an inherited name as the op, "${op}"`, {
+      key: 'INV-1@1', block: block(`[INV-1]@1 ${op}   for R1`, { was: CSV, now: PDF }),
+      before: file(CSV, INV2), after: file(PDF, INV2),
+    }])),
 };
 
 for (const [label, { key, block: faulty, before, after }] of Object.entries(FAULTS)) {
