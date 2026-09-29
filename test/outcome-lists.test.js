@@ -54,7 +54,7 @@ function concluded(t, { name = 'grouping', line = TIER1, org, blocks = null, bas
   repo.commit(message(`${name}: request`, { request: name, tier: `${tierOf(line)} — ${name}` }), { date: '2026-09-28T12:00:00Z' });
   repo.git(['checkout', '-q', '-b', name]);
   onBranch(repo);
-  if (blocks) ok(al(repo, 'consolidate', name, '--yes'), 'consolidate');
+  if (blocks?.length) ok(al(repo, 'consolidate', name, '--yes'), 'consolidate');
   ok(al(repo, 'conclude', name, '--yes'), 'conclude');
   repo.commit(message(`${name}: conclude`, { request: name, tier: `${tierOf(line)} — ${name}` }), { date: '2026-09-30T12:00:00Z' });
   const { generated } = outcome(repo.read(`requests/archive/${name}/request.md`).toString());
@@ -122,4 +122,50 @@ test('[REC-9] 6: contrast, unchanged: a tier-2 request takes the lists from its 
     onBranch: (repo) => repo.write('specs/rules.md', file(INV1B, S0)),
   });
   assert.deepEqual(lists, ['- Added: none', '- Modified: [INV-3]', '- Removed: none']);
+});
+
+// --- PR #94 review: the request's own work, and the fallback only without change.md ---
+
+// The Outcome's list line `kind` of the archived request `name`.
+const listOf = (repo, name, kind) => {
+  const { generated } = outcome(repo.read(`requests/archive/${name}/request.md`).toString());
+  return generated.find((g) => g.startsWith(`- ${kind}:`));
+};
+
+test('[REC-9][LNK-2] PR #94: two tier-1 requests concluded on one branch each list only their own work: grouping Modified [A-1], exporting Modified [A-2]; check gives neither a note for the other\'s section', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/rules.md', file(A1, A2));
+  for (const [name, id] of [['grouping', 'A-1'], ['exporting', 'A-2']]) {
+    const org = organized(`[${id}]`);
+    addRequest(repo, name, null, { line: TIER1, org, signedText: org, decisions: '' });
+  }
+  repo.commit('Two requests', { date: '2026-09-28T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'both']);
+  const step = (name, baseline, day) => {
+    repo.write('specs/rules.md', baseline);
+    repo.commit(message(`${name}: the amend`, { request: name, tier: `1 — ${name}` }), { date: `2026-09-${day}T12:00:00Z` });
+    ok(al(repo, 'conclude', name, '--yes'), `conclude ${name}`);
+    repo.commit(message(`${name}: conclude`, { request: name, tier: `1 — ${name}` }), { date: `2026-09-${day}T13:00:00Z` });
+  };
+  step('grouping', file(A1B, A2), '29');
+  step('exporting', file(A1B, A2B), '30');
+  assert.equal(listOf(repo, 'grouping', 'Modified'), '- Modified: [A-1]');
+  assert.equal(listOf(repo, 'exporting', 'Modified'), '- Modified: [A-2]');
+  const out = check(repo, '--all');
+  noHint(out, 'note', 'exporting', 'A-1', /Amends/);
+  noHint(out, 'note', 'grouping', 'A-2', /Amends/);
+});
+
+test('[REC-9] PR #94 pin: the baseline edited and concluded before the edit is committed, as the quick path does: the Outcome still lists it, Modified [A-1]', (t) => {
+  const { lists } = concluded(t, { org: organized('[A-1]'), baseline: file(A1, A2), onBranch: (repo) => repo.write('specs/rules.md', file(A1B, A2)) });
+  assert.deepEqual(lists, ['- Added: none', '- Modified: [A-1]', '- Removed: none']);
+});
+
+test('[REC-9][HNT-2] PR #94: the fallback is for a request with no change.md, not an empty one: a signed tier-2 request whose change.md has no blocks, on a branch that edits A-1 outside any block, keeps Modified none and gets no Amends: note', (t) => {
+  const { repo, lists } = concluded(t, {
+    line: TIER2, org: organized('[A-2]'), blocks: [], baseline: file(A1, A2), onBranch: edit(file(A1B, A2)),
+  });
+  assert.ok(repo.read('requests/archive/grouping/change.md').toString().includes('## Spec changes'), 'the fixture: change.md with an empty ## Spec changes');
+  assert.deepEqual(lists, ['- Added: none', '- Modified: none', '- Removed: none']);
+  noHint(check(repo, '--all'), 'note', /Amends/);
 });
