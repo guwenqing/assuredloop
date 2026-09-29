@@ -13,8 +13,9 @@ description: >-
    PR says `Tier: 0 — <what it restores>; no promise changes`.
 3. A small change to a promise: tier 1. `al new <name> --tier 1 --from -`,
    with the owner's words on standard input.
-4. In its `request.md`, add `## Organized requirement`: what is wanted, in
-   MUST/SHOULD/MAY words, and `Amends: [ID]`. Show it to the owner.
+4. In its `request.md`, add `## Organized requirement` with `### R1 <title>`:
+   what is wanted, in MUST/SHOULD/MAY words, and `Amends: [ID]`; then the
+   `Out:` and `Assumed:` lines. Show it to the owner.
 5. On their OK: `al record <name> signoff --source <where> --words <quote>`.
 6. Edit the baseline section. Then `al conclude <name>`, and the PR says
    `Tier: 1 — <claim>`.

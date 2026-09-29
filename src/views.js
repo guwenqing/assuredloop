@@ -244,10 +244,26 @@ function review(tree, files, served, code, tier, changedIds) {
 // changed it since, and the requests that follow it.
 // Under --at, everything is read at that commit, and the conclusion counts
 // only when that commit's history holds it.
+// The generated lines of request.md's `## Outcome` ([REC-9]): up to its
+// `Notes:` line or the next heading, so nothing people add counts.
+function outcomeLines(md) {
+  const lines = md.split('\n');
+  const at = lines.findIndex((l) => /^##\s+Outcome\s*$/.test(l));
+  if (at < 0) return [];
+  const end = lines.findIndex((l, i) => i > at && (/^Notes:/.test(l) || /^#{1,6}\s/.test(l)));
+  return lines.slice(at + 1, end < 0 ? lines.length : end);
+}
+
 export function archivedLines(top, name, at, all) {
   const tree = openTree(top, at);
   const rev = at ? resolveCommit(top, at) : null;
-  const ids = [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))];
+  const dir = `requests/archive/${name}`;
+  // A request with no change.md (tier 1): the sections its Outcome lists as
+  // added, modified or removed, which conclude derived from its own work ([REC-9]).
+  const ids = tree.read(`${dir}/change.md`) !== null
+    ? [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))]
+    : [...new Set(outcomeLines(tree.read(`${dir}/request.md`)?.toString('utf8') ?? '')
+      .filter((l) => /^- (Added|Modified|Removed):/.test(l)).flatMap((l) => [...l.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])))];
   const found = concluding(top, name);
   const c = found.sha && rev && git(top, ['merge-base', '--is-ancestor', found.sha, rev], { allowFail: true }) === null ? {} : found;
   const root = rootOf(top, tree, at);
