@@ -161,3 +161,14 @@ test('[REC-9] the design\'s tier-1 skeleton: R1 ends its sentence with "Amends: 
   const { generated } = concluded(t, { name: 'jpy-decimals', organized: org(r1), baseline: INV4, after: INV4B });
   assert.equal(fate(generated, 1), '- R1 Two decimals in JPY: in [INV-4]');
 });
+
+test('[REC-9] PR #93: an Amends: line under a deeper heading inside R1 (#### Sections amended) counts for R1 only: R1 in [A-1], R2 in no section; check notes R2', (t) => {
+  const organized = org('### R1 Grouping\nThe view MAY group repeated output.\n#### Sections amended\nAmends: [A-1]\n' +
+    '### R2 Export\nAn invoice MUST be exportable.\nOut: nothing else.\n');
+  const { repo, generated } = placed(t, organized);
+  assert.equal(fate(generated, 1), '- R1 Grouping: in [A-1]');
+  assert.equal(fate(generated, 2), '- R2 Export: in no section');
+  const out = check(repo, '--all');
+  hint(out, 'note', 'in no section', /\bR2\b/);
+  noHint(out, 'note', 'in no section', /\bR1\b/);
+});
