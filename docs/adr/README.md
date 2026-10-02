@@ -17,7 +17,8 @@ changes only its status.
 | [0009](0009-a-deterministic-script-node-zero-dependencies.md) | A deterministic script, Node, no dependencies | superseded by 0012 |
 | [0010](0010-requirement-first-signed-and-blocking.md) | Requirement first, signed, and blocking | superseded by 0011 |
 | [0011](0011-requirement-signed-work-delivered-with-or-after.md) | Requirement signed; work drafted before, delivered with or after | accepted |
-| [0012](0012-a-deterministic-script-under-3500-lines.md) | A deterministic script, Node, no dependencies, under 3,500 lines | accepted |
+| [0012](0012-a-deterministic-script-under-3500-lines.md) | A deterministic script, Node, no dependencies, under 3,500 lines | superseded by 0013 |
+| [0013](0013-a-deterministic-script-no-line-ceiling.md) | A deterministic script, Node, no dependencies; no line ceiling, lightness is process overhead | accepted |
 
 **Where the cited material lives.**
 - The design as agreed: `requests/archive/assuredloop-v1/design.md`.

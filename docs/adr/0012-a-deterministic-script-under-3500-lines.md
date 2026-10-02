@@ -1,7 +1,7 @@
 # ADR 0012: A deterministic script: no LLM, network or database; Node ESM with no runtime dependencies; under 3,500 lines
 
 Date: 2026-09-28.
-Status: accepted.
+Status: superseded by [ADR 0013](0013-a-deterministic-script-no-line-ceiling.md).
 Decided by: the owner (the line budget, 2026-09-28, snapshot
 `requests/assuredloop-v1/origin/2026-09-28-chat-with-the-owner-architect-session-claude-code.md`;
 the rest, "Accept", input 52). Proposed by: the architect. Consulted: the
