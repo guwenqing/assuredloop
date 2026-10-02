@@ -22,3 +22,4 @@ promises.
 Assumed:
 - The tool reads a one-line `R1: …` the same as an `### R1` heading, so the
   Outcome still gives the requirement's fate.
+Signed off: 2026-10-02 owner, origin/2026-10-02-signoff.md
