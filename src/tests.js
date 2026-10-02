@@ -4,7 +4,7 @@
 // revision it names; the tests linked to the changed code, each with its
 // reason; and [HNT-2]'s four test notes.
 import { basename } from 'node:path';
-import { git, isShallow } from './git.js';
+import { git, hasCommits, isShallow } from './git.js';
 import { configured } from './spec.js';
 import { line } from './commands.js';
 import { fileLinks } from './views.js';
@@ -141,6 +141,8 @@ function results(top, tree, at, head, base) {
 // near the changed code, and the named results.
 export function testFacts(top, b) {
   if (b.testFacts) return b.testFacts;
+  // [HNT-3]: a repo with no commits yet has no tests or results to read against.
+  if (!b.at && !hasCommits(top)) return (b.testFacts = { head: null, tests: [], names: new Map(), observed: [], links: new Map(), near: new Map(), results: [] });
   const head = git(top, ['rev-parse', b.at ?? 'HEAD']);
   const isTest = testMatcher(b.root, configured(top, b.tree, b.at, 'tests'));
   // --diff reads the working tree's results unless --at names a commit ([VW-8]).

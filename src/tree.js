@@ -47,7 +47,13 @@ export function openTree(top, at) {
 }
 
 // Where a request lives in this tree: requests/<name> or requests/archive/<name>.
+// A request's name, its permanent ID ([REC-1]): lowercase letters, digits and
+// hyphens. It is never a path, so no alias reaches a request by another way.
+export const NAME = /^[a-z0-9][a-z0-9-]*$/;
+export const isName = (name) => typeof name === 'string' && NAME.test(name) && name !== 'archive';
+
 export function findRequest(tree, name) {
+  if (!isName(name)) return null;
   for (const dir of [`requests/${name}`, `requests/archive/${name}`]) {
     if (tree.read(`${dir}/request.md`) !== null) return dir;
   }

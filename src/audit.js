@@ -6,9 +6,9 @@ import { openTree, findRequest } from './tree.js';
 import { rootOf, baseline, configured } from './spec.js';
 import { allBlocks, statesOf } from './states.js';
 import { sameSection } from './sections.js';
-import { parseSnapshot } from './snapshot.js';
+import { isSignoff, parseSnapshot } from './snapshot.js';
 import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
-import { blame, byId, filesOf, requestOf, requestsIn } from './links.js';
+import { blame, byId, filesOf, requestCommits, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
 import { adrsOf } from './adrs.js';
 
@@ -52,7 +52,7 @@ function trace(a, name) {
     const bytes = tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0);
     const s = parseSnapshot(bytes);
     const ok = !s ? 'not ok: not a valid snapshot' : s.intact ? 'SHA-256 matches' : 'not ok: no longer matches its SHA-256';
-    if (s && bytes.includes('\n--- signed text ---\n')) body.push(line('Sign-off', `origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
+    if (isSignoff(s)) body.push(line('Sign-off', `origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
     else body.push(line('Snapshot', `origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
   }
   body.push(...entriesOf(md, 'Decisions').map((e) => line('Decision', e)));
@@ -81,10 +81,7 @@ function trace(a, name) {
     const rev = a.at ?? 'HEAD';
     // Every route [LNK-2] maps by: a Request: line, the folder, an issue number in the owner's words.
     const issues = [...new Set(entriesOf(md, "Owner's words and dialog").join('\n').match(/#\d+/g) ?? [])];
-    const shas = [...new Set([...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', rev]).split('\n'),
-      ...git(top, ['log', '--format=%H', rev, '--', ...place('')]).split('\n'),
-      ...issues.flatMap((n) => git(top, ['log', '-E', `--grep=${n}([^0-9]|$)`, '--format=%H', rev]).split('\n'))].filter(Boolean))];
-    const mine = shas.map((sha) => requestOf(top, sha, a.requests, a.seen)).filter((c) => c.names.includes(name));
+    const mine = requestCommits(top, name, issues, rev, a.requests, a.seen);
     body.push(...mine.map((c) => line('Commit', commitLine(a, c))));
     const isTest = testMatcher(a.root, configured(top, tree, a.at, 'tests'));
     body.push(line('Tests', [...new Set(mine.flatMap((c) => filesOf(top, c.sha)).filter(isTest))].sort().join(' · ') || 'none changed by its commits'));

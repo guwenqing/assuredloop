@@ -6,10 +6,10 @@ import { posix } from 'node:path';
 import { git } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
-import { allBlocks, statesOf } from './states.js';
+import { allBlocks, blockFault, statesOf } from './states.js';
 import { sameSection } from './sections.js';
-import { organized, parts, signoffState } from './signoff.js';
-import { parseSnapshot } from './snapshot.js';
+import { organized, parentOf, parts, samePart, signoffState } from './signoff.js';
+import { isSignoff, parseSnapshot } from './snapshot.js';
 import { entriesOf, line } from './commands.js';
 import { headingFault } from './consolidate.js';
 import { baselineLists, judge, outcomeFacts, ownIds } from './conclude.js';
@@ -99,6 +99,8 @@ export function hintsOf(top, b, { main }) {
     const org = organized(r.md);
     const rKeys = org ? parts(org.text).map((p) => p.key) : null;
     for (const x of [...b.blocks.values()].filter((y) => y.request === r.name)) {
+      const unreadable = blockFault(x);
+      if (unreadable) add('not ok', 5, [r.name], unreadable, `fix the block in ${r.dir}/change.md, then al check`);
       if (x.anchor && !known(x.anchor)) add('not ok', 5, [r.name], `${r.name} cites [${x.anchor}] as the anchor of ${x.key}, which is in no section or block`, `al context ${r.name}`);
       // D6: a block marked Dropped (and not Kept) records the drop; its R-lines are not checked.
       for (const k of rKeys && !(x.dropped && !x.kept) ? x.forR.filter((y) => !rKeys.includes(y)) : []) add('not ok', 5, [r.name], `${r.name} cites ${k} in ${x.key}, which its organized requirement lacks`, `al context ${r.name}`);
@@ -147,7 +149,7 @@ export function hintsOf(top, b, { main }) {
       if (!s) add('not ok', 11, [r.name], `origin/${f} of ${r.name} is not a valid snapshot: it needs Source, Fetched and SHA-256, then ---`, `al record ${r.name} origin --url <source> --from -`);
       else if (!s.intact) add('not ok', 11, [r.name], `origin/${f} of ${r.name} no longer matches its SHA-256`, `al record ${r.name} origin --verify ${f} --from -`);
       else if (b.served.has(r.name) && /^https?:\/\//.test(s.fields.Source)) {
-        add('note', 19, [r.name], `origin/${f} of ${r.name}, fetched ${s.fields.Fetched}, not re-checked since`, `al record ${r.name} origin --verify ${f} --from -`);
+        add('note', 19, [r.name], `origin/${f} of ${r.name}, fetched ${s.fields.Fetched}; no re-check recorded (an unchanged --verify writes nothing)`, `al record ${r.name} origin --verify ${f} --from -`);
       }
     }
   }
@@ -214,8 +216,15 @@ function earlyWork(top, b, mainSha) {
   for (const name of b.served) {
     const r = b.requests.find((x) => x.name === name);
     if (!r) continue;
-    const signoffs = (b.tree.list(`${r.dir}/origin`) ?? []).filter((f) => (b.tree.read(`${r.dir}/origin/${f}`) ?? Buffer.alloc(0)).includes('\n--- signed text ---\n'));
-    const places = signoffs.flatMap((f) => [`requests/${name}/origin/${f}`, `requests/archive/${name}/origin/${f}`]);
+    // Its own sign-offs, and a parent's where it inherits from them: those
+    // holding one of its parts word for word ([REC-5]).
+    const mine = parts(organized(r.md)?.text ?? '');
+    const copied = (s) => parts(s.text.toString('utf8')).some((q) => mine.some((p) => samePart(p, q)));
+    const signoffsOf = (n, dir, keep = () => true) => (b.tree.list(`${dir}/origin`) ?? [])
+      .filter((f) => { const s = parseSnapshot(b.tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0)); return isSignoff(s) && keep(s); })
+      .flatMap((f) => [`requests/${n}/origin/${f}`, `requests/archive/${n}/origin/${f}`]);
+    const parent = parentOf(b.tree, name);
+    const places = [...signoffsOf(name, r.dir), ...(parent ? signoffsOf(parent.name, parent.dir, copied) : [])];
     const first = places.length ? git(top, ['log', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
     line ??= git(top, ['rev-list', '--first-parent', mainSha]).split('\n').filter(Boolean).map((c) => ({
       c, brought: git(top, ['rev-parse', '--verify', '--quiet', `${c}^2`], { allowFail: true }) ? [c, ...git(top, ['rev-list', `${c}^1..${c}^2`]).split('\n').filter(Boolean)] : [c],

@@ -39,7 +39,9 @@ export function parseChange(text, request) {
       const marker = (name) => rest.match(new RegExp(`${name} (\\S+) \\((D\\d+)\\)`))?.slice(1, 3) ?? null;
       b = {
         request, id, n: Number(n), key: `${request}/${id}@${n}`,
-        op: /^modify\b/.test(rest) ? 'modify' : /^add\b/.test(rest) ? 'add' : 'remove',
+        // [SPC-5]'s ops, the whole token matched; any other is a fault (blockFault), never a remove.
+        op: OPS.get(rest.split(/\s+/)[0]) ?? null,
+        opWord: rest.split(/\s+/)[0] ?? '',
         path: rest.match(/^add in (\S+)/)?.[1] ?? null,
         anchor: rest.match(/^(?:add after|remove, was after) \[([^\]]+)\]/)?.[1] ?? null,
         base: on ? (on.startsWith('@') ? `${request}/${id}${on}` : on) : Number(n) > 1 ? `${request}/${id}@${Number(n) - 1}` : null,
@@ -80,9 +82,38 @@ export function allBlocks(tree) {
     if (!text) continue;
     const md = tree.read(`${dir}/request.md`)?.toString('utf8') ?? '';
     const dropped = /\bStatus:\s*dropped\b/.test(md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '');
-    for (const b of parseChange(text, name)) blocks.set(b.key, { ...b, open, requestDropped: dropped });
+    // A repeated request/ID@n is a fault (blockFault); the first is kept, and says so.
+    for (const b of withRepeats(parseChange(text, name))) blocks.set(b.key, { ...b, open, requestDropped: dropped });
   }
   return blocks;
+}
+
+// [SPC-5]: why a block can't be read as written, or null: its request/ID@n
+// repeated, an op outside the grammar, a remove with no anchor, or Was:/Now:
+// against its op. check says so; consolidate and conclude refuse.
+export function blockFault(b) {
+  if (b.repeated) return `${b.key} appears ${b.repeated} times in change.md; each version of a section is one block ([SPC-5])`;
+  if (!b.op) return `${b.key}: "${b.opWord}" is not an op; use modify, add in <path>, add after [ID], or remove, was after [ID] ([SPC-5])`;
+  if (b.op === 'add' && !b.path && !b.anchor) return `${b.key}: an add names neither "in <path>" nor "after [ID]" ([SPC-5])`;
+  if (b.op === 'remove' && !b.anchor) return `${b.key}: a remove names no "was after [ID]" ([SPC-5])`;
+  if (b.op === 'add' && (b.was !== null || b.now === null)) return `${b.key}: an add has a Now: and no Was: ([SPC-5])`;
+  if (b.op === 'remove' && (b.now !== null || b.was === null)) return `${b.key}: a remove has a Was: and no Now: ([SPC-5])`;
+  if (b.op === 'modify' && (b.was === null || b.now === null)) return `${b.key}: a modify has both Was: and Now: ([SPC-5])`;
+  return null;
+}
+
+// The op tokens of [SPC-5]: `modify`, `add in|after …`, `remove, was after …`.
+// A Map, so no name an object inherits (constructor, toString…) reads as one.
+const OPS = new Map([['modify', 'modify'], ['add', 'add'], ['remove,', 'remove'], ['remove', 'remove']]);
+
+// Blocks with a repeated request/ID@n marked `repeated`, the first kept ([SPC-5]).
+export function withRepeats(list) {
+  const seen = new Map();
+  for (const b of list) {
+    if (seen.has(b.key)) seen.get(b.key).repeated = (seen.get(b.key).repeated ?? 1) + 1;
+    else seen.set(b.key, b);
+  }
+  return [...seen.values()];
 }
 
 // [STA-1]: the link of a block that builds on another, checked first.
@@ -146,7 +177,10 @@ export function statesOf(files, blocks, include = (b) => b.open) {
     if (link) { result.push(entry(link)); continue; }
     if (same(b.was, b.now)) { result.push(entry('no change yet')); continue; }
     if (b.op === 'remove' ? base === undefined : same(base, b.now)) { result.push(entry('consolidated')); continue; }
-    const carriers = [...blocks.values()].filter((d) => d.key !== b.key && upward(d).includes(b) && same(base, d.now));
+    // [STA-2] row 3: a successor of the same section whose "now" is in the
+    // baseline; for a remove, as in row 2, the ID is absent.
+    const carriers = [...blocks.values()].filter((d) => d.key !== b.key && d.id === b.id && upward(d).includes(b)
+      && (d.op === 'remove' ? base === undefined : same(base, d.now)));
     if (carriers.length) { result.push({ ...entry('carried', carriers[0].key), carriers: carriers.map((d) => d.key) }); continue; }
     const waitOn = upward(b).find((u) => (u.op === 'add' ? base === undefined : same(base, u.was)));
     if (waitOn) { result.push(entry('waiting', waitOn.key)); continue; }

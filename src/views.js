@@ -6,10 +6,10 @@ import { openTree } from './tree.js';
 import { rootOf, baseline, configured } from './spec.js';
 import { allBlocks, changeStates, statesOf } from './states.js';
 import { sameSection } from './sections.js';
-import { latestSignoff, organized, parts } from './signoff.js';
+import { organized, parts, samePart, signoffState } from './signoff.js';
 import { line, lines, grouped, decisionList, entriesOf, concluding, fitOrCount } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
-import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
+import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
 import { headNote, resultLines, testLines, testMatcher } from './tests.js';
 import { adrFolders, governing } from './adrs.js';
 
@@ -217,9 +217,26 @@ function review(tree, files, served, code, tier, changedIds) {
   const intent = ['Intent', ...(tier ? [line('Tier', tier)] : [])];
   const evidence = ['Evidence'];
   for (const r of mine) {
-    const signed = latestSignoff(tree, r.dir, r.md).signoff;
-    intent.push(`${r.name}  ${signed ? `signed off origin/${signed.file}:` : 'not signed off'}`);
-    if (signed) intent.push(...signed.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`));
+    // [REC-5]: signed by its own sign-off, or through its parent's for the parts it copies.
+    const s = signoffState(tree, r.dir, r.name);
+    const asked = organized(r.md);
+    // [VW-4]: what the owner signed stays in view, verbatim with its file, while the draft is blocked.
+    const status = s.blocked ? `blocked (${s.reason}), not signed off as it stands` : 'signed off';
+    if (!asked) intent.push(`${r.name}  not signed off (${s.reason ?? 'no organized requirement'})`);
+    else if (!s.parent) {
+      intent.push(`${r.name}  ${status}${s.signoff ? `; signed text, origin/${s.signoff.file}:` : ''}`);
+      if (s.signoff) intent.push(...s.signoff.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`));
+    } else {
+      intent.push(`${r.name}  ${status}, part by part:`);
+      for (const p of parts(asked.text)) {
+        const own = s.signoff && parts(s.signoff.text).some((q) => samePart(p, q));
+        const inherited = s.parentSignoff && parts(s.parentSignoff.text).some((q) => samePart(p, q));
+        intent.push(`  ${p.key}: ${own ? `origin/${s.signoff.file}` : inherited ? `through ${s.parent}, origin/${s.parentSignoff.file}` : 'not signed'}`,
+          ...p.text.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`));
+      }
+      // Blocked with its own sign-off: what it signed, changed or removed parts included.
+      if (s.blocked && s.signoff) intent.push(`  signed text, origin/${s.signoff.file}:`, ...s.signoff.text.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`));
+    }
     // The spec changes: the blocks whose sections this branch changes ([VW-2]'s rule for the line).
     const changing = states.filter((e) => e.request === r.name && changedIds.includes(e.id));
     intent.push(changing.length ? fitOrCount('Blocks', changing, stateOf, (e) => e.block) : line('Blocks', 'none changed by this branch'));
@@ -244,10 +261,26 @@ function review(tree, files, served, code, tier, changedIds) {
 // changed it since, and the requests that follow it.
 // Under --at, everything is read at that commit, and the conclusion counts
 // only when that commit's history holds it.
+// The generated lines of request.md's `## Outcome` ([REC-9]): up to its
+// `Notes:` line or the next heading, so nothing people add counts.
+function outcomeLines(md) {
+  const lines = md.split('\n');
+  const at = lines.findIndex((l) => /^##\s+Outcome\s*$/.test(l));
+  if (at < 0) return [];
+  const end = lines.findIndex((l, i) => i > at && (/^Notes:/.test(l) || /^#{1,6}\s/.test(l)));
+  return lines.slice(at + 1, end < 0 ? lines.length : end);
+}
+
 export function archivedLines(top, name, at, all) {
   const tree = openTree(top, at);
   const rev = at ? resolveCommit(top, at) : null;
-  const ids = [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))];
+  const dir = `requests/archive/${name}`;
+  // A request with no change.md (tier 1): the sections its Outcome lists as
+  // added, modified or removed, which conclude derived from its own work ([REC-9]).
+  const ids = tree.read(`${dir}/change.md`) !== null
+    ? [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))]
+    : [...new Set(outcomeLines(tree.read(`${dir}/request.md`)?.toString('utf8') ?? '')
+      .filter((l) => /^- (Added|Modified|Removed):/.test(l)).flatMap((l) => [...l.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])))];
   const found = concluding(top, name);
   const c = found.sha && rev && git(top, ['merge-base', '--is-ancestor', found.sha, rev], { allowFail: true }) === null ? {} : found;
   const root = rootOf(top, tree, at);
@@ -288,12 +321,10 @@ function byIdAt(top, sha) {
 // tree's records, by default).
 export function liveCode(top, name, root, onlyIds, at = 'HEAD') {
   const requests = requestsIn(openTree(top, at === 'HEAD' ? undefined : at));
-  const seen = new Map();
-  const candidates = [
-    ...git(top, ['log', '-E', `--grep=^[[:space:]]*([-*][[:space:]]+)?Request:[[:space:]]*${name}[[:space:]]*$`, '--format=%H', at]).split('\n'),
-    ...git(top, ['log', '--format=%H', at, '--', `requests/${name}/`, `requests/archive/${name}/`]).split('\n'),
-  ].filter(Boolean);
-  const mine = new Set([...new Set(candidates)].filter((sha) => requestOf(top, sha, requests, seen).names.includes(name)));
+  // Every route [LNK-2] maps by, the issue numbers in its owner's words included.
+  const md = requests.find((r) => r.name === name)?.md ?? '';
+  const issues = [...new Set(entriesOf(md, "Owner's words and dialog").join('\n').match(/#\d+/g) ?? [])];
+  const mine = new Set(requestCommits(top, name, issues, at, requests).map((c) => c.sha));
   const found = new Set([...mine].flatMap((sha) => filesOf(top, sha)).filter(isCode(root)));
   // Code moves: a later commit that changed one of these files may have taken
   // its lines into its other files, so those are read too.
