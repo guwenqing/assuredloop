@@ -44,6 +44,8 @@ export function parseChange(text, request) {
         opWord: rest.split(/\s+/)[0] ?? '',
         path: rest.match(/^add in (\S+)/)?.[1] ?? null,
         anchor: rest.match(/^(?:add after|remove, was after) \[([^\]]+)\]/)?.[1] ?? null,
+        // A remove of a file's first section records the file instead ([SPC-5]).
+        firstIn: rest.match(/^remove, was first in (\S+)/)?.[1] ?? null,
         base: on ? (on.startsWith('@') ? `${request}/${id}${on}` : on) : Number(n) > 1 ? `${request}/${id}@${Number(n) - 1}` : null,
         dropped: marker('Dropped'), kept: marker('Kept'), revised: marker('Revised'),
         forR: rest.match(/for (R\d+(?:,\s*R\d+)*)/)?.[1].split(/,\s*/) ?? [],
@@ -93,9 +95,9 @@ export function allBlocks(tree) {
 // against its op. check says so; consolidate and conclude refuse.
 export function blockFault(b) {
   if (b.repeated) return `${b.key} appears ${b.repeated} times in change.md; each version of a section is one block ([SPC-5])`;
-  if (!b.op) return `${b.key}: "${b.opWord}" is not an op; use modify, add in <path>, add after [ID], or remove, was after [ID] ([SPC-5])`;
+  if (!b.op) return `${b.key}: "${b.opWord}" is not an op; use modify, add in <path>, add after [ID], remove, was after [ID], or remove, was first in <path> ([SPC-5])`;
   if (b.op === 'add' && !b.path && !b.anchor) return `${b.key}: an add names neither "in <path>" nor "after [ID]" ([SPC-5])`;
-  if (b.op === 'remove' && !b.anchor) return `${b.key}: a remove names no "was after [ID]" ([SPC-5])`;
+  if (b.op === 'remove' && !b.anchor && !b.firstIn) return `${b.key}: a remove names neither "was after [ID]" nor "was first in <path>" ([SPC-5])`;
   if (b.op === 'add' && (b.was !== null || b.now === null)) return `${b.key}: an add has a Now: and no Was: ([SPC-5])`;
   if (b.op === 'remove' && (b.now !== null || b.was === null)) return `${b.key}: a remove has a Was: and no Now: ([SPC-5])`;
   if (b.op === 'modify' && (b.was === null || b.now === null)) return `${b.key}: a modify has both Was: and Now: ([SPC-5])`;

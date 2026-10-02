@@ -194,6 +194,12 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
       texts.set(at.path, at.text.slice(0, at.section.start) + withLevelOf(at.section, tidy(first.was)) + at.text.slice(at.section.stop));
       did = `the "was" of [${id}] in place in ${at.path}`;
     }
+  } else if (mine.find((b) => b.op === 'remove')?.firstIn) {
+    // [STA-4]: a removed first section goes back first in its file, after any text before it.
+    const path = mine.find((b) => b.op === 'remove').firstIn;
+    const text = texts.get(path) ?? '';
+    texts.set(path, insertAt(text, spans(text)[0]?.start ?? text.length, tidy(first.was)));
+    did = `[${id}] back first in ${path}`;
   } else {
     const anchor = mine.find((b) => b.op === 'remove' && b.anchor)?.anchor;
     const where = anchor ? find(texts, anchor) : null;
