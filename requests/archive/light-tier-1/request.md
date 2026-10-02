@@ -1,5 +1,5 @@
 # A small promise change can be one line
-Tier: 1 · Status: open
+Tier: 1 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -23,3 +23,18 @@ Assumed:
 - The tool reads a one-line `R1: …` the same as an `### R1` heading, so the
   Outcome still gives the requirement's fate.
 Signed off: 2026-10-02 owner, origin/2026-10-02-signoff.md
+
+## Outcome
+
+- R1 A small promise change can be one line: in [REC-4]
+- Added: none
+- Modified: [REC-4]
+- Removed: none
+- Dropped: none
+- Kept: none
+- Decisions: none
+- Agent rulings: none
+- ADRs added: none
+- ADRs superseded: none
+
+Notes:
