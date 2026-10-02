@@ -103,6 +103,8 @@ function apply(texts, b, blocks) {
   }
   const at = find(texts, b.id);
   if (b.op === 'remove') {
+    // [SPC-5]: "was first in <path>" holds only for that file's first section.
+    if (b.firstIn && (at.path !== b.firstIn || at.i !== 0)) return { cannot: `[${b.id}] is not the first section of ${b.firstIn}, as its remove says` };
     texts.set(at.path, removeSection(at.text, at.section));
     return { did: `the removal of [${b.id}] from ${at.path}` };
   }
