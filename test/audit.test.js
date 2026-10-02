@@ -140,15 +140,33 @@ const nonBlank = (text) => text.split('\n').filter((l) => l.trim());
 const has = (out, ...parts) => assert.ok(lineWith(out, ...parts), `expected a line with ${parts.map(String).join(' and ')}:\n${out}`);
 const names = (out, sha, what) => assert.ok(out.includes(short(sha)), `should name ${what} ${short(sha)}:\n${out}`);
 
-// Every line of `text` shows, whole and in order (indented or after a label).
-function showsVerbatim(out, text, what) {
+// The Version line naming `sha` lists each of `paths`, the records that
+// commit changed (a Commit line naming the same sha does not count).
+function version(out, sha, paths, what) {
+  const line = lines(out).find((l) => /^Version\b/.test(l) && l.includes(short(sha)));
+  assert.ok(line, `a Version line should name ${what} ${short(sha)}:\n${out}`);
+  for (const p of paths) assert.ok(line.includes(p), `the Version line of ${what} should list ${p}:\n${line}`);
+}
+// A Commit line names `sha`.
+function commitLine(out, sha, what) {
+  assert.ok(lines(out).some((l) => /^Commit\b/.test(l) && l.includes(short(sha))), `a Commit line should name ${what} ${short(sha)}:\n${out}`);
+}
+// The indented block under the line "Sign-off  origin/<file> …" is `text`,
+// verbatim: its lines in order, relative indentation kept, trailing spaces
+// and trailing blank lines aside. The next labelled line ends the block, so
+// another sign-off's text cannot fill it.
+function signedText(out, file, text, what) {
   const ls = lines(out);
-  let i = -1;
-  for (const want of nonBlank(text)) {
-    const j = ls.findIndex((l, k) => k > i && (l.trim() === want || l.trimEnd().endsWith(` ${want}`)));
-    assert.ok(j > i, `${what}: "${want}" should show, whole, after the lines before it:\n${out}`);
-    i = j;
+  const at = ls.findIndex((l) => /^Sign-off\b/.test(l) && l.includes(`origin/${file} `));
+  assert.ok(at >= 0, `${what}: a Sign-off line for origin/${file}:\n${out}`);
+  const block = [];
+  for (const l of ls.slice(at + 1)) {
+    if (!/^\s/.test(l)) break;
+    block.push(l);
   }
+  const pad = Math.min(...block.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length));
+  const tidy = (xs) => xs.map((l) => l.trimEnd()).join('\n').replace(/\n+$/, '');
+  assert.equal(tidy(block.map((l) => l.slice(pad))), tidy(text.split('\n')), `${what}, under origin/${file}:\n${out}`);
 }
 // The snapshot `name` is named; its hash is not ok, or never said to be.
 function snapshotChecked(out, name, tampered) {
@@ -184,8 +202,8 @@ test('[VW-7][REC-5] audit of a request shows every sign-off with its signed text
   const { repo } = billing(t);
   const r = audit(repo, 'csv-export');
   ok(r);
-  showsVerbatim(r.stdout, ORG, 'the first sign-off\'s text');
-  showsVerbatim(r.stdout, ORG2, 'the second sign-off\'s text');
+  signedText(r.stdout, '2026-09-21-signoff.md', ORG, 'the first sign-off\'s text');
+  signedText(r.stdout, '2026-09-25-signoff.md', ORG2, 'the second sign-off\'s text');
   assert.ok(r.stdout.includes('Dates MUST show in ISO 8601.') && r.stdout.includes(TZ_LINE), `both texts of R2:\n${r.stdout}`);
 });
 
@@ -201,10 +219,11 @@ test('[VW-7] audit of a request names each commit on main\'s first-parent line t
   const { repo, c } = billing(t);
   const r = audit(repo, 'csv-export');
   ok(r);
-  names(r.stdout, c.m2, 'the commit that wrote request.md and change.md');
-  names(r.stdout, c.mg, 'the merge commit that brought the second sign-off\'s request.md to main');
-  names(r.stdout, c.m6, 'the commit that edited change.md');
-  names(r.stdout, c.m8, 'the commit that added D6 and D7');
+  const CSV = (f) => `requests/csv-export/${f}`;
+  version(r.stdout, c.m2, [CSV('request.md'), CSV('change.md')], 'the commit that wrote request.md and change.md');
+  version(r.stdout, c.mg, [CSV('request.md')], 'the merge commit that brought the second sign-off\'s request.md to main');
+  version(r.stdout, c.m6, [CSV('change.md')], 'the commit that edited change.md');
+  version(r.stdout, c.m8, [CSV('request.md')], 'the commit that added D6 and D7');
   assert.ok(!r.stdout.includes(short(c.u)), `u is only on the unmerged branch wip:\n${r.stdout}`);
 });
 
@@ -220,7 +239,7 @@ test('[VW-7][LNK-2] audit of a request lists every linked commit, more than five
   const { repo, c } = billing(t);
   const r = audit(repo, 'csv-export');
   ok(r);
-  for (const k of ['m3', 'm4', 'm5', 'm6', 'm7', 'm8']) names(r.stdout, c[k], `the linked commit ${k}`);
+  for (const k of ['m3', 'm4', 'm5', 'm6', 'm7', 'm8']) commitLine(r.stdout, c[k], `the linked commit ${k}`);
   for (const f of ['test/x.test.js', 'test/y.test.js']) assert.ok(r.stdout.includes(f), `should name the test file ${f}:\n${r.stdout}`);
   assertUncapped(r.stdout);
 });
@@ -268,7 +287,7 @@ test('[VW-7] audit of a section ID: its text, the commits on main that changed i
   names(r.stdout, c.m1, 'the commit that wrote INV-3');
   has(r.stdout, short(c.m4), 'csv-export');
   assert.ok(!r.stdout.includes(short(c.m9)), `m9 changed the file, not INV-3:\n${r.stdout}`);
-  showsVerbatim(r.stdout, ORG2, 'csv-export\'s signed text');
+  signedText(r.stdout, '2026-09-25-signoff.md', ORG2, 'csv-export\'s signed text');
   showsDecisions(r.stdout, 7);
   assertFrame(r.stdout);
 });
@@ -287,7 +306,7 @@ test('C7 [VW-7] audit from a code line walks blame to the commit, its request, t
   ok(r);
   names(r.stdout, c.m5, 'the commit blame gives line 3');
   assert.ok(r.stdout.includes('csv-export'), `the request m5 maps to:\n${r.stdout}`);
-  showsVerbatim(r.stdout, ORG2, 'csv-export\'s signed text');
+  signedText(r.stdout, '2026-09-25-signoff.md', ORG2, 'csv-export\'s signed text');
   showsDecisions(r.stdout, 7);
   assert.match(r.stdout, /\[?INV-3\]?@1/, `the change's blocks:\n${r.stdout}`);
   assert.match(r.stdout, /\[?INV-7\]?@1/, `the change's blocks:\n${r.stdout}`);
@@ -300,7 +319,7 @@ test('C7 [VW-7] audit from a baseline line reaches the request that wrote it', (
   ok(r);
   names(r.stdout, c.m4, 'the commit blame gives the line');
   assert.ok(r.stdout.includes('csv-export'), `the request m4 maps to:\n${r.stdout}`);
-  showsVerbatim(r.stdout, ORG2, 'csv-export\'s signed text');
+  signedText(r.stdout, '2026-09-25-signoff.md', ORG2, 'csv-export\'s signed text');
   showsDecisions(r.stdout, 7);
 });
 
@@ -343,7 +362,7 @@ test('[VW-7][VW-9] audit in a shallow clone still shows the snapshots and sign-o
   snapshotChecked(r.stdout, '2026-09-20-owner-words.md', false);
   snapshotChecked(r.stdout, '2026-09-25-signoff.md', false);
   snapshotChecked(r.stdout, '2026-09-22-issue.md', true);
-  showsVerbatim(r.stdout, ORG2, 'the second sign-off\'s text');
+  signedText(r.stdout, '2026-09-25-signoff.md', ORG2, 'the second sign-off\'s text');
   showsDecisions(r.stdout, 7);
   assert.ok(r.stdout.includes('history unavailable'), r.stdout);
   assert.doesNotMatch(r.stdout, /nothing found/i);
@@ -414,12 +433,12 @@ test('C7 [VW-7] a fresh single-branch clone audits an archived request offline: 
   snapshotChecked(r.stdout, '2026-09-20-owner-words.md', false);
   snapshotChecked(r.stdout, '2026-09-21-signoff.md', false);
   snapshotChecked(r.stdout, '2026-09-25-signoff.md', false);
-  showsVerbatim(r.stdout, ORG, 'the first sign-off\'s text');
-  showsVerbatim(r.stdout, ORG2, 'the second sign-off\'s text');
+  signedText(r.stdout, '2026-09-21-signoff.md', ORG, 'the first sign-off\'s text');
+  signedText(r.stdout, '2026-09-25-signoff.md', ORG2, 'the second sign-off\'s text');
   showsDecisions(r.stdout, 3);
-  names(r.stdout, c.m2, 'the commit that wrote change.md');
-  names(r.stdout, c.mg, 'the merge commit that brought change.md\'s edit to main');
-  names(r.stdout, c.sq, 'the concluding commit');
+  version(r.stdout, c.m2, ['requests/iso-dates/change.md'], 'the commit that wrote change.md');
+  version(r.stdout, c.mg, ['requests/iso-dates/change.md'], 'the merge commit that brought change.md\'s edit to main');
+  version(r.stdout, c.sq, ['requests/archive/iso-dates/change.md'], 'the concluding commit');
   showsOutcome(r.stdout);
   assert.ok(!r.stdout.includes('history unavailable'), `the clone holds all of main:\n${r.stdout}`);
   assertFrame(r.stdout, { main: 'origin/main' });
@@ -432,6 +451,6 @@ test('C7 [VW-7] in a fresh single-branch clone, audit from a baseline line reach
   ok(r);
   names(r.stdout, c.sq, 'the commit blame gives the line');
   assert.ok(r.stdout.includes('iso-dates'), `the request the line maps to:\n${r.stdout}`);
-  showsVerbatim(r.stdout, ORG2, 'iso-dates\' signed text');
+  signedText(r.stdout, '2026-09-25-signoff.md', ORG2, 'iso-dates\' signed text');
   showsDecisions(r.stdout, 3);
 });

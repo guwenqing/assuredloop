@@ -30,13 +30,14 @@ export function openTree(top, at) {
       return git(top, ['cat-file', 'blob', `${sha}:${path}`], { text: false, allowFail: true });
     },
     list(dir) {
-      const out = git(top, ['ls-tree', '--name-only', sha, `${dir}/`], { allowFail: true });
+      // -z: names as stored, never quoted (a non-ASCII or quoted name included).
+      const out = git(top, ['ls-tree', '-z', '--name-only', sha, `${dir}/`], { allowFail: true });
       if (!out) return null;
-      return out.split('\n').map((p) => p.slice(dir.length + 1)).sort();
+      return out.split('\0').filter(Boolean).map((p) => p.slice(dir.length + 1)).sort();
     },
     walk(dir) {
-      const out = git(top, ['ls-tree', '-r', '--name-only', sha, '--', `${dir}/`], { allowFail: true });
-      return out ? out.split('\n').sort() : [];
+      const out = git(top, ['ls-tree', '-z', '-r', '--name-only', sha, '--', `${dir}/`], { allowFail: true });
+      return out ? out.split('\0').filter(Boolean).sort() : [];
     },
     // Whether any part of `path` is a symlink (mode 120000) in this commit.
     linkOn(path) {
