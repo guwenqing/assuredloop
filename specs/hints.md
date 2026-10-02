@@ -13,6 +13,8 @@ The tool MUST give at least these hints. `not ok`:
 - an edit to an append-only record;
 - conflict markers, or Was:/Now: blocks, in the baseline;
 - duplicate IDs, or a cited ID, request or requirement that does not exist;
+  a block marked Dropped, and not Kept, is not flagged for a requirement its
+  request no longer holds;
 - a held ID not found;
 - a request archived on the branch that no longer meets `conclude`'s rules;
 - a baseline section changed on the branch that equals the "now" of a
