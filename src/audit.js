@@ -42,7 +42,8 @@ function history(a) {
   const shas = (args) => git(a.top, args).split('\n').filter(Boolean);
   const roots = new Set([a.root, 'specs', ...shas(['log', '--format=%H', a.tip, '--', '.assuredloop']).map((sha) => rootLine(a.top, openTree(a.top, sha), sha))]);
   roots.delete(null);
-  a.walk = shas(['log', '--first-parent', '--reverse', '--format=%H', a.tip, '--', ...[...roots].map((r) => `${r}/`)]).map((sha) => {
+  // .assuredloop too: a commit that only switches root: can change a section's text.
+  a.walk = shas(['log', '--first-parent', '--reverse', '--format=%H', a.tip, '--', '.assuredloop', ...[...roots].map((r) => `${r}/`)]).map((sha) => {
     const tree = openTree(a.top, sha);
     const root = rootLine(a.top, tree, sha);
     return { sha, sections: new Map(root ? baseline(tree, root).flatMap((f) => [...byId(f.text)]) : []) };
