@@ -104,6 +104,21 @@ export function blockFault(b) {
   return null;
 }
 
+// [STA-4]: why a remove's `was after [X]` doesn't hold in `file` (the file
+// holding its section, { path, sections }), or null. [X] must be the nearest
+// section before it at its own level: where a revert puts it back.
+export function anchorFault(b, file) {
+  const i = file.sections.findIndex((s) => s.id === b.id);
+  if (i < 0) return null;
+  const name = (s) => (s.id ? `[${s.id}]` : `"${s.title}"`);
+  for (let j = i - 1; j >= 0; j--) {
+    const s = file.sections[j];
+    if (s.level < file.sections[i].level) return `[${b.id}] is the first under ${name(s)}; no remove form records that place`;
+    if (s.level === file.sections[i].level) return s.id === b.anchor ? null : `[${b.id}] stands after ${name(s)}, not [${b.anchor}], as its remove says`;
+  }
+  return `[${b.id}] is the first section of ${file.path}; write "remove, was first in ${file.path}"`;
+}
+
 // The op tokens of [SPC-5]: `modify`, `add in|after …`, `remove, was after …`.
 // A Map, so no name an object inherits (constructor, toString…) reads as one.
 const OPS = new Map([['modify', 'modify'], ['add', 'add'], ['remove,', 'remove'], ['remove', 'remove']]);

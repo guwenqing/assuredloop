@@ -6,7 +6,7 @@ import { posix } from 'node:path';
 import { git } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
-import { allBlocks, blockFault, statesOf } from './states.js';
+import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { organized, parentOf, parts, samePart, signoffState } from './signoff.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
@@ -101,6 +101,10 @@ export function hintsOf(top, b, { main }) {
     for (const x of [...b.blocks.values()].filter((y) => y.request === r.name)) {
       const unreadable = blockFault(x);
       if (unreadable) add('not ok', 5, [r.name], unreadable, `fix the block in ${r.dir}/change.md, then al check`);
+      // [STA-4]: a remove's anchor is where its revert puts it back.
+      const file = x.op === 'remove' && x.anchor && !x.dropped && b.files.find((f) => f.sections.some((s) => s.id === x.id));
+      const misplaced = file && anchorFault(x, file);
+      if (misplaced) add('not ok', 5, [r.name], `${x.key}: ${misplaced}`, `fix the block in ${r.dir}/change.md, then al check`);
       if (x.anchor && !known(x.anchor)) add('not ok', 5, [r.name], `${r.name} cites [${x.anchor}] as the anchor of ${x.key}, which is in no section or block`, `al context ${r.name}`);
       // D6: a block marked Dropped (and not Kept) records the drop; its R-lines are not checked.
       for (const k of rKeys && !(x.dropped && !x.kept) ? x.forR.filter((y) => !rKeys.includes(y)) : []) add('not ok', 5, [r.name], `${r.name} cites ${k} in ${x.key}, which its organized requirement lacks`, `al context ${r.name}`);
