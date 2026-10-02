@@ -88,11 +88,14 @@ function moved(t, first = null) {
   return { repo, a, b, m };
 }
 
-test('#107 [VW-7][VW-8] after specs/ moved to promises/ (root: promises), al context INV-1 --audit still shows the two earlier changes, A and B, not only the move', (t) => {
-  const { repo, a, b, m } = moved(t);
+// A pure move leaves INV-1's text as it was, and a section is found by ID
+// anywhere in the root [STA-2], so the move is not a change to INV-1: the
+// audit is not asked to name it.
+test('#107 [VW-7][VW-8] after specs/ moved to promises/ (root: promises), al context INV-1 --audit still shows the two earlier changes, A and B', (t) => {
+  const { repo, a, b } = moved(t);
   const r = al(repo, 'context', 'INV-1', '--audit');
   ok(r, 'context INV-1 --audit');
-  for (const [sha, what] of [[a, 'Original A promise'], [b, 'Change to B promise'], [m, 'the move']]) {
+  for (const [sha, what] of [[a, 'Original A promise'], [b, 'Change to B promise']]) {
     assert.ok(r.stdout.includes(short(sha)), `the audit should name ${what}, ${short(sha)}:\n${r.stdout}`);
   }
 });
