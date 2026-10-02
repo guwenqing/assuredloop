@@ -1,5 +1,5 @@
 # Three spec corrections from the validation
-Tier: 1 · Status: open
+Tier: 1 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -33,3 +33,20 @@ promise (tier 0).
 Assumed:
 - The exact wording in the spec sections is written to match R1-R3.
 Signed off: 2026-10-02 owner, origin/2026-10-02-signoff.md
+
+## Outcome
+
+- R1 A section number is never used twice: in [SPC-3]
+- R2 Dropped work is not flagged for its own requirement: in [HNT-2]
+- R3 The first section of a file can be removed: in [SPC-5], [STA-4]
+- Added: none
+- Modified: [HNT-2], [SPC-3], [SPC-5], [STA-4]
+- Removed: none
+- Dropped: none
+- Kept: none
+- Decisions: none
+- Agent rulings: none
+- ADRs added: none
+- ADRs superseded: none
+
+Notes:
