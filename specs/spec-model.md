@@ -15,8 +15,9 @@ with an ID can be held by a change. `spec --add-ids <file>` numbers the headings
 that have none.
 
 ## [SPC-3] Allocating IDs
-The next ID for a prefix MUST be one more than the highest found in the root's
-git history and in the open `change.md` files. An ID MUST never be reused. A
+The next ID for a prefix MUST be one more than the highest found in the root
+and in every `change.md`, open or archived, as they are now and anywhere in
+the git history. An ID MUST never be reused. A
 duplicate ID anywhere in the root is `not ok`, and blocks every `consolidate`
 write until it is fixed.
 
@@ -32,7 +33,8 @@ Scope inherited from a parent heading is outside the comparison.
 with one block per version of a held section. A block's heading is `### [ID]@<n> <op>`,
 where `<n>` counts that section's versions within this request, and `<op>` is
 `modify`, `add in <path>` (at the end of that file, which is created if
-needed), `add after [ID]`, or `remove, was after [ID]`. Its text is `Was:` and
+needed), `add after [ID]`, `remove, was after [ID]`, or `remove, was first in
+<path>` (for the first section of a file). Its text is `Was:` and
 `Now:`, each an indented or fenced block holding exactly one heading: an add
 has no `Was:`, a remove has no `Now:`, and a modify has both. Markers
 after the op: `builds on <request>/<ID>@<n>` (or `builds on @<n>` within the
