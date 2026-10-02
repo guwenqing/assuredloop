@@ -125,3 +125,27 @@ test('R3 contrast, as today: "remove, was after [A-1]" removes A-2, and --revert
   ok(al(repo, 'consolidate', 'remove', '--revert', 'A-2', '--yes'), 'revert');
   assert.deepEqual(headings(read(repo, 'specs/two.md')), ['## [A-1] First', '## [A-2] Second'], read(repo, 'specs/two.md'));
 });
+
+// --- PR #123 review: "was first in <path>" is checked against the baseline ---
+
+const status = (repo) => repo.git(['status', '--porcelain', '--untracked-files=all']);
+const CLAIMS = {
+  'A-2, the second section of specs/two.md': {
+    files: { 'specs/two.md': file(A1, A2) },
+    block: block('[A-2]@1 remove, was first in specs/two.md   for R1', { was: A2 }),
+  },
+  'A-2, which lives in specs/other.md, not in specs/two.md': {
+    files: { 'specs/two.md': A1, 'specs/other.md': A2 },
+    block: block('[A-2]@1 remove, was first in specs/two.md   for R1', { was: A2 }),
+  },
+};
+
+for (const [label, { files, block: claim }] of Object.entries(CLAIMS)) {
+  test(`R3 PR #123 [SPC-5][STA-4] "remove, was first in specs/two.md" for ${label}: consolidate --yes refuses, exit 1, the baseline byte for byte`, (t) => {
+    const repo = served(t, files, [claim]);
+    const r = al(repo, 'consolidate', 'remove', '--yes');
+    assert.equal(r.code, 1, `consolidate should refuse:\n${both(r)}`);
+    assert.equal(status(repo), '', 'nothing written');
+    for (const [path, text] of Object.entries(files)) assert.equal(read(repo, path), text, `${path} byte for byte`);
+  });
+}
