@@ -28,10 +28,13 @@ After the owner's words, `request.md` MUST hold an "Organized requirement". It
 is one written-up statement of what is wanted, not a line-by-line translation.
 It holds one or more requirements as sub-sections (R1, R2…) using RFC 2119
 keywords, an `Out:` line for what is excluded, and an `Assumed:` list for what
-the AI added that the owner did not say. A spike holds an "Organized question"
-instead, in plain words: what we want to find out, what a useful answer looks
-like, and what is out. Requirements that must be signed or finished
-separately SHOULD be separate requests.
+the AI added that the owner did not say. For a tier-1 request, a requirement
+MAY instead be one line, `R1: <requirement>. Amends: [ID]`, and `Out:` and
+`Assumed:` MAY be left out when there is nothing to say; `Assumed:` MUST be
+written whenever the AI added something the owner did not say. A spike holds
+an "Organized question" instead, in plain words: what we want to find out, what
+a useful answer looks like, and what is out. Requirements that must be signed
+or finished separately SHOULD be separate requests.
 
 ## [REC-5] The owner's sign-off
 The owner MUST sign off the whole organized section (requirement or question)
