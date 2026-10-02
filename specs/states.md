@@ -40,7 +40,8 @@ anchor (refused while the anchor itself is pending, unless both go
 together), a modify in place, a remove. It leaves
 **consolidated** and **carried** sections alone, and refuses every other
 state, and every request that is blocked. `consolidate --revert <ID>` puts "was"
-back, a remove after its recorded anchor, and is allowed while blocked. Anyone
+back, a remove after its recorded anchor or first in its recorded file, and is
+allowed while blocked. Anyone
 MAY consolidate another request's section; the output names its owner.
 
 ## [STA-5] Revising and accepting
