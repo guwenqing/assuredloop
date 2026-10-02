@@ -36,6 +36,13 @@ export function rootOf(top, tree, at) {
   return inside(top, tree, at, 'root', values(tree, 'root')[0] ?? 'specs');
 }
 
+// A past tree's root, from its `root:` line only, or null when that line is
+// not a folder inside this repo; the other lines are not checked, so one old
+// bad line does not stop a read of history ([VW-7], [VW-8]).
+export function rootLine(top, tree, at) {
+  try { return inside(top, tree, at, 'root', values(tree, 'root')[0] ?? 'specs'); } catch { return null; }
+}
+
 // The baseline's Markdown files, each with its sections.
 export function baseline(tree, root) {
   return tree.walk(root).filter((p) => p.endsWith('.md'))
