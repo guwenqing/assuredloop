@@ -36,6 +36,8 @@ export function parts(text) {
     let key = null;
     if (subheads.has(i)) key = line.match(/^\s*#+\s+(R\d+)\b/)?.[1] ?? line.replace(/^\s*#+\s+/, '').trim();
     else if (/^(Out|Assumed):/.test(line)) key = line.match(/^(Out|Assumed)/)[1];
+    // [REC-4]: a tier-1 requirement MAY be one line, `R1: …`, read as an `### R1` sub-section.
+    else if (/^R\d+:\s/.test(line)) key = line.match(/^(R\d+)/)[1];
     if (key) {
       out.push(current);
       current = { key, text: '' };
@@ -47,7 +49,7 @@ export function parts(text) {
 }
 
 // The same part, ignoring the number in `### R<n>` (a child renumbers what it copies).
-const unnumbered = (text) => text.replace(/^(\s*#+\s+)R\d+\b/, '$1R');
+const unnumbered = (text) => text.replace(/^(\s*#+\s+)R\d+\b/, '$1R').replace(/^R\d+:/, 'R:');
 export const samePart = (a, b) => sameSection(unnumbered(a.text), unnumbered(b.text));
 
 // The sign-off that counts: the one with the latest Fetched among those whose
