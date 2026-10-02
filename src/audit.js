@@ -3,7 +3,7 @@
 // (the --at commit's under --at): what reached main.
 import { Fail, git, isShallow, mainCommit, resolveCommit } from './git.js';
 import { openTree, findRequest } from './tree.js';
-import { rootOf, baseline, configured } from './spec.js';
+import { rootOf, rootLine, baseline, configured } from './spec.js';
 import { allBlocks, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
@@ -35,9 +35,18 @@ const commitLine = (a, c) => `${c.sha.slice(0, 7)} ${c.when.toISOString().slice(
 
 // Main's first-parent commits that changed the baseline, oldest first, each
 // with its sections by ID.
+// Each tree is read with its own root: today's, or any `root:` line
+// .assuredloop held, so a moved root keeps its earlier history.
 function history(a) {
-  a.walk ??= a.gap ? [] : git(a.top, ['log', '--first-parent', '--reverse', '--format=%H', a.tip, '--', `${a.root}/`]).split('\n').filter(Boolean)
-    .map((sha) => ({ sha, sections: new Map(baseline(openTree(a.top, sha), a.root).flatMap((f) => [...byId(f.text)])) }));
+  if (a.walk || a.gap) return a.walk ?? [];
+  const shas = (args) => git(a.top, args).split('\n').filter(Boolean);
+  const roots = new Set([a.root, 'specs', ...shas(['log', '--format=%H', a.tip, '--', '.assuredloop']).map((sha) => rootLine(a.top, openTree(a.top, sha), sha))]);
+  roots.delete(null);
+  a.walk = shas(['log', '--first-parent', '--reverse', '--format=%H', a.tip, '--', ...[...roots].map((r) => `${r}/`)]).map((sha) => {
+    const tree = openTree(a.top, sha);
+    const root = rootLine(a.top, tree, sha);
+    return { sha, sections: new Map(root ? baseline(tree, root).flatMap((f) => [...byId(f.text)]) : []) };
+  });
   return a.walk;
 }
 
