@@ -108,3 +108,22 @@ test('#107 [VW-7] only the root: line of an old .assuredloop matters: an old tre
     assert.ok(r.stdout.includes(short(sha)), `the audit should name ${what}, ${short(sha)}:\n${r.stdout}`);
   }
 });
+
+// --- PR #122 review: a commit that changes only the root: line ---
+
+test('#107 [VW-7] a commit that changes only root: in .assuredloop, from specs to promises, where INV-1 reads B instead of A, changes INV-1\'s text: context INV-1 --audit names it, as well as the first commit', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/rule.md', '## [INV-1] Rule\nThe product MUST do A.\n');
+  repo.write('promises/rule.md', '## [INV-1] Rule\nThe product MUST do B.\n');
+  repo.write('.assuredloop', 'root: specs\n');
+  const first = repo.commit('Two trees, root specs', { date: '2026-09-20T12:00:00Z' });
+  repo.write('.assuredloop', 'root: promises\n');
+  const rooted = repo.commit('Root: promises', { date: '2026-09-21T12:00:00Z' });
+  assert.equal(repo.git(['show', '--name-only', '--format=', rooted]), '.assuredloop', 'the fixture: the second commit changes only .assuredloop');
+  const r = al(repo, 'context', 'INV-1', '--audit');
+  ok(r, 'context INV-1 --audit');
+  assert.ok(r.stdout.includes('The product MUST do B.'), `the fixture: INV-1 reads B today:\n${r.stdout}`);
+  for (const [sha, what] of [[first, 'the first commit'], [rooted, 'the root: change, where INV-1 went from A to B']]) {
+    assert.ok(r.stdout.includes(short(sha)), `the audit should name ${what}, ${short(sha)}:\n${r.stdout}`);
+  }
+});
