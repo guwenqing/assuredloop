@@ -17,6 +17,8 @@
 //     for a blocked request: [SPC-4] leaves the `#` count out [REC-6].
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { makeRepo, runAl } from './helpers/fixture.js';
 import { assertFrame, lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
@@ -230,6 +232,77 @@ for (const name of ['café', 'old']) {
     assert.ok(repo.git(['log', '-p', '--format=', '--', 'specs']).includes('diff --git "a/specs/caf') === (name === 'café'),
       'the fixture: git quotes the name in its diff header only for café');
     const line = hint(check(repo, '--all'), ...REUSED3, `specs/${name}.md`);
+    assertCounts(line);
+    strict(repo, 1);
+  });
+}
+
+// PAY-3 headed a section in specs/merge.md, brought in by a merge commit only
+// (`inMerge`), or by an ordinary commit on main. The branch work adds refunds
+// with a pending add of PAY-3, and removes specs/merge.md in the working tree
+// only, so no later commit's old side shows PAY-3.
+function mergeOnly(t, inMerge) {
+  const repo = makeRepo(t);
+  repo.write('specs/pay.md', PAY(1));
+  repo.commit('Payments', { date: '2026-09-20T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'feature']);
+  repo.write('src/feature.js', 'export const feature = 1;\n');
+  repo.commit('Feature', { date: '2026-09-21T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  repo.write('src/main.js', 'export const main = 1;\n');
+  if (!inMerge) repo.write('specs/merge.md', PAY(3));
+  repo.commit('Main', { date: '2026-09-21T13:00:00Z' });
+  repo.git(['merge', '-q', '--no-ff', '--no-commit', 'feature'], { date: '2026-09-22T12:00:00Z' });
+  if (inMerge) repo.write('specs/merge.md', PAY(3));
+  repo.git(['add', '-A']);
+  repo.git(['commit', '-q', '--no-edit'], { date: '2026-09-22T12:00:00Z' });
+  const added = repo.git(['log', '--format=%P', '--diff-filter=A', '-m', '--first-parent', '--', 'specs/merge.md']).split('\n')[0];
+  assert.equal(added.split(' ').length, inMerge ? 2 : 1, `the fixture: specs/merge.md came ${inMerge ? 'in the merge commit only' : 'in an ordinary commit'}`);
+  const list = al(repo, 'spec', '--list');
+  ok(list, 'spec --list on main');
+  assert.ok(list.stdout.includes('PAY-3'), `the fixture: main's baseline holds PAY-3:\n${list.stdout}`);
+  repo.git(['checkout', '-q', '-b', 'work']);
+  addRequest(repo, 'refunds', [block('[PAY-3]@1 add in specs/pay.md   for R1', { now: PAY_NEW(3) })]);
+  repo.commit(message('refunds: request and change spec', { request: 'refunds', tier: '2 — refunds' }), { date: '2026-09-25T12:00:00Z' });
+  rmSync(join(repo.dir, 'specs/merge.md'));
+  return repo;
+}
+
+for (const inMerge of [true, false]) {
+  test(`#140 item 14b ${inMerge ? '' : 'pin '}[SPC-3][HNT-3] PAY-3 headed a section in specs/merge.md, brought in ${inMerge ? 'by a merge commit only' : 'by an ordinary commit on main'}, removed in the working tree: a pending add of PAY-3 is not ok citing [SPC-3], naming specs/merge.md; check --strict exits 1`, (t) => {
+    const repo = mergeOnly(t, inMerge);
+    const line = hint(check(repo, '--all'), ...REUSED3, 'specs/merge.md');
+    assertCounts(line);
+    strict(repo, 1);
+  });
+}
+
+// With core.quotePath false, git still C-quotes a path holding a tab, a double
+// quote or a backslash, and leaves an emoji (outside the BMP) literal in it:
+// diff --git "a/specs/😀\t.md" … PAY-3 headed a section in such a file, removed
+// since. Each: the file name, and how a hint line shows it (the output escapes
+// every control character but a tab, so the tab stays as it is).
+for (const [label, name, shown] of [
+  ['an emoji and a tab', '😀\t', '😀\t'],
+  ['an emoji and a double quote', '😀"', '😀"'],
+]) {
+  test(`#140 item 14b [SPC-3][HNT-3] PAY-3 headed a section in a file whose name holds ${label}, quoted by git with the emoji literal, removed since: a pending add of PAY-3 is not ok citing [SPC-3], naming specs/${JSON.stringify(shown).slice(1, -1)}.md exactly, the emoji intact; check --strict exits 1`, (t) => {
+    const repo = makeRepo(t);
+    repo.git(['config', 'core.quotePath', 'false']);
+    const path = `specs/${name}.md`;
+    repo.write('specs/pay.md', PAY(1));
+    repo.commit('Payments', { date: '2026-09-20T12:00:00Z' });
+    repo.write(path, PAY(3));
+    repo.commit('Payments 2', { date: '2026-09-21T12:00:00Z' });
+    repo.git(['rm', '-q', path]);
+    repo.commit('Payments 3', { date: '2026-09-22T12:00:00Z' });
+    assert.ok(repo.git(['log', '-p', '--format=', '--', 'specs']).includes('diff --git "a/specs/😀'), 'the fixture: git quotes the path and leaves the emoji literal');
+    repo.git(['checkout', '-q', '-b', 'work']);
+    addRequest(repo, 'refunds', [block('[PAY-3]@1 add in specs/pay.md   for R1', { now: PAY_NEW(3) })]);
+    repo.commit(message('refunds: request and change spec', { request: 'refunds', tier: '2 — refunds' }), { date: '2026-09-25T12:00:00Z' });
+    const out = check(repo, '--all');
+    assert.doesNotMatch(out, /\uFFFD/, `no replacement character:\n${out}`);
+    const line = hint(out, ...REUSED3, `specs/${shown}.md`);
     assertCounts(line);
     strict(repo, 1);
   });
