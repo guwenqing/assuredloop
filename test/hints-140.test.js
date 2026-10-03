@@ -165,6 +165,84 @@ for (const [label, history] of [
   });
 }
 
+// A heading inside code is not a section [SPC-2]: `## [PAY-3] …` held only in
+// a fenced block, or only as four-space indented code, in an earlier commit.
+const CODE_HEADING = '## [PAY-3] Old rule\nPayments rule 3 held.';
+const IN_CODE = {
+  'a fenced code block': PAY(1, `Payments rule 1 holds. An old draft read:\n\n\`\`\`\n${CODE_HEADING}\n\`\`\``),
+  'four-space indented code': PAY(1, `Payments rule 1 holds. An old draft read:\n\n${CODE_HEADING.split('\n').map((l) => `    ${l}`).join('\n')}`),
+};
+for (const [label, text] of Object.entries(IN_CODE)) {
+  test(`#140 item 14b [SPC-2][SPC-3] contrast: ## [PAY-3] only inside ${label} in an earlier commit, never a heading: al spec --list there shows no PAY-3, and a pending add of PAY-3 draws no [SPC-3] reuse not ok; check --strict exits 0`, (t) => {
+    const repo = reuse(t, [{ 'specs/pay.md': file(text, PAY(2)) }, { 'specs/pay.md': file(PAY(1), PAY(2)) }], 3);
+    const first = repo.git(['rev-list', '--max-parents=0', 'main']).split('\n')[0];
+    const earlier = repo.git(['log', '--format=%H', '--', 'specs/pay.md']).split('\n').at(-1);
+    assert.notEqual(earlier, first, 'the fixture: the code heading is in a commit of its own');
+    const list = al(repo, 'spec', '--list', '--at', earlier);
+    ok(list, 'spec --list --at the earlier commit');
+    assert.ok(list.stdout.includes('PAY-1') && !list.stdout.includes('PAY-3'), `PAY-3 in code is no section:\n${list.stdout}`);
+    const out = check(repo, '--all');
+    noHint(out, 'not ok', '[SPC-3]');
+    assert.deepEqual(notOks(out), [], `no not ok:\n${out}`);
+    strict(repo, 0);
+  });
+}
+
+test('#140 item 14b [SPC-3] contrast: an archived request\'s change.md whose block Now holds a fenced example "## [PAY-5] …", while no block heading names PAY-5: a pending add of PAY-5 draws no [SPC-3] reuse not ok; check --strict exits 0', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/pay.md', file(PAY(1), PAY(2)));
+  const example = PAY(2, 'Payments rule 2 holds. A later rule would read:\n\n```\n## [PAY-5] Example\nAn example rule.\n```');
+  addRequest(repo, 'old-pay', [block('[PAY-2]@1 modify   Dropped 2026-09-26 (D4)   for R1', { was: PAY(2), now: example })],
+    { dir: 'requests/archive/old-pay', status: 'dropped' });
+  repo.commit('Payments, and old-pay archived', { date: '2026-09-20T12:00:00Z' });
+  assert.ok(repo.read('requests/archive/old-pay/change.md').toString().includes('## [PAY-5] Example'), 'the fixture: the example is in the archived change.md');
+  repo.git(['checkout', '-q', '-b', 'work']);
+  addRequest(repo, 'refunds', [block('[PAY-5]@1 add in specs/pay.md   for R1', { now: PAY_NEW(5) })]);
+  repo.commit(message('refunds: request and change spec', { request: 'refunds', tier: '2 — refunds' }), { date: '2026-09-25T12:00:00Z' });
+  const out = check(repo, '--all');
+  noHint(out, 'not ok', '[SPC-3]');
+  assert.deepEqual(notOks(out), [], `no not ok:\n${out}`);
+  strict(repo, 0);
+});
+
+// A file name git quotes in its diff headers (non-ASCII): PAY-3 headed a
+// section in specs/café.md, which was removed since. Each commit is
+// { path: text }, null removing the file; then the branch adds PAY-3.
+function quoted(t, history) {
+  const repo = makeRepo(t);
+  history.forEach((files, i) => {
+    for (const [path, text] of Object.entries(files)) {
+      if (text === null) repo.git(['rm', '-q', path]);
+      else repo.write(path, text);
+    }
+    repo.commit(`Payments ${i + 1}`, { date: `2026-09-2${i}T12:00:00Z` });
+  });
+  repo.git(['checkout', '-q', '-b', 'work']);
+  addRequest(repo, 'refunds', [block('[PAY-3]@1 add in specs/pay.md   for R1', { now: PAY_NEW(3) })]);
+  repo.commit(message('refunds: request and change spec', { request: 'refunds', tier: '2 — refunds' }), { date: '2026-09-25T12:00:00Z' });
+  return repo;
+}
+const REUSED3 = ['not ok', 'PAY-3', '[SPC-3]'];
+
+for (const name of ['café', 'old']) {
+  test(`#140 item 14b ${name === 'old' ? 'pin ' : ''}[SPC-3][HNT-3] PAY-3 headed a section in specs/${name}.md, removed since${name === 'café' ? ' (a name git quotes in diff headers)' : ''}: a pending add of PAY-3 is not ok citing [SPC-3], naming specs/${name}.md; check --strict exits 1`, (t) => {
+    const repo = quoted(t, [{ 'specs/pay.md': file(PAY(1), PAY(2)) }, { [`specs/${name}.md`]: PAY(3) }, { [`specs/${name}.md`]: null }]);
+    assert.ok(repo.git(['log', '-p', '--format=', '--', 'specs']).includes('diff --git "a/specs/caf') === (name === 'café'),
+      'the fixture: git quotes the name in its diff header only for café');
+    const line = hint(check(repo, '--all'), ...REUSED3, `specs/${name}.md`);
+    assertCounts(line);
+    strict(repo, 1);
+  });
+}
+
+test('#140 item 14b [SPC-3] specs/base.md (PAY-1) and specs/café.md (PAY-3) added in one commit, café.md removed since: the reuse not ok names specs/café.md, never specs/base.md', (t) => {
+  const repo = quoted(t, [{ 'specs/base.md': PAY(1), 'specs/café.md': PAY(3) }, { 'specs/café.md': null }]);
+  const line = hint(check(repo, '--all'), ...REUSED3, 'specs/café.md');
+  assert.ok(!line.includes('specs/base.md'), `PAY-3 never headed a section in specs/base.md:\n${line}`);
+  assertCounts(line);
+  strict(repo, 1);
+});
+
 test('#140 item 14b [SPC-3][HNT-3] a pending add of PAY-5, an ID only an archived request\'s change.md used, is not ok citing [SPC-3], naming PAY-6; a pending add of PAY-6 is not', (t) => {
   const build = (n) => {
     const repo = makeRepo(t);
