@@ -3,8 +3,8 @@ Each request MUST live in its own folder, `requests/<name>/`. The name is the
 request's permanent ID: it MUST never change and MUST never be reused. The
 folder holds `request.md`, `origin/`, and, as the tier needs, `change.md` or
 `findings.md`. When a request concludes or is dropped, its folder MUST move to
-`requests/archive/<name>/` under the same name, and MUST NOT be edited after
-that change reaches main.
+`requests/archive/<name>/` under the same name, and MUST NOT be edited at all
+after that change reaches main: no file in it is changed, added or removed.
 
 ## [REC-2] The owner's words and dialog
 `request.md` MUST open with a section "Owner's words and dialog". It holds the
@@ -51,8 +51,9 @@ A request is **blocked** while its organized section has no sign-off, or
 differs from the text last signed off. Work MAY be drafted while it is
 blocked, but MUST be delivered with the sign-off or after it. While a request
 is blocked: `consolidate` and `conclude` MUST refuse for it, except
-`consolidate --revert` and `conclude --dropped` when every section retains
-nothing ([STA-3]); `context` MUST show the blocked state first; and `check`
+`consolidate --revert` at any time, and `conclude --dropped` only when every
+section retains nothing ([STA-3]); `context` MUST show the blocked state
+first; and `check`
 MUST report `not ok` for a branch whose final state delivers spec work or
 other work for the request while it is still blocked in that state. A branch
 that brings the sign-off with the work is not blocked. `record signoff` MUST
@@ -83,9 +84,11 @@ IDs; views derive commits from history.
 
 ## [REC-10] Tiers
 Every change of work MUST fit one tier, chosen by the agent:
-- **0, fix**: no promise changes; no record; the commit says why.
-- **1, amend**: a small change to a promise; a short `request.md` and the
-  baseline edit in the same PR, which concludes itself once signed off.
+- **0, fix**: no promise changes; no record; the commit says why. Adding
+  section IDs, or moving a section without changing its text, changes no
+  promise.
+- **1, amend**: a small change to a promise; a short `request.md`; after the
+  sign-off, the baseline edit and `al conclude` go in the same PR.
 - **2, change**: needs a design; `request.md` and `change.md`.
 - **3, epic**: as tier 2, with `change.md` on main while parts land.
 - **S, spike**: a signed organized question and `findings.md`, which starts

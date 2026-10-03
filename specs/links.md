@@ -13,21 +13,25 @@ first, each shown with its reason:
 A commit MUST map to a request through a `Request:` line anywhere in its
 message; else through the request folder it touched ("ambiguous" when it
 touched more than one); else through an issue number listed in a request's
-owner's words. `Follows:` lines link a later request to an earlier one.
+owner's words. `Follows: <name>`, written on a later request's Status line,
+links it to an earlier one.
 
 ## [LNK-3] Tests and their results
 Test files MUST be recognised by common path patterns or by paths the project
 names. Test results MUST be read only from files the project names, and
-reported with their provenance: a result with an unknown or older revision is
-not evidence for this change. When both exist, results at the base and the
+reported with their provenance. A results file counts as evidence for a
+revision only when it holds a `revision: <sha>` line naming that commit; a
+result with no such line, or an older revision, is not evidence for this
+change. When both exist, results at the base and the
 head MUST be compared, so failures that were already there are not blamed on
 the change. Assertion counts MUST be reported only for supported test syntax,
 as observations, and unsupported files as skipped.
 
 ## [LNK-4] Decision records
-ADRs live in the project's ADR folder, or `docs/adr/NNNN-<decision>.md`, in
-the kit's format, where a change is a new record that replaces the old one
-whole. A request's decision MAY point to an ADR; an ADR MAY name its request
+ADRs are read from `docs/adr/` and from each folder named by an `adrs: <path>`
+line in `.assuredloop`, as `NNNN-<decision>.md` in the kit's format, where a
+change is a new record that replaces the old one whole. A request's decision
+MAY point to an ADR; an ADR MAY name its request
 (`Request:`) and the sections it governs (`Governs:`). The tool MUST show the
 governing ADRs of a section (current first), list the ADRs a request added or
 superseded, and flag: an accepted ADR edited beyond its status, a broken or
