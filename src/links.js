@@ -103,7 +103,7 @@ export function blame(top, rev, path, ranges, { code, ignoreAt = rev }) {
   if (!ranges.length) return [];
   // --ignore-revs-file '' first clears any file git's own config names (blame.ignoreRevsFile).
   const out = git(top, ['blame', '--porcelain', '-w', '-M', ...(code ? ['-C'] : []), '--ignore-revs-file', '', ...ignored(top, ignoreAt),
-    ...ranges.flatMap(([a, b]) => ['-L', `${a},${b}`]), ...(rev ? [rev] : []), '--', path], { allowFail: true }) ?? '';
+    ...ranges.flatMap(([a, b]) => ['-L', `${a},${b}`]), ...(rev ? [rev] : []), '--', path], { allowFail: true, worktree: !rev }) ?? '';
   const result = [];
   const times = new Map();
   for (const l of out.split('\n')) {
