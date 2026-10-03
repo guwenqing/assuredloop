@@ -48,16 +48,24 @@ function repoWithHistory(t) {
   return repo;
 }
 
-for (const [kind, opts] of [
-  ['a shallow clone (--depth 1 --no-single-branch)', { depth: 1, singleBranch: false }],
-  ['a single-branch clone (--single-branch --depth 1)', { depth: 1, singleBranch: true }],
+// Each clone lacks history its own way: the shallow one holds one commit
+// where the source has four; the single-branch one lacks the branch `other`.
+for (const [kind, opts, lacks] of [
+  ['a shallow clone (--depth 1 --no-single-branch)', { depth: 1, singleBranch: false }, (clone, repo) => {
+    assert.equal(clone.git(['rev-list', '--count', 'HEAD']), '1');
+    assert.equal(repo.git(['rev-list', '--count', 'HEAD']), '4');
+  }],
+  ['a single-branch clone (--single-branch, not shallow)', { singleBranch: true }, (clone, repo) => {
+    assert.equal(clone.git(['rev-parse', '--is-shallow-repository']), 'false');
+    assert.equal(clone.git(['branch', '-r', '--list', 'origin/other']), '');
+    assert.notEqual(repo.git(['branch', '--list', 'other']), '');
+  }],
 ]) {
   test(`[VW-9] in ${kind} that lacks history, context and context --at say "history unavailable", never "nothing found"`, (t) => {
     const repo = repoWithHistory(t);
     const clone = cloneRepo(t, repo, opts);
-    // The fixture really lacks history: one commit where the source has four.
-    assert.equal(clone.git(['rev-list', '--count', 'HEAD']), '1');
-    assert.equal(repo.git(['rev-list', '--count', 'HEAD']), '4');
+    // The fixture really lacks history.
+    lacks(clone, repo);
     const head = clone.head();
     for (const args of [['context', 'invoice-download'], ['context', 'invoice-download', '--at', head]]) {
       const r = runAl(clone.dir, args);
