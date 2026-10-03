@@ -158,8 +158,9 @@ export function idsUsed(top, tree, root, rev = '--all') {
     for (const id of headed) used.get(id).add(path);
   };
   for (const p of [...tree.walk(root).filter((x) => x.endsWith('.md')), ...tree.walk('requests').filter((x) => x.endsWith('/change.md'))]) note(p, tree.read(p).toString('utf8'));
-  // Each changed file whole, both sides, so headings are read with their fences.
-  const log = git(top, ['log', rev, '-p', '--no-renames', '-U1000000', '--format=', '--', root, 'requests'], { allowFail: true }) ?? '';
+  // Each changed file whole, both sides, so headings are read with their
+  // fences; a merge against its first parent, so what only it brought counts.
+  const log = git(top, ['log', rev, '-p', '--diff-merges=first-parent', '--no-renames', '-U1000000', '--format=', '--', root, 'requests'], { allowFail: true }) ?? '';
   let file = null;
   const flush = () => { if (file?.path) { note(file.path, file.old.join('\n')); note(file.path, file.now.join('\n')); } };
   for (const l of log.split('\n')) {
@@ -181,7 +182,8 @@ function diffPath(header) {
   const bytes = [];
   const ESC = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
   for (let i = 1; i < rest.length && rest[i] !== '"'; i++) {
-    if (rest[i] !== '\\') bytes.push(...Buffer.from(rest[i]));
+    // A character git leaves as it is, whole: one outside the BMP is two code units.
+    if (rest[i] !== '\\') { const c = String.fromCodePoint(rest.codePointAt(i)); bytes.push(...Buffer.from(c)); i += c.length - 1; }
     else if (/[0-7]/.test(rest[i + 1])) { bytes.push(parseInt(rest.slice(i + 1, i + 4), 8)); i += 3; }
     else bytes.push(ESC[rest[++i]] ?? rest.charCodeAt(i));
   }
