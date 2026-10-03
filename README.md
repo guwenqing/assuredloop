@@ -67,6 +67,79 @@ each path inside the repo:
 
 `tests:`, `results:` and `adrs:` may each be given on several lines.
 
+## Common situations
+
+Each example gives the steps, and what `al check` says on the PR. The `Tier:`
+line goes in a commit message and in the PR.
+
+### Adopting when the spec lives elsewhere
+
+Say the design is `docs/prd.md`, and the root is to be `docs/prd/`. Use two
+PRs.
+
+PR 1 moves the file, fixes each relative link the move breaks (`(adr/)`
+becomes `(../adr/)`), and sets the root. It claims
+`Tier: 0 — moves the PRD into the root; no promise changes`:
+
+    mkdir docs/prd && git mv docs/prd.md docs/prd/prd.md
+    printf 'root: docs/prd\n' > .assuredloop
+
+This is the step before the baseline exists. The fork had none, so `al check`
+reads the whole file as new, says
+`not ok: the claim is tier 0, but origin/main..HEAD edits the baseline`, and
+`--strict` exits 1. Say why in the PR.
+
+PR 2, after PR 1 merges, adopts: the AGENTS.md line from Install, and IDs. It
+claims `Tier: 0 — adds section IDs; no promise changes`:
+
+    al spec --add-ids docs/prd/prd.md --prefix PRD --yes
+
+`al check --strict` passes, with one note: the commit changes
+`docs/prd/prd.md` with no request linked (fine for tier 0; say why). In one PR,
+the IDs read as edits too: `edits the baseline: [PRD-1], [PRD-2], [PRD-3]`.
+
+### Adding IDs to a spec file in the root
+
+    al spec --add-ids specs/api.md --prefix API --yes
+
+It numbers the headings that have no ID, with the next free numbers. Claim
+tier 0. `al check --strict` passes, with the same note.
+
+### Moving or splitting sections in the root
+
+Move each section whole, heading and text unchanged, to another file in the
+root. Claim tier 0. `al check --strict` passes, and its Evidence line says
+`moves [R-3] specs/rules.md → specs/dates.md, text unchanged`. A new file holds
+only the moved sections: a title or an intro line in it is new text, and gets
+a `not ok`.
+
+### A move that forces a text change
+
+Moving `[R-2]` from `specs/` into `specs/files/` breaks its link
+`(limits.md)`. The fix, `(../limits.md)`, changes the section's text. So does a
+heading reworded on the way. `al` follows neither. Claimed as tier 0:
+
+    not ok: the claim is tier 0, but origin/main..HEAD edits the baseline: [R-2]; al context --diff origin/main..HEAD
+
+Either keep the change out of the move: move the section where its text still
+works (a file in the same folder keeps its links), and reword in a tier-1 PR of
+its own. Or claim tier 1 for the whole PR, as in the skill's quick path, with
+`Amends: [R-2]` and the owner's sign-off. `al check --strict` then passes.
+
+### Renaming a section's ID
+
+Code, tests and requests cite a section by its ID. Rename `[R-2]` to
+`[SIZE-1]`, claim tier 0, and `al check` says
+`not ok: the claim is tier 0, but origin/main..HEAD edits the baseline: [R-2], [SIZE-1]`.
+`al context R-2` then says `[R-2] not in the baseline`, and still lists the
+code and tests that name it.
+
+Keep the ID: it names the promise, not the file it sits in. If it must change,
+claim tier 1, with the owner's sign-off and `Amends: [R-2], [SIZE-1]` (name
+both, or a note says the new one is not named). Change every citation of
+`[R-2]` in the same PR; `al context R-2` lists those in code and tests. `[R-2]`
+is never used again.
+
 ## What is enforced, and by whom
 
 The way of working (tests first, review, the PR flow) belongs to the bots that
