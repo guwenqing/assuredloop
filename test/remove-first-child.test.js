@@ -271,3 +271,31 @@ test('#131 PR #134 [STA-4][STA-5] a chain whose first Was is shallower: baseline
   const after = chainReverted(t, [A1, changed('A-1.1', '###'), A12, A2], 'A-1.1', 'A-1', sec('A-1.1', '##'), changed('A-1.1', '###'), ['A-1', 'A-1.1', 'A-1.2', 'A-2']);
   assert.ok(at(after, 'More on A-1:') < at(after, '[A-1.1]'), `A-1's own text before A-1.1:\n${after}`);
 });
+
+// --- a remove's Was left with no heading after the removal: the revert refuses (review of PR #134) ---
+
+test('#131 PR #134 [STA-4][SPC-5] the chain [A-2]@1 modify (Revised), [A-2]@2 remove, was after [A-1], builds on @1, consolidated; then only @2\'s Was is edited to a paragraph with no heading: --revert A-2, previewed and with --yes, refuses with exit 1, naming A-2@2, with no internal error, writing nothing', (t) => {
+  const was1 = sec('A-2', '###');
+  const now1 = changed('A-2', '##');
+  const chain = (was2) => [
+    block('[A-2]@1 modify   Revised 2026-09-22 (D1)   for R1', { was: was1, now: now1 }),
+    block('[A-2]@2 remove, was after [A-1]   builds on @1   for R1', { was: was2 }),
+  ];
+  const repo = served(t, [A1, A11, now1], chain(now1));
+  ok(al(repo, 'consolidate', 'remove', '--yes'), 'consolidate');
+  repo.commit(message('Consolidate', { request: 'remove', tier: '0 — remove' }), { date: '2026-09-23T12:00:00Z' });
+  addRequest(repo, 'remove', chain('A paragraph with no heading.\n'));
+  repo.commit(message('remove: @2\'s Was loses its heading', { request: 'remove', tier: '0 — remove' }), { date: '2026-09-24T12:00:00Z' });
+  const before = text(repo, 'specs/f.md');
+  assert.ok(!headings(before).includes('A-2'), `the fixture: A-2 removed:\n${before}`);
+  hint(check(repo, '--all'), 'not ok', 'A-2@2');
+  for (const extra of [[], ['--yes']]) {
+    const r = al(repo, 'consolidate', 'remove', '--revert', 'A-2', ...extra);
+    const how = `--revert A-2 ${extra.join(' ')}`;
+    assert.equal(r.code, 1, `${how} should refuse:\n${both(r)}`);
+    assert.ok(lineWith(both(r), 'A-2@2'), `${how}: the refusal names A-2@2:\n${both(r)}`);
+    assert.doesNotMatch(both(r), /\b[A-Z]\w*Error\b|^\s+at .*:\d+:\d+\)?$/m, `${how}: no internal error or stack trace:\n${both(r)}`);
+    assert.equal(status(repo), '', `${how}: nothing written`);
+    assert.equal(text(repo, 'specs/f.md'), before, `${how}: specs/f.md unchanged, A-2 still absent`);
+  }
+});
