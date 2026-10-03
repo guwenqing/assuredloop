@@ -74,18 +74,20 @@ const A1B = '## [A-1] Promise\nThe promise MUST say new.\n';
 const A2 = '## [A-2] Order\nThe order MUST be old.\n';
 const PROMISE = (word) => `// [A-1] Promise\nexport const promise = '${word}';\n`;
 
-// Main: specs/rules.md with A-1 and A-2, src/promise.js under an [A-1]
-// marker, and the signed tier-1 request promise (R1 amends A-1, R2 amends
-// A-2; no change.md). The branch changes A-1 in a commit with "Request:
-// promise", then src/promise.js under its marker in a commit with no Request
-// line, so only the [A-1] marker links it.
+// Main: specs/rules.md with A-1 and A-2 and the signed tier-1 request
+// promise (R1 amends A-1, R2 amends A-2; no change.md), then src/promise.js
+// under an [A-1] marker in a commit of its own, so it never changed together
+// with A-2. The branch changes A-1 in a commit with "Request: promise", then
+// src/promise.js under its marker in a commit with no Request line, so only
+// the [A-1] marker links it.
 function tierOne(t) {
   const repo = makeRepo(t);
   repo.write('specs/rules.md', file(A1, A2));
-  repo.write('src/promise.js', PROMISE('old'));
   const org = oneLine('R1: The promise MUST say new. Amends: [A-1]', 'R2: The order MUST stay old. Amends: [A-2]');
   addRequest(repo, 'promise', null, { line: TIER1, org, signedText: org, decisions: '' });
   repo.commit('Baseline and request', { date: '2026-09-21T12:00:00Z' });
+  repo.write('src/promise.js', PROMISE('old'));
+  repo.commit('Promise code', { date: '2026-09-21T13:00:00Z' });
   repo.git(['checkout', '-q', '-b', 'promise']);
   repo.write('specs/rules.md', file(A1B, A2));
   repo.commit(message('The promise says new', { request: 'promise', tier: '1 — promise' }), { date: '2026-09-22T12:00:00Z' });
