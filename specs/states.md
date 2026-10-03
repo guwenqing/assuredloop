@@ -1,5 +1,6 @@
 ## [STA-1] The link check
-For a block that builds on another block X@k, the link MUST be checked first,
+For a block that builds on another block, X@k (version k of a section, in the
+request its `builds on` names), the link MUST be checked first,
 and the check stops at the first row that holds:
 - X@k does not exist, or following `builds on` revisits a block: **broken
   link** (`not ok`);
@@ -11,6 +12,8 @@ and the check stops at the first row that holds:
 - otherwise the link is valid.
 
 ## [STA-2] The content states
+`builds on` points from a later version to the earlier one it uses, so a block
+reaches each block it builds on, directly or along a chain.
 With a valid link (or none), the baseline section, found by ID anywhere in the
 root, decides the state. The first row that holds wins:
 1. this "was" equals this "now": **no change yet**;
@@ -24,6 +27,11 @@ root, decides the state. The first row that holds wins:
 6. the ID is not found: **not found**, with candidates by body text;
 7. anything else: **differs**, align.
 
+For example, request A changes a section from text 0 to text 1, and request B
+builds on A and changes it from 1 to 2. With 0 in the baseline, A is
+**pending** and B is **waiting** on A; with 1, A is **consolidated** and B is
+**pending**; with 2, A is **carried** by B and B is **consolidated**.
+
 ## [STA-3] Retains nothing
 A block **retains nothing** only when this is shown positively from content,
 whatever the link state: its "was" equals its "now"; or the baseline equals
@@ -35,7 +43,8 @@ match "now".
 ## [STA-4] Consolidate
 `consolidate <name> [--section ID] [--yes]` MUST validate everything first,
 show what it would write, and with `--yes` write atomically. It writes only
-sections that are **pending** and not marked Dropped: an add after its
+sections that are **pending** and not marked Dropped: an `add in <path>` at
+the end of that file, an add after its
 anchor (refused while the anchor itself is pending, unless both go
 together), a modify in place, a remove. It leaves
 **consolidated** and **carried** sections alone, and refuses every other
