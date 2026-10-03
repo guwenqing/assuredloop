@@ -29,6 +29,7 @@ const COMMANDS = {
   conclude: { run: conclude, options: { dropped: { type: 'string' }, yes: { type: 'boolean' } } },
   check: { run: check, options: { at: { type: 'string' }, strict: { type: 'boolean' }, all: { type: 'boolean' } } },
 };
+const ONE_LINE = ['words', 'source', 'text', 'url', 'updated', 'title'];
 const USAGE = 'al new | record | context | spec | consolidate | conclude | check';
 
 function main(argv) {
@@ -46,6 +47,9 @@ function main(argv) {
     } catch (e) {
       throw new Fail(e.message, USAGE);
     }
+    // A one-line value is written into a record line; a line break in it would forge another line.
+    const broken = ONE_LINE.find((k) => /[\r\n]/.test(parsed.values[k] ?? ''));
+    if (broken) throw new Fail(`--${broken} holds a line break; it takes one line`, `pass --${broken} on one line`);
     // [VW-9]: under --at, every output names the commit, error exits included.
     // [VW-8]: from here on --at is the commit's full id, however it was spelled.
     if (parsed.values.at !== undefined) {
