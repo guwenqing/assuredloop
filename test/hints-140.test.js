@@ -235,12 +235,54 @@ for (const name of ['café', 'old']) {
   });
 }
 
+test('#140 item 14b [SPC-1][SPC-3] a baseline file named specs/change.md is a baseline file: PAY-3 headed a section there, removed since; a pending add of PAY-3 is not ok citing [SPC-3], naming specs/change.md; check --strict exits 1', (t) => {
+  const repo = quoted(t, [{ 'specs/base.md': PAY(1) }, { 'specs/change.md': PAY(3) }, { 'specs/change.md': null }]);
+  const added = repo.git(['log', '--format=%H', '--diff-filter=A', '--', 'specs/change.md']);
+  const list = al(repo, 'spec', '--list', '--at', added);
+  ok(list, 'spec --list --at the commit that added specs/change.md');
+  assert.ok(list.stdout.includes('specs/change.md') && list.stdout.includes('PAY-3'), `the fixture: PAY-3 is a baseline section there:\n${list.stdout}`);
+  const line = hint(check(repo, '--all'), ...REUSED3, 'specs/change.md');
+  assertCounts(line);
+  strict(repo, 1);
+});
+
 test('#140 item 14b [SPC-3] specs/base.md (PAY-1) and specs/café.md (PAY-3) added in one commit, café.md removed since: the reuse not ok names specs/café.md, never specs/base.md', (t) => {
   const repo = quoted(t, [{ 'specs/base.md': PAY(1), 'specs/café.md': PAY(3) }, { 'specs/café.md': null }]);
   const line = hint(check(repo, '--all'), ...REUSED3, 'specs/café.md');
   assert.ok(!line.includes('specs/base.md'), `PAY-3 never headed a section in specs/base.md:\n${line}`);
   assertCounts(line);
   strict(repo, 1);
+});
+
+// A block heading inside a fenced Was or Now is not a block: old's real block
+// is OLD-1@1, its Now fenced with four backticks around a three-backtick
+// example that holds the line `### [PAY-3]@1 add in specs/new.md`.
+const OLD1 = '## [OLD-1] Rule\nThe old rule holds.\n';
+const FENCED_EXAMPLE = '# Change\n\nWhy: an example of a change block.\n\n## Spec changes\n\n' +
+  '### [OLD-1]@1 modify   Dropped 2026-09-26 (D4)   for R1\nWas:\n\n````\n' + OLD1 + '````\n\nNow:\n\n````\n' +
+  '## [OLD-1] Rule\nThe old rule holds. An example change block follows:\n\n```md\n' +
+  '### [PAY-3]@1 add in specs/new.md\nNow:\n    ## [PAY-3] Example\n    Only a code sample.\n```\n````\n';
+
+test('#140 item 14b [SPC-3][SPC-5] contrast: an archived request whose change.md holds "### [PAY-3]@1 add in specs/new.md" only inside a fenced Now never held PAY-3: record section PAY-3 --builds-on old says "old holds no block for [PAY-3]", and a pending add of PAY-3 draws no [SPC-3] reuse not ok; check --strict exits 0', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/pay.md', file(PAY(1), PAY(2)));
+  repo.write('specs/old.md', OLD1);
+  addRequest(repo, 'old', null, { dir: 'requests/archive/old', status: 'dropped' });
+  repo.write('requests/archive/old/change.md', FENCED_EXAMPLE);
+  addRequest(repo, 'payouts', null);
+  repo.commit('Payments; old archived; payouts', { date: '2026-09-20T12:00:00Z' });
+
+  const r = al(repo, 'record', 'payouts', 'section', 'PAY-3', '--builds-on', 'old');
+  assert.equal(r.code, 2, both(r));
+  assert.ok(both(r).includes('old holds no block for [PAY-3]'), `the fixture: old holds no PAY-3 block:\n${both(r)}`);
+
+  repo.git(['checkout', '-q', '-b', 'work']);
+  addRequest(repo, 'refunds', [block('[PAY-3]@1 add in specs/pay.md   for R1', { now: PAY_NEW(3) })]);
+  repo.commit(message('refunds: request and change spec', { request: 'refunds', tier: '2 — refunds' }), { date: '2026-09-25T12:00:00Z' });
+  const out = check(repo, '--all');
+  noHint(out, 'not ok', '[SPC-3]');
+  assert.deepEqual(notOks(out), [], `no not ok:\n${out}`);
+  strict(repo, 0);
 });
 
 test('#140 item 14b [SPC-3][HNT-3] a pending add of PAY-5, an ID only an archived request\'s change.md used, is not ok citing [SPC-3], naming PAY-6; a pending add of PAY-6 is not', (t) => {
