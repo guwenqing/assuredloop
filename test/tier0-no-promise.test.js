@@ -3,7 +3,8 @@
 // [REC-11] whose baseline edit only adds an ID, or only moves a section, is
 // not flagged, and check --strict exits 0 [HNT-3]. A tier-0 claim with a
 // baseline edit that does more [HNT-2] (a changed text, an added or removed
-// section, a renamed ID) is still `not ok`, counting, and check --strict
+// section, a renamed ID, the text before a file's first heading, a file under
+// the root that is not .md) is still `not ok`, counting, and check --strict
 // exits 1. Built from the spec text and the CLI; nothing here reads the code
 // under test.
 import { test } from 'node:test';
@@ -60,13 +61,14 @@ function assertNoPromiseChange(repo) {
   strict(repo, 0);
 }
 
-// Flagged: the tier-0 not ok over main..HEAD names one of `ids`, counts, and
-// is the only not ok, so it is what makes check --strict exit 1.
+// Flagged: the tier-0 not ok over main..HEAD names one of `ids` (any or none
+// when `ids` is empty: no section changed), counts, and is the only not ok,
+// so it is what makes check --strict exit 1.
 function assertTier0NotOk(repo, ids) {
   const out = check(repo, '--all');
   assertTier0Read(out);
   const line = hint(out, 'not ok', 'tier 0', 'main..HEAD');
-  assert.ok(ids.some((id) => hasId(line, id)), `the tier-0 not ok should name ${ids.join(' or ')}:\n${out}`);
+  if (ids.length) assert.ok(ids.some((id) => hasId(line, id)), `the tier-0 not ok should name ${ids.join(' or ')}:\n${out}`);
   assertCounts(line);
   assert.deepEqual(notOks(out), [line], `the tier-0 line should be the only not ok:\n${out}`);
   strict(repo, 1);
@@ -98,6 +100,10 @@ const contrasts = [
   ['renames [TXT-1] to [TXT-4], title and body the same', BASE, { 'specs/a.md': file('## [TXT-4] Dates\nDates show in ISO 8601.\n', TOTALS) }, ['TXT-1', 'TXT-4']],
   ['moves [TXT-1] to specs/b.md and changes its text', BASE, { 'specs/a.md': TOTALS, 'specs/b.md': file(DATES_CHANGED, NAMES) }, ['TXT-1']],
   ['adds the ID [TXT-1] to ## Dates and changes its body', { 'specs/a.md': '## Dates\nDates show in ISO 8601.\n' }, { 'specs/a.md': DATES_CHANGED }, ['TXT-1']],
+  ['changes only the text before the first heading of specs/a.md, every section the same',
+    { ...BASE, 'specs/a.md': 'Promises about invoices.\n\n' + file(DATES, TOTALS) },
+    { 'specs/a.md': 'Promises about invoices and receipts.\n\n' + file(DATES, TOTALS) }, []],
+  ['adds only specs/diagram.txt, a file under the root that is not .md', BASE, { 'specs/diagram.txt': 'invoice -> csv\n' }, []],
 ];
 
 for (const [what, before, after, ids] of contrasts) {
