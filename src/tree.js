@@ -11,15 +11,24 @@ export function openTree(top, at) {
       read(path) {
         try { return readFileSync(join(top, path)); } catch { return null; }
       },
+      // A symlink is never listed: no read leaves the repo through one ([SPC-1]).
       list(dir) {
-        try { return readdirSync(join(top, dir)).sort(); } catch { return null; }
+        try { return readdirSync(join(top, dir), { withFileTypes: true }).filter((d) => !d.isSymbolicLink()).map((d) => d.name).sort(); } catch { return null; }
       },
-      // Every file under `dir`, as repo-relative paths in path order.
+      // Every file under `dir`, as repo-relative paths in path order, going
+      // down real folders only, never through a symlink ([SPC-1]).
       walk(dir) {
-        try {
-          return readdirSync(join(top, dir), { recursive: true, withFileTypes: true }).filter((d) => d.isFile())
-            .map((d) => relative(top, join(d.parentPath, d.name))).sort();
-        } catch { return []; }
+        const out = [];
+        const down = (d) => {
+          let entries;
+          try { entries = readdirSync(join(top, d), { withFileTypes: true }); } catch { return; }
+          for (const e of entries) {
+            if (e.isDirectory()) down(`${d}/${e.name}`);
+            else if (e.isFile()) out.push(relative(top, join(top, d, e.name)));
+          }
+        };
+        down(dir);
+        return out.sort();
       },
     };
   }
@@ -47,16 +56,35 @@ export function openTree(top, at) {
   };
 }
 
-// Where a request lives in this tree: requests/<name> or requests/archive/<name>.
 // A request's name, its permanent ID ([REC-1]): lowercase letters, digits and
 // hyphens. It is never a path, so no alias reaches a request by another way.
 export const NAME = /^[a-z0-9][a-z0-9-]*$/;
 export const isName = (name) => typeof name === 'string' && NAME.test(name) && name !== 'archive';
 
+// Every request folder in `tree` whose name is a request name, as { name,
+// dir, open }; a name both open and archived is read open, as findRequest
+// reads it. A symlink is never a request folder (list leaves it out).
+export function requestDirs(tree) {
+  const dirs = [];
+  for (const [at, open] of [['requests', true], ['requests/archive', false]]) {
+    for (const name of (tree.list(at) ?? []).filter(isName)) {
+      if (!dirs.some((d) => d.name === name) && tree.read(`${at}/${name}/request.md`) !== null) dirs.push({ name, dir: `${at}/${name}`, open });
+    }
+  }
+  return dirs;
+}
+
+// The request a path under requests/ belongs to, when its folder is a request name.
+export const folderOf = (path) => {
+  const name = path.match(/^requests\/archive\/([^/]+)\//)?.[1] ?? path.match(/^requests\/(?!archive\/)([^/]+)\//)?.[1];
+  return isName(name) ? name : undefined;
+};
+
+// Where a request lives in this tree: requests/<name> or requests/archive/<name>.
 export function findRequest(tree, name) {
   if (!isName(name)) return null;
-  for (const dir of [`requests/${name}`, `requests/archive/${name}`]) {
-    if (tree.read(`${dir}/request.md`) !== null) return dir;
+  for (const at of ['requests', 'requests/archive']) {
+    if ((tree.list(at) ?? []).includes(name) && tree.read(`${at}/${name}/request.md`) !== null) return `${at}/${name}`;
   }
   return null;
 }

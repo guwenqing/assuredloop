@@ -4,12 +4,12 @@
 // --diff and context <name>.
 import { posix } from 'node:path';
 import { git } from './git.js';
-import { openTree } from './tree.js';
+import { folderOf, isName, openTree } from './tree.js';
 import { rootOf, rootLine, baseline, duplicateIds } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
 import { sameSection, unheld } from './sections.js';
 import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled } from './signoff.js';
-import { isSignoff, parseSnapshot } from './snapshot.js';
+import { isSignoff, snapshots } from './snapshot.js';
 import { childrenOf, entriesOf, line, partsOf } from './commands.js';
 import { headingFault } from './consolidate.js';
 import { baselineLists, judge, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
@@ -23,7 +23,6 @@ const BAD = ['differs', 'base revised', 'base dropped', 'broken link'];
 const ID_TOKEN = /\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g;
 const statusOf = (md) => md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '';
 const isDropped = (md) => /\bStatus:\s*dropped\b/.test(statusOf(md));
-const folderOf = (p) => p.match(/^requests\/archive\/([^/]+)\//)?.[1] ?? p.match(/^requests\/(?!archive\/)([^/]+)\//)?.[1];
 const sections = (files) => new Map(files.flatMap((f) => [...byId(f.text)]));
 
 // What the hints read: the final state (`tree`, the working tree or the tree
@@ -48,8 +47,9 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   // A merge on main (earlyWork) counts by all it brings: `files` is filesOf there.
   const work = (name, sha, skip = () => false, files = ownFiles) => files(top, sha).some((f) => !new RegExp(`^requests/(?:archive/)?${name}/(?:request\\.md$|origin/)`).test(f) && !skip(f));
   const delivered = new Set(mapped.flatMap((c) => c.names.filter((n) => work(n, c.sha))));
-  for (const p of changed) if (/^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(p)) delivered.add(folderOf(p));
-  const tiers = commits.map((sha) => [...git(top, ['show', '-s', '--format=%B', sha]).matchAll(/^[ \t]*Tier:[ \t]*(.+?)[ \t]*$/gm)].at(-1)?.[1]);
+  for (const p of changed) if (/^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(p) && folderOf(p)) delivered.add(folderOf(p));
+  // Captured whole and trimmed in JS: a regex that trims a long line's spaces takes quadratic time.
+  const tiers = commits.map((sha) => [...git(top, ['show', '-s', '--format=%B', sha]).matchAll(/^[ \t]*Tier:(.*)$/gm)].map((m) => m[1].trim()).filter(Boolean).at(-1));
   const tier = tiers.filter(Boolean).at(-1) ?? null;
   return { root, files, before, was, now, changedIds, changed, requests, blocks: allBlocks(tree), seen, mapped, served, archived, delivered, work, tier, base, commits, tree, at, range };
 }
@@ -114,6 +114,15 @@ export function hintsOf(top, b, { main }) {
     if (block >= 0) add('not ok', 4, [], `a Was:/Now: block in ${f.path}:${block + 1}; the baseline holds promises, not changes`, 'move it into a change.md, then al check');
   }
   for (const [id, at] of duplicateIds(b.files)) add('not ok', 5, [], `duplicate ID [${id}] in ${at.join(' and ')}`, 'rename one copy by hand, then al spec --list');
+  // [REC-1]: a request folder whose name is not a request name, or a name both open and archived; no request owns these.
+  const held = (at) => (b.tree.list(at) ?? []).filter((n) => n !== 'archive' && b.tree.read(`${at}/${n}/request.md`) !== null);
+  const [openDirs, archivedDirs] = [held('requests'), held('requests/archive')];
+  for (const [at, n] of [...openDirs.map((n) => ['requests', n]), ...archivedDirs.map((n) => ['requests/archive', n])].filter(([, n]) => !isName(n))) {
+    add('not ok', 5, [], `${at}/${n} is not a request name (lowercase letters, digits and hyphens), so no command reads it`, `git mv ${at}/${n} ${at}/<name>, then al check`);
+  }
+  for (const n of openDirs.filter((x) => isName(x) && archivedDirs.includes(x))) {
+    add('not ok', 5, [], `${n} is in both requests/${n} and requests/archive/${n}; only the open one is read`, `git mv requests/${n} requests/<new name>, then al check`);
+  }
 
   // An open request citing what does not exist, or a block that breaks [SPC-5].
   for (const r of open) {
@@ -192,8 +201,7 @@ export function hintsOf(top, b, { main }) {
 
   // Snapshots: a text that no longer matches its hash; a served request's web source not re-checked.
   for (const r of b.requests) {
-    for (const f of (b.tree.list(`${r.dir}/origin`) ?? []).filter((x) => x.endsWith('.md'))) {
-      const s = parseSnapshot(b.tree.read(`${r.dir}/origin/${f}`) ?? Buffer.alloc(0));
+    for (const { file: f, s } of snapshots(b.tree, r.dir)) {
       if (!s) add('not ok', 11, [r.name], `origin/${f} of ${r.name} is not a valid snapshot: it needs Source, Fetched and SHA-256, then ---`, `al record ${r.name} origin --url <source> --from -`);
       else if (!s.intact) add('not ok', 11, [r.name], `origin/${f} of ${r.name} no longer matches its SHA-256`, `al record ${r.name} origin --verify ${f} --from -`);
       else if (b.served.has(r.name) && /^https?:\/\//.test(s.fields.Source)) {
@@ -277,9 +285,9 @@ function earlyWork(top, b, mainSha) {
     // holding one of its parts word for word ([REC-5]).
     const org = organized(r.md);
     const mine = parts(org?.text ?? '', org?.oneLine);
-    const signoffsOf = (n, dir, keep = () => true) => (b.tree.list(`${dir}/origin`) ?? [])
-      .filter((f) => { const s = parseSnapshot(b.tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0)); return isSignoff(s) && keep(s); })
-      .flatMap((f) => [`requests/${n}/origin/${f}`, `requests/archive/${n}/origin/${f}`]);
+    const signoffsOf = (n, dir, keep = () => true) => snapshots(b.tree, dir)
+      .filter(({ s }) => isSignoff(s) && keep(s))
+      .flatMap(({ file: f }) => [`requests/${n}/origin/${f}`, `requests/archive/${n}/origin/${f}`]);
     const parent = parentOf(b.tree, name);
     const copied = (s) => parts(s.text.toString('utf8'), tierOne(parent.md)).some((q) => mine.some((p) => samePart(p, q)));
     const places = [...signoffsOf(name, r.dir), ...(parent ? signoffsOf(parent.name, parent.dir, copied) : [])];

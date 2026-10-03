@@ -6,6 +6,13 @@ const HEADING = /^( {0,3}#{1,6})([ \t]+|$)(.*)$/;
 const ID = /^\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\][ \t]*/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
+// Whether `line` closes the fence `fence` opened: 0-3 spaces, then the same
+// mark, at least as long, and nothing else.
+export function closes(line, fence) {
+  const f = line.match(FENCE);
+  return Boolean(f && f[1][0] === fence[0] && f[1].length >= fence.length && line.trim() === f[1]);
+}
+
 // Each line of `text` with its ending, whether it is a heading, and whether it
 // is fenced code (a fence line included): lines in fenced code are not
 // headings, and indented code never matches HEADING.
@@ -16,7 +23,7 @@ function scan(text) {
     const line = raw.replace(/\r?\n$/, '');
     const f = line.match(FENCE);
     if (fence) {
-      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && line.trim() === f[1]) fence = null;
+      if (closes(line, fence)) fence = null;
       return { raw, heading: null, code: true };
     }
     if (f) {

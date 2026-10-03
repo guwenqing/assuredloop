@@ -11,6 +11,12 @@ export function formatSnapshot({ source, fetched, updated, text }) {
   return Buffer.concat([Buffer.from(header.join('\n')), text]);
 }
 
+// Every file in a request's origin/, whatever its name, each a snapshot
+// ([REC-3]): { file, s }, s null when it is not a valid one. Every reader
+// reads origin/ through this.
+export const snapshots = (tree, dir) => (tree.list(`${dir}/origin`) ?? [])
+  .map((file) => ({ file, s: parseSnapshot(tree.read(`${dir}/origin/${file}`) ?? Buffer.alloc(0)) }));
+
 // The header fields, the separator line, the text, and whether the text still
 // matches its hash. Null when the header lacks Source, Fetched or SHA-256, or
 // the separator.

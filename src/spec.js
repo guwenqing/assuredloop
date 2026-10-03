@@ -23,7 +23,8 @@ function inside(top, tree, at, key, raw) {
 }
 
 // The values of the `<key>: <path>` lines of `.assuredloop`, as written.
-const values = (tree, key) => [...(tree.read('.assuredloop')?.toString('utf8') ?? '').matchAll(new RegExp(`^${key}:[ \\t]*(.+?)[ \\t]*$`, 'gm'))].map((m) => m[1]);
+// Captured whole and trimmed in JS: a regex that trims a long line's spaces takes quadratic time.
+const values = (tree, key) => [...(tree.read('.assuredloop')?.toString('utf8') ?? '').matchAll(new RegExp(`^${key}:(.*)$`, 'gm'))].map((m) => m[1].trim()).filter(Boolean);
 
 // The checked paths of the `tests:`, `results:` or `adrs:` lines ([LNK-3], [LNK-4]).
 export const configured = (top, tree, at, key) => values(tree, key).map((raw) => inside(top, tree, at, key, raw));
@@ -115,8 +116,8 @@ export function spec(ctx) {
   if (!opts.list) {
     for (const f of files) {
       const preamble = f.text.slice(0, f.text.length - f.sections.reduce((n, s) => n + s.text.length, 0));
-      body.push('', `==> ${f.path}`, ...(preamble ? [preamble.replace(/\n$/, '')] : []));
-      for (const s of f.sections) body.push(s.text.replace(/\n$/, ''), ...overlay(s, true));
+      body.push('', `==> ${f.path}`, ...(preamble ? preamble.replace(/\n$/, '').split('\n') : []));
+      for (const s of f.sections) body.push(...s.text.replace(/\n$/, '').split('\n'), ...overlay(s, true));
     }
     for (const [p, list] of into) body.push('', `==> ${p} (not in the baseline yet)`, ...overlay({}, true, list));
     body.push('');

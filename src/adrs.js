@@ -7,7 +7,8 @@ import { openTree } from './tree.js';
 import { configured, pastLines } from './spec.js';
 import { cites, idsOn, paths, requestOf } from './links.js';
 
-const numbers = (s) => [...new Set([...s.matchAll(/\bADR[ \t]+(\d{4})\b|(?<![\w-])(\d{4})-[\w.-]*\.md\b/g)].map((m) => m[1] ?? m[2]))];
+// A file name is bounded (255 bytes), so the name is too: unbounded, a long token takes quadratic time.
+const numbers = (s) => [...new Set([...s.matchAll(/\bADR[ \t]+(\d{4})\b|(?<![\w-])(\d{4})-[\w.-]{0,250}\.md\b/g)].map((m) => m[1] ?? m[2]))];
 const numberOf = (p) => p.match(/(?:^|\/)(\d{4})-[^/]*\.md$/)?.[1];
 
 // A `past` tree's `adrs:` lines are read leniently ([VW-8]).
