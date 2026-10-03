@@ -91,6 +91,24 @@ test('[REC-10][REC-11][HNT-2][HNT-3] a tier-0 commit that only moves [TXT-1] unc
   assertNoPromiseChange(repo);
 });
 
+// A move with a file made or deleted, neither file with an introduction.
+const moves = [
+  ['moves [TXT-1] unchanged from specs/a.md into a new file specs/b.md with no introduction',
+    { 'specs/a.md': file(DATES, TOTALS) }, { 'specs/a.md': TOTALS, 'specs/b.md': DATES }],
+  ['moves [TXT-1] unchanged out of specs/a.md, which it deletes and which has no introduction, into specs/b.md',
+    { 'specs/a.md': DATES, 'specs/b.md': NAMES }, { 'specs/a.md': null, 'specs/b.md': file(DATES, NAMES) }],
+];
+for (const [what, before, after] of moves) {
+  test(`[REC-10][REC-11][HNT-2][HNT-3] a tier-0 commit that only ${what} is not flagged, and check --strict exits 0`, (t) => {
+    const repo = onBranch(t, before);
+    commitTier0(repo, after);
+    assertNoPromiseChange(repo);
+  });
+}
+
+// An introduction, the text before a file's first heading.
+const INTRO = 'These promises cover invoice dates.\n';
+
 // Two files' introductions, the text before their first heading.
 const DOMESTIC = 'These rules apply only to domestic orders.\n';
 const INTERNATIONAL = 'These rules apply only to international orders.\n';
@@ -116,6 +134,12 @@ const contrasts = [
   ['takes the four-space indent off the introduction of specs/a.md (a code block becomes a paragraph), every section the same',
     { 'specs/a.md': `    Returns are forbidden.\n\n${ORD1}` },
     { 'specs/a.md': `Returns are forbidden.\n\n${ORD1}` }, []],
+  ['moves [TXT-1] unchanged into a new file specs/b.md that opens with an introduction',
+    { 'specs/a.md': file(DATES, TOTALS) },
+    { 'specs/a.md': TOTALS, 'specs/b.md': `${INTRO}\n${DATES}` }, []],
+  ['moves [TXT-1] unchanged out of specs/a.md, which has an introduction, into specs/b.md and deletes specs/a.md',
+    { 'specs/a.md': `${INTRO}\n${DATES}`, 'specs/b.md': NAMES },
+    { 'specs/a.md': null, 'specs/b.md': file(DATES, NAMES) }, []],
 ];
 
 for (const [what, before, after, ids] of contrasts) {
