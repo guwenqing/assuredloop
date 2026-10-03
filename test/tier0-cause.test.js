@@ -187,6 +187,21 @@ test('#156 [HNT-1][REC-11][SPC-2] "## Dates", without an ID in specs/rules.md, g
   }
 });
 
+// A heading without an ID that is gone is accounted for only by a section with
+// a new ID (in no baseline section before) and the same title, one heading each.
+
+test('#156 [HNT-1][REC-11][SPC-2] specs/a.md ("# Dates", no ID) deleted while [R-1] Dates, an ID that already existed, changes its body: the causes are exactly [R-1] and "specs/a.md, a heading without an ID removed: # Dates"', (t) => {
+  const repo = branch(t, { 'specs/a.md': '# Dates\nAll dates are ISO.\n', 'specs/b.md': '## [R-1] Dates\nDates use UTC.\n' },
+    { 'specs/a.md': null, 'specs/b.md': '## [R-1] Dates\nDates use local time.\n' });
+  assertCauses(tierLine(strict(repo, 1), '0'), { ids: ['R-1'], others: ['specs/a.md, a heading without an ID removed: # Dates'] });
+});
+
+test('#156 [HNT-1][REC-11][SPC-2] two "## Dates" sections without an ID removed from specs/rules.md and one new [R-5] Dates added: the IDs part is [R-5], and exactly one "specs/rules.md, a heading without an ID removed: ## Dates" is named', (t) => {
+  const repo = branch(t, { 'specs/rules.md': file(R1, '## Dates\nDates show in ISO 8601.\n', '## Dates\nDates show in UTC.\n') },
+    { 'specs/rules.md': file(R1, "## [R-5] Dates\nDates show in the customer's local format and zone.\n") });
+  assertCauses(tierLine(strict(repo, 1), '0'), { ids: ['R-5'], others: ['specs/rules.md, a heading without an ID removed: ## Dates'] });
+});
+
 // --- a Tier: S claim ---
 
 test('#156 [HNT-1][REC-11][REC-10] a Tier: S claim whose branch moves [R-3] unchanged into a new specs/dates.md titled "# Dates": check --strict exits 1, its not ok reads "the claim is tier S, but main..HEAD edits the baseline: specs/dates.md, a new heading without an ID: # Dates"', (t) => {
