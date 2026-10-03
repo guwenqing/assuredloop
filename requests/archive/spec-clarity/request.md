@@ -33,9 +33,10 @@ Amends: [REC-6], [STA-4], [REC-10], [REC-1], [SPC-1], [VW-2], [HNT-3]
 
 ### R3 A fix may number or move sections
 A fix (tier 0) MAY add section IDs, or move a section without changing its
-text, without the owner's sign-off, because no promise changes.
+text, without the owner's sign-off, because no promise changes. `al check`
+MUST NOT flag such a fix.
 
-Amends: [REC-10]
+Amends: [REC-10], [REC-11], [HNT-2]
 
 ### R4 Commands and settings are given in the form that works
 Where the spec names a command, setting or line, it MUST give the form that
@@ -54,17 +55,17 @@ beside it.
 
 Amends: [TL-4]
 
-Out: any change in what the tool does (tier-0 fixes #136-#140); the accepted
-ADR files; README and skill wording (PR #135).
+Out: any other change in what the tool does (tier-0 fixes #136-#140); the
+accepted ADR files; README and skill wording (PR #135).
 
 Assumed: the wording of the spec edits is the architect's.
-Signed off: 2026-10-03 owner, origin/2026-10-03-signoff.md
+Signed off: 2026-10-03 owner, origin/2026-10-03-signoff-2.md
 
 ## Outcome
 
 - R1 A change block's parts are explained: in [SPC-5], [STA-1], [STA-2]
 - R2 Rules already in force are written down: in [REC-6], [STA-4], [REC-10], [REC-1], [SPC-1], [VW-2], [HNT-3]
-- R3 A fix may number or move sections: in [REC-10]
+- R3 A fix may number or move sections: in [REC-10], [REC-11], [HNT-2]
 - R4 Commands and settings are given in the form that works: in [SPC-2], [LNK-4], [LNK-3], [LNK-2]
 - R5 Lightweight means the overhead on people: in [TL-4]
 - Added: none
