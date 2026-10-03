@@ -177,18 +177,17 @@ test('#156 [HNT-1][REC-11] [R-3] moved unchanged out of specs/old.md, titled "# 
   assertCauses(tierLine(strict(repo, 1), '0'), { others: ['specs/old.md, a heading without an ID removed: # Old'] });
 });
 
-test('#156 [HNT-1][REC-11][SPC-2] "## Dates", without an ID in specs/rules.md, gets the ID [R-5] and its body changes: the not ok names [R-5] and nothing else about that heading', (t) => {
+test('#156 [HNT-1][REC-11][SPC-2] "## Dates", without an ID in specs/rules.md, gets the ID [R-5] and its body changes: the not ok names [R-5] and "specs/rules.md, a heading without an ID removed: ## Dates"', (t) => {
   const repo = branch(t, { 'specs/rules.md': file(R1, R4, '## Dates\nDates show in ISO 8601.\n') },
     { 'specs/rules.md': file(R1, R4, "## [R-5] Dates\nDates show in the customer's local format.\n") });
   const line = tierLine(strict(repo, 1), '0');
-  assertCauses(line, { ids: ['R-5'] });
-  for (const extra of ['a heading without an ID removed', 'a new heading without an ID', 'the text under']) {
-    assert.ok(!line.includes(extra), `the ID names the change; no "${extra}":\n${line}`);
-  }
+  assertCauses(line, { ids: ['R-5'], others: ['specs/rules.md, a heading without an ID removed: ## Dates'] });
+  assert.ok(line.includes('edits the baseline: [R-5]; specs/rules.md, a heading without an ID removed: ## Dates'), `the ID, then the removal:\n${line}`);
 });
 
-// A heading without an ID that is gone is accounted for only by a section with
-// a new ID (in no baseline section before) and the same title, one heading each.
+// A section without an ID that was there before and matches nothing after is
+// always named as removed: no section with an ID, new or old, same title or
+// not, accounts for it. A redundant cause is acceptable; a hidden one is not.
 
 test('#156 [HNT-1][REC-11][SPC-2] specs/a.md ("# Dates", no ID) deleted while [R-1] Dates, an ID that already existed, changes its body: the causes are exactly [R-1] and "specs/a.md, a heading without an ID removed: # Dates"', (t) => {
   const repo = branch(t, { 'specs/a.md': '# Dates\nAll dates are ISO.\n', 'specs/b.md': '## [R-1] Dates\nDates use UTC.\n' },
@@ -196,10 +195,25 @@ test('#156 [HNT-1][REC-11][SPC-2] specs/a.md ("# Dates", no ID) deleted while [R
   assertCauses(tierLine(strict(repo, 1), '0'), { ids: ['R-1'], others: ['specs/a.md, a heading without an ID removed: # Dates'] });
 });
 
-test('#156 [HNT-1][REC-11][SPC-2] two "## Dates" sections without an ID removed from specs/rules.md and one new [R-5] Dates added: the IDs part is [R-5], and exactly one "specs/rules.md, a heading without an ID removed: ## Dates" is named', (t) => {
+test('#156 [HNT-1][REC-11][SPC-2] two "## Dates" sections without an ID removed from specs/rules.md and one new [R-5] Dates added: the IDs part is [R-5], and "specs/rules.md, a heading without an ID removed: ## Dates" is named twice, once for each', (t) => {
   const repo = branch(t, { 'specs/rules.md': file(R1, '## Dates\nDates show in ISO 8601.\n', '## Dates\nDates show in UTC.\n') },
     { 'specs/rules.md': file(R1, "## [R-5] Dates\nDates show in the customer's local format and zone.\n") });
-  assertCauses(tierLine(strict(repo, 1), '0'), { ids: ['R-5'], others: ['specs/rules.md, a heading without an ID removed: ## Dates'] });
+  assertCauses(tierLine(strict(repo, 1), '0'), {
+    ids: ['R-5'],
+    others: ['specs/rules.md, a heading without an ID removed: ## Dates', 'specs/rules.md, a heading without an ID removed: ## Dates'],
+  });
+});
+
+test('#156 [HNT-1][REC-11][SPC-2] specs/a.md ("# Dates", no ID) deleted while [R-1] in specs/b.md is renamed [R-5], body unchanged: the IDs are [R-1], [R-5] and "specs/a.md, a heading without an ID removed: # Dates" is named', (t) => {
+  const repo = branch(t, { 'specs/a.md': '# Dates\nAll dates are ISO.\n', 'specs/b.md': '## [R-1] Dates\nDates use UTC.\n' },
+    { 'specs/a.md': null, 'specs/b.md': '## [R-5] Dates\nDates use UTC.\n' });
+  assertCauses(tierLine(strict(repo, 1), '0'), { ids: ['R-1', 'R-5'], others: ['specs/a.md, a heading without an ID removed: # Dates'] });
+});
+
+test('#156 [HNT-1][REC-11][SPC-2] in one file, specs/rules.md, the "# Dates" section (no ID) deleted and [R-1] renamed [R-5], body unchanged: the IDs are [R-1], [R-5] and "specs/rules.md, a heading without an ID removed: # Dates" is named', (t) => {
+  const repo = branch(t, { 'specs/rules.md': '# Dates\nAll dates are ISO.\n\n## [R-1] Dates\nDates use UTC.\n' },
+    { 'specs/rules.md': '## [R-5] Dates\nDates use UTC.\n' });
+  assertCauses(tierLine(strict(repo, 1), '0'), { ids: ['R-1', 'R-5'], others: ['specs/rules.md, a heading without an ID removed: # Dates'] });
 });
 
 // --- a Tier: S claim ---
