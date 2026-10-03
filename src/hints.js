@@ -10,7 +10,7 @@ import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled } from './signoff.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
-import { childrenOf, entriesOf, line } from './commands.js';
+import { childrenOf, entriesOf, line, partsOf } from './commands.js';
 import { headingFault } from './consolidate.js';
 import { baselineLists, judge, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
 import { appendOnly } from './check.js';
@@ -142,17 +142,17 @@ export function hintsOf(top, b, { main }) {
       }
     }
   }
-  // [REC-6]: work for a blocked request counts only when it leaves something applied: a file outside its
-  // records and the baseline; a baseline section its own work changed, unless every block of it retains
-  // nothing ([STA-3]), as after a revert; its change.md, unless every block is Dropped, not Kept, and
-  // retains nothing.
+  // [REC-6]: work for a blocked request counts only when the branch's final state leaves something
+  // applied: a file outside its records and the baseline's .md files; a baseline section its own work
+  // changed and the branch still changes, unless every block of it retains nothing ([STA-3]), as after a
+  // revert; its change.md, unless every block is Dropped, not Kept, and retains nothing.
   const applied = (name) => {
     const es = statesOf(b.files, b.blocks, (x) => x.request === name);
     const change = new RegExp(`^requests/(?:archive/)?${name}/change\\.md$`);
     const left = (id) => !es.some((e) => e.id === id) || es.some((e) => e.id === id && !e.retainsNothing);
     const withdrawn = es.length > 0 && es.every((e) => b.blocks.get(e.block).dropped && !b.blocks.get(e.block).kept && e.retainsNothing);
-    return b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, (f) => f.startsWith(`${b.root}/`) || change.test(f)))
-      || [...ownIds(top, name, b.base, b.root, b.requests, !b.at && b.served.has(name), b.at ?? 'HEAD')].some(left)
+    return b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, (f) => (f.startsWith(`${b.root}/`) && f.endsWith('.md')) || change.test(f)))
+      || [...ownIds(top, name, b.base, b.root, b.requests, !b.at && b.served.has(name), b.at ?? 'HEAD')].some((id) => b.changedIds.includes(id) && left(id))
       || (!withdrawn && b.changed.some((p) => change.test(p)));
   };
   for (const name of b.delivered) {
@@ -195,7 +195,7 @@ export function hintsOf(top, b, { main }) {
     if (!r || !(isDropped(r.md) || ids.length)) continue;
     const live = liveCode(top, name, b.root, isDropped(r.md) ? null : ids, b.at ?? 'HEAD');
     if (!live.length) continue;
-    const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => entriesOf(p.md, 'Parts').map((e) => [p.name, e]))
+    const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => partsOf(p.md).map((e) => [p.name, e]))
       .find(([, e]) => live.some((l) => e.includes(l.split(':')[0])));
     // Ranked first among the notes: live code for dropped work is a hazard on main.
     const files = [...new Set(live.map((l) => l.split(':')[0]))];
