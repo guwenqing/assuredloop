@@ -87,6 +87,22 @@ export function baselineLists(was, now, org, own) {
   };
 }
 
+// A spike ([REC-10]) has findings.md, starting with its Answer, and changes no
+// spec: what request `name` at `dir` in `tree` misses of that, as note texts,
+// given `edited()`, the baseline IDs its own work changed. Notes only:
+// conclude still concludes.
+export function spikeNotes(tree, name, dir, md, edited) {
+  if (!/\bTier:\s*S\b/.test(md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '')) return [];
+  const findings = tree.read(`${dir}/findings.md`)?.toString('utf8');
+  const first = findings?.split('\n').find((l) => l.trim()) ?? '';
+  const out = [];
+  if (findings === undefined) out.push(`${name} is a spike with no findings.md ([REC-10])`);
+  else if (!/^\s*(#+\s*)?Answer\b/.test(first)) out.push(`${name}'s findings.md does not start with its Answer ([REC-10])`);
+  const ids = edited();
+  if (ids.length) out.push(`${name} is a spike, but it edits the baseline: ${ids.map((id) => `[${id}]`).join(', ')}; a spike changes no spec ([REC-10])`);
+  return out;
+}
+
 // The baseline IDs request `name`'s own work changed ([LNK-2]): in the commits
 // fork..tip that map to it, merges left out, and, when `working`, in the
 // working tree's changes not yet committed.
@@ -183,12 +199,14 @@ export function conclude({ top, args, opts }) {
   const adrs = adrsOf(top, tree, undefined, name, requestsIn(tree));
   const main = mainCommit(top);
   const fork = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
-  const lists = tree.read(`${dir}/change.md`) !== null ? null : baselineLists(fork ? sectionsOf(top, openTree(top, fork), fork) : sectionsOf(top, tree), sectionsOf(top, tree), org,
+  const own = () => baselineLists(fork ? sectionsOf(top, openTree(top, fork), fork) : sectionsOf(top, tree), sectionsOf(top, tree), org,
     ownIds(top, name, fork, rootOf(top, tree), requestsIn(tree), true));
+  const lists = tree.read(`${dir}/change.md`) !== null ? null : own();
   const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs, lists));
   const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])
     .filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
-  const note = [...(children.length ? [`note: child request ${children.join(', ')} is still open`] : []),
+  const note = [...spikeNotes(tree, name, dir, md, () => { const l = lists ?? own(); return [...l.Added, ...l.Modified, ...l.Removed]; }).map((n) => `note: ${n}`),
+    ...(children.length ? [`note: child request ${children.join(', ')} is still open`] : []),
     ...adrs.added.filter((a) => a.status === 'proposed').map((a) => `note: ${a.path}, added by ${name}, is still proposed`)];
   const what = `the Outcome, Status: ${status}${moving ? `, and ${dir}/ moved to ${target}/` : ''}`;
   if (!opts.yes) return { body: [`Would conclude ${name}: ${what}`, ...note], next: 'run the same command with --yes to do it', notKnown: NOT_KNOWN };
