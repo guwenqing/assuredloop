@@ -7,7 +7,7 @@ import { git } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
-import { sameSection } from './sections.js';
+import { sameSection, unheld } from './sections.js';
 import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled } from './signoff.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
 import { childrenOf, entriesOf, line, partsOf } from './commands.js';
@@ -145,14 +145,19 @@ export function hintsOf(top, b, { main }) {
   // [REC-6]: work for a blocked request counts only when the branch's final state leaves something
   // applied: a file outside its records and the baseline's .md files; a baseline section its own work
   // changed and the branch still changes, unless every block of it retains nothing ([STA-3]), as after a
-  // revert; its change.md, unless every block is Dropped, not Kept, and retains nothing.
+  // revert; baseline text outside any section with an ID that its own work changed and the branch still
+  // changes; its change.md, unless every block is Dropped, not Kept, and retains nothing.
+  const uncommitted = b.at ? [] : [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];
+  const textAt = (rev, p) => (rev ? git(top, ['show', `${rev}:${p}`], { allowFail: true }) : b.tree.read(p)?.toString('utf8')) ?? '';
   const applied = (name) => {
+    const touched = (p) => b.mapped.some((c) => c.names.includes(name) && filesOf(top, c.sha).includes(p)) || (b.served.has(name) && uncommitted.includes(p));
     const es = statesOf(b.files, b.blocks, (x) => x.request === name);
     const change = new RegExp(`^requests/(?:archive/)?${name}/change\\.md$`);
     const left = (id) => !es.some((e) => e.id === id) || es.some((e) => e.id === id && !e.retainsNothing);
     const withdrawn = es.length > 0 && es.every((e) => b.blocks.get(e.block).dropped && !b.blocks.get(e.block).kept && e.retainsNothing);
     return b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, (f) => (f.startsWith(`${b.root}/`) && f.endsWith('.md')) || change.test(f)))
       || [...ownIds(top, name, b.base, b.root, b.requests, !b.at && b.served.has(name), b.at ?? 'HEAD')].some((id) => b.changedIds.includes(id) && left(id))
+      || b.changed.some((p) => p.startsWith(`${b.root}/`) && p.endsWith('.md') && touched(p) && !sameSection(unheld(textAt(b.base, p)), unheld(textAt(null, p))))
       || (!withdrawn && b.changed.some((p) => change.test(p)));
   };
   for (const name of b.delivered) {
