@@ -283,7 +283,10 @@ test('#139 (5) [VW-7][STA-8][VW-6] audit of an archived request whose INV-3 tz-d
 
 // --- (6) the audit of a child that inherits its parent's sign-off ---
 
-test('#139 (6) [VW-7][REC-5] audit of a child that copies its parent invoices\' R3 word for word and has no sign-off of its own: it shows the child signed off through invoices', (t) => {
+const PARENT_SIGNOFF = 'requests/invoices/origin/2026-09-21-signoff.md';
+// invoices (signed ORG, Parts naming child), then child, which copies
+// invoices' R3 word for word as its R1 and has no sign-off of its own.
+function inheriting(t) {
   const R3 = '### R3 Email link\nThe invoice email MUST carry a link to the CSV.\n';
   const copied = `## Organized requirement\n\n${R3.replace('### R3', '### R1')}`;
   const repo = makeRepo(t);
@@ -294,13 +297,66 @@ test('#139 (6) [VW-7][REC-5] audit of a child that copies its parent invoices\' 
   repo.write(md, repo.read(md).toString().replace(/^Signed off: .*\n/m, ''));
   repo.commit('The child', { date: '2026-09-22T12:00:00Z' });
   assert.ok(ORG.includes(R3), 'the fixture: the parent holds R3');
+  assert.ok(repo.read(PARENT_SIGNOFF).toString().includes(ORG), 'the fixture: the parent\'s sign-off holds ORG');
+  return repo;
+}
+// The audit's lines that speak of a sign-off and name invoices.
+const throughParent = (out) => lines(out).filter((l) => /sign/i.test(l) && l.includes('invoices'));
 
+test('#139 (6) [VW-7][REC-5] audit of a child that copies its parent invoices\' R3 word for word and has no sign-off of its own: it shows the child signed off through invoices', (t) => {
+  const repo = inheriting(t);
   const ctx = al(repo, 'context', 'child');
   ok(ctx, 'context child');
   assert.ok(lines(ctx.stdout).some((l) => /^Require\b/.test(l) && l.includes('through invoices')), `the fixture: context says signed off through invoices:\n${ctx.stdout}`);
   const r = al(repo, 'context', 'child', '--audit');
   ok(r, 'context child --audit');
-  assert.ok(lines(r.stdout).some((l) => /sign/i.test(l) && l.includes('invoices')), `a line shows the child's sign-off through invoices:\n${r.stdout}`);
+  assert.ok(throughParent(r.stdout).length, `a line shows the child's sign-off through invoices:\n${r.stdout}`);
+});
+
+test('#139 (6) [VW-7][REC-5] audit of the inheriting child shows the inherited sign-off as it shows its own: "SHA-256 matches", and the signed text, verbatim', (t) => {
+  const r = al(inheriting(t), 'context', 'child', '--audit');
+  ok(r, 'context child --audit');
+  assert.ok(throughParent(r.stdout).some((l) => l.includes('SHA-256 matches')), `the sign-off through invoices, its SHA-256 re-checked:\n${r.stdout}`);
+  // The child's audit shows no organized text of its own, so these lines come from the signed text.
+  const shown = lines(r.stdout).map((l) => l.trim());
+  for (const l of ORG.split('\n').filter((x) => x.trim())) assert.ok(shown.includes(l), `the signed text's line "${l}":\n${r.stdout}`);
+});
+
+test('#139 (6) [VW-7][REC-5] audit of the inheriting child when the parent\'s sign-off no longer matches its SHA-256: the sign-off through invoices is still shown, "not ok"', (t) => {
+  const repo = inheriting(t);
+  repo.write(PARENT_SIGNOFF, repo.read(PARENT_SIGNOFF).toString().replace('Dates MUST show in ISO 8601.', 'Dates MUST show in RFC 3339.'));
+  repo.commit('Edit the parent\'s signed text', { date: '2026-09-23T12:00:00Z' });
+  const r = al(repo, 'context', 'child', '--audit');
+  ok(r, 'context child --audit');
+  assert.ok(throughParent(r.stdout).some((l) => l.includes('not ok')), `the sign-off through invoices, "not ok": it no longer matches its SHA-256:\n${r.stdout}`);
+});
+
+// --- (5) a tier-1 request that adds the first baseline section ---
+
+test('#139 (5) [VW-7] audit of a concluded tier-1 request that adds [A-1], the first baseline section of all: its Section line names the main commit where A-1 landed, as context A-1 --audit does', (t) => {
+  const repo = makeRepo(t);
+  const org = oneLine('R1: The promise MUST say new. Amends: [A-1]');
+  addRequest(repo, 'first', null, { line: TIER1, org, signedText: org, decisions: '' });
+  repo.commit('first: request', { date: '2026-09-21T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'first']);
+  repo.write('specs/rules.md', A1B);
+  repo.commit(message('The first promise', { request: 'first', tier: '1 — first' }), { date: '2026-09-22T12:00:00Z' });
+  ok(al(repo, 'conclude', 'first', '--yes'), 'conclude');
+  repo.commit(message('Conclude first', { request: 'first', tier: '1 — first' }), { date: '2026-09-22T13:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  repo.git(['merge', '-q', '--no-ff', '--no-edit', 'first'], { date: '2026-09-22T14:00:00Z' });
+  const merge = repo.head();
+  assert.equal(repo.git(['log', '--format=%H', 'HEAD^1', '--', 'specs']), '', 'the fixture: main had no baseline before the merge');
+
+  const section = al(repo, 'context', 'A-1', '--audit');
+  ok(section, 'context A-1 --audit');
+  assert.ok(lines(section.stdout).some((l) => /^Changed\b/.test(l) && l.includes(short(merge))), `the fixture: context A-1 --audit names ${short(merge)}:\n${section.stdout}`);
+  const r = al(repo, 'context', 'first', '--audit');
+  ok(r, 'context first --audit');
+  const s = sectionLines(r.stdout).find((l) => hasId(l, 'A-1'));
+  assert.ok(s, `a Section line for A-1:\n${r.stdout}`);
+  assert.ok(s.includes(short(merge)), `A-1 landed on main at ${short(merge)}:\n${r.stdout}`);
+  assert.doesNotMatch(s, /not consolidated/, `A-1 reached main:\n${r.stdout}`);
 });
 
 // --- (7) al spec --list and a consolidated "remove, was first in <path>" ---
