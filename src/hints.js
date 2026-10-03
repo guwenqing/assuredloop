@@ -5,7 +5,7 @@
 import { posix } from 'node:path';
 import { git } from './git.js';
 import { openTree } from './tree.js';
-import { rootOf, baseline, duplicateIds } from './spec.js';
+import { rootOf, rootLine, baseline, duplicateIds } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
 import { sameSection, unheld } from './sections.js';
 import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled } from './signoff.js';
@@ -15,7 +15,7 @@ import { headingFault } from './consolidate.js';
 import { baselineLists, judge, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
 import { appendOnly } from './check.js';
 import { liveCode } from './views.js';
-import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
+import { byId, filesOf, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
 import { testHints } from './tests.js';
 import { adrHints, adrsOf } from './adrs.js';
 
@@ -32,7 +32,8 @@ const sections = (files) => new Map(files.flatMap((f) => [...byId(f.text)]));
 export function readBranch(top, { base, commits, tree, at, range }) {
   const root = rootOf(top, tree, at);
   const files = baseline(tree, root);
-  const before = base ? baseline(openTree(top, base), rootOf(top, openTree(top, base), base)) : files;
+  // The fork's tree is a past tree: its root: line alone, or today's root ([VW-8]).
+  const before = base ? baseline(openTree(top, base), rootLine(top, openTree(top, base), base) ?? root) : files;
   const [was, now] = [sections(before), sections(files)];
   const changedIds = [...new Set([...was.keys(), ...now.keys()])].filter((id) => !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
   // The working tree's final state includes its untracked files; a commit's is only its tree.
@@ -40,11 +41,12 @@ export function readBranch(top, { base, commits, tree, at, range }) {
     ...(at ? [] : paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z'])))] : [];
   const requests = requestsIn(tree);
   const seen = new Map();
-  const mapped = commits.map((sha) => requestOf(top, sha, requests, seen));
+  const mapped = commits.map((sha) => requestOf(top, sha, requests, seen, ownFiles));
   const served = new Set([...mapped.flatMap((c) => c.names), ...changed.map(folderOf).filter(Boolean)]);
   const archived = new Set(base ? requests.filter((r) => !r.open && git(top, ['cat-file', '-e', `${base}:${r.dir}/request.md`], { allowFail: true }) === null).map((r) => r.name) : []);
   // Work is anything a request's commits touch beyond its own request.md and origin/.
-  const work = (name, sha, skip = () => false) => filesOf(top, sha).some((f) => !new RegExp(`^requests/(?:archive/)?${name}/(?:request\\.md$|origin/)`).test(f) && !skip(f));
+  // A merge on main (earlyWork) counts by all it brings: `files` is filesOf there.
+  const work = (name, sha, skip = () => false, files = ownFiles) => files(top, sha).some((f) => !new RegExp(`^requests/(?:archive/)?${name}/(?:request\\.md$|origin/)`).test(f) && !skip(f));
   const delivered = new Set(mapped.flatMap((c) => c.names.filter((n) => work(n, c.sha))));
   for (const p of changed) if (/^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(p)) delivered.add(folderOf(p));
   const tiers = commits.map((sha) => [...git(top, ['show', '-s', '--format=%B', sha]).matchAll(/^[ \t]*Tier:[ \t]*(.+?)[ \t]*$/gm)].at(-1)?.[1]);
@@ -170,7 +172,7 @@ export function hintsOf(top, b, { main }) {
   const uncommitted = b.at ? [] : [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];
   const textAt = (rev, p) => (rev ? git(top, ['show', `${rev}:${p}`], { allowFail: true }) : b.tree.read(p)?.toString('utf8')) ?? '';
   const applied = (name) => {
-    const touched = (p) => b.mapped.some((c) => c.names.includes(name) && filesOf(top, c.sha).includes(p)) || (b.served.has(name) && uncommitted.includes(p));
+    const touched = (p) => b.mapped.some((c) => c.names.includes(name) && ownFiles(top, c.sha).includes(p)) || (b.served.has(name) && uncommitted.includes(p));
     const es = statesOf(b.files, b.blocks, (x) => x.request === name);
     const change = new RegExp(`^requests/(?:archive/)?${name}/change\\.md$`);
     const left = (id) => !es.some((e) => e.id === id) || es.some((e) => e.id === id && !e.retainsNothing);
@@ -212,15 +214,15 @@ export function hintsOf(top, b, { main }) {
     for (const id of b.changedIds.filter((i) => moved.includes(i))) add('note', 13, [], `[${id}], edited on this branch, changed on main since the fork`, `git merge ${main.replace(/^refs\/(remotes|heads)\//, '')}`);
   }
   for (const c of b.mapped.filter((x) => !x.names.length)) {
-    const fs = filesOf(top, c.sha).filter((p) => p.startsWith(`${b.root}/`));
+    const fs = ownFiles(top, c.sha).filter((p) => p.startsWith(`${b.root}/`));
     if (fs.length) add('note', 14, [], `${c.sha.slice(0, 7)} changes ${fs.join(', ')} with no request linked (fine for tier 0; say why)`, `git show ${c.sha.slice(0, 7)}`);
   }
   for (const name of new Set([...b.served, ...b.archived])) {
     const r = b.requests.find((x) => x.name === name);
     const ids = [...b.blocks.values()].filter((x) => x.request === name && x.dropped && !x.kept).map((x) => x.id);
     if (!r || !(isDropped(r.md) || ids.length)) continue;
-    const live = liveCode(top, name, b.root, isDropped(r.md) ? null : ids, b.at ?? 'HEAD');
-    if (!live.length) continue;
+    const live = liveCode(top, name, b.root, isDropped(r.md) ? null : ids, b.at);
+    if (!live?.length) continue;
     const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => partsOf(p.md).map((e) => [p.name, e]))
       .find(([, e]) => live.some((l) => e.includes(l.split(':')[0])));
     // Ranked first among the notes: live code for dropped work is a hazard on main.
@@ -287,7 +289,7 @@ function earlyWork(top, b, mainSha) {
     }));
     for (const { c, brought } of line) {
       if (first && git(top, ['merge-base', '--is-ancestor', first, c], { allowFail: true }) !== null) continue;
-      for (const sha of brought.filter((s) => requestOf(top, s, b.requests, b.seen).names.includes(name) && b.work(name, s))) {
+      for (const sha of brought.filter((s) => requestOf(top, s, b.requests, b.seen).names.includes(name) && b.work(name, s, undefined, filesOf))) {
         out.push({ kind: 'note', rank: 23, owners: [name], text: `${sha.slice(0, 7)}, work for ${name}, reached main before its first sign-off`, command: `git show ${sha.slice(0, 7)}` });
       }
     }

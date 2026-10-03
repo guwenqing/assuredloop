@@ -40,6 +40,14 @@ export function filesOf(top, sha) {
     : git(top, ['diff-tree', '-r', '-z', '--no-commit-id', '--name-only', '--root', sha]));
 }
 
+// The files a commit changed on its own: for a merge, those that differ from
+// every parent (an edit made while merging), never what it brought from
+// either side; for any other commit, filesOf.
+export function ownFiles(top, sha) {
+  if (!git(top, ['rev-parse', '--verify', '--quiet', `${sha}^2`], { allowFail: true })) return filesOf(top, sha);
+  return paths(git(top, ['diff-tree', '-r', '-z', '--no-commit-id', '--name-only', '-c', sha]));
+}
+
 // The request a commit maps to ([LNK-2]): { names, how, when }, cached in `seen`.
 // The commits up to `rev` that map to request `name`, by every route [LNK-2]
 // maps by: a Request: line, its folder, an issue number in its owner's words
@@ -53,14 +61,15 @@ export function requestCommits(top, name, issues, rev, requests, seen = new Map(
   return shas.map((sha) => requestOf(top, sha, requests, seen)).filter((c) => c.names.includes(name));
 }
 
-export function requestOf(top, sha, requests, seen = new Map()) {
+// `files` gives a commit's files for the folder route (ownFiles for a branch's commits).
+export function requestOf(top, sha, requests, seen = new Map(), files = filesOf) {
   if (seen.has(sha)) return seen.get(sha);
   const [when, ...body] = git(top, ['show', '-s', '--format=%ct%n%B', sha]).split('\n');
   const message = body.join('\n');
   let names = [...new Set([...message.matchAll(REQUEST_LINE)].map((m) => m[1]))];
   let how = 'Request: line';
   if (!names.length) {
-    names = [...new Set(filesOf(top, sha).map(folderOf).filter(Boolean))];
+    names = [...new Set(files(top, sha).map(folderOf).filter(Boolean))];
     how = names.length > 1 ? 'folder, ambiguous' : 'folder';
   }
   for (const [, n] of names.length ? [] : message.matchAll(/#(\d+)(?!\d)/g)) {
