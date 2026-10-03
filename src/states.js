@@ -107,15 +107,23 @@ export function blockFault(b) {
 // [STA-4]: why a remove's `was after [X]` doesn't hold in `file` (the file
 // holding its section, { path, sections }), or null. [X] must be the nearest
 // section before it at its own level, or, for a first sub-section, its
-// parent: where a revert puts it back.
+// parent: where a revert puts it back. The revert reads which of the two from
+// the Was's depth, so that depth must be on the same side of [X]'s as the
+// section's own ([SPC-4] lets the two differ).
 export function anchorFault(b, file) {
   const i = file.sections.findIndex((s) => s.id === b.id);
   if (i < 0) return null;
   const name = (s) => (s.id ? `[${s.id}]` : `"${s.title}"`);
+  const level = file.sections[i].level;
+  const side = (s) => {
+    const was = b.was === null ? null : parseSections(b.was)[0];
+    if (!was || (was.level > s.level) === (level > s.level)) return null;
+    return `[${b.id}] is ${'#'.repeat(level)} in ${file.path} but its Was is headed ${'#'.repeat(was.level)}, so a revert would not put it back ${level > s.level ? 'first under' : 'after'} ${name(s)}; head the Was ${'#'.repeat(level)}`;
+  };
   for (let j = i - 1; j >= 0; j--) {
     const s = file.sections[j];
-    if (s.level < file.sections[i].level) return s.id === b.anchor ? null : `[${b.id}] is the first under ${name(s)}, not after [${b.anchor}], as its remove says`;
-    if (s.level === file.sections[i].level) return s.id === b.anchor ? null : `[${b.id}] stands after ${name(s)}, not [${b.anchor}], as its remove says`;
+    if (s.level < level) return s.id === b.anchor ? side(s) : `[${b.id}] is the first under ${name(s)}, not after [${b.anchor}], as its remove says`;
+    if (s.level === level) return s.id === b.anchor ? side(s) : `[${b.id}] stands after ${name(s)}, not [${b.anchor}], as its remove says`;
   }
   return `[${b.id}] is the first section of ${file.path}; write "remove, was first in ${file.path}"`;
 }
