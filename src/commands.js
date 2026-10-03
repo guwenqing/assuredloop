@@ -263,9 +263,9 @@ function recordSignoff({ top, args, opts }) {
   }
   const changed = since ? state.changed : null;
   const shown = changed
-    ? parts(org.text).filter((p) => changed.includes(p.key)).map((p) => p.text.replace(/\n+$/, ''))
+    ? parts(org.text, org.oneLine).filter((p) => changed.includes(p.key)).map((p) => p.text.replace(/\n+$/, ''))
     : [org.text.replace(/\n+$/, '')];
-  const removed = changed ? changed.filter((k) => !parts(org.text).some((p) => p.key === k)) : [];
+  const removed = changed ? changed.filter((k) => !parts(org.text, org.oneLine).some((p) => p.key === k)) : [];
   const fetched = stamp(now());
   let file = `${fetched.slice(0, 10)}-signoff.md`;
   for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${fetched.slice(0, 10)}-signoff-${n}.md`;

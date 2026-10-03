@@ -8,7 +8,7 @@ import { openTree } from './tree.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
 import { sameSection } from './sections.js';
-import { organized, parentOf, parts, samePart, signoffState, unlabelled } from './signoff.js';
+import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled } from './signoff.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
 import { childrenOf, entriesOf, line } from './commands.js';
 import { headingFault } from './consolidate.js';
@@ -96,7 +96,7 @@ export function hintsOf(top, b, { main }) {
   // An open request citing what does not exist, or a block that breaks [SPC-5].
   for (const r of open) {
     const org = organized(r.md);
-    const rKeys = org ? parts(org.text).map((p) => p.key) : null;
+    const rKeys = org ? parts(org.text, org.oneLine).map((p) => p.key) : null;
     for (const x of [...b.blocks.values()].filter((y) => y.request === r.name)) {
       const unreadable = blockFault(x);
       if (unreadable) add('not ok', 5, [r.name], unreadable, `fix the block in ${r.dir}/change.md, then al check`);
@@ -112,8 +112,9 @@ export function hintsOf(top, b, { main }) {
         if (fault) add('not ok', 5, [r.name], fault, `al context ${r.name}`);
       }
     }
-    for (const l of org ? unlabelled(org.text) : []) {
-      add('note', 24, [r.name], `${r.name}'s organized requirement says "${l.length > 60 ? `${l.slice(0, 59)}…` : l}" before any R<n>:, so it is not read as a requirement ([REC-4])`, `label it R<n>: in ${r.dir}/request.md, then al context ${r.name}`);
+    for (const l of org ? unlabelled(org) : []) {
+      add('note', 24, [r.name], `${r.name}'s organized requirement says "${l.length > 60 ? `${l.slice(0, 59)}…` : l}" before any requirement, so it is not read as a requirement ([REC-4])`,
+        `make it ${org.oneLine ? 'an R<n>: line or ' : ''}an ### R<n> sub-section in ${r.dir}/request.md, then al context ${r.name}`);
     }
     for (const e of entriesOf(r.md, 'Decisions')) {
       for (const [, id] of e.matchAll(ID_TOKEN)) if (!known(id)) add('not ok', 5, [r.name], `${r.name} cites [${id}] in ${e.match(/^- (D\d+)/)?.[1] ?? 'a decision'}, which is in no section or block`, `al context ${r.name}`);
@@ -241,12 +242,13 @@ function earlyWork(top, b, mainSha) {
     if (!r) continue;
     // Its own sign-offs, and a parent's where it inherits from them: those
     // holding one of its parts word for word ([REC-5]).
-    const mine = parts(organized(r.md)?.text ?? '');
-    const copied = (s) => parts(s.text.toString('utf8')).some((q) => mine.some((p) => samePart(p, q)));
+    const org = organized(r.md);
+    const mine = parts(org?.text ?? '', org?.oneLine);
     const signoffsOf = (n, dir, keep = () => true) => (b.tree.list(`${dir}/origin`) ?? [])
       .filter((f) => { const s = parseSnapshot(b.tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0)); return isSignoff(s) && keep(s); })
       .flatMap((f) => [`requests/${n}/origin/${f}`, `requests/archive/${n}/origin/${f}`]);
     const parent = parentOf(b.tree, name);
+    const copied = (s) => parts(s.text.toString('utf8'), tierOne(parent.md)).some((q) => mine.some((p) => samePart(p, q)));
     const places = [...signoffsOf(name, r.dir), ...(parent ? signoffsOf(parent.name, parent.dir, copied) : [])];
     const first = places.length ? git(top, ['log', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
     line ??= git(top, ['rev-list', '--first-parent', mainSha]).split('\n').filter(Boolean).map((c) => ({

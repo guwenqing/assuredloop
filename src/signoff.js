@@ -8,9 +8,14 @@ import { childrenOf } from './commands.js';
 const ORGANIZED = /^Organized (requirement|question)$/;
 const SIGNED_OFF = /^Signed off:/;
 
+// [REC-4]: only a tier-1 request (`Tier: 1` on its status line) MAY write a
+// requirement as one line, `R1: …`.
+export const tierOne = (md) => /\bTier:\s*1\b/.test(md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '');
+
 // The organized section of request.md: from its heading to the next heading of
 // level 1 or 2, without any `Signed off:` line. `start` and `end` are offsets
-// in `md`; `text` is what a sign-off binds.
+// in `md`; `text` is what a sign-off binds; `oneLine`, whether `R1: …` lines
+// are requirements.
 export function organized(md) {
   const sections = parseSections(md);
   let offset = md.length - sections.reduce((n, s) => n + s.text.length, 0);
@@ -23,13 +28,14 @@ export function organized(md) {
   }
   if (!found) return null;
   const text = found.raw.split(/(?<=\n)/).filter((l) => !SIGNED_OFF.test(l)).join('');
-  return { start: found.start, end: found.start + found.raw.length, raw: found.raw, text };
+  return { start: found.start, end: found.start + found.raw.length, raw: found.raw, text, oneLine: tierOne(md) };
 }
 
 // The parts of an organized section: the intro, each `### R<n>` sub-section,
-// and the `Out:` and `Assumed:` paragraphs. Parts with no text are left out.
-// A line in fenced code is text of the part it sits in.
-export function parts(text) {
+// and the `Out:` and `Assumed:` paragraphs, and, when `oneLine`, each `R<n>:`
+// line. Parts with no text are left out. A line in fenced code is text of the
+// part it sits in.
+export function parts(text, oneLine = false) {
   const out = [];
   let current = { key: 'intro', text: '' };
   const lines = text.split(/(?<=\n)/).slice(1);
@@ -41,7 +47,7 @@ export function parts(text) {
     else if (code[i]) key = null;
     else if (/^(Out|Assumed):/.test(line)) key = line.match(/^(Out|Assumed)/)[1];
     // [REC-4]: a tier-1 requirement MAY be one line, `R1: …`, read as an `### R1` sub-section.
-    else if (/^R\d+:\s/.test(line)) key = line.match(/^(R\d+)/)[1];
+    else if (oneLine && /^R\d+:\s/.test(line)) key = line.match(/^(R\d+)/)[1];
     if (key) {
       out.push(current);
       current = { key, text: '' };
@@ -52,12 +58,12 @@ export function parts(text) {
   return out.filter((p) => p.text.trim());
 }
 
-// [REC-4]: the lines of an organized requirement that say MUST, SHOULD or MAY
-// before its first requirement (in the intro, out of fenced code), so are
-// not read as one.
-export function unlabelled(text) {
-  if (!/requirement/.test(text.split('\n')[0])) return [];
-  const intro = parts(text).find((p) => p.key === 'intro')?.text ?? '';
+// [REC-4]: the lines of an organized requirement `org` that say MUST, SHOULD
+// or MAY before its first requirement (in the intro, out of fenced code), so
+// are not read as one.
+export function unlabelled(org) {
+  if (!/requirement/.test(org.text.split('\n')[0])) return [];
+  const intro = parts(org.text, org.oneLine).find((p) => p.key === 'intro')?.text ?? '';
   const code = codeLines(intro);
   return intro.split(/(?<=\n)/).filter((l, i) => !code[i] && /\b(MUST|SHOULD|MAY)\b/.test(l)).map((l) => l.trim());
 }
@@ -74,7 +80,7 @@ export function latestSignoff(tree, dir, md) {
   for (const file of tree.list(`${dir}/origin`) ?? []) {
     const bytes = tree.read(`${dir}/origin/${file}`);
     const s = bytes && parseSnapshot(bytes);
-    if (isSignoff(s) && s.intact) signoffs.push({ file, fetched: s.fields.Fetched, text: s.text.toString('utf8') });
+    if (isSignoff(s) && s.intact) signoffs.push({ file, fetched: s.fields.Fetched, text: s.text.toString('utf8'), oneLine: tierOne(md) });
   }
   if (!signoffs.length) return { signoff: null };
   const last = signoffs.reduce((m, s) => (s.fetched > m ? s.fetched : m), '');
@@ -117,15 +123,15 @@ export function signoffState(tree, dir, name) {
       return { blocked: true, reason: `awaiting owner sign-off${why}` };
     }
     if (sameSection(org.text, own.text)) return { blocked: false, signoff: own };
-    return { blocked: true, reason: `changed since ${own.file}`, signoff: own, changed: changedParts(org.text, own.text) };
+    return { blocked: true, reason: `changed since ${own.file}`, signoff: own, changed: changedParts(org.text, own.text, org.oneLine) };
   }
 
   // A child: every part is in the parent's or its own signed text, and every
   // part it signed itself is still there.
-  const now = parts(org.text);
-  const covers = [...parts(parentSignoff.text), ...(own ? parts(own.text) : [])];
+  const now = parts(org.text, org.oneLine);
+  const covers = [...parts(parentSignoff.text, parentSignoff.oneLine), ...(own ? parts(own.text, own.oneLine) : [])];
   const uncovered = now.filter((p) => !covers.some((c) => samePart(p, c))).map((p) => p.key);
-  const dropped = own ? parts(own.text).filter((p) => !now.some((c) => samePart(p, c))).map((p) => p.key) : [];
+  const dropped = own ? parts(own.text, own.oneLine).filter((p) => !now.some((c) => samePart(p, c))).map((p) => p.key) : [];
   if (!uncovered.length && !dropped.length) return { blocked: false, signoff: own, parent: parent.name, parentSignoff };
   const changed = [...uncovered, ...dropped];
   if (own) return { blocked: true, reason: `changed since ${own.file}`, signoff: own, parent: parent.name, parentSignoff, changed };
@@ -133,9 +139,9 @@ export function signoffState(tree, dir, name) {
 }
 
 // The parts added, changed or removed between the signed text and now.
-export function changedParts(now, signed) {
-  const a = parts(now);
-  const b = parts(signed);
+export function changedParts(now, signed, oneLine) {
+  const a = parts(now, oneLine);
+  const b = parts(signed, oneLine);
   const changed = a.filter((p) => !b.some((q) => q.key === p.key && sameSection(q.text, p.text))).map((p) => p.key);
   const removed = b.filter((q) => !a.some((p) => p.key === q.key)).map((q) => q.key);
   return [...changed, ...removed];

@@ -50,7 +50,7 @@ export function outcomeFacts(org, fates) {
   const kinds = new Map([...ids].map(([id, fs]) => [id, kind(fs)]));
   // A tier-1 record names the sections it amends with `Amends: [ID]`: under
   // R<n>, for R<n>; anywhere else in the organized section, for every R-line.
-  const all = org ? parts(org.text) : [];
+  const all = org ? parts(org.text, org.oneLine) : [];
   const isR = (x) => /^R\d+$/.test(x.key);
   const level = (x) => x.text.match(/^\s*(#+)\s/)?.[1].length ?? 0;
   // A part under a deeper heading inside R<n> stays in R<n>'s scope.
@@ -242,7 +242,7 @@ export function judge(top, tree, name, dir, dropped, at, fork) {
     if (!signed.has(request)) {
       const d = findRequest(tree, request);
       const o = d && organized(tree.read(`${d}/request.md`).toString('utf8'));
-      signed.set(request, o && !signoffState(tree, d, request).blocked ? parts(o.text).map((p) => p.key) : []);
+      signed.set(request, o && !signoffState(tree, d, request).blocked ? parts(o.text, o.oneLine).map((p) => p.key) : []);
     }
     return signed.get(request);
   };
