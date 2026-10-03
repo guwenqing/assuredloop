@@ -12,7 +12,7 @@ import { organized, parentOf, parts, samePart, signoffState } from './signoff.js
 import { isSignoff, parseSnapshot } from './snapshot.js';
 import { entriesOf, line } from './commands.js';
 import { headingFault } from './consolidate.js';
-import { baselineLists, judge, outcomeFacts, ownIds } from './conclude.js';
+import { baselineLists, judge, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
 import { appendOnly } from './check.js';
 import { liveCode } from './views.js';
 import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
@@ -192,6 +192,11 @@ export function hintsOf(top, b, { main }) {
     if (!s?.blocked || out.some((h) => h.kind === 'not ok' && [8, 9].includes(h.rank) && h.owners.includes(name))) continue;
     add('note', 18, [name], s.signoff ? `${name} changed since its sign-off (${s.signoff.file})${s.changed?.length ? `: ${s.changed.join(', ')}` : ''}` : `${name} is not signed off yet: ${s.reason}`,
       `al record ${name} signoff --source <where> --words <quote> --yes`);
+  }
+  // [REC-10]: a spike open, or archived on this branch, with no findings.md, its Answer not first, or a baseline edit.
+  for (const r of [...open, ...[...facts.values()].map((f) => f.r)]) {
+    const edited = () => { const own = ownIds(top, r.name, b.base, b.root, b.requests, false, b.at ?? 'HEAD'); return b.changedIds.filter((id) => own.has(id)); };
+    for (const n of spikeNotes(b.tree, r.name, r.dir, r.md, edited)) add('note', 24, [r.name], n, n.includes('findings.md') ? `write ${r.dir}/findings.md, starting with its Answer, then al context ${r.name}` : `al context --diff ${b.range}`);
   }
   if (b.commits.length && !b.tier) add('note', 22, [], `no Tier line in ${b.range}`, 'add "Tier: <n> — <claim>" to the PR, e.g. with git commit --amend');
   out.push(...testHints(top, b), ...adrHints(top, b));
