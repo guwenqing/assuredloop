@@ -13,9 +13,11 @@ export function formatSnapshot({ source, fetched, updated, text }) {
 
 // Every file in a request's origin/, whatever its name, each a snapshot
 // ([REC-3]): { file, s }, s null when it is not a valid one. Every reader
-// reads origin/ through this. A hidden file (.DS_Store, an editor's) is none.
-export const snapshots = (tree, dir) => (tree.list(`${dir}/origin`) ?? []).filter((file) => !file.startsWith('.'))
-  .map((file) => ({ file, s: parseSnapshot(tree.read(`${dir}/origin/${file}`) ?? Buffer.alloc(0)) }));
+// reads origin/ through this. A hidden file that is not a snapshot
+// (.DS_Store, an editor's) is left out; a hidden snapshot counts.
+export const snapshots = (tree, dir) => (tree.list(`${dir}/origin`) ?? [])
+  .map((file) => ({ file, s: parseSnapshot(tree.read(`${dir}/origin/${file}`) ?? Buffer.alloc(0)) }))
+  .filter(({ file, s }) => s || !file.startsWith('.'));
 
 // The header fields, the separator line, the text, and whether the text still
 // matches its hash. Null when the header lacks Source, Fetched or SHA-256, or
