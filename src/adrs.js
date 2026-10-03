@@ -4,17 +4,18 @@
 // flags what breaks the format's rules; it never writes one.
 import { git } from './git.js';
 import { openTree } from './tree.js';
-import { configured } from './spec.js';
+import { configured, pastLines } from './spec.js';
 import { cites, idsOn, paths, requestOf } from './links.js';
 
 const numbers = (s) => [...new Set([...s.matchAll(/\bADR[ \t]+(\d{4})\b|(?<![\w-])(\d{4})-[\w.-]*\.md\b/g)].map((m) => m[1] ?? m[2]))];
 const numberOf = (p) => p.match(/(?:^|\/)(\d{4})-[^/]*\.md$/)?.[1];
 
-export const adrFolders = (top, tree, at) => [...new Set(['docs/adr', ...configured(top, tree, at, 'adrs')])];
+// A `past` tree's `adrs:` lines are read leniently ([VW-8]).
+export const adrFolders = (top, tree, at, past = false) => [...new Set(['docs/adr', ...(past ? pastLines : configured)(top, tree, at, 'adrs')])];
 
 // Every ADR in `tree`: its path, number, text, status word, and its links.
-export function adrsIn(top, tree, at) {
-  return adrFolders(top, tree, at).flatMap((d) => (tree.list(d) ?? []).filter((f) => numberOf(f)).map((f) => {
+export function adrsIn(top, tree, at, past = false) {
+  return adrFolders(top, tree, at, past).flatMap((d) => (tree.list(d) ?? []).filter((f) => numberOf(f)).map((f) => {
     const text = tree.read(`${d}/${f}`)?.toString('utf8') ?? '';
     const field = (k) => text.match(new RegExp(`^${k}:[ \\t]*(.*)$`, 'm'))?.[1] ?? '';
     const status = field('Status');
@@ -82,7 +83,7 @@ export function adrHints(top, b) {
   }
   if (b.base) {
     const strip = (t) => t.replace(/^Status:.*$/m, '');
-    for (const a of adrsIn(top, openTree(top, b.base), b.base).filter((x) => x.status === 'accepted')) {
+    for (const a of adrsIn(top, openTree(top, b.base), b.base, true).filter((x) => x.status === 'accepted')) {
       const now = b.tree.read(a.path)?.toString('utf8');
       if (now === undefined || strip(now) !== strip(a.text)) {
         add('not ok', [], `${a.path} was accepted at ${b.base.slice(0, 7)} and is ${now === undefined ? 'deleted' : 'edited beyond its Status line'} on this branch; a change is a new ADR that supersedes it`, `git diff ${b.base.slice(0, 7)} -- ${a.path}`);

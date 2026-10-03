@@ -1,7 +1,7 @@
 // The commands built so far: new, record origin, context.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
-import { Fail, git, hasCommits, isShallow, mainCommit, now, resolveCommit, stamp } from './git.js';
+import { Fail, git, hasCommits, historyGap, isShallow, mainCommit, mainName, now, ownCommits, resolveCommit, stamp } from './git.js';
 import { openTree, findRequest, isName, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
 import { sameSection } from './sections.js';
@@ -47,9 +47,12 @@ export function decisionList(md) {
 export function concluding(top, name, at) {
   const path = `requests/archive/${name}/request.md`;
   const main = at ? resolveCommit(top, at) : mainCommit(top);
+  // With no main, a clone that lacks history cannot tell whether main concluded it ([VW-9]).
+  const gap = !main && historyGap(top);
+  if (gap) return { none: `history unavailable (${gap.kind} clone without main)`, gap: `history unavailable (${gap.kind} clone)` };
   if (!main || git(top, ['cat-file', '-e', `${main}:${path}`], { allowFail: true }) === null) return { none: 'not on main yet' };
   const unknown = `on main; which commit added ${path} is not known`;
-  if (isShallow(top)) return { none: `${unknown}: history unavailable (shallow clone)`, shallow: true };
+  if (isShallow(top)) return { none: `${unknown}: history unavailable (shallow clone)`, gap: 'history unavailable (shallow clone)' };
   const found = git(top, ['log', '--first-parent', '--no-renames', '--diff-filter=A', '--format=%H %ct', main, '--', path]);
   if (!found) return { none: unknown };
   const [sha, when] = found.split('\n')[0].split(' ');
@@ -58,7 +61,7 @@ export function concluding(top, name, at) {
 
 export function concludedOnMain(top, name, at) {
   const c = concluding(top, name, at);
-  return c.sha ? `${at ? `in the history of ${at}` : 'on main'} at ${c.sha.slice(0, 7)} (${stamp(c.when)}), where requests/archive/${name}/request.md arrived` : c.none;
+  return c.sha ? `${at ? `in the history of ${at.slice(0, 7)}` : 'on main'} at ${c.sha.slice(0, 7)} (${stamp(c.when)}), where requests/archive/${name}/request.md arrived` : c.none;
 }
 
 const ID_ARG = /^\[?([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]?$/;
@@ -229,6 +232,8 @@ export function requestToWrite(top, tree, name) {
   const dir = findRequest(tree, name);
   if (!dir) throw new Fail(`no request named ${name ?? ''}`, 'al new <name> --from <file|->');
   const main = mainCommit(top);
+  const gap = dir.startsWith('requests/archive/') && !main && historyGap(top);
+  if (gap) throw new Fail(`history unavailable: this clone is ${gap.kind} with no main, so whether ${name} is archived on main is not known; nothing was written`, gap.next);
   if (dir.startsWith('requests/archive/') && main && git(top, ['cat-file', '-e', `${main}:${dir}/request.md`], { allowFail: true }) !== null) {
     throw new Fail(`${name} is archived on ${main.replace('refs/remotes/', '').replace('refs/heads/', '')}, and an archived request is not edited`,
       'start a new request that follows it: al new <name> --from <file|->');
@@ -387,8 +392,8 @@ export function context({ top, args, opts }) {
   // named child's state ([REC-8]). Three at most, in twelve lines, or --all.
   const main = opts.at ? null : mainCommit(top);
   const base = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
-  const commits = base ? git(top, ['rev-list', '--reverse', `${main}..HEAD`]).split('\n').filter(Boolean) : [];
-  const b = readBranch(top, { base, commits, tree, at: opts.at, range: 'main..HEAD' });
+  const commits = base ? ownCommits(top, main, 'HEAD') : [];
+  const b = readBranch(top, { base, commits, tree, at: opts.at, range: `${mainName(top)}..HEAD` });
   // conclude's rules re-run on an archived request are check's ([STA-8]); a view never re-checks one.
   const hints = ranked(hintsOf(top, b, { main }), b).filter((h) => h.owners.includes(name) && h.rank !== 7);
   if (field('Tier') === '0') hints.push({ kind: 'note', text: TIER0, command: `al new ${name} --tier 1 for a change of promise` });

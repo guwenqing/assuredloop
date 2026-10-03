@@ -54,6 +54,11 @@ function isSingleBranch(top) {
   return Boolean(specs) && !specs.includes('*');
 }
 
+// The branch's own commits over base..head, oldest first, in one order for
+// every reader. Merges are left out: a merge of main brings main's work,
+// which is not the branch's own ([HNT-3]).
+export const ownCommits = (top, base, head) => git(top, ['rev-list', '--reverse', '--topo-order', '--no-merges', `${base}..${head}`]).split('\n').filter(Boolean);
+
 // Main as the tool reads it: origin/main when there is one, else local main.
 // Whether HEAD names a commit: a repo with none yet has no history to read.
 export const hasCommits = (top) => git(top, ['rev-parse', '--verify', '--quiet', 'HEAD'], { allowFail: true }) !== null;
@@ -64,6 +69,9 @@ export function mainCommit(top) {
   }
   return null;
 }
+
+// The main the tool reads, by the name a command takes: `origin/main` or `main`.
+export const mainName = (top) => mainCommit(top)?.replace(/^refs\/(remotes|heads)\//, '') ?? 'main';
 
 // The ref the tool reads as main, and the time git last recorded for it
 // ([VW-9]): origin/main's latest reflog entry (it moved then, by a fetch, a

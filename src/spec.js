@@ -43,6 +43,12 @@ export function rootLine(top, tree, at) {
   try { return inside(top, tree, at, 'root', values(tree, 'root')[0] ?? 'specs'); } catch { return null; }
 }
 
+// A past tree's paths for `key`: only its lines that lie inside this repo, for
+// the same reason ([VW-8]).
+export const pastLines = (top, tree, at, key) => values(tree, key).flatMap((raw) => {
+  try { return [inside(top, tree, at, key, raw)]; } catch { return []; }
+});
+
 // The baseline's Markdown files, each with its sections.
 export function baseline(tree, root) {
   return tree.walk(root).filter((p) => p.endsWith('.md'))
