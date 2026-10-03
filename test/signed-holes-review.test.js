@@ -8,7 +8,13 @@
 //     its Request line still delivers work;
 // (C) [REC-6][STA-4] a plain `consolidate --revert` on a blocked request,
 //     with no Dropped marker and no other work, leaves nothing applied, so it
-//     delivers no work.
+//     delivers no work;
+// (D) [REC-6][HNT-2] the baseline is the .md files under its root: any other
+//     file there is work, like code;
+// (E) [REC-6] check judges the branch's final state: a baseline edit undone
+//     by a later commit delivers nothing;
+// (F) [REC-8][VW-2] the parent's Parts line lists only parts outside fenced
+//     code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, runAl } from './helpers/fixture.js';
@@ -41,7 +47,10 @@ const firstLine = (out) => lines(out)[0];
 const PARENT_ORG = '## Organized requirement\n\n### R1 Example\nDocumentation MUST show this example:\n\n' +
   '```\n## Parts\n1. request child\n## End of example\n```\n\n### R2 Promise\nThe promise MUST be new.\n';
 
-test('#136 (A) [REC-8][REC-5] a signed parent with no ## Parts, only a fenced example holding "## Parts" and "1. request child"; the child copies its R2 as R1: context child is BLOCKED, awaiting sign-off, and consolidate child --yes refuses and writes nothing', (t) => {
+// Main: specs/rules.md with A-1; the signed parent (PARENT_ORG, no ## Parts
+// outside its fence); the unsigned child, its R1 a copy of the parent's R2,
+// holding A-1 pending.
+function fencedParent(t) {
   const repo = makeRepo(t);
   repo.write('specs/rules.md', file('# Rules\n', A0));
   addRequest(repo, 'parent', null, { line: TIER2, org: PARENT_ORG, signedText: PARENT_ORG, decisions: '' });
@@ -51,7 +60,11 @@ test('#136 (A) [REC-8][REC-5] a signed parent with no ## Parts, only a fenced ex
   repo.commit('parent and child', { date: '2026-09-21T12:00:00Z' });
   assert.ok(!/^## Parts\s*$/m.test(repo.read('requests/parent/request.md').toString().replace(/```[\s\S]*?```/g, '')),
     'the fixture: the parent has no ## Parts outside the fence');
+  return repo;
+}
 
+test('#136 (A) [REC-8][REC-5] a signed parent with no ## Parts, only a fenced example holding "## Parts" and "1. request child"; the child copies its R2 as R1: context child is BLOCKED, awaiting sign-off, and consolidate child --yes refuses and writes nothing', (t) => {
+  const repo = fencedParent(t);
   const out = context(repo, 'child');
   assert.match(firstLine(out), /^BLOCKED/, `a fenced "1. request child" names no child, so nothing is inherited:\n${out}`);
   assert.match(firstLine(out), /awaiting/i, `awaiting sign-off:\n${out}`);
@@ -106,6 +119,49 @@ test('#136 (B) [REC-6][HNT-2] blocked x: A-1 Dropped and reverted, and the same 
 
 test('#136 (C) [REC-6][STA-4] blocked x: the branch only runs al consolidate x --revert A-1 --yes (no Dropped marker, no other work), committed with Request: x: no "delivers work for x" not ok; check --strict exits 0', (t) => {
   const repo = revertedOnBranch(t);
+  noHint(check(repo, '--all'), 'not ok', 'delivers work for');
+  strict(repo, 0);
+});
+
+test('#136 (F) [REC-8][VW-2] the same parent, whose only "## Parts" and "1. request child" sit in a fenced example: context parent --all shows no Parts line naming "request child"', (t) => {
+  const r = al(fencedParent(t), 'context', 'parent', '--all');
+  ok(r, 'context parent --all');
+  const parts = lines(r.stdout).filter((l) => /^Parts\b/.test(l) && l.includes('request child'));
+  assert.deepEqual(parts, [], `no Parts line from the fenced example:\n${r.stdout}`);
+});
+
+// --- (D) and (E): a blocked tier-1 request with no change.md ---
+
+const ONE_LINE = '## Organized requirement\n\nR1: The promise MUST be new. Amends: [A-1]\n';
+
+// Main: specs/rules.md with A-1, then the unsigned tier-1 request x (no
+// change.md). The branch `work` is checked out.
+function blockedTier1(t) {
+  const repo = makeRepo(t);
+  repo.write('specs/rules.md', file('# Rules\n', A0));
+  repo.commit('Baseline', { date: '2026-09-20T12:00:00Z' });
+  addRequest(repo, 'x', null, { line: 'Type: story · Tier: 1 · Status: open', org: ONE_LINE, signed: false, decisions: '' });
+  repo.commit('x: request', { date: '2026-09-21T12:00:00Z' });
+  assert.match(firstLine(context(repo, 'x')), /^BLOCKED/, 'the fixture: x is blocked');
+  repo.git(['checkout', '-q', '-b', 'work']);
+  return repo;
+}
+
+test('#136 (D) [REC-6][HNT-2] blocked tier-1 x: a Request: x commit adds specs/example.js, a file under the baseline root that is not Markdown: not ok "this branch delivers work for x, which is blocked"; check --strict exits 1', (t) => {
+  const repo = blockedTier1(t);
+  repo.write('specs/example.js', 'export const example = "new";\n');
+  repo.commit(message('Example code for x', { request: 'x', tier: '1 — promise' }), { date: '2026-09-22T12:00:00Z' });
+  assertCounts(hint(check(repo, '--all'), 'not ok', /delivers work for x\b/, 'blocked'));
+  strict(repo, 1);
+});
+
+test('#136 (E) [REC-6] blocked tier-1 x: one Request: x commit edits A-1, a later one restores it exactly (no net baseline change): no "delivers work for x" not ok; check --strict exits 0', (t) => {
+  const repo = blockedTier1(t);
+  repo.write('specs/rules.md', file('# Rules\n', A1));
+  repo.commit(message('Draft x baseline', { request: 'x', tier: '1 — promise' }), { date: '2026-09-22T12:00:00Z' });
+  repo.write('specs/rules.md', file('# Rules\n', A0));
+  repo.commit(message('Withdraw x baseline', { request: 'x', tier: '1 — promise' }), { date: '2026-09-23T12:00:00Z' });
+  assert.equal(repo.git(['diff', 'main...HEAD', '--', 'specs']), '', 'the fixture: no net baseline change');
   noHint(check(repo, '--all'), 'not ok', 'delivers work for');
   strict(repo, 0);
 });
