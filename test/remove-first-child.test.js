@@ -16,6 +16,11 @@
 // baseline section is not, or the reverse; the message names both depths. A
 // Was at another depth on the same side of [X] still holds, and its revert
 // puts the section back in the same place among the IDs.
+//
+// Also from that review: in a chain, `[ID]@1 modify` (Revised) then
+// `[ID]@2 remove, was after [X]   builds on @1`, the revert writes back
+// @1's Was, but it places the section by the depth of the remove's Was, the
+// one the check judged, not @1's.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, runAl } from './helpers/fixture.js';
@@ -50,14 +55,14 @@ const flat = (t) => shape(t).map((l) => l.replace(/^#+ /, '# '));
 const depth = (n) => new RegExp(`(?<!#)${'#'.repeat(n)}(?!#)`);
 
 // Main: specs/f.md holding `sections`, and the signed request `remove`. The
-// branch `work` commits its change.md of the one block `removeBlock`.
+// branch `work` commits its change.md of the block `removeBlock` (or blocks).
 function served(t, sections, removeBlock) {
   const repo = makeRepo(t);
   repo.write('specs/f.md', file(...sections));
   addRequest(repo, 'remove', null);
   repo.commit('Baseline and request', { date: '2026-09-21T12:00:00Z' });
   repo.git(['checkout', '-q', '-b', 'work']);
-  addRequest(repo, 'remove', [removeBlock]);
+  addRequest(repo, 'remove', [removeBlock].flat());
   repo.commit(message('remove: change spec', { request: 'remove', tier: '0 — remove' }), { date: '2026-09-22T12:00:00Z' });
   return repo;
 }
@@ -216,4 +221,53 @@ test('#131 PR #134 [STA-4][SPC-4] a first sub-section\'s Was deeper still: basel
 
 test('#131 PR #134 [STA-4][SPC-4] a later section\'s Was shallower still: baseline A-1, A-2 (##), A-2.1 (###), A-3 (##); [A-3]@1 remove, was after [A-2], its Was headed "# [A-3]": holds, and its revert puts A-3 back after A-2.1, A-2\'s whole subtree', (t) => {
   holds(t, [A1, A2, A21, A3], 'A-3', 'A-2', sec('A-3', '#'));
+});
+
+// --- a modify then a remove of one section: the revert places it by the remove's Was (review of PR #134) ---
+
+// A section's changed text: the Now of the modify, and the Was of the remove.
+const changed = (id, h) => `${h} [${id}] Rule ${id}\nRule ${id} MUST hold, as changed.\n`;
+// The lines under the heading of [id] in `t`, up to the next heading.
+function bodyOf(t, id) {
+  const ls = t.split('\n');
+  const i = ls.findIndex((l) => /^#{1,6} /.test(l) && l.includes(`[${id}]`));
+  assert.ok(i >= 0, `[${id}] should be in:\n${t}`);
+  const n = ls.slice(i + 1).findIndex((l) => /^#{1,6} /.test(l));
+  return ls.slice(i + 1, n < 0 ? undefined : i + 1 + n).join('\n');
+}
+
+// specs/f.md holds `sections`; the request holds `[id]@1 modify   Revised
+// (D1)` from `was1` to `now1`, then `[id]@2 remove, was after [anchor]
+// builds on @1` with Was `now1`. No not ok names either block; consolidate
+// removes the section; --revert puts it back where `order` says, its body
+// @1's Was body.
+function chainReverted(t, sections, id, anchor, was1, now1, order) {
+  const repo = served(t, sections, [
+    block(`[${id}]@1 modify   Revised 2026-09-22 (D1)   for R1`, { was: was1, now: now1 }),
+    block(`[${id}]@2 remove, was after [${anchor}]   builds on @1   for R1`, { was: now1 }),
+  ]);
+  const out = check(repo, '--all');
+  assert.deepEqual(checkHints(out).filter((l) => kindOf(l) === 'not ok' && l.includes(`${id}@`)), [], `no not ok naming ${id}@1 or ${id}@2:\n${out}`);
+  ok(al(repo, 'consolidate', 'remove', '--yes'), 'consolidate');
+  const removed = text(repo, 'specs/f.md');
+  assert.ok(!headings(removed).includes(id), `${id} removed:\n${removed}`);
+  repo.commit(message('Consolidate', { request: 'remove', tier: '0 — remove' }), { date: '2026-09-23T12:00:00Z' });
+  ok(al(repo, 'consolidate', 'remove', '--revert', id, '--yes'), 'revert');
+  const after = text(repo, 'specs/f.md');
+  assert.deepEqual(headings(after), order, `the revert puts ${id} back where it was:\n${after}`);
+  assert.deepEqual(shape(bodyOf(after, id)), shape(bodyOf(was1, id)), `${id}'s body is @1's Was body:\n${after}`);
+  return after;
+}
+
+test('#131 PR #134 [STA-4][STA-5] a chain whose first Was is deeper: baseline A-1 (##), A-1.1 (###), A-2 (##, @1\'s Now); [A-2]@1 modify (Revised) from "### [A-2]" to "## [A-2]", [A-2]@2 remove, was after [A-1], builds on @1: accepted; its revert puts A-2 back after A-1.1, with @1\'s Was body', (t) => {
+  chainReverted(t, [A1, A11, changed('A-2', '##')], 'A-2', 'A-1', sec('A-2', '###'), changed('A-2', '##'), ['A-1', 'A-1.1', 'A-2']);
+});
+
+test('#131 PR #134 [STA-4][STA-5] the same chain consolidated in one run: the baseline still holds A-2 (##) as @1\'s Was; consolidate writes @1 and @2; the revert puts A-2 back after A-1.1, with @1\'s Was body', (t) => {
+  chainReverted(t, [A1, A11, A2], 'A-2', 'A-1', sec('A-2', '###'), changed('A-2', '##'), ['A-1', 'A-1.1', 'A-2']);
+});
+
+test('#131 PR #134 [STA-4][STA-5] a chain whose first Was is shallower: baseline A-1 (##), A-1.1 (###, @1\'s Now), A-1.2 (###), A-2 (##); [A-1.1]@1 modify (Revised) from "## [A-1.1]" to "### [A-1.1]", [A-1.1]@2 remove, was after [A-1], builds on @1: accepted; its revert puts A-1.1 back first under A-1, before A-1.2, with @1\'s Was body', (t) => {
+  const after = chainReverted(t, [A1, changed('A-1.1', '###'), A12, A2], 'A-1.1', 'A-1', sec('A-1.1', '##'), changed('A-1.1', '###'), ['A-1', 'A-1.1', 'A-1.2', 'A-2']);
+  assert.ok(at(after, 'More on A-1:') < at(after, '[A-1.1]'), `A-1's own text before A-1.1:\n${after}`);
 });
