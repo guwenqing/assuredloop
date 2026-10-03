@@ -138,6 +138,19 @@ test('C6 [HNT-2][LNK-3] not code: a baseline file and a named result file that s
   noHint(out, 'results/rounding.tap', 'test/rounding.test.js');
 });
 
+test('#139 [HNT-2][LNK-4] not code: a request file and an ADR file that share a test\'s stem give no "linked tests did not change" note (src/rounding.js, changed beside them, gets its note)', (t) => {
+  const repo = main(t, {
+    'requests/rounding.md': 'Rounding notes.\n',
+    'docs/adr/rounding.md': 'Rounding decisions.\n',
+    'src/rounding.js': code(1),
+    'test/rounding.test.js': jsTest('rounds to cents', [['round(1.005)', '1.01']]),
+  });
+  const out = work(repo, { 'requests/rounding.md': 'Rounding notes, again.\n', 'docs/adr/rounding.md': 'Rounding decisions, again.\n', 'src/rounding.js': code(2) });
+  hint(out, 'note', 'src/rounding.js', 'test/rounding.test.js');
+  noHint(out, 'requests/rounding.md', 'test/rounding.test.js');
+  noHint(out, 'docs/adr/rounding.md', 'test/rounding.test.js');
+});
+
 // --- an assertion change with no linked code or spec change ---
 
 const ROUNDS = (expected, name = 'rounds to cents') => jsTest(name, [['round(1.005)', expected], ['round(2.5)', '2.5']]);
