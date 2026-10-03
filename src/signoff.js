@@ -1,8 +1,9 @@
 // The organized section ([REC-4]), its sign-offs ([REC-5]) and the blocked
 // state ([REC-6]). Everything is judged from the text in the files, never from
 // commits, so a squash changes nothing.
-import { parseSections, sameSection } from './sections.js';
+import { codeLines, parseSections, sameSection } from './sections.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
+import { childrenOf } from './commands.js';
 
 const ORGANIZED = /^Organized (requirement|question)$/;
 const SIGNED_OFF = /^Signed off:/;
@@ -27,14 +28,17 @@ export function organized(md) {
 
 // The parts of an organized section: the intro, each `### R<n>` sub-section,
 // and the `Out:` and `Assumed:` paragraphs. Parts with no text are left out.
+// A line in fenced code is text of the part it sits in.
 export function parts(text) {
   const out = [];
   let current = { key: 'intro', text: '' };
   const lines = text.split(/(?<=\n)/).slice(1);
+  const code = codeLines(text).slice(1);
   const subheads = new Set(parseSections(text).filter((s) => s.level >= 3).map((s) => s.line - 2));
   lines.forEach((line, i) => {
     let key = null;
     if (subheads.has(i)) key = line.match(/^\s*#+\s+(R\d+)\b/)?.[1] ?? line.replace(/^\s*#+\s+/, '').trim();
+    else if (code[i]) key = null;
     else if (/^(Out|Assumed):/.test(line)) key = line.match(/^(Out|Assumed)/)[1];
     // [REC-4]: a tier-1 requirement MAY be one line, `R1: …`, read as an `### R1` sub-section.
     else if (/^R\d+:\s/.test(line)) key = line.match(/^(R\d+)/)[1];
@@ -46,6 +50,16 @@ export function parts(text) {
   });
   out.push(current);
   return out.filter((p) => p.text.trim());
+}
+
+// [REC-4]: the lines of an organized requirement that say MUST, SHOULD or MAY
+// before its first requirement (in the intro, out of fenced code), so are
+// not read as one.
+export function unlabelled(text) {
+  if (!/requirement/.test(text.split('\n')[0])) return [];
+  const intro = parts(text).find((p) => p.key === 'intro')?.text ?? '';
+  const code = codeLines(intro);
+  return intro.split(/(?<=\n)/).filter((l, i) => !code[i] && /\b(MUST|SHOULD|MAY)\b/.test(l)).map((l) => l.trim());
 }
 
 // The same part, ignoring the number in `### R<n>` (a child renumbers what it copies).
@@ -73,25 +87,16 @@ export function latestSignoff(tree, dir, md) {
   return chosen ? { signoff: chosen } : { signoff: null, tie: last };
 }
 
-// The request whose `## Parts` section names `name` as `request <name>`: an
-// open one first, else an archived one, since [REC-5] sets no condition that
-// the parent stays open.
+// The request whose `## Parts` section names `name` as its child ([REC-8]):
+// an open one first, else an archived one, since [REC-5] sets no condition
+// that the parent stays open.
 export function parentOf(tree, name) {
   const dirs = [...(tree.list('requests') ?? []).filter((d) => d !== 'archive').map((d) => ['requests', d]),
     ...(tree.list('requests/archive') ?? []).map((d) => ['requests/archive', d])];
   for (const [at, other] of dirs) {
     if (other === name) continue;
     const md = tree.read(`${at}/${other}/request.md`)?.toString('utf8');
-    if (!md) continue;
-    const sections = parseSections(md);
-    const i = sections.findIndex((s) => s.level <= 2 && s.title === 'Parts');
-    if (i < 0) continue;
-    let text = '';
-    for (const s of sections.slice(i)) {
-      if (text && s.level <= 2) break;
-      text += s.text;
-    }
-    if (new RegExp(`\\brequest ${name}(?![\\w-])`).test(text)) return { name: other, dir: `${at}/${other}`, md };
+    if (md && childrenOf(md).includes(name)) return { name: other, dir: `${at}/${other}`, md };
   }
   return null;
 }
