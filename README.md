@@ -78,16 +78,21 @@ Say the design is `docs/prd.md`, and the root is to be `docs/prd/`. Use two
 PRs.
 
 PR 1 moves the file, fixes each relative link the move breaks (`(adr/)`
-becomes `(../adr/)`), and sets the root. It claims
-`Tier: 0 — moves the PRD into the root; no promise changes`:
+becomes `(../adr/)`), and sets the root. It comes before the project adopts
+AssuredLoop, so it carries no Tier line:
 
     mkdir docs/prd && git mv docs/prd.md docs/prd/prd.md
     printf 'root: docs/prd\n' > .assuredloop
 
-This is the step before the baseline exists. The fork had none, so `al check`
-reads the whole file as new, says
-`not ok: the claim is tier 0, but origin/main..HEAD edits the baseline`, and
-`--strict` exits 1. Say why in the PR.
+This is the step before the baseline exists. `al check`, if run on it, exits 0
+(`--strict` too) with two notes:
+
+    note: <sha> changes docs/prd/prd.md with no request linked (fine for tier 0; say why); git show <sha>
+    note: no Tier line in origin/main..HEAD; add "Tier: <n> — <claim>" to a commit message, e.g. with git commit --amend
+
+A tier-0 claim here would get
+`not ok: the claim is tier 0, but origin/main..HEAD edits the baseline`: the
+fork had no baseline, so the whole file reads as new.
 
 PR 2, after PR 1 merges, adopts: the AGENTS.md line from Install, and IDs. It
 claims `Tier: 0 — adds section IDs; no promise changes`:
