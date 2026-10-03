@@ -2,8 +2,9 @@
 // state ([REC-6]). Everything is judged from the text in the files, never from
 // commits, so a squash changes nothing.
 import { codeLines, parseSections, prose, sameSection } from './sections.js';
-import { isSignoff, parseSnapshot } from './snapshot.js';
+import { isSignoff, snapshots } from './snapshot.js';
 import { childrenOf } from './commands.js';
+import { requestDirs } from './tree.js';
 
 const ORGANIZED = /^Organized (requirement|question)$/;
 const SIGNED_OFF = /^Signed off:/;
@@ -76,9 +77,7 @@ export const samePart = (a, b) => sameSection(unnumbered(a.text), unnumbered(b.t
 // line names; if it names none of them, `tie` gives the time.
 export function latestSignoff(tree, dir, md) {
   const signoffs = [];
-  for (const file of tree.list(`${dir}/origin`) ?? []) {
-    const bytes = tree.read(`${dir}/origin/${file}`);
-    const s = bytes && parseSnapshot(bytes);
+  for (const { file, s } of snapshots(tree, dir)) {
     if (isSignoff(s) && s.intact) signoffs.push({ file, fetched: s.fields.Fetched, text: s.text.toString('utf8'), oneLine: tierOne(md) });
   }
   if (!signoffs.length) return { signoff: null };
@@ -96,12 +95,10 @@ export function latestSignoff(tree, dir, md) {
 // an open one first, else an archived one, since [REC-5] sets no condition
 // that the parent stays open.
 export function parentOf(tree, name) {
-  const dirs = [...(tree.list('requests') ?? []).filter((d) => d !== 'archive').map((d) => ['requests', d]),
-    ...(tree.list('requests/archive') ?? []).map((d) => ['requests/archive', d])];
-  for (const [at, other] of dirs) {
+  for (const { name: other, dir } of requestDirs(tree)) {
     if (other === name) continue;
-    const md = tree.read(`${at}/${other}/request.md`)?.toString('utf8');
-    if (md && childrenOf(md).includes(name)) return { name: other, dir: `${at}/${other}`, md };
+    const md = tree.read(`${dir}/request.md`)?.toString('utf8');
+    if (md && childrenOf(md).includes(name)) return { name: other, dir, md };
   }
   return null;
 }

@@ -71,10 +71,16 @@ function main(argv) {
   }
 }
 
+// Every line of output is one line: text from files, file names and commit
+// subjects are shown with each control character but a tab as \xNN, so a
+// line break in a file name or an escape code in a subject reaches no reader
+// as such. A CR that ends a line (a CRLF file) stays: it hides nothing.
+const shown = (l) => String(l).replace(/[\x00-\x08\x0a-\x0c\x0e-\x1f\x7f]|\r(?!$)/g, (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`);
+
 function print(body, read, main, next, notKnown) {
   const unknown = main.unknown ? [...notKnown, main.unknown] : notKnown;
   const text = [...body, line('Read', `${read} · ${main.label}`), line('Next', next), line('Not known', unknown.join('; ') || 'nothing beyond what is shown')]
-    .join('\n');
+    .map(shown).join('\n');
   process.stdout.write(text + '\n');
 }
 
