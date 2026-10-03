@@ -7,23 +7,19 @@ import { git } from './git.js';
 import { folderOf, isName, openTree } from './tree.js';
 import { rootOf, rootLine, baseline, duplicateHint, duplicateIds, idsUsed, inBaseline, nextId, trimBlanks } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
-import { sameSection, unheld } from './sections.js';
-import { organized, parentOf, parts, samePart, signoffState, signoffStep, tierIs, tierOne, unlabelled } from './signoff.js';
-import { isSignoff, snapshots } from './snapshot.js';
+import { TITLES, sameSection, sectionsById, unheld } from './sections.js';
+import { follows, isDropped, organized, parentOf, parts, samePart, signoffState, signoffStep, tierIs, tierOne, unlabelled } from './signoff.js';
+import { isSignoff, notSnapshot, snapshots } from './snapshot.js';
 import { childrenOf, entriesOf, line, partsOf } from './commands.js';
 import { headingFault } from './consolidate.js';
-import { amends, baselineLists, judge, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
+import { amends, baselineLists, judge, noChangeMd, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
 import { appendOnly } from './check.js';
 import { liveCode } from './views.js';
-import { byId, filesOf, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
+import { filesOf, idsOn, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
 import { testHints } from './tests.js';
 import { adrHints, adrsOf } from './adrs.js';
 
 const BAD = ['differs', 'base revised', 'base dropped', 'broken link'];
-const ID_TOKEN = /\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g;
-const statusOf = (md) => md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '';
-const isDropped = (md) => /\bStatus:\s*dropped\b/.test(statusOf(md));
-const sections = (files) => new Map(files.flatMap((f) => [...byId(f.text)]));
 // [SPC-4]: two texts the same outside their sections with an ID, piece by piece.
 const sameUnheld = (a, b) => { const [x, y] = [unheld(a), unheld(b)]; return x.length === y.length && x.every((t, i) => sameSection(t, y[i])); };
 
@@ -35,7 +31,7 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   const files = baseline(tree, root);
   // The fork's tree is a past tree: its root: line alone, or today's root ([VW-8]).
   const before = base ? baseline(openTree(top, base), rootLine(top, openTree(top, base), base) ?? root) : files;
-  const [was, now] = [sections(before), sections(files)];
+  const [was, now] = [sectionsById(before), sectionsById(files)];
   const changedIds = [...new Set([...was.keys(), ...now.keys()])].filter((id) => !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
   // The working tree's final state includes its untracked files; a commit's is only its tree.
   const changed = base ? [...paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, ...(at ? [at] : [])], { worktree: !at })),
@@ -170,11 +166,10 @@ export function hintsOf(top, b, { main }) {
     for (const id of new Set(org ? amends(org.text).map((x) => x.slice(1, -1)) : [])) {
       if (!known(id) && !b.was.has(id)) add('not ok', 5, [r.name], `${r.name} cites [${id}] in its Amends:, which is in no section or block`, `al context ${r.name}`);
     }
-    for (const e of entriesOf(r.md, 'Decisions')) {
-      for (const [, id] of e.matchAll(ID_TOKEN)) if (!known(id)) add('not ok', 5, [r.name], `${r.name} cites [${id}] in ${e.match(/^- (D\d+)/)?.[1] ?? 'a decision'}, which is in no section or block`, `al context ${r.name}`);
+    for (const e of entriesOf(r.md, TITLES.decisions)) {
+      for (const id of idsOn(e)) if (!known(id)) add('not ok', 5, [r.name], `${r.name} cites [${id}] in ${e.match(/^- (D\d+)/)?.[1] ?? 'a decision'}, which is in no section or block`, `al context ${r.name}`);
     }
-    const follows = statusOf(r.md).match(/\bFollows:\s*([^·]+)/)?.[1].split(/[\s,]+/).filter(Boolean) ?? [];
-    for (const [n, where] of [...follows.map((n) => [n, 'Follows']), ...childrenOf(r.md).map((n) => [n, 'Parts'])]) {
+    for (const [n, where] of [...follows(r.md).map((n) => [n, 'Follows']), ...childrenOf(r.md).map((n) => [n, TITLES.parts])]) {
       if (!names.has(n)) add('not ok', 5, [r.name], `${r.name} cites request ${n} (${where}), which does not exist`, `al context ${r.name}`);
     }
   }
@@ -239,7 +234,7 @@ export function hintsOf(top, b, { main }) {
   // Snapshots: a text that no longer matches its hash; a served request's web source not re-checked.
   for (const r of b.requests) {
     for (const { file: f, s } of snapshots(b.tree, r.dir)) {
-      if (!s) add('not ok', 11, [r.name], `origin/${f} of ${r.name} is not a valid snapshot: it needs Source, Fetched and SHA-256, then ---`, `al record ${r.name} origin --url <source> --from -`);
+      if (!s) add('not ok', 11, [r.name], notSnapshot(`origin/${f} of ${r.name}`), `al record ${r.name} origin --url <source> --from -`);
       else if (!s.intact) add('not ok', 11, [r.name], `origin/${f} of ${r.name} no longer matches its SHA-256`, `al record ${r.name} origin --verify ${f} --from -`);
       else if (b.served.has(r.name) && /^https?:\/\//.test(s.fields.Source)) {
         add('note', 19, [r.name], `origin/${f} of ${r.name}, fetched ${s.fields.Fetched}; no re-check recorded (an unchanged --verify writes nothing)`, `al record ${r.name} origin --verify ${f} --from -`);
@@ -296,7 +291,7 @@ export function hintsOf(top, b, { main }) {
   if (mainSha) out.push(...earlyWork(top, b, mainSha));
   for (const [name, { r, j }] of facts) {
     // A record with no change.md should name what it changes with Amends: ([REC-9]).
-    if (b.tree.read(`${r.dir}/change.md`) === null) {
+    if (noChangeMd(b.tree, r.dir)) {
       const l = baselineLists(b.was, b.now, j.org, ownIds(top, name, b.base, b.root, b.requests, false, b.at ?? 'HEAD'));
       for (const id of l.unnamed) add('note', 24, [name], `${name} changes [${id}], which its Amends: does not name`, `al context ${name}`);
       for (const id of l.unchanged) add('note', 24, [name], `${name}'s Amends: names [${id}], which did not change`, `al context ${name}`);

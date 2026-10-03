@@ -4,14 +4,14 @@
 // issue number in a request's owner's words.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { git } from './git.js';
+import { day, git } from './git.js';
 import { folderOf, requestDirs } from './tree.js';
-import { parseSections, sameSection } from './sections.js';
+import { ID_TEXT, TITLES, parseSections, sameSection, sectionsById } from './sections.js';
 import { entriesOf } from './commands.js';
 
 export const WIDE = 30;
 const REQUEST_LINE = /^[ \t]*(?:[-*][ \t]+)?Request:[ \t]*([a-z0-9][a-z0-9-]*)[ \t]*$/gm;
-const ID_MARK = /\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g;
+const ID_MARK = new RegExp(`\\[(${ID_TEXT})\\]`, 'g');
 const STOP = new Set(['must', 'with', 'from', 'that', 'this', 'each', 'when', 'have', 'into', 'than', 'then', 'only', 'also', 'more', 'none', 'what', 'which', 'their', 'there', 'they', 'will', 'shall', 'should']);
 
 export const paths = (out) => (out ?? '').split('\0').filter(Boolean);
@@ -69,7 +69,7 @@ export function requestOf(top, sha, requests, seen = new Map(), files = filesOf)
     how = names.length > 1 ? 'folder, ambiguous' : 'folder';
   }
   for (const [, n] of names.length ? [] : message.matchAll(/#(\d+)(?!\d)/g)) {
-    names = requests.filter((r) => new RegExp(`#${n}(?!\\d)`).test(entriesOf(r.md, "Owner's words and dialog").join('\n'))).map((r) => r.name);
+    names = requests.filter((r) => new RegExp(`#${n}(?!\\d)`).test(entriesOf(r.md, TITLES.words).join('\n'))).map((r) => r.name);
     how = `issue #${n}`;
     if (names.length) break;
   }
@@ -79,7 +79,7 @@ export function requestOf(top, sha, requests, seen = new Map(), files = filesOf)
 }
 
 // `a, b by <how>`, or `no request (<sha> <date>)`.
-export const describe = (c) => (c.names.length ? `${c.names.join(', ')} by ${c.how}` : `no request (${c.sha.slice(0, 7)} ${c.when.toISOString().slice(0, 10)})`);
+export const describe = (c) => (c.names.length ? `${c.names.join(', ')} by ${c.how}` : `no request (${c.sha.slice(0, 7)} ${day(c.when)})`);
 
 // The commits .git-blame-ignore-revs lists, as it is at `at` (the working
 // tree when null), each one that git knows as `--ignore-rev <sha>`.
@@ -112,7 +112,7 @@ export function blame(top, rev, path, ranges, { code, ignoreAt = rev }) {
 }
 
 // The sections by ID in a Markdown text.
-export const byId = (text) => new Map(parseSections(text).filter((s) => s.id).map((s) => [s.id, s.text]));
+export const byId = (text) => sectionsById([{ sections: parseSections(text) }]);
 
 // The IDs of the baseline sections that differ between two revs (or that one
 // of them lacks), over the root's Markdown files among `files`.

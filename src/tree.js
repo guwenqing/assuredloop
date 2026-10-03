@@ -78,9 +78,12 @@ export function requestDirs(tree) {
   return dirs;
 }
 
+// The folder under requests/ (or requests/archive/) that a path is in, whatever its name.
+export const folderName = (path) => path.match(/^requests\/archive\/([^/]+)\//)?.[1] ?? path.match(/^requests\/(?!archive\/)([^/]+)\//)?.[1];
+
 // The request a path under requests/ belongs to, when its folder is a request name.
 export const folderOf = (path) => {
-  const name = path.match(/^requests\/archive\/([^/]+)\//)?.[1] ?? path.match(/^requests\/(?!archive\/)([^/]+)\//)?.[1];
+  const name = folderName(path);
   return isName(name) ? name : undefined;
 };
 

@@ -9,11 +9,10 @@ import { Fail } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, sameSection } from './sections.js';
 import { rootOf, baseline, duplicateIds, inBaseline } from './spec.js';
-import { allBlocks, anchorFault, blockFault, stateText, statesOf } from './states.js';
+import { CONSOLIDATED, allBlocks, anchorFault, blockFault, stateText, statesOf } from './states.js';
 import { signoffState, signoffStep } from './signoff.js';
 import { requestToWrite } from './commands.js';
 
-const LEFT_ALONE = ['consolidated', 'carried'];
 const NOT_KNOWN = ['whether the code does what the consolidated text says (tests and review judge that)'];
 
 // `text` without its trailing blank lines (the last line keeps its newline).
@@ -172,7 +171,7 @@ export function consolidate({ top, args, opts }) {
     }
   }
   const final = read();
-  const reasons = todo.filter((b) => !LEFT_ALONE.includes(final.get(b.key).state)).map((b) => {
+  const reasons = todo.filter((b) => !CONSOLIDATED.includes(final.get(b.key).state)).map((b) => {
     const e = final.get(b.key);
     return `${b.key} ${cannot.get(b.key) ?? stateText(e)}`;
   });

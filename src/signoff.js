@@ -7,14 +7,27 @@ import { childrenOf } from './commands.js';
 import { requestDirs } from './tree.js';
 
 const ORGANIZED = /^Organized (requirement|question)$/;
-const SIGNED_OFF = /^Signed off:/;
+export const SIGNED_OFF = /^Signed off:/;
 
 // [REC-4]: only a tier-1 request (`Tier: 1` on its status line) MAY write a
 // requirement as one line, `R1: …`.
 // Whether a tier claim, such as `0 — a fix`, is tier `t`.
 export const tierIs = (claim, t) => new RegExp(`^${t}\\b`).test(claim ?? '');
 
-export const tierOne = (md) => /\bTier:\s*1\b/.test(md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '');
+export const tierOne = (md) => tierIs(statusField(md, 'Tier'), '1');
+
+// The index of request.md's status line among its `lines`: the first with `Status:`.
+export const statusAt = (lines) => lines.findIndex((l) => /\bStatus:/.test(l));
+
+// The value of `key` (Status, Tier, Follows…) on request.md's status line, up
+// to the next `·`, trimmed; undefined when the line has none.
+export const statusField = (md, key) => {
+  const lines = md.split('\n');
+  return (lines[statusAt(lines)] ?? '').match(new RegExp(`\\b${key}:\\s*([^·]+)`))?.[1].trim();
+};
+export const isDropped = (md) => /^dropped\b/.test(statusField(md, 'Status') ?? '');
+// The request names after `Follows:`.
+export const follows = (md) => statusField(md, 'Follows')?.split(/[\s,]+/).filter(Boolean) ?? [];
 
 // The organized section of request.md: from its heading to the next heading of
 // level 1 or 2, without any `Signed off:` line. `start` and `end` are offsets
@@ -84,6 +97,7 @@ export function latestSignoff(tree, dir, md) {
     if (isSignoff(s) && s.intact) signoffs.push({ file, fetched: s.fields.Fetched, text: s.text.toString('utf8'), oneLine: tierOne(md) });
   }
   if (!signoffs.length) return { signoff: null };
+  // Fetched is a stamp (STAMP in git.js), so the latest is the greatest string.
   const last = signoffs.reduce((m, s) => (s.fetched > m ? s.fetched : m), '');
   const latest = signoffs.filter((s) => s.fetched === last);
   if (latest.length === 1) return { signoff: latest[0] };
