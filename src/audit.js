@@ -12,7 +12,7 @@ import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
 import { blame, byId, filesOf, requestCommits, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
 import { adrsOf } from './adrs.js';
-import { parentOf, signoffState } from './signoff.js';
+import { organized, parentOf, parts, samePart, signoffState } from './signoff.js';
 import { sinceConclusion } from './views.js';
 
 const HISTORY = 'history unavailable (shallow clone)';
@@ -61,21 +61,26 @@ function trace(a, name) {
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const body = [line('Audit', `${name}  ${(md.match(/^# (.*)$/m)?.[1] ?? name).trim()}  (${dir})`),
     ...entriesOf(md, "Owner's words and dialog").map((e) => line('Words', e))];
-  // Each snapshot of `from`'s origin/, or only its sign-offs, each re-checked; `whose` names another request's.
+  // Each snapshot of `from`'s origin/, re-checked; with `signoffsOnly`, its sign-offs and any file that is
+  // not a valid snapshot, which may have been one. `whose` names another request's.
   const recheck = (from, signoffsOnly, whose = '') => {
     for (const { file: f, s } of snapshots(tree, from)) {
       const ok = !s ? 'not ok: not a valid snapshot' : s.intact ? 'SHA-256 matches' : 'not ok: no longer matches its SHA-256';
       if (isSignoff(s)) body.push(line('Sign-off', `${whose}origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
-      else if (!signoffsOnly) body.push(line('Snapshot', `origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
+      else if (!signoffsOnly || !s) body.push(line('Snapshot', `${whose}origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
     }
   };
   recheck(dir, false);
-  // [REC-5]: a child inherits its parent's sign-off for the parts it copies word for word, so those are re-checked too.
+  // [REC-5]: a child inherits its parent's latest sign-off for the parts it copies word for word: named only
+  // when it does. The parent's sign-offs are re-checked here too, as the parent's.
   const parent = parentOf(tree, name);
   if (parent) {
     const s = signoffState(tree, dir, name);
-    body.push(line('Sign-off', `through ${parent.name}, for the parts copied word for word: ${s.blocked ? s.reason : 'signed off'}`));
-    recheck(parent.dir, true, `through ${parent.name}, `);
+    const org = organized(md);
+    const copied = s.parentSignoff && org ? parts(org.text, org.oneLine)
+      .filter((p) => parts(s.parentSignoff.text, s.parentSignoff.oneLine).some((q) => samePart(p, q))).map((p) => p.key) : [];
+    if (copied.length) body.push(line('Sign-off', `through ${parent.name} for ${copied.join(', ')}, copied word for word from its origin/${s.parentSignoff.file}${s.blocked ? `; ${s.reason}` : ''}`));
+    recheck(parent.dir, true, `parent ${parent.name}: `);
   }
   body.push(...entriesOf(md, 'Decisions').map((e) => line('Decision', e)));
   const place = (f) => [`requests/${name}/${f}`, `requests/archive/${name}/${f}`];
