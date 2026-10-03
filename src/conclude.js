@@ -8,8 +8,8 @@ import { join } from 'node:path';
 import { Fail, git, mainCommit, ownCommits } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, rootLine, baseline } from './spec.js';
-import { allBlocks, blockFault, statesOf } from './states.js';
-import { organized, parts, signoffState } from './signoff.js';
+import { allBlocks, blockFault, stateText, statesOf } from './states.js';
+import { organized, parts, signoffState, signoffStep } from './signoff.js';
 import { requestToWrite, decisionList, childrenOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
@@ -33,7 +33,7 @@ function fateOf(e, b, { name, dropped, blocks, signedR, ownerDecisions }) {
       : { bad: `${e.block} is dropped but possibly retained (${e.state}): al consolidate ${name} --revert ${e.id}, or keep it` };
   }
   return HELD.includes(e.state) ? { fate: 'held' }
-    : { bad: `${e.block} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}` };
+    : { bad: `${e.block} ${stateText(e)}` };
 }
 
 // Each section's kind in the Outcome (by its blocks' net op, or Kept or
@@ -201,11 +201,12 @@ export function conclude({ top, args, opts }) {
   const main = mainCommit(top);
   const fork = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
   const { sign, org, fates, refusals } = judge(top, tree, name, dir, dropped, undefined, fork);
-  const body = refusals.map((r) => `refused: ${r}`);
+  // [STA-7]: three lines or fewer, so reasons beyond the second share the third.
+  const body = [...refusals.slice(0, 2), ...(refusals.length > 2 ? [refusals.slice(2).join(' · ')] : [])].map((r) => `refused: ${r}`);
   if (body.length) {
     return {
       refused: true, body,
-      next: sign.blocked && !dropped ? `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`
+      next: sign.blocked && !dropped ? signoffStep(name, dir, sign)
         : `al context ${name}; then consolidate, revert or keep what is named`,
       notKnown: NOT_KNOWN,
     };
@@ -217,14 +218,16 @@ export function conclude({ top, args, opts }) {
   const adrs = adrsOf(top, tree, undefined, name, requestsIn(tree));
   const own = () => ownLists(top, tree, undefined, fork, name, org);
   const lists = tree.read(`${dir}/change.md`) !== null ? null : own();
-  const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs, lists));
+  const generated = outcome(md, org, fates, opts.dropped, live, adrs, lists);
+  const text = withOutcome(withStatus(md, status), generated);
   const children = childrenOf(md).filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
   // [STA-7]: three lines or fewer, so every note shares one line.
   const notes = [...spikeNotes(tree, name, dir, md, () => { const l = lists ?? own(); return [...l.Added, ...l.Modified, ...l.Removed]; }),
     ...(children.length ? [`child request ${children.join(', ')} is still open`] : []),
     ...adrs.added.filter((a) => a.status === 'proposed').map((a) => `${a.path}, added by ${name}, is still proposed`)];
   const note = notes.length ? [`note: ${notes.join('; ')}`] : [];
-  const what = `the Outcome, Status: ${status}${moving ? `, and ${dir}/ moved to ${target}/` : ''}`;
+  // [TL-1]: the text it writes, on one line ([STA-7]).
+  const what = `Status: ${status}${moving ? `, and ${dir}/ moved to ${target}/` : ''}; Outcome: ${generated.map((l) => l.replace(/^- /, '')).join(' · ')}`;
   if (!opts.yes) return { body: [`Would conclude ${name}: ${what}`, ...note], next: 'run the same command with --yes to do it', notKnown: NOT_KNOWN };
 
   writeFileSync(join(top, dir, 'request.md'), text);

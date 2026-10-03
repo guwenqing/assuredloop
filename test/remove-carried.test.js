@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { makeRepo, runAl } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
-import { ENV, addRequest, both } from './helpers/request.js';
+import { ENV, addRequest, assertRefused, both } from './helpers/request.js';
 import { file } from './helpers/links.js';
 
 const EX0 = '## [EX-0] Anchor\nThe anchor MUST remain.\n';
@@ -64,10 +64,10 @@ test('#100 [STA-7] conclude first is not refused for EX-1, carried by the remove
   assert.ok(existsSync(join(repo.dir, 'requests/archive/first/request.md')), 'first is archived');
 });
 
-test('#100 [STA-6] a section carried by the remove is never reverted: consolidate first --revert EX-1 --yes refuses, exit 1, and writes nothing', (t) => {
+test('#100 [STA-6] a section carried by the remove is never reverted: consolidate first --revert EX-1 --yes refuses, exit 1, because EX-1 is carried, and writes nothing', (t) => {
   const repo = chain(t);
   const r = al(repo, 'consolidate', 'first', '--revert', 'EX-1', '--yes');
-  assert.equal(r.code, 1, `revert should refuse:\n${both(r)}`);
+  assertRefused(r, /\bcarried\b/);
   assert.equal(status(repo), '', 'nothing written');
 });
 

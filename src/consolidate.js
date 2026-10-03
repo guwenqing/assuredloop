@@ -4,13 +4,13 @@
 // Dropped is written ([STA-6]); a blocked request ([REC-6]) and a duplicate ID
 // in the root ([SPC-3]) refuse.
 import { lstatSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, posix } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { Fail } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, sameSection } from './sections.js';
-import { rootOf, baseline, duplicateIds } from './spec.js';
-import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
-import { signoffState } from './signoff.js';
+import { rootOf, baseline, duplicateIds, inBaseline } from './spec.js';
+import { allBlocks, anchorFault, blockFault, stateText, statesOf } from './states.js';
+import { signoffState, signoffStep } from './signoff.js';
 import { requestToWrite } from './commands.js';
 
 const LEFT_ALONE = ['consolidated', 'carried'];
@@ -89,17 +89,16 @@ function apply(texts, b, blocks) {
   if (b.op === 'add' && b.path) {
     const text = texts.get(b.path) ?? '';
     texts.set(b.path, insertAt(text, trimEnd(text).length, now));
-    return { did: `[${b.id}] at the end of ${b.path}` };
+    return { did: `[${b.id}] at the end of ${b.path}`, text: now };
   }
   if (b.op === 'add') {
-    if (!b.anchor) throw new Fail(`${b.key}: an add names neither "in <path>" nor "after [ID]" ([SPC-5])`, 'fix the block heading in change.md');
     const at = find(texts, b.anchor);
     if (!at) {
       const holder = [...blocks.values()].find((x) => x.open && x.op === 'add' && x.id === b.anchor && !x.dropped);
       return { cannot: `anchor [${b.anchor}] is not in the baseline${holder ? `: ${holder.key} holds it pending; consolidate them together, or that one first` : ''}` };
     }
     texts.set(at.path, insertAt(at.text, afterSubtree(at.list, at.i), now));
-    return { did: `[${b.id}] after [${b.anchor}] in ${at.path}` };
+    return { did: `[${b.id}] after [${b.anchor}] in ${at.path}`, text: now };
   }
   const at = find(texts, b.id);
   if (b.op === 'remove') {
@@ -109,7 +108,7 @@ function apply(texts, b, blocks) {
     return { did: `the removal of [${b.id}] from ${at.path}` };
   }
   texts.set(at.path, at.text.slice(0, at.section.start) + withLevelOf(at.section, now) + at.text.slice(at.section.stop));
-  return { did: `[${b.id}] in place in ${at.path}` };
+  return { did: `[${b.id}] in place in ${at.path}`, text: withLevelOf(at.section, now) };
 }
 
 export function consolidate({ top, args, opts }) {
@@ -141,7 +140,7 @@ export function consolidate({ top, args, opts }) {
   const state = signoffState(tree, dir, name);
   if (state.blocked) {
     return refuse([`${name} is blocked: ${state.reason}; it is consolidated only once the sign-off is current ([REC-6])`],
-      `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`);
+      signoffStep(name, dir, state));
   }
   const todo = mine.filter((b) => !b.dropped);
   if (id !== undefined && !todo.length) return refuse([`every block of [${id}] in ${name} is marked Dropped, and a dropped section is not written`]);
@@ -167,7 +166,7 @@ export function consolidate({ top, args, opts }) {
       const r = apply(texts, b, blocks);
       if (r.cannot) { cannot.set(b.key, r.cannot); continue; }
       cannot.delete(b.key);
-      done.push({ key: b.key, did: r.did });
+      done.push({ key: b.key, did: r.did, text: r.text });
       progress = true;
       break;
     }
@@ -175,11 +174,11 @@ export function consolidate({ top, args, opts }) {
   const final = read();
   const reasons = todo.filter((b) => !LEFT_ALONE.includes(final.get(b.key).state)).map((b) => {
     const e = final.get(b.key);
-    return `${b.key} ${cannot.get(b.key) ?? `${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}`}`;
+    return `${b.key} ${cannot.get(b.key) ?? stateText(e)}`;
   });
   if (reasons.length) return refuse(reasons);
   if (!done.length) return { body: [`nothing to write: ${name}'s ${id === undefined ? 'sections are' : `[${id}] is`} consolidated or carried`], next: `al context ${name}`, notKnown: NOT_KNOWN };
-  return write(top, root, original, texts, done.map((d) => `${d.did}, from ${d.key}`), opts.yes, name);
+  return write(top, root, original, texts, done.map((d) => ({ did: `${d.did}, from ${d.key}`, text: d.text })), opts.yes, name);
 }
 
 // --revert <ID>: the "was" of the request's first block for the ID goes back.
@@ -194,6 +193,7 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
   if (fault) return refuse([fault], `fix the block named in its change.md`);
   const at = find(texts, id);
   let did = null;
+  let text = null;
   if (first.op === 'add') {
     if (at) {
       texts.set(at.path, removeSection(at.text, at.section));
@@ -201,14 +201,16 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
     }
   } else if (at) {
     if (!sameSection(at.section.text, first.was)) {
-      texts.set(at.path, at.text.slice(0, at.section.start) + withLevelOf(at.section, tidy(first.was)) + at.text.slice(at.section.stop));
+      text = withLevelOf(at.section, tidy(first.was));
+      texts.set(at.path, at.text.slice(0, at.section.start) + text + at.text.slice(at.section.stop));
       did = `the "was" of [${id}] in place in ${at.path}`;
     }
   } else if (mine.find((b) => b.op === 'remove')?.firstIn) {
     // [STA-4]: a removed first section goes back first in its file, after any text before it.
     const path = mine.find((b) => b.op === 'remove').firstIn;
-    const text = texts.get(path) ?? '';
-    texts.set(path, insertAt(text, spans(text)[0]?.start ?? text.length, tidy(first.was)));
+    const file = texts.get(path) ?? '';
+    text = tidy(first.was);
+    texts.set(path, insertAt(file, spans(file)[0]?.start ?? file.length, text));
     did = `[${id}] back first in ${path}`;
   } else {
     const removal = mine.find((b) => b.op === 'remove' && b.anchor);
@@ -222,15 +224,17 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
     const unread = headingFault(removal, removal.was, 'Was');
     if (unread) return refuse([unread], `fix the block named in its change.md`);
     const under = where.section.level < parseSections(removal.was)[0].level;
-    texts.set(where.path, insertAt(where.text, under ? where.section.stop : afterSubtree(where.list, where.i), tidy(first.was)));
+    text = tidy(first.was);
+    texts.set(where.path, insertAt(where.text, under ? where.section.stop : afterSubtree(where.list, where.i), text));
     did = `[${id}] back ${under ? 'first under' : 'after'} [${anchor}] in ${where.path}`;
   }
   if (!did) return { body: [`nothing to write: [${id}] already reads the "was" of ${first.key}`], next: `al context ${name}`, notKnown: NOT_KNOWN };
-  return write(top, root, original, texts, [`${did}, from ${first.key}`], opts.yes, name);
+  return write(top, root, original, texts, [{ did: `${did}, from ${first.key}`, text }], opts.yes, name);
 }
 
-// Show the writes, or with --yes write every changed file at once: each to a
-// new temporary file beside it, then all renamed into place. Every file written
+// Show the writes, each with the section text it writes ([TL-1]), or with
+// --yes write every changed file at once: each to a new temporary file
+// beside it, then all renamed into place. Every file written
 // is a .md file under the root, reached through real folders inside the repo,
 // and is a regular file or not there yet. If any step fails, the files already
 // renamed are put back and the temporary files removed, so nothing is written.
@@ -239,12 +243,13 @@ function write(top, root, original, texts, what, yes, name) {
   for (const [path] of changed) {
     let kind = null;
     try { kind = lstatSync(join(top, path)); } catch { /* not there yet */ }
-    if (posix.normalize(path) !== path || !path.startsWith(`${root}/`) || !path.endsWith('.md') || !noSymlinkOn(top, path) || (kind && !kind.isFile())) {
+    if (!inBaseline(path, root) || !noSymlinkOn(top, path) || (kind && !kind.isFile())) {
       throw new Fail(`${path}: consolidate writes only .md files under the baseline root ${root}/, named in plain form, inside this repo, not through a symlink and not over a folder; nothing was written`,
         `fix the path in the block's heading in change.md, e.g. add in ${root}/<area>.md`);
     }
   }
-  if (!yes) return { body: what.map((w) => `Would write ${w}`), next: 'run the same command with --yes to write it', notKnown: NOT_KNOWN };
+  const shown = (verb) => what.flatMap((w) => [`${verb} ${w.did}`, ...(w.text ? w.text.replace(/\n$/, '').split('\n') : [])]);
+  if (!yes) return { body: shown('Would write'), next: 'run the same command with --yes to write it', notKnown: NOT_KNOWN };
   const temps = [];
   const renamed = [];
   try {
@@ -268,7 +273,7 @@ function write(top, root, original, texts, what, yes, name) {
       'remove what is in the way, then run the same command again');
   }
   return {
-    body: what.map((w) => `Wrote ${w}`),
+    body: shown('Wrote'),
     next: `review the diff of ${changed.map(([p]) => p).join(', ')} and commit it; then al context ${name}`,
     notKnown: NOT_KNOWN,
   };

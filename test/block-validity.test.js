@@ -1,11 +1,14 @@
 // Validation fixes, PR 2 (tier 0): a block heading's op follows [SPC-5]'s
-// grammar, exactly one of `modify`, `add in <path>`, `add after [ID]` or
-// `remove, was after [ID]`, with Was: and Now: as the op needs them (an add
+// grammar, exactly one of its five ops, `modify`, `add in <path>`, `add after
+// [ID]`, `remove, was after [ID]` or `remove, was first in <path>`, with Was:
+// and Now: as the op needs them (an add
 // has no Was:, a remove no Now:, a modify both). Anything else is a fault,
 // never read as a remove (#97, #106(a)); so is a repeated request/ID@n in
 // one change.md (#98). For a faulty block, check gives a `not ok` naming it,
 // check --strict exits 1 on a branch serving its request [HNT-3], and
-// consolidate and conclude refuse, exit 1, writing nothing [STA-4] [STA-7].
+// consolidate and conclude refuse, exit 1, writing nothing [STA-4] [STA-7];
+// consolidate's refusal cites [SPC-5], so it refuses for the fault and not for
+// the block's state.
 // And a repo with no commits is not the tool failing itself: context, spec
 // and check exit 0 there, with a true frame (#114, [HNT-3], [VW-9]).
 import { test } from 'node:test';
@@ -15,7 +18,7 @@ import { join } from 'node:path';
 import { makeRepo, runAl, git, tempDir } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
-import { ENV, addRequest, both } from './helpers/request.js';
+import { ENV, addRequest, assertRefused, both } from './helpers/request.js';
 import { file } from './helpers/links.js';
 import { check, checkHints, hint, kindOf, message, strict } from './helpers/hints.js';
 
@@ -106,10 +109,10 @@ for (const [label, { key, block: faulty, before, after }] of Object.entries(FAUL
     strict(repo, 1);
   });
 
-  test(`[SPC-5][STA-4] ${label}: consolidate export --yes refuses, exit 1, and writes nothing; the baseline stays byte for byte`, (t) => {
+  test(`[SPC-5][STA-4] ${label}: consolidate export --yes refuses, exit 1, citing [SPC-5], and writes nothing; the baseline stays byte for byte`, (t) => {
     const repo = served(t, [faulty], before);
     const r = al(repo, 'consolidate', 'export', '--yes');
-    assert.equal(r.code, 1, `consolidate should refuse:\n${both(r)}`);
+    assertRefused(r, '[SPC-5]');
     assert.equal(status(repo), '', 'nothing written');
     assert.equal(repo.read('specs/invoices.md').toString(), before);
   });
@@ -154,10 +157,10 @@ test('#98 [SPC-5][HNT-3] two blocks [INV-1]@1 in one change.md: check gives a no
   strict(repo, 1);
 });
 
-test('#98 [STA-4] two blocks [INV-1]@1: consolidate export --yes refuses, exit 1, and writes nothing', (t) => {
+test('#98 [STA-4] two blocks [INV-1]@1: consolidate export --yes refuses, exit 1, citing [SPC-5], and writes nothing', (t) => {
   const repo = served(t, REPEATED, file(CSV, INV2));
   const r = al(repo, 'consolidate', 'export', '--yes');
-  assert.equal(r.code, 1, `consolidate should refuse:\n${both(r)}`);
+  assertRefused(r, '[SPC-5]');
   assert.equal(status(repo), '', 'nothing written');
 });
 

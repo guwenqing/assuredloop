@@ -4,11 +4,11 @@
 // text underneath. Shows what it would write, and writes on --yes.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Fail, now, stamp } from './git.js';
+import { Fail, historyGap, now, stamp } from './git.js';
 import { openTree, noSymlinkOn, findRequest, isName } from './tree.js';
-import { rootOf, baseline } from './spec.js';
+import { rootOf, baseline, idsUsed, nextId } from './spec.js';
 import { blockFault, parseChange, takeText, withRepeats } from './states.js';
-import { BAD_NAME, requestToWrite } from './commands.js';
+import { BAD_NAME, decisionList, requestToWrite } from './commands.js';
 import { headingFault } from './consolidate.js';
 
 const indent = (text) => text.replace(/\n+$/, '').split('\n').map((l) => (l ? `    ${l}` : '')).join('\n') + '\n';
@@ -32,7 +32,7 @@ export function decisions(md) {
   const at = lines.findIndex((l) => /^##\s+Decisions\s*$/.test(l));
   let end = lines.length;
   if (at >= 0) for (let i = at + 1; i < lines.length; i++) if (/^#{1,2}\s/.test(lines[i])) { end = i; break; }
-  const names = at < 0 ? [] : lines.slice(at + 1, end).map((l) => l.match(/^- (D\d+),/)?.[1]).filter(Boolean);
+  const names = decisionList(md).map((d) => d.id);
   const ids = names.map((n) => Number(n.slice(1)));
   let last = end;
   while (last > at + 1 && !lines[last - 1].trim()) last--;
@@ -99,7 +99,14 @@ export function recordSection({ top, args, opts }) {
       head += `   builds on ${top1.key}`;
       text = top1.now;
     } else if (!underneath) {
-      throw new Fail(`[${id}] is in neither the baseline nor ${name}: write the add block by hand in ${changePath} (new IDs come from al spec --add-ids)`, `al spec --add-ids <file> --prefix <PREFIX>`);
+      // [SPC-3]: a new section takes the next ID ever free for its prefix.
+      const prefix = id.split('-')[0];
+      const root = rootOf(top, tree);
+      const gap = historyGap(top);
+      if (gap) throw new Fail(`[${id}] is in neither the baseline nor ${name}, and the next free ${prefix} ID is not known: this clone is ${gap.kind}, without the full history`, gap.next);
+      const free = nextId(idsUsed(top, tree, root), prefix);
+      throw new Fail(`[${id}] is in neither the baseline nor ${name}. A new section takes the next free ${prefix} ID, [${free}]: write its block by hand in ${changePath}, headed ### [${free}]@1 add in ${root}/<file>.md (or add after [ID]), then Now: and the section, indented`,
+        `edit ${changePath}, then al context ${name}`);
     }
     const block = render(head, text, text);
     const base = change ?? '## Spec changes\n';

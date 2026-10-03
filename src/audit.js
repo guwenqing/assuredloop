@@ -5,7 +5,7 @@ import { isAbsolute } from 'node:path';
 import { Fail, git, isShallow, mainCommit, resolveCommit } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, rootLine, baseline, configured } from './spec.js';
-import { allBlocks, statesOf } from './states.js';
+import { allBlocks, stateText, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { isSignoff, snapshots } from './snapshot.js';
 import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
@@ -104,7 +104,7 @@ function trace(a, name) {
     // A removal lands where the section goes from present to absent.
     const landed = b.op === 'remove' ? walk.find((c) => !c.sections.has(b.id) && c.before?.sections.has(b.id))
       : walk.find((c) => c.sections.has(b.id) && sameSection(c.sections.get(b.id), b.now ?? ''));
-    body.push(line('Section', `${e.block} ${since ? since.say(e.id) : `${e.state}${e.by ? ` ${e.by}` : ''}`}; ${where(landed)}`));
+    body.push(line('Section', `${e.block} ${since ? since.say(e.id) : stateText(e)}; ${where(landed)}`));
   }
   // A concluded request with no blocks (tier 1): the sections its Outcome lists, each landing where it
   // first took the text it had at conclusion, or, removed, where it went from present to absent.

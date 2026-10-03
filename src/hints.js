@@ -5,10 +5,10 @@
 import { posix } from 'node:path';
 import { git } from './git.js';
 import { folderOf, isName, openTree } from './tree.js';
-import { rootOf, rootLine, baseline, duplicateIds, trimBlanks } from './spec.js';
+import { rootOf, rootLine, baseline, duplicateHint, duplicateIds, idsUsed, inBaseline, nextId, trimBlanks } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
 import { sameSection, unheld } from './sections.js';
-import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled } from './signoff.js';
+import { organized, parentOf, parts, samePart, signoffState, signoffStep, tierIs, tierOne, unlabelled } from './signoff.js';
 import { isSignoff, snapshots } from './snapshot.js';
 import { childrenOf, entriesOf, line, partsOf } from './commands.js';
 import { headingFault } from './consolidate.js';
@@ -24,6 +24,8 @@ const ID_TOKEN = /\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g;
 const statusOf = (md) => md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '';
 const isDropped = (md) => /\bStatus:\s*dropped\b/.test(statusOf(md));
 const sections = (files) => new Map(files.flatMap((f) => [...byId(f.text)]));
+// [SPC-4]: two texts the same outside their sections with an ID, piece by piece.
+const sameUnheld = (a, b) => { const [x, y] = [unheld(a), unheld(b)]; return x.length === y.length && x.every((t, i) => sameSection(t, y[i])); };
 
 // What the hints read: the final state (`tree`, the working tree or the tree
 // of `at`), the commits base..head, the requests they serve, and what the
@@ -83,11 +85,13 @@ export function hintsOf(top, b, { main }) {
   const names = new Set(b.requests.map((r) => r.name));
   const known = (id) => b.now.has(id) || [...b.blocks.values()].some((x) => x.id === id);
   const signed = new Map(open.map((r) => [r.name, signoffState(b.tree, r.dir, r.name)]));
+  const step = (name) => signoffStep(name, open.find((r) => r.name === name).dir, signed.get(name));
 
   // A held section in a state to fix; two open holders not linked.
-  for (const e of statesOf(b.files, b.blocks)) {
+  const states = statesOf(b.files, b.blocks);
+  for (const e of states) {
     if (BAD.includes(e.state) || e.state === 'not found') {
-      add('not ok', e.state === 'not found' ? 6 : 1, [e.request], `[${e.id}] held by ${e.request} reads ${e.state}${e.candidates.length ? `; candidates ${e.candidates.join(', ')}` : ''}`, `al context ${e.request}`);
+      add('not ok', e.state === 'not found' ? 6 : 1, [e.request], `[${e.id}] held by ${e.request} reads ${e.state}${e.candidates.length ? `; candidates ${e.candidates.join(', ')}` : ''}`, e.state === 'differs' ? `al record ${e.request} section ${e.id} --accept` : `al context ${e.request}`);
     }
   }
   const reached = (x) => {
@@ -101,7 +105,21 @@ export function hintsOf(top, b, { main }) {
     const reqs = [...new Set(xs.map((x) => x.request))];
     const reaches = (p, q) => xs.some((x) => x.request === p && reached(x).includes(q));
     const loose = reqs.filter((p) => reqs.some((q) => q !== p && !reaches(p, q) && !reaches(q, p)));
-    if (loose.length) add('not ok', 2, loose, `[${id}] held by ${loose.join(' and ')}, neither builds on the other`, `al record ${loose[1]} section ${id} --builds-on ${loose[0]}`);
+    if (!loose.length) continue;
+    // The fix: a tip (no holder builds on it) and a holder unlinked from it whose
+    // own base the tip already reaches; that one's first block builds on the
+    // tip's latest. The tip does not reach it, so no cycle, and what it reached
+    // the tip reaches, so no holder is left loose by it.
+    const unlinked = (p, q) => p !== q && !reaches(p, q) && !reaches(q, p);
+    const of = (q) => xs.filter((x) => x.request === q).sort((x, y) => x.n - y.n);
+    const below = (q) => reached(of(q)[0]).find((r) => r !== q);
+    // A broken chain can leave no tip; then any unlinked pair.
+    const tip = loose.find((p) => !reqs.some((q) => q !== p && reaches(q, p))) ?? loose[0];
+    const onto = reqs.find((q) => unlinked(tip, q) && (!below(q) || reaches(tip, below(q)))) ?? reqs.find((q) => unlinked(tip, q));
+    const [first, last] = [of(onto)[0], of(tip).at(-1)];
+    const dir = b.requests.find((r) => r.name === onto).dir;
+    add('not ok', 2, loose, `[${id}] held by ${loose.join(' and ')}, neither builds on the other`,
+      `in ${dir}/change.md, set "builds on ${last.key}" in the heading of ${first.key} (in place of any builds on there) and set its Was to the Now of ${last.key}, then al check`);
   }
   if (main) out.push(...appendOnly(top, main, b.commits));
 
@@ -113,7 +131,7 @@ export function hintsOf(top, b, { main }) {
     const block = ls.findIndex((l) => /^(Was|Now):\s*$/.test(l));
     if (block >= 0) add('not ok', 4, [], `a Was:/Now: block in ${f.path}:${block + 1}; the baseline holds promises, not changes`, 'move it into a change.md, then al check');
   }
-  for (const [id, at] of duplicateIds(b.files)) add('not ok', 5, [], `duplicate ID [${id}] in ${at.join(' and ')}`, 'rename one copy by hand, then al spec --list');
+  out.push(...duplicateIds(b.files).map(duplicateHint));
   // [REC-1]: a request folder whose name is not a request name, or a name both open and archived; no request owns these.
   const held = (at) => (b.tree.list(at) ?? []).filter((n) => n !== 'archive' && b.tree.read(`${at}/${n}/request.md`) !== null);
   const [openDirs, archivedDirs] = [held('requests'), held('requests/archive')];
@@ -131,6 +149,7 @@ export function hintsOf(top, b, { main }) {
     for (const x of [...b.blocks.values()].filter((y) => y.request === r.name)) {
       const unreadable = blockFault(x);
       if (unreadable) add('not ok', 5, [r.name], unreadable, `fix the block in ${r.dir}/change.md, then al check`);
+      if (x.op === 'add' && x.path && !inBaseline(x.path, b.root)) add('not ok', 5, [r.name], `${x.key}: add in ${x.path} is not a .md file under the baseline root ${b.root}/ ([SPC-5])`, `fix the block in ${r.dir}/change.md, then al check`);
       // [STA-4]: a remove's anchor is where its revert puts it back.
       const file = x.op === 'remove' && x.anchor && !x.dropped && b.files.find((f) => f.sections.some((s) => s.id === x.id));
       const misplaced = file && anchorFault(x, file);
@@ -160,6 +179,18 @@ export function hintsOf(top, b, { main }) {
     }
   }
 
+  // [SPC-3]: a pending add whose ID was used before: in the baseline at some
+  // commit, or in the change.md of a request that is not open.
+  const adds = states.filter((e) => e.op === 'add' && e.state === 'pending');
+  const used = adds.length ? idsUsed(top, b.tree, b.root, b.at ?? '--all') : null;
+  for (const e of adds) {
+    const other = (path) => path.match(/^requests\/(?:archive\/)?([^/]+)\/change\.md$/)?.[1];
+    const where = [...(used.get(e.id) ?? [])].find((path) => inBaseline(path, b.root) || (other(path) && other(path) !== e.request && !open.some((r) => r.name === other(path))));
+    const prefix = e.id.split('-')[0];
+    if (where) add('not ok', 5, [e.request], `${e.block} adds [${e.id}], which was used before, in ${where}; an ID is never reused ([SPC-3])`,
+      `give it the next free ${prefix} ID, [${nextId(used, prefix)}], in ${open.find((r) => r.name === e.request).dir}/change.md, then al check`);
+  }
+
   // [STA-8]: conclude's rules re-run on each request the branch archives.
   const facts = new Map();
   for (const name of b.archived) {
@@ -173,7 +204,7 @@ export function hintsOf(top, b, { main }) {
   for (const id of b.changedIds) {
     for (const x of b.blocks.values()) {
       if (x.open && x.id === id && signed.get(x.request)?.blocked && x.now && b.now.has(id) && sameSection(b.now.get(id), x.now)) {
-        add('not ok', 8, [x.request], `[${id}] changed on this branch equals the Now of ${x.key}, and ${x.request} is blocked (${signed.get(x.request).reason})`, `al record ${x.request} signoff --source <where> --words <quote> --yes`, true);
+        add('not ok', 8, [x.request], `[${id}] changed on this branch equals the Now of ${x.key}, and ${x.request} is blocked (${signed.get(x.request).reason})`, step(x.request), true);
       }
     }
   }
@@ -192,15 +223,17 @@ export function hintsOf(top, b, { main }) {
     const withdrawn = es.length > 0 && es.every((e) => b.blocks.get(e.block).dropped && !b.blocks.get(e.block).kept && e.retainsNothing);
     return b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, (f) => !b.changed.includes(f) || (f.startsWith(`${b.root}/`) && f.endsWith('.md')) || change.test(f)))
       || [...ownIds(top, name, b.base, b.root, b.requests, !b.at && b.served.has(name), b.at ?? 'HEAD')].some((id) => b.changedIds.includes(id) && left(id))
-      || b.changed.some((p) => p.startsWith(`${b.root}/`) && p.endsWith('.md') && touched(p) && !sameSection(unheld(textAt(b.base, p)), unheld(textAt(null, p))))
+      || b.changed.some((p) => p.startsWith(`${b.root}/`) && p.endsWith('.md') && touched(p) && !sameUnheld(textAt(b.base, p), textAt(null, p)))
       || (!withdrawn && b.changed.some((p) => change.test(p)));
   };
   for (const name of b.delivered) {
-    if (signed.get(name)?.blocked && applied(name)) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, `al record ${name} signoff --source <where> --words <quote> --yes`, true);
+    if (signed.get(name)?.blocked && applied(name)) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, step(name), true);
   }
-  const edits = b.changed.filter((p) => p.startsWith(`${b.root}/`));
-  if (b.tier && /^0\b/.test(b.tier) && edits.length && !(edits.every((p) => p.endsWith('.md')) && onlyIdsOrMoves(b.before, b.files))) {
-    add('not ok', 10, [], `the claim is tier 0, but ${b.range} edits the baseline${b.changedIds.length ? `: ${b.changedIds.map((i) => `[${i}]`).join(', ')}` : ''}`, `al context --diff ${b.range}`);
+  // [REC-10]: tier 0 and S change no promise; a file under the root that is not .md is outside the baseline ([SPC-1]).
+  const edits = b.changed.filter((p) => p.startsWith(`${b.root}/`) && p.endsWith('.md'));
+  const promiseless = ['0', 'S'].find((t) => tierIs(b.tier, t));
+  if (promiseless && edits.length && !onlyIdsOrMoves(b.before, b.files)) {
+    add('not ok', 10, [], `the claim is tier ${promiseless}, but ${b.range} edits the baseline${b.changedIds.length ? `: ${b.changedIds.map((i) => `[${i}]`).join(', ')}` : ''}`, `al context --diff ${b.range}`);
   }
 
   // Snapshots: a text that no longer matches its hash; a served request's web source not re-checked.
@@ -247,7 +280,7 @@ export function hintsOf(top, b, { main }) {
     // A blocked not ok already says it ([HNT-1]: one hint, not two).
     if (!s?.blocked || out.some((h) => h.kind === 'not ok' && [8, 9].includes(h.rank) && h.owners.includes(name))) continue;
     add('note', 18, [name], s.signoff ? `${name} changed since its sign-off (${s.signoff.file})${s.changed?.length ? `: ${s.changed.join(', ')}` : ''}` : `${name} is not signed off yet: ${s.reason}`,
-      `al record ${name} signoff --source <where> --words <quote> --yes`);
+      step(name));
   }
   // [REC-10]: a spike open, or archived on this branch, with no findings.md, its Answer not first, or a baseline edit:
   // by its own commits, and, in the working tree, by uncommitted edits when the branch serves it.
@@ -258,7 +291,7 @@ export function hintsOf(top, b, { main }) {
     };
     for (const n of spikeNotes(b.tree, r.name, r.dir, r.md, edited)) add('note', 24, [r.name], n, n.includes('findings.md') ? `write ${r.dir}/findings.md, starting with its Answer, then al context ${r.name}` : `al context --diff ${b.range}`);
   }
-  if (b.commits.length && !b.tier) add('note', 22, [], `no Tier line in ${b.range}`, 'add "Tier: <n> — <claim>" to the PR, e.g. with git commit --amend');
+  if (b.commits.length && !b.tier) add('note', 22, [], `no Tier line in ${b.range}`, 'add "Tier: <n> — <claim>" to a commit message, e.g. with git commit --amend');
   out.push(...testHints(top, b), ...adrHints(top, b));
   if (mainSha) out.push(...earlyWork(top, b, mainSha));
   for (const [name, { r, j }] of facts) {
@@ -319,13 +352,15 @@ export function ranked(list, b) {
     .map((x) => x.h);
 }
 
-export const hintText = (h) => `${h.kind}: ${h.text}${h.kind === 'not ok' && !h.counts ? ` (information: owned by ${h.owners.join(', ')})` : ''}; ${h.command}`;
+// A hint as one line; a not ok that does not count is labelled information,
+// except in the view of request `self`, which owns it ([HNT-3]).
+export const hintText = (h, self) => `${h.kind}: ${h.text}${h.kind === 'not ok' && !h.counts && !h.owners.includes(self) ? ` (information: owned by ${h.owners.join(', ')})` : ''}; ${h.command}`;
 
 // Hint lines for a view: up to `cap` under a Hint label, the last one saying
-// how many more are hidden ([HNT-1]).
-export function hintLines(list, cap) {
-  const shown = list.slice(0, cap).map(hintText);
-  if (list.length > cap && shown.length) shown[shown.length - 1] += `; ${list.length - cap} more hidden, --all`;
+// how many more are hidden and `more`, the command that shows them ([HNT-1]).
+export function hintLines(list, cap, { more = '--all', self } = {}) {
+  const shown = list.slice(0, cap).map((h) => hintText(h, self));
+  if (list.length > cap && shown.length) shown[shown.length - 1] += `; ${list.length - cap} more hidden, ${more}`;
   return shown.map((t, i) => line(i ? '' : 'Hint', t));
 }
 

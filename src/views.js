@@ -4,7 +4,7 @@
 import { Fail, git, historyGap, isShallow, mainCommit, ownCommits, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, rootLine, baseline, configured } from './spec.js';
-import { allBlocks, changeStates, statesOf } from './states.js';
+import { allBlocks, changeStates, stateText, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { organized, parts, samePart, signoffState } from './signoff.js';
 import { line, lines, grouped, decisionList, entriesOf, concluding } from './commands.js';
@@ -16,7 +16,7 @@ import { amends, outcomeFacts, ownIds } from './conclude.js';
 
 const HISTORY = 'history unavailable (shallow clone)';
 const isCode = (root) => (p) => !p.startsWith('requests/') && !p.startsWith(`${root}/`);
-const stateOf = (e) => `${e.block} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${e.by}` : ''}`;
+const stateOf = (e) => `${e.block} ${stateText(e)}`;
 const day = (d) => d.toISOString().slice(0, 10);
 const lineCount = (text) => text.replace(/\n+$/, '').split('\n').length;
 const skippedLine = (n) => line('Skipped', `${n} commit${n === 1 ? '' : 's'} over ${WIDE} files, not read for co-change`);
@@ -283,10 +283,6 @@ function review(top, { tree, files, served, code, commits, moves, branch }) {
   return [...intent, ...evidence];
 }
 
-// [VW-6]: each section an archived request held, "as at conclusion" or what
-// changed it since, and the requests that follow it.
-// Under --at, everything is read at that commit, and the conclusion counts
-// only when that commit's history holds it.
 // The generated lines of request.md's `## Outcome` ([REC-9]): up to its
 // `Notes:` line or the next heading, so nothing people add counts.
 function outcomeLines(md) {
@@ -297,6 +293,10 @@ function outcomeLines(md) {
   return lines.slice(at + 1, end < 0 ? lines.length : end);
 }
 
+// [VW-6]: each section an archived request held, "as at conclusion" or what
+// changed it since, and the requests that follow it.
+// Under --at, everything is read at that commit, and the conclusion counts
+// only when that commit's history holds it.
 export function archivedLines(top, name, at, all) {
   const tree = openTree(top, at);
   const { ids, say } = sinceConclusion(top, name, at);

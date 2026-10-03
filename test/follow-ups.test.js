@@ -32,7 +32,7 @@ import { assertFrame, lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
 import { ORG as ORG3, addRequest, both } from './helpers/request.js';
 import { file } from './helpers/links.js';
-import { check, checkHints, hint, kindOf, message, viewHints } from './helpers/hints.js';
+import { check, checkHints, hint, kindOf, message, noHint, viewHints } from './helpers/hints.js';
 
 const NAME = 'invoice-download';
 const DIR = `requests/${NAME}`;
@@ -116,8 +116,6 @@ const labelLine = (out, label) => {
   assert.ok(line, `expected a line starting with ${label}:\n${out}`);
   return line;
 };
-// The lines above the frame (Read, Next, Not known).
-const body = (out) => lines(out).filter((l) => !/^(Read|Next|Not known)\b/.test(l));
 
 // The sign-off note: "<name> changed since its sign-off" or "<name> is not signed off yet".
 const SIGNOFF_NOTE = /changed since its sign-off|not signed off yet/;
@@ -161,15 +159,23 @@ test('#89 (g) C10: check shows the blocked-delivery not ok for invoice-download 
   assert.deepEqual(signoffNotes(checkHints(out), NAME), [], `no sign-off note beside the not ok:\n${out}`);
 });
 
-test('#89 (g) the not ok "[INV-3] changed on this branch equals the Now of iso-dates, which is blocked" carries the sign-off too: no sign-off note for iso-dates, in check or in context iso-dates --all', (t) => {
+test('#89 (g) the not ok "[INV-3] changed on this branch equals the Now of iso-dates, which is blocked" carries the sign-off too: on a branch that serves iso-dates and delivers no work for it, no sign-off note for iso-dates, in check or in context iso-dates --all', (t) => {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, S0));
   addRequest(repo, 'iso-dates', [block('[INV-3]@1 modify   for R2', { was: S0, now: S1 })], { org: ORG3, signed: false });
   repo.commit('iso-dates: request', { date: '2026-09-21T12:00:00Z' });
   repo.git(['checkout', '-q', '-b', 'work']);
+  // Served by a decision in its own request.md, which is no work; the Now
+  // written into the baseline by a commit that maps to no request. So the
+  // not ok is this one alone, not the blocked-delivery one beside it.
+  const md = repo.read('requests/iso-dates/request.md').toString();
+  repo.write('requests/iso-dates/request.md', `${md}- D5, 2026-09-22. Source: the owner. Keep the CSV header in English.\n`);
+  repo.commit(message('iso-dates: a decision', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-22T12:00:00Z' });
   repo.write('specs/invoices.md', file(INV1, S1));
-  repo.commit(message('ISO dates', { request: 'iso-dates', tier: '2 — ISO dates' }), { date: '2026-09-22T12:00:00Z' });
+  repo.commit(message('ISO dates', { tier: '2 — ISO dates' }), { date: '2026-09-22T13:00:00Z' });
   const out = check(repo, '--all');
+  assert.ok(lines(out).some((l) => /^Serves\b/.test(l) && l.includes('iso-dates')), `the fixture: the branch serves iso-dates:\n${out}`);
+  noHint(out, 'not ok', 'delivers work for', 'iso-dates');
   hint(out, 'not ok', 'INV-3', /\bNow\b/, 'iso-dates', /\bblocked\b/);
   assert.deepEqual(signoffNotes(checkHints(out), 'iso-dates'), [], `no sign-off note beside the not ok:\n${out}`);
   const view = context(repo, 'iso-dates', '--all');
@@ -261,14 +267,14 @@ test('#89 (d) pin: the list form reads "INV-3@1 waiting on cancel-invoices/INV-3
 
 // --- (a) the Require line names the command that shows what changed ---
 
-test('#89 (a) C10: the Require line names what changed since the sign-off (R2, Out, R3) and the command that shows it, al record invoice-download signoff --source <where>, without --yes; twelve lines or fewer', (t) => {
+test('#89 (a) C10: the Require line names what changed since the sign-off (R2, Out, R3) and the command that shows it, al record invoice-download signoff --source <where>, without --yes; twelve lines or fewer, Read, Next and Not known included', (t) => {
   const repo = c10(t);
   const out = context(repo);
   const require = labelLine(out, 'Require');
   assert.ok(require.includes('R2, Out, R3'), `the Require line should name R2, Out, R3:\n${require}`);
   assert.ok(require.includes(`al record ${NAME} signoff --source <where>`), `the Require line should name the command:\n${require}`);
   assert.doesNotMatch(require, /--yes/, `the command only shows what changed; no --yes:\n${require}`);
-  assert.ok(body(out).length <= 12, `more than twelve lines above the frame (${body(out).length}):\n${out}`);
+  assert.ok(lines(out).length <= 12, `more than twelve lines, Read, Next and Not known included (${lines(out).length}):\n${out}`);
 });
 
 // --- (e) the live-code note names the files that import or require it ---
