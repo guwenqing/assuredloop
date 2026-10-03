@@ -13,7 +13,7 @@ import { organized, parts, signoffState } from './signoff.js';
 import { requestToWrite, decisionList, childrenOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
-import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
+import { byId, filesOf, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
 import { prose, sameSection } from './sections.js';
 import { adrsOf } from './adrs.js';
 
@@ -111,7 +111,11 @@ export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
   const ids = new Set();
   const seen = new Map();
   for (const sha of fork ? ownCommits(top, fork, tip) : []) {
-    if (requestOf(top, sha, requests, seen).names.includes(name)) sectionsChanged(top, `${sha}^`, sha, root, filesOf(top, sha)).forEach((id) => ids.add(id));
+    if (!requestOf(top, sha, requests, seen, ownFiles).names.includes(name)) continue;
+    // A merge's own: the sections that differ from every parent.
+    const parents = git(top, ['rev-list', '--parents', '-n', '1', sha]).split(' ').slice(1);
+    const each = (parents.length ? parents : [`${sha}^`]).map((p) => new Set(sectionsChanged(top, p, sha, root, ownFiles(top, sha))));
+    each[0].forEach((id) => each.every((s) => s.has(id)) && ids.add(id));
   }
   if (working) {
     const files = [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];

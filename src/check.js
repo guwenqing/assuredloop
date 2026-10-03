@@ -7,6 +7,7 @@
 // check exits 0, and --strict exits 1 on a not ok that counts ([HNT-3]).
 import { git, hasCommits, isShallow, mainCommit, mainName, ownCommits, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
+import { ownFiles } from './links.js';
 import { line } from './commands.js';
 import { hintText, hintsOf, ranked, readBranch } from './hints.js';
 import { assertionsChanged, headNote, nearIds, resultLines, testLines } from './tests.js';
@@ -80,7 +81,7 @@ export function appendOnly(top, main, commits) {
   for (const commit of commits) {
     const parent = git(top, ['rev-parse', '--verify', '--quiet', `${commit}^1`], { allowFail: true });
     if (!parent) continue;
-    const changed = paths(git(top, ['diff', '--name-only', '-z', '--no-renames', parent, commit, '--', 'requests/']));
+    const changed = ownFiles(top, commit).filter((p) => p.startsWith('requests/'));
     for (const name of new Set(changed.map(requestOf).filter(Boolean))) out.push(...problems(top, parent, commit, name, frozen));
   }
   return out;
