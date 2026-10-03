@@ -12,6 +12,8 @@ import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
 import { blame, byId, filesOf, requestCommits, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
 import { adrsOf } from './adrs.js';
+import { organized, parentOf, parts, samePart, signoffState } from './signoff.js';
+import { sinceConclusion } from './views.js';
 
 const HISTORY = 'history unavailable (shallow clone)';
 const ID = /^[A-Z][A-Z0-9]*-\d+(?:\.\d+)*$/;
@@ -59,10 +61,26 @@ function trace(a, name) {
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const body = [line('Audit', `${name}  ${(md.match(/^# (.*)$/m)?.[1] ?? name).trim()}  (${dir})`),
     ...entriesOf(md, "Owner's words and dialog").map((e) => line('Words', e))];
-  for (const { file: f, s } of snapshots(tree, dir)) {
-    const ok = !s ? 'not ok: not a valid snapshot' : s.intact ? 'SHA-256 matches' : 'not ok: no longer matches its SHA-256';
-    if (isSignoff(s)) body.push(line('Sign-off', `origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
-    else body.push(line('Snapshot', `origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
+  // Each snapshot of `from`'s origin/, re-checked; with `signoffsOnly`, its sign-offs and any file that is
+  // not a valid snapshot, which may have been one. `whose` names another request's.
+  const recheck = (from, signoffsOnly, whose = '') => {
+    for (const { file: f, s } of snapshots(tree, from)) {
+      const ok = !s ? 'not ok: not a valid snapshot' : s.intact ? 'SHA-256 matches' : 'not ok: no longer matches its SHA-256';
+      if (isSignoff(s)) body.push(line('Sign-off', `${whose}origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
+      else if (!signoffsOnly || !s) body.push(line('Snapshot', `${whose}origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
+    }
+  };
+  recheck(dir, false);
+  // [REC-5]: a child inherits its parent's latest sign-off for the parts it copies word for word: named only
+  // when it does. The parent's sign-offs are re-checked here too, as the parent's.
+  const parent = parentOf(tree, name);
+  if (parent) {
+    const s = signoffState(tree, dir, name);
+    const org = organized(md);
+    const copied = s.parentSignoff && org ? parts(org.text, org.oneLine)
+      .filter((p) => parts(s.parentSignoff.text, s.parentSignoff.oneLine).some((q) => samePart(p, q))).map((p) => p.key) : [];
+    if (copied.length) body.push(line('Sign-off', `through ${parent.name} for ${copied.join(', ')}, copied word for word from its origin/${s.parentSignoff.file}${s.blocked ? `; ${s.reason}` : ''}`));
+    recheck(parent.dir, true, `parent ${parent.name}: `);
   }
   body.push(...entriesOf(md, 'Decisions').map((e) => line('Decision', e)));
   const place = (f) => [`requests/${name}/${f}`, `requests/archive/${name}/${f}`];
@@ -77,12 +95,24 @@ function trace(a, name) {
   const end = concluding(top, name, a.at).sha;
   const [from, to] = [order.get(versions.at(-1)) ?? 0, end ? order.get(end) : Infinity];
   const walk = history(a).map((c, i, all) => ({ ...c, before: all[i - 1] })).filter((c) => order.get(c.sha) >= from && order.get(c.sha) <= to);
-  for (const e of statesOf(baseline(tree, a.root), blocks, (b) => b.request === name)) {
+  const where = (landed) => a.gap ?? (landed ? `consolidated on main at ${landed.sha.slice(0, 7)}` : 'not consolidated on main');
+  // An archived request is never re-judged against today's baseline: its sections as at conclusion, or what changed them since ([STA-8]).
+  const since = dir.startsWith('requests/archive/') ? sinceConclusion(top, name, a.at) : null;
+  const held = statesOf(baseline(tree, a.root), blocks, (b) => b.request === name);
+  for (const e of held) {
     const b = blocks.get(e.block);
     // A removal lands where the section goes from present to absent.
     const landed = b.op === 'remove' ? walk.find((c) => !c.sections.has(b.id) && c.before?.sections.has(b.id))
       : walk.find((c) => c.sections.has(b.id) && sameSection(c.sections.get(b.id), b.now ?? ''));
-    body.push(line('Section', `${e.block} ${e.state}${e.by ? ` ${e.by}` : ''}; ${a.gap ?? (landed ? `consolidated on main at ${landed.sha.slice(0, 7)}` : 'not consolidated on main')}`));
+    body.push(line('Section', `${e.block} ${since ? since.say(e.id) : `${e.state}${e.by ? ` ${e.by}` : ''}`}; ${where(landed)}`));
+  }
+  // A concluded request with no blocks (tier 1): the sections its Outcome lists, each landing where it
+  // first took the text it had at conclusion, or, removed, where it went from present to absent.
+  const last = walk.at(-1)?.sections ?? new Map();
+  for (const id of held.length ? [] : since?.ids ?? []) {
+    const landed = last.has(id) ? walk.find((c) => c.sections.has(id) && sameSection(c.sections.get(id), last.get(id)))
+      : walk.find((c) => !c.sections.has(id) && c.before?.sections.has(id));
+    body.push(line('Section', `[${id}] ${since.say(id)}; ${where(landed)}`));
   }
   // The linked commits ([LNK-2]) and the test files they changed.
   if (a.shallow) body.push(line('Commits', HISTORY));

@@ -69,7 +69,7 @@ export function outcomeFacts(org, fates) {
 
 // The IDs an `Amends:` names: the bracketed ones after it, on its line, out
 // of fenced code.
-const amends = (text) => [...prose(text).matchAll(/\bAmends:([^\n]*)/g)]
+export const amends = (text) => [...prose(text).matchAll(/\bAmends:([^\n]*)/g)]
   .flatMap((m) => [...m[1].matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g)].map((x) => `[${x[1]}]`));
 
 // A request with no change.md ([REC-9]): the sections its branch added,

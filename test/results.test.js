@@ -106,12 +106,14 @@ test('C6 [LNK-3][HNT-2] an older or unknown result is a note naming its path and
   assert.match(lines(out).at(-1), /uncommitted/, `with a head result shown, Not known says it may not cover uncommitted changes:\n${out}`);
 });
 
-test('C6 [LNK-3][HNT-2] a base result with no head result is a note naming its path and "base": not evidence for this change', (t) => {
+test('C6 [LNK-3][HNT-2] a base result with no head result is a note naming its path and "base": not evidence for this change; Not known says nothing of uncommitted changes', (t) => {
   const { repo, base } = history(t);
   repo.write('results/fork.tap', tap(base, [[A, 'ok']]));
   const out = check(repo, '--all');
   has(resultsBlock(out), 'results/fork.tap', /\bbase\b/);
   hint(out, 'note', 'results/fork.tap', /\bbase\b/);
+  // #139 item 17: with no head result shown, nothing to say about uncommitted changes.
+  assert.doesNotMatch(lines(out).at(-1), /uncommitted/, `with no head result, Not known says nothing of uncommitted changes:\n${out}`);
 });
 
 test('C6 [LNK-3] TAP, head vs base by test name: failing at both is already failing at base, failing only at the head is new, failing only at the base is fixed; a test passing at both is no failure', (t) => {

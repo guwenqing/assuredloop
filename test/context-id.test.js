@@ -270,6 +270,36 @@ test('[VW-3][LNK-1] link 3 skips and counts a commit over 30 files; a narrow com
   assertFrame(r.stdout);
 });
 
+// #139 item 15: the cap at its edge, 30 files read and 31 skipped.
+test('[VW-3][LNK-1] link 3 at the edge: a commit of exactly 30 files still links; one of 31 is skipped and counted', (t) => {
+  const repo = makeRepo(t);
+  const INV9 = (a, b) => `## [INV-9] Rounding\nTotals MUST round ${a}.\nTaxes MUST round ${b}.\n`;
+  repo.write('specs/invoices.md', file(INV1, INV9('half up', 'half up')));
+  repo.commit('Initial spec', { date: '2026-01-10T12:00:00Z' });
+  // T: 30 files, INV-9's first rule and src/thirty.js among them.
+  for (let i = 1; i <= 28; i++) repo.write(`gen/a${String(i).padStart(2, '0')}.txt`, `generated ${i}\n`);
+  repo.write('src/thirty.js', 'export const thirty = 30;\n');
+  repo.write('specs/invoices.md', file(INV1, INV9('half away from zero', 'half up')));
+  const thirty = repo.commit('Thirty files', { date: '2026-02-01T12:00:00Z' });
+  // W: 31 files, INV-9's second rule and src/wider.js among them.
+  for (let i = 1; i <= 29; i++) repo.write(`gen/b${String(i).padStart(2, '0')}.txt`, `generated ${i}\n`);
+  repo.write('src/wider.js', 'export const wider = 31;\n');
+  repo.write('specs/invoices.md', file(INV1, INV9('half away from zero', 'half even')));
+  const more = repo.commit('Thirty-one files', { date: '2026-02-02T12:00:00Z' });
+
+  assert.equal(repo.git(['show', '--name-only', '--format=', thirty]).split('\n').length, 30, 'the fixture: T touches 30 files');
+  assert.equal(repo.git(['show', '--name-only', '--format=', more]).split('\n').length, 31, 'the fixture: W touches 31 files');
+  assertBlamed(repo, 'HEAD', 'specs/invoices.md', [5, 5], ['-w', '-M'], thirty);
+  assertBlamed(repo, 'HEAD', 'specs/invoices.md', [6, 6], ['-w', '-M'], more);
+
+  const r = contextOf(repo, 'INV-9');
+  ok(r);
+  has(r.stdout, 'src/thirty.js', 'changed together');
+  assert.ok(!r.stdout.includes('src/wider.js'), `the 31-file commit's files are skipped:\n${r.stdout}`);
+  has(r.stdout, 'over 30 files', /\b1\b/);
+  assertFrame(r.stdout);
+});
+
 test('C5 [VW-3][SPC-2] scoped IDs: [INV-3], [INV-3.1] and [INV-30] never cross-link, in code or in decisions', (t) => {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file('## [INV-3] Dates\nDates MUST show in ISO 8601.\n',
@@ -340,7 +370,9 @@ test('[VW-3] an ID in no section and held by no change exits 0 and says "not in 
   assertFrame(pending.stdout);
 });
 
-test('[VW-3] real data: context STA-4 in a copy of this repo shows its text and its holder, assuredloop-v1', (t) => {
+// #139 item 15: assuredloop-v1 is archived, so nothing holds STA-4; the copy's
+// one commit touches every request folder, assuredloop-v1's among them.
+test('[VW-3] real data: context STA-4 in a copy of this repo shows its text, and its Shaped by line names assuredloop-v1, whose folder the copy\'s commit wrote', (t) => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const repo = makeRepo(t);
   cpSync(join(root, 'requests'), join(repo.dir, 'requests'), { recursive: true });
@@ -349,6 +381,7 @@ test('[VW-3] real data: context STA-4 in a copy of this repo shows its text and 
   const r = contextOf(repo, 'STA-4');
   ok(r);
   assert.ok(r.stdout.includes('MUST validate everything first'), `STA-4's text:\n${r.stdout}`);
-  has(r.stdout, 'assuredloop-v1');
+  const shaped = r.stdout.split('\n').find((l) => /^Shaped by\b/.test(l));
+  assert.ok(shaped?.includes('assuredloop-v1'), `the Shaped by line names assuredloop-v1:\n${r.stdout}`);
   assertFrame(r.stdout);
 });

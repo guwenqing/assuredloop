@@ -179,10 +179,11 @@ export function statesOf(files, blocks, include = (b) => b.open) {
   };
 
   // The file an add goes to: its own path, its anchor's file, or, for an
-  // anchor its request adds too, where that add goes.
+  // anchor its request adds too, where that add goes; for a remove of a
+  // file's first section, that file.
   const addedIn = (b, n = 0) => {
     const anchor = [...blocks.values()].find((x) => x.request === b.request && x.id === b.anchor && x.op === 'add');
-    return b.path ?? fileOf.get(b.anchor) ?? (anchor && n < 50 ? addedIn(anchor, n + 1) : null);
+    return b.path ?? b.firstIn ?? fileOf.get(b.anchor) ?? (anchor && n < 50 ? addedIn(anchor, n + 1) : null);
   };
   const result = [];
   for (const b of blocks.values()) {
