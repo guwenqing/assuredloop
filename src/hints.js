@@ -78,8 +78,7 @@ function idsOrMoves(before, after) {
     if (i >= 0) left.splice(i, 1);
     causes.push(`${s.path}, ${i >= 0 ? `the text under ${heading(s)} changed` : `a new heading without an ID: ${heading(s)}`}`);
   }
-  // A heading given an ID with its text changed is named by that ID.
-  for (const x of left.filter((y) => y.id === null && !extra.some((s) => s.id && s.title === y.title))) causes.push(`${x.path}, a heading without an ID removed: ${heading(x)}`);
+  for (const x of left.filter((y) => y.id === null)) causes.push(`${x.path}, a heading without an ID removed: ${heading(x)}`);
   return { ok, causes };
 }
 
