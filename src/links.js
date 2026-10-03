@@ -5,6 +5,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { git } from './git.js';
+import { folderOf, requestDirs } from './tree.js';
 import { parseSections, sameSection } from './sections.js';
 import { entriesOf } from './commands.js';
 
@@ -16,7 +17,6 @@ const STOP = new Set(['must', 'with', 'from', 'that', 'this', 'each', 'when', 'h
 export const paths = (out) => (out ?? '').split('\0').filter(Boolean);
 export const idsOn = (line) => [...line.matchAll(ID_MARK)].map((m) => m[1]);
 export const cites = (text, id) => text.includes(`[${id}]`);
-const folderOf = (path) => path.match(/^requests\/archive\/([^/]+)\//)?.[1] ?? path.match(/^requests\/(?!archive\/)([^/]+)\//)?.[1];
 
 // The words of a heading or a path, for link 4: split on non-letters and at
 // camelCase, lowercased, four letters or more, without a few common words.
@@ -25,11 +25,7 @@ export const wordsOf = (text) => new Set(text.replace(/([a-z])([A-Z])/g, '$1 $2'
 
 // Every request in `tree`, open or archived, with its records.
 export function requestsIn(tree) {
-  const dirs = [
-    ...(tree.list('requests') ?? []).filter((d) => d !== 'archive').map((name) => ({ name, dir: `requests/${name}`, open: true })),
-    ...(tree.list('requests/archive') ?? []).map((name) => ({ name, dir: `requests/archive/${name}`, open: false })),
-  ];
-  return dirs.map((r) => ({ ...r, md: tree.read(`${r.dir}/request.md`)?.toString('utf8') ?? '', change: tree.read(`${r.dir}/change.md`)?.toString('utf8') ?? '' }))
+  return requestDirs(tree).map((r) => ({ ...r, md: tree.read(`${r.dir}/request.md`)?.toString('utf8') ?? '', change: tree.read(`${r.dir}/change.md`)?.toString('utf8') ?? '' }))
     .filter((r) => r.md);
 }
 

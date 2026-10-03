@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'n
 import { isAbsolute, join, resolve } from 'node:path';
 import { Fail, git, hasCommits, historyGap, isShallow, mainCommit, mainName, now, ownCommits, resolveCommit, stamp } from './git.js';
 import { openTree, findRequest, isName, noSymlinkOn } from './tree.js';
-import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
+import { formatSnapshot, parseSnapshot, sha256, slug, snapshots } from './snapshot.js';
 import { prose } from './sections.js';
 import { organized, parts, signoffState } from './signoff.js';
 import { changeStates } from './states.js';
@@ -73,7 +73,7 @@ export function concludedOnMain(top, name, at) {
 
 const ID_ARG = /^\[?([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]?$/;
 
-const BAD_NAME = (name) => `${JSON.stringify(name ?? '')} is not a request name: a name is lowercase letters, digits and hyphens, never a path ([REC-1])`;
+export const BAD_NAME = (name) => `${JSON.stringify(name ?? '')} is not a request name: a name is lowercase letters, digits and hyphens, never a path ([REC-1])`;
 const TIERS = ['0', '1', '2', '3', 'S'];
 const TIER0 = 'tier 0 has no record ([REC-10]): if this is a fix, say why in the commit and drop the record; otherwise its tier is 1 or higher';
 const FETCHED = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
@@ -221,14 +221,14 @@ export function recordOrigin(ctx) {
   // A name is taken by anything there, a symlink included, so no write goes through a link.
   for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${base}-${n}.md`;
   const target = `${dir}/origin/${file}`;
-  const shown = snapshot.toString('utf8').replace(/\n$/, '');
+  const shown = snapshot.toString('utf8').replace(/\n$/, '').split('\n');
   if (opts.yes) {
     mkdirSync(join(top, dir, 'origin'), { recursive: true });
     writeFileSync(join(top, target), snapshot);
-    body.push(`Wrote ${target}:`, shown);
+    body.push(`Wrote ${target}:`, ...shown);
     return { body, next: `cite origin/${file} in an entry of ${dir}/request.md`, notKnown: ['whether the source changes after this fetch'] };
   }
-  body.push(`Would write ${target}:`, shown);
+  body.push(`Would write ${target}:`, ...shown);
   return { body, next: 'run the same command with --yes to write it', notKnown: ['whether the source changes after this fetch'] };
 }
 
@@ -271,8 +271,8 @@ function recordSignoff({ top, args, opts }) {
   }
   const changed = since ? state.changed : null;
   const shown = changed
-    ? parts(org.text, org.oneLine).filter((p) => changed.includes(p.key)).map((p) => p.text.replace(/\n+$/, ''))
-    : [org.text.replace(/\n+$/, '')];
+    ? parts(org.text, org.oneLine).filter((p) => changed.includes(p.key)).flatMap((p) => p.text.replace(/\n+$/, '').split('\n'))
+    : org.text.replace(/\n+$/, '').split('\n');
   const removed = changed ? changed.filter((k) => !parts(org.text, org.oneLine).some((p) => p.key === k)) : [];
   const fetched = stamp(now());
   let file = `${fetched.slice(0, 10)}-signoff.md`;
@@ -358,10 +358,10 @@ export function context({ top, args, opts }) {
   const field = (key) => facts.match(new RegExp(`${key}:\\s*([^·]+)`))?.[1].trim();
   const head = [field('Type'), field('Tier') && `tier ${field('Tier')}`, field('Status') ?? 'status unknown'].filter(Boolean);
 
-  const files = (tree.list(`${dir}/origin`) ?? []).filter((f) => f.endsWith('.md')).reverse();
+  const read = snapshots(tree, dir).reverse();
+  const files = read.map((x) => x.file);
   const bad = [];
-  for (const f of files) {
-    const s = parseSnapshot(tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0));
+  for (const { file: f, s } of read) {
     if (!s) bad.push([f, 'is not a valid snapshot (it needs Source, Fetched, SHA-256, then ---)']);
     else if (!s.intact) bad.push([f, 'no longer matches its SHA-256']);
   }
