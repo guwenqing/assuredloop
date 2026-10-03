@@ -5,25 +5,24 @@
 // requests/archive/. It prints three lines or fewer, plus the frame.
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Fail, git, mainCommit, ownCommits } from './git.js';
+import { Fail, HISTORY, git, mainCommit, ownCommits } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, rootLine, baseline } from './spec.js';
-import { allBlocks, blockFault, stateText, statesOf } from './states.js';
-import { organized, parts, signoffState, signoffStep } from './signoff.js';
+import { CONSOLIDATED, allBlocks, blockFault, stateText, statesOf } from './states.js';
+import { organized, parts, signoffState, signoffStep, statusAt, statusField, tierIs } from './signoff.js';
 import { requestToWrite, decisionList, childrenOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
-import { byId, filesOf, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
-import { prose, sameSection } from './sections.js';
+import { filesOf, idsOn, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
+import { TITLES, headingAt, prose, sameSection, sectionsById } from './sections.js';
 import { adrsOf } from './adrs.js';
 
-const HELD = ['consolidated', 'carried'];
 const NOT_KNOWN = ['whether the code does what the spec says, and whether review agreed (conclude reads only the records)'];
 
 // Each block's fate: held, kept or dropped, or why conclude refuses it.
 function fateOf(e, b, { name, dropped, blocks, signedR, ownerDecisions }) {
   if (b.kept) {
-    if (!HELD.includes(e.state)) return { bad: `${e.block} is Kept but reads ${e.state}; align it before it is kept` };
+    if (!CONSOLIDATED.includes(e.state)) return { bad: `${e.block} is Kept but reads ${e.state}; align it before it is kept` };
     // Its own signed R, or, when successors carry it, any one of theirs (design §5.4).
     const traced = signedR(b) || (e.state === 'carried' && e.carriers.some((k) => signedR(blocks.get(k)))) || ownerDecisions.has(b.kept[1]);
     return traced ? { fate: 'kept' } : { bad: `${e.block} is Kept, but traces to no signed requirement and no owner decision ([STA-6])` };
@@ -32,7 +31,7 @@ function fateOf(e, b, { name, dropped, blocks, signedR, ownerDecisions }) {
     return e.retainsNothing ? { fate: 'dropped' }
       : { bad: `${e.block} is dropped but possibly retained (${e.state}): al consolidate ${name} --revert ${e.id}, or keep it` };
   }
-  return HELD.includes(e.state) ? { fate: 'held' }
+  return CONSOLIDATED.includes(e.state) ? { fate: 'held' }
     : { bad: `${e.block} ${stateText(e)}` };
 }
 
@@ -70,7 +69,11 @@ export function outcomeFacts(org, fates) {
 // The IDs an `Amends:` names: the bracketed ones after it, on its line, out
 // of fenced code.
 export const amends = (text) => [...prose(text).matchAll(/\bAmends:([^\n]*)/g)]
-  .flatMap((m) => [...m[1].matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g)].map((x) => `[${x[1]}]`));
+  .flatMap((m) => idsOn(m[1]).map((id) => `[${id}]`));
+
+// A tier-1 record: request folder `dir` in `tree` has no change.md, so its
+// sections come from the baseline itself ([REC-9]).
+export const noChangeMd = (tree, dir) => tree.read(`${dir}/change.md`) === null;
 
 // A request with no change.md ([REC-9]): the sections its branch added,
 // modified and removed, from `was` (the baseline at its fork) to `now`, both
@@ -93,7 +96,7 @@ export function baselineLists(was, now, org, own) {
 // given `edited()`, the baseline IDs its own work changed. Notes only:
 // conclude still concludes.
 export function spikeNotes(tree, name, dir, md, edited) {
-  if (!/\bTier:\s*S\b/.test(md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '')) return [];
+  if (!tierIs(statusField(md, 'Tier'), 'S')) return [];
   const findings = tree.read(`${dir}/findings.md`)?.toString('utf8');
   const first = findings?.split('\n').find((l) => l.trim()) ?? '';
   const out = [];
@@ -125,7 +128,7 @@ export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
 }
 
 // The baseline's sections by ID in `tree`, under `root`.
-const sectionsOf = (tree, root) => new Map(baseline(tree, root).flatMap((f) => [...byId(f.text)]));
+const sectionsOf = (tree, root) => sectionsById(baseline(tree, root));
 
 // baselineLists for request `name`'s own work in `tree` (at commit `at`, or the
 // working tree, its uncommitted changes included), from `fork`.
@@ -154,7 +157,7 @@ function outcome(md, org, fates, droppedBy, live, adrs, lists) {
   // request, else only under the markers of its Dropped sections.
   const droppedIds = [...kinds].filter(([, k]) => k === 'Dropped').map(([id]) => id);
   const code = droppedBy || droppedIds.length ? live(droppedBy ? null : droppedIds) : [];
-  if (code === null) lines.push('- Code still live for dropped work: history unavailable (shallow clone)');
+  if (code === null) lines.push(`- Code still live for dropped work: ${HISTORY}`);
   else if (code.length) lines.push(`- Code still live for dropped work: ${code.join(', ')}`);
   return lines;
 }
@@ -162,20 +165,22 @@ function outcome(md, org, fates, droppedBy, live, adrs, lists) {
 // request.md with the Outcome (re)generated at its place, or appended; the
 // text from its `Notes:` line on is kept.
 function withOutcome(md, generated) {
-  const block = `## Outcome\n\n${generated.join('\n')}\n\n`;
-  const m = md.match(/^## Outcome[ \t]*$/m);
-  if (!m) return `${md.replace(/\s+$/, '')}\n\n${block}Notes:\n`;
-  const after = m.index + m[0].length;
+  const block = `## ${TITLES.outcome}\n\n${generated.join('\n')}\n\n`;
+  const lines = md.split('\n');
+  const at = headingAt(lines, TITLES.outcome);
+  if (at < 0) return `${md.replace(/\s+$/, '')}\n\n${block}Notes:\n`;
+  const start = lines.slice(0, at).reduce((n, l) => n + l.length + 1, 0);
+  const after = start + lines[at].length;
   const next = md.slice(after).search(/^#{1,2}\s/m);
   const end = next < 0 ? md.length : after + next;
-  const notes = md.slice(m.index, end).search(/^Notes:/m);
-  return md.slice(0, m.index) + block + (notes < 0 ? 'Notes:\n' : md.slice(m.index + notes, end)) + md.slice(end);
+  const notes = md.slice(start, end).search(/^Notes:/m);
+  return md.slice(0, start) + block + (notes < 0 ? 'Notes:\n' : md.slice(start + notes, end)) + md.slice(end);
 }
 
 // The value of `Status:` on the request's status line set to `status`.
 function withStatus(md, status) {
   const lines = md.split('\n');
-  const i = lines.findIndex((l) => /\bStatus:/.test(l));
+  const i = statusAt(lines);
   if (i >= 0) lines[i] = lines[i].replace(/(\bStatus:\s*)[^·]*?(\s*(?:·|$))/, `$1${status}$2`);
   else lines.splice(lines.findIndex((l) => l.startsWith('# ')) + 1, 0, `Status: ${status}`);
   return lines.join('\n');
@@ -190,7 +195,7 @@ export function conclude({ top, args, opts }) {
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const dropped = opts.dropped !== undefined;
   if (dropped && !decisions(md).names.includes(opts.dropped)) {
-    throw new Fail(`--dropped ${opts.dropped}: name an entry of ## Decisions in ${dir}/request.md (the decision to drop it, with its source)`,
+    throw new Fail(`--dropped ${opts.dropped}: name an entry of ## ${TITLES.decisions} in ${dir}/request.md (the decision to drop it, with its source)`,
       `write the decision, then al conclude ${name} --dropped Dn`);
   }
   if (!noSymlinkOn(top, `${dir}/request.md`) || !noSymlinkOn(top, target)) {
@@ -217,7 +222,7 @@ export function conclude({ top, args, opts }) {
   const live = (ids) => liveCode(top, name, root, ids);
   const adrs = adrsOf(top, tree, undefined, name, requestsIn(tree));
   const own = () => ownLists(top, tree, undefined, fork, name, org);
-  const lists = tree.read(`${dir}/change.md`) !== null ? null : own();
+  const lists = noChangeMd(tree, dir) ? own() : null;
   const generated = outcome(md, org, fates, opts.dropped, live, adrs, lists);
   const text = withOutcome(withStatus(md, status), generated);
   const children = childrenOf(md).filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
@@ -266,7 +271,7 @@ export function judge(top, tree, name, dir, dropped, at, fork) {
     .map((e) => ({ e, b: blocks.get(e.block), ...fateOf(e, blocks.get(e.block), facts) }));
   // [STA-3]: with no change.md, a dropped request retains its own baseline
   // changes; it has no block to revert or keep them by.
-  const lists = dropped && tree.read(`${dir}/change.md`) === null && ownLists(top, tree, at, fork, name, org);
+  const lists = dropped && noChangeMd(tree, dir) && ownLists(top, tree, at, fork, name, org);
   const retained = lists ? [...lists.Added, ...lists.Modified, ...lists.Removed] : [];
   // [REC-6]: blocked, only a drop where every section retains nothing goes ahead.
   const refusals = [];

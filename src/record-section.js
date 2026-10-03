@@ -4,12 +4,13 @@
 // text underneath. Shows what it would write, and writes on --yes.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Fail, historyGap, now, stamp } from './git.js';
+import { Fail, day, historyGap, now } from './git.js';
 import { openTree, noSymlinkOn, findRequest, isName } from './tree.js';
 import { rootOf, baseline, idsUsed, nextId } from './spec.js';
 import { blockFault, parseChange, takeText, withRepeats } from './states.js';
 import { BAD_NAME, decisionList, requestToWrite } from './commands.js';
 import { headingFault } from './consolidate.js';
+import { TITLES, headingAt } from './sections.js';
 
 const indent = (text) => text.replace(/\n+$/, '').split('\n').map((l) => (l ? `    ${l}` : '')).join('\n') + '\n';
 const render = (head, was, now) => `### ${head}\n` + (was != null ? `Was:\n\n${indent(was)}\n` : '') + (now != null ? `Now:\n\n${indent(now)}\n` : '');
@@ -29,7 +30,7 @@ function range(lines, id, n) {
 // level-1/2 heading), and where the next entry goes.
 export function decisions(md) {
   const lines = md.split('\n');
-  const at = lines.findIndex((l) => /^##\s+Decisions\s*$/.test(l));
+  const at = headingAt(lines, TITLES.decisions);
   let end = lines.length;
   if (at >= 0) for (let i = at + 1; i < lines.length; i++) if (/^#{1,2}\s/.test(lines[i])) { end = i; break; }
   const names = decisionList(md).map((d) => d.id);
@@ -55,7 +56,7 @@ export function recordSection({ top, args, opts }) {
   const latest = mine.reduce((m, b) => (!m || b.n > m.n ? b : m), null);
   const section = baseline(tree, rootOf(top, tree)).flatMap((f) => f.sections).find((s) => s.id === id);
   const underneath = section ? section.text.replace(/\n+$/, '\n') : null;
-  const date = stamp(now()).slice(0, 10);
+  const date = day(now());
   const notKnown = ['whether the new text is right (review judges that)'];
   let newChange;
   let newRequest = md;
@@ -69,14 +70,14 @@ export function recordSection({ top, args, opts }) {
     newChange = [...lines.slice(0, start), render(head, latest.was, underneath).replace(/\n$/, ''), ...lines.slice(end)].join('\n');
     const { at, ids, insertAt, lines: mdLines } = decisions(md);
     const d = `- D${Math.max(0, ...ids) + 1}, ${date}. Source: the agent. Accepted the text underneath [${id}] as the new "now" for ${latest.key}.`;
-    newRequest = at < 0 ? `${md.replace(/\n*$/, '\n')}\n## Decisions\n\n${d}\n`
+    newRequest = at < 0 ? `${md.replace(/\n*$/, '\n')}\n## ${TITLES.decisions}\n\n${d}\n`
       : [...mdLines.slice(0, insertAt), d, ...mdLines.slice(insertAt)].join('\n');
     shown = [`${latest.key}: Now becomes the text underneath:`, ...underneath.replace(/\n$/, '').split('\n'), `and request.md gets: ${d}`];
   } else if (latest) {
     if (opts['builds-on']) throw new Fail(`${name} already holds [${id}] (${latest.key}); a new version builds on it`, `al record ${name} section ${id} --decision Dn`);
     const d = opts.decision;
     if (!decisions(md).names.includes(d)) {
-      throw new Fail(`a revision of ${latest.key} needs --decision Dn naming an entry in ## Decisions: write the decision first (why, and its source), then pass --decision Dn`,
+      throw new Fail(`a revision of ${latest.key} needs --decision Dn naming an entry in ## ${TITLES.decisions}: write the decision first (why, and its source), then pass --decision Dn`,
         `write the decision in ${reqPath}, then al record ${name} section ${id} --decision Dn`);
     }
     const lines = change.split('\n');
@@ -109,8 +110,8 @@ export function recordSection({ top, args, opts }) {
         `edit ${changePath}, then al context ${name}`);
     }
     const block = render(head, text, text);
-    const base = change ?? '## Spec changes\n';
-    const withSpec = /^##\s+Spec changes\s*$/m.test(base) ? base : `${base.replace(/\n*$/, '\n')}\n## Spec changes\n`;
+    const base = change ?? `## ${TITLES.specChanges}\n`;
+    const withSpec = headingAt(base.split('\n'), TITLES.specChanges) >= 0 ? base : `${base.replace(/\n*$/, '\n')}\n## ${TITLES.specChanges}\n`;
     newChange = `${withSpec.replace(/\n*$/, '\n')}\n${block}`;
     shown = block.replace(/\n$/, '').split('\n');
   }

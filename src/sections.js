@@ -3,8 +3,21 @@
 // An ATX heading as in CommonMark: 0-3 spaces, 1-6 `#`, then a space, a tab or
 // the end of the line. Groups: the marks, the gap after them, the heading text.
 const HEADING = /^( {0,3}#{1,6})([ \t]+|$)(.*)$/;
-const ID = /^\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\][ \t]*/;
+// The ID grammar ([SPC-2]): a prefix of capitals and digits, starting with a
+// capital, a hyphen, then numbers joined by dots. Every pattern for an ID is
+// built from these.
+export const PREFIX_TEXT = '[A-Z][A-Z0-9]*';
+export const ID_TEXT = `${PREFIX_TEXT}-\\d+(?:\\.\\d+)*`;
+const ID = new RegExp(`^\\[(${ID_TEXT})\\][ \\t]*`);
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+
+// The titles of the record sections the tool reads and writes: request.md's
+// ([REC-2], [REC-7], [REC-8], [REC-9]) and change.md's ([SPC-5]).
+export const TITLES = { words: "Owner's words and dialog", decisions: 'Decisions', parts: 'Parts', outcome: 'Outcome', specChanges: 'Spec changes' };
+
+// The index among `lines` of the line that heads a record's `## <title>`
+// section, or -1: one form for every reader and writer.
+export const headingAt = (lines, title) => lines.findIndex((l) => new RegExp(`^##\\s+${title}\\s*$`).test(l));
 
 // Whether `line` closes the fence `fence` opened: 0-3 spaces, then the same
 // mark, at least as long, and nothing else.
@@ -59,6 +72,15 @@ export function parseSections(text) {
     }
   });
   return sections;
+}
+
+// The sections of `files` (each with its `sections`) by ID, each as `pick` gives it (its text
+// by default); of a duplicate ID the first copy counts, as in statesOf and
+// consolidate ([SPC-3]).
+export function sectionsById(files, pick = (s) => s.text) {
+  const byId = new Map();
+  for (const f of files) for (const s of f.sections) if (s.id && !byId.has(s.id)) byId.set(s.id, pick(s, f));
+  return byId;
 }
 
 // The text outside every section with an ID, one piece each: before the

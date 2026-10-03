@@ -2,10 +2,11 @@
 // first ([STA-1]), then the content ([STA-2]), and whether a block retains
 // nothing, shown positively ([STA-3]).
 import { openTree, requestDirs } from './tree.js';
-import { closes, parseSections, sameSection } from './sections.js';
+import { ID_TEXT, TITLES, closes, headingAt, parseSections, sameSection } from './sections.js';
 import { rootOf, baseline } from './spec.js';
+import { isDropped } from './signoff.js';
 
-const HEAD = /^### \[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]@(\d+)\s*(.*)$/;
+const HEAD = new RegExp(`^### \\[(${ID_TEXT})\\]@(\\d+)\\s*(.*)$`);
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
 // The Was: or Now: text after a label: a fenced block, or the indented lines
@@ -27,7 +28,7 @@ export function takeText(lines, i) {
 // The blocks of one change.md, each `<request>/<ID>@<n>`.
 export function parseChange(text, request) {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
-  const start = lines.findIndex((l) => /^##\s+Spec changes\s*$/.test(l));
+  const start = headingAt(lines, TITLES.specChanges);
   const blocks = [];
   let b = null;
   for (let i = start + 1; start >= 0 && i < lines.length;) {
@@ -66,6 +67,10 @@ export function parseChange(text, request) {
   return blocks;
 }
 
+// The states in which a block's work is in the baseline: consolidate leaves it
+// alone, and conclude holds it ([STA-2], [STA-7]).
+export const CONSOLIDATED = ['consolidated', 'carried'];
+
 // A state as the views say it: `waiting on <block>`, `carried by <block>`.
 export const stateText = (e, by = e.by) => `${e.state}${by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${by}` : ''}`;
 
@@ -82,7 +87,7 @@ export function allBlocks(tree) {
     const text = tree.read(`${dir}/change.md`)?.toString('utf8');
     if (!text) continue;
     const md = tree.read(`${dir}/request.md`)?.toString('utf8') ?? '';
-    const dropped = /\bStatus:\s*dropped\b/.test(md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '');
+    const dropped = isDropped(md);
     // A repeated request/ID@n is a fault (blockFault); the first is kept, and says so.
     for (const b of withRepeats(parseChange(text, name))) blocks.set(b.key, { ...b, open, requestDropped: dropped });
   }

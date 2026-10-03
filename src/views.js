@@ -1,26 +1,23 @@
 // al context <ID> ([VW-3]), al context --diff <range> [--for review] ([VW-4]),
 // an archived request's sections ([VW-6]), and the code still live for
 // dropped work ([REC-9]), all from the rough links ([LNK-1], [LNK-2]).
-import { Fail, git, historyGap, isShallow, mainCommit, ownCommits, resolveCommit } from './git.js';
+import { Fail, HISTORY, day, gapFail, git, historyGap, isShallow, mainCommit, ownCommits, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, rootLine, baseline, configured } from './spec.js';
 import { allBlocks, changeStates, stateText, statesOf } from './states.js';
-import { sameSection } from './sections.js';
-import { organized, parts, samePart, signoffState } from './signoff.js';
+import { TITLES, headingAt, sameSection, sectionsById } from './sections.js';
+import { follows, isDropped, organized, parts, samePart, signoffState } from './signoff.js';
 import { line, lines, grouped, decisionList, entriesOf, concluding } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
-import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, movesOf, ownFiles, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
+import { WIDE, blame, changedWith, cites, describe, filesOf, idNear, idsOn, movesOf, ownFiles, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
 import { headNote, resultLines, testLines, testMatcher } from './tests.js';
 import { adrFolders, governing } from './adrs.js';
-import { amends, outcomeFacts, ownIds } from './conclude.js';
+import { amends, noChangeMd, outcomeFacts, ownIds } from './conclude.js';
 
-const HISTORY = 'history unavailable (shallow clone)';
 const isCode = (root) => (p) => !p.startsWith('requests/') && !p.startsWith(`${root}/`);
 const stateOf = (e) => `${e.block} ${stateText(e)}`;
-const day = (d) => d.toISOString().slice(0, 10);
 const lineCount = (text) => text.replace(/\n+$/, '').split('\n').length;
 const skippedLine = (n) => line('Skipped', `${n} commit${n === 1 ? '' : 's'} over ${WIDE} files, not read for co-change`);
-const labelled = (label, items) => items.map((t, i) => line(i ? '' : label, t));
 const titles = (files) => new Map(files.flatMap((f) => f.sections).filter((s) => s.id).map((s) => [s.id, s.title]));
 
 // al context <ID>: the section, who holds it, who shaped it, the decisions
@@ -63,7 +60,7 @@ export function sectionView(top, id, at) {
     const w = [...wordsOf(p)].find((x) => heading.has(x));
     return w ? [[p, `${p}  shares the word "${w}"`]] : [];
   });
-  const decided = requests.flatMap((r) => entriesOf(r.md, 'Decisions').filter((e) => /^- D\d+/.test(e) && cites(e, id))
+  const decided = requests.flatMap((r) => entriesOf(r.md, TITLES.decisions).filter((e) => /^- D\d+/.test(e) && cites(e, id))
     .map((e) => `${r.name} ${e.match(/^- (D\d+)/)[1]}`));
   body.push(line('Decisions', decided.length ? decided.join(' · ') : 'none cite it'));
   const adrs = governing(top, tree, id, at);
@@ -73,8 +70,8 @@ export function sectionView(top, id, at) {
   const adr = adrFolders(top, tree, at);
   const all = [...byName, ...links, ...byWord].filter(([p]) => !adr.some((d) => p.startsWith(`${d}/`)));
   const tests = all.filter(([p]) => isTest(p)).map(([, t]) => t);
-  body.push(...labelled('Links', all.filter(([p]) => !isTest(p)).map(([, t]) => t)));
-  body.push(...labelled('Tests', tests.length ? tests : ['none linked']));
+  body.push(...lines('Links', all.filter(([p]) => !isTest(p)).map(([, t]) => t)));
+  body.push(...lines('Tests', tests.length ? tests : ['none linked']));
   if (skipped) body.push(skippedLine(skipped));
   return {
     body,
@@ -151,7 +148,7 @@ export function diffView(top, range, forReview, all, at) {
   const from = resolveCommit(top, a);
   const base = dots === '...' ? git(top, ['merge-base', from, head], { allowFail: true }) : from;
   const gap = historyGap(top);
-  if (!base && gap) throw new Fail(`history unavailable: this clone is ${gap.kind}, and the merge-base of ${a} and ${b} is not in it`, gap.next);
+  if (!base && gap) throw gapFail(gap, `, and the merge-base of ${a} and ${b} is not in it`);
   if (!base) throw new Fail(`${range}: ${a} and ${b} share no history`, 'al context --diff main...HEAD');
   const shallow = isShallow(top);
   const tree = openTree(top, head);
@@ -184,9 +181,8 @@ export function diffView(top, range, forReview, all, at) {
   const skipped = code.reduce((n, f) => n + f.skipped, 0);
   const cited = [...new Set([...sectionsChanged(top, base, head, root, changed), ...nearby])];
   const related = requests.filter((r) => !served.has(r.name) && cited.some((id) => cites(r.md, id) || cites(r.change, id))).map((r) => {
-    const status = r.md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '';
-    const rejects = entriesOf(r.md, 'Decisions').find((e) => cited.some((id) => cites(e, id)) && /rejected/i.test(e));
-    const why = /\bStatus:\s*dropped\b/.test(status) ? 'dropped' : rejects ? `rejected: ${rejects.match(/^- (D\d+)/)?.[1] ?? 'a decision'}` : '';
+    const rejects = entriesOf(r.md, TITLES.decisions).find((e) => cited.some((id) => cites(e, id)) && /rejected/i.test(e));
+    const why = isDropped(r.md) ? 'dropped' : rejects ? `rejected: ${rejects.match(/^- (D\d+)/)?.[1] ?? 'a decision'}` : '';
     return { text: `${r.name}${why ? ` (${why})` : ''}`, rejected: Boolean(why) };
   }).sort((x, y) => y.rejected - x.rejected).map((r) => r.text);
 
@@ -197,8 +193,8 @@ export function diffView(top, range, forReview, all, at) {
   const tests = [...testLines(top, branch, true), ...resultLines(top, branch)];
   if (forReview) body.push(...review(top, { tree, files, served, code, commits, moves, branch }), ...tests, ...hints);
   else {
-    body.push(...labelled('Changes', changes.length ? changes : ['no baseline section']));
-    body.push(...labelled('Links', code.flatMap((f) => f.out)));
+    body.push(...lines('Changes', changes.length ? changes : ['no baseline section']));
+    body.push(...lines('Links', code.flatMap((f) => f.out)));
     body.push(line('Nearby', nearby.length ? nearby.map((id) => `[${id}] ${headings.get(id) ?? ''}`.trim()).join(' · ') : 'none'), ...tests);
     body.push(line('Related', related.length ? related.join(' · ') : 'none'), ...hints);
   }
@@ -229,7 +225,7 @@ function review(top, { tree, files, served, code, commits, moves, branch }) {
     return (key) => new Set([...blocks.filter((b) => b.request === r.name && b.forR.includes(key)).map((b) => b.id), ...(named.get(key) ?? [])]);
   };
   const intent = ['Intent', ...(tier ? [line('Tier', tier)] : []),
-    ...labelled('Baseline', moves.map((m) => `[${m.id}] moved ${m.from} → ${m.to}, text unchanged`))];
+    ...lines('Baseline', moves.map((m) => `[${m.id}] moved ${m.from} → ${m.to}, text unchanged`))];
   const evidence = ['Evidence'];
   for (const r of mine) {
     // [REC-5]: signed by its own sign-off, or through its parent's for the parts it copies.
@@ -287,7 +283,7 @@ function review(top, { tree, files, served, code, commits, moves, branch }) {
 // `Notes:` line or the next heading, so nothing people add counts.
 function outcomeLines(md) {
   const lines = md.split('\n');
-  const at = lines.findIndex((l) => /^##\s+Outcome\s*$/.test(l));
+  const at = headingAt(lines, TITLES.outcome);
   if (at < 0) return [];
   const end = lines.findIndex((l, i) => i > at && (/^Notes:/.test(l) || /^#{1,6}\s/.test(l)));
   return lines.slice(at + 1, end < 0 ? lines.length : end);
@@ -303,8 +299,7 @@ export function archivedLines(top, name, at, all) {
   // [VW-6]: grouped by what each says, none left out; one per line with --all.
   const said = ids.map((id) => ({ text: id, state: say(id) }));
   const out = !ids.length ? [] : all ? lines('Sections', said.map((x) => `${x.text} ${x.state}`)) : [grouped('Sections', said)];
-  const followers = requestsIn(tree).filter((r) => (r.md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '').match(/\bFollows:\s*([^·]+)/)?.[1]
-    .split(/[\s,]+/).includes(name)).map((r) => r.name);
+  const followers = requestsIn(tree).filter((r) => follows(r.md).includes(name)).map((r) => r.name);
   if (followers.length) out.push(`Followed by ${followers.join(' · ')}`);
   return out;
 }
@@ -317,14 +312,14 @@ export function sinceConclusion(top, name, at) {
   const dir = `requests/archive/${name}`;
   // A request with no change.md (tier 1): the sections its Outcome lists as
   // added, modified or removed, which conclude derived from its own work ([REC-9]).
-  const ids = tree.read(`${dir}/change.md`) !== null
-    ? [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))]
-    : [...new Set(outcomeLines(tree.read(`${dir}/request.md`)?.toString('utf8') ?? '')
-      .filter((l) => /^- (Added|Modified|Removed):/.test(l)).flatMap((l) => [...l.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])))];
+  const ids = noChangeMd(tree, dir)
+    ? [...new Set(outcomeLines(tree.read(`${dir}/request.md`)?.toString('utf8') ?? '')
+      .filter((l) => /^- (Added|Modified|Removed):/.test(l)).flatMap(idsOn))]
+    : [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))];
   const c = concluding(top, name, at);
   const root = rootOf(top, tree, at);
   const now = baseline(tree, root);
-  const nowById = new Map(now.flatMap((f) => f.sections.filter((s) => s.id).map((s) => [s.id, { ...s, path: f.path }])));
+  const nowById = sectionsById(now, (s, f) => ({ ...s, path: f.path }));
   const then = c.sha ? byIdAt(top, c.sha, root) : null;
   const requests = requestsIn(tree);
   const seen = new Map();
@@ -345,7 +340,7 @@ export function sinceConclusion(top, name, at) {
 // The baseline's sections by ID at a past commit: its root: line alone, or `root` ([VW-8]).
 function byIdAt(top, sha, root) {
   const tree = openTree(top, sha);
-  return new Map(baseline(tree, rootLine(top, tree, sha) ?? root).flatMap((f) => [...byId(f.text)]));
+  return sectionsById(baseline(tree, rootLine(top, tree, sha) ?? root));
 }
 
 // [REC-9]: the code still live from the commits that map to `name` by a
@@ -359,7 +354,7 @@ export function liveCode(top, name, root, onlyIds, at) {
   const requests = requestsIn(tree);
   // Every route [LNK-2] maps by, the issue numbers in its owner's words included.
   const md = requests.find((r) => r.name === name)?.md ?? '';
-  const issues = [...new Set(entriesOf(md, "Owner's words and dialog").join('\n').match(/#\d+/g) ?? [])];
+  const issues = [...new Set(entriesOf(md, TITLES.words).join('\n').match(/#\d+/g) ?? [])];
   const mine = new Set(requestCommits(top, name, issues, at ?? 'HEAD', requests).map((c) => c.sha));
   const found = new Set([...mine].flatMap((sha) => filesOf(top, sha)).filter(isCode(root)));
   // Code moves: a later commit that changed one of these files may have taken
