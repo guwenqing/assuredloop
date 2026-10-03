@@ -47,9 +47,11 @@ function main(argv) {
       throw new Fail(e.message, USAGE);
     }
     // [VW-9]: under --at, every output names the commit, error exits included.
+    // [VW-8]: from here on --at is the commit's full id, however it was spelled.
     if (parsed.values.at !== undefined) {
       read = `--at ${parsed.values.at} (not found)`; // stays if the rev does not resolve
-      read = `commit ${resolveCommit(top, parsed.values.at).slice(0, 7)}`;
+      parsed.values.at = resolveCommit(top, parsed.values.at);
+      read = `commit ${parsed.values.at.slice(0, 7)}`;
     }
     const out = command.run({ top, cwd, args: parsed.positionals, opts: parsed.values });
     if (out.tree) read = out.tree.label;

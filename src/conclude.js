@@ -5,9 +5,9 @@
 // requests/archive/. It prints three lines or fewer, plus the frame.
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Fail, git, mainCommit } from './git.js';
+import { Fail, git, mainCommit, ownCommits } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
-import { rootOf, baseline } from './spec.js';
+import { rootOf, rootLine, baseline } from './spec.js';
 import { allBlocks, blockFault, statesOf } from './states.js';
 import { organized, parts, signoffState } from './signoff.js';
 import { requestToWrite, decisionList, entriesOf } from './commands.js';
@@ -109,7 +109,7 @@ export function spikeNotes(tree, name, dir, md, edited) {
 export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
   const ids = new Set();
   const seen = new Map();
-  for (const sha of fork ? git(top, ['rev-list', '--no-merges', `${fork}..${tip}`]).split('\n').filter(Boolean) : []) {
+  for (const sha of fork ? ownCommits(top, fork, tip) : []) {
     if (requestOf(top, sha, requests, seen).names.includes(name)) sectionsChanged(top, `${sha}^`, sha, root, filesOf(top, sha)).forEach((id) => ids.add(id));
   }
   if (working) {
@@ -119,8 +119,8 @@ export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
   return ids;
 }
 
-// The baseline's sections by ID in `tree`.
-const sectionsOf = (top, tree, at) => new Map(baseline(tree, rootOf(top, tree, at)).flatMap((f) => [...byId(f.text)]));
+// The baseline's sections by ID in `tree`, under `root`.
+const sectionsOf = (tree, root) => new Map(baseline(tree, root).flatMap((f) => [...byId(f.text)]));
 
 // The generated block of the Outcome ([REC-9]): content facts only.
 function outcome(md, org, fates, droppedBy, live, adrs, lists) {
@@ -140,7 +140,8 @@ function outcome(md, org, fates, droppedBy, live, adrs, lists) {
   // request, else only under the markers of its Dropped sections.
   const droppedIds = [...kinds].filter(([, k]) => k === 'Dropped').map(([id]) => id);
   const code = droppedBy || droppedIds.length ? live(droppedBy ? null : droppedIds) : [];
-  if (code.length) lines.push(`- Code still live for dropped work: ${code.join(', ')}`);
+  if (code === null) lines.push('- Code still live for dropped work: history unavailable (shallow clone)');
+  else if (code.length) lines.push(`- Code still live for dropped work: ${code.join(', ')}`);
   return lines;
 }
 
@@ -195,12 +196,14 @@ export function conclude({ top, args, opts }) {
   }
 
   const status = dropped ? 'dropped' : 'concluded';
-  const live = (ids) => liveCode(top, name, rootOf(top, tree), ids);
+  const root = rootOf(top, tree);
+  const live = (ids) => liveCode(top, name, root, ids);
   const adrs = adrsOf(top, tree, undefined, name, requestsIn(tree));
   const main = mainCommit(top);
   const fork = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
-  const own = () => baselineLists(fork ? sectionsOf(top, openTree(top, fork), fork) : sectionsOf(top, tree), sectionsOf(top, tree), org,
-    ownIds(top, name, fork, rootOf(top, tree), requestsIn(tree), true));
+  // The fork's tree is a past tree: its root: line alone, or today's root ([VW-8]).
+  const was = () => (fork ? sectionsOf(openTree(top, fork), rootLine(top, openTree(top, fork), fork) ?? root) : sectionsOf(tree, root));
+  const own = () => baselineLists(was(), sectionsOf(tree, root), org, ownIds(top, name, fork, root, requestsIn(tree), true));
   const lists = tree.read(`${dir}/change.md`) !== null ? null : own();
   const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs, lists));
   const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])

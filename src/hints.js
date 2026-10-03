@@ -5,7 +5,7 @@
 import { posix } from 'node:path';
 import { git } from './git.js';
 import { openTree } from './tree.js';
-import { rootOf, baseline, duplicateIds } from './spec.js';
+import { rootOf, rootLine, baseline, duplicateIds } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { organized, parentOf, parts, samePart, signoffState } from './signoff.js';
@@ -33,7 +33,8 @@ const sections = (files) => new Map(files.flatMap((f) => [...byId(f.text)]));
 export function readBranch(top, { base, commits, tree, at, range }) {
   const root = rootOf(top, tree, at);
   const files = baseline(tree, root);
-  const before = base ? baseline(openTree(top, base), rootOf(top, openTree(top, base), base)) : files;
+  // The fork's tree is a past tree: its root: line alone, or today's root ([VW-8]).
+  const before = base ? baseline(openTree(top, base), rootLine(top, openTree(top, base), base) ?? root) : files;
   const [was, now] = [sections(before), sections(files)];
   const changedIds = [...new Set([...was.keys(), ...now.keys()])].filter((id) => !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
   // The working tree's final state includes its untracked files; a commit's is only its tree.
@@ -177,8 +178,8 @@ export function hintsOf(top, b, { main }) {
     const r = b.requests.find((x) => x.name === name);
     const ids = [...b.blocks.values()].filter((x) => x.request === name && x.dropped && !x.kept).map((x) => x.id);
     if (!r || !(isDropped(r.md) || ids.length)) continue;
-    const live = liveCode(top, name, b.root, isDropped(r.md) ? null : ids, b.at ?? 'HEAD');
-    if (!live.length) continue;
+    const live = liveCode(top, name, b.root, isDropped(r.md) ? null : ids, b.at);
+    if (!live?.length) continue;
     const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => entriesOf(p.md, 'Parts').map((e) => [p.name, e]))
       .find(([, e]) => live.some((l) => e.includes(l.split(':')[0])));
     // Ranked first among the notes: live code for dropped work is a hazard on main.
