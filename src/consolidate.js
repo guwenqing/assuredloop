@@ -214,8 +214,10 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
     if (!where) {
       return refuse([`[${id}] cannot be put back: ${anchor ? `its anchor [${anchor}] is not in the baseline` : 'it is not in the baseline, and no remove records where it stood'}`]);
     }
-    texts.set(where.path, insertAt(where.text, afterSubtree(where.list, where.i), tidy(first.was)));
-    did = `[${id}] back after [${anchor}] in ${where.path}`;
+    // A shallower anchor is the parent: the section goes back first under it.
+    const under = where.section.level < parseSections(first.was)[0].level;
+    texts.set(where.path, insertAt(where.text, under ? where.section.stop : afterSubtree(where.list, where.i), tidy(first.was)));
+    did = `[${id}] back ${under ? 'first under' : 'after'} [${anchor}] in ${where.path}`;
   }
   if (!did) return { body: [`nothing to write: [${id}] already reads the "was" of ${first.key}`], next: `al context ${name}`, notKnown: NOT_KNOWN };
   return write(top, root, original, texts, [`${did}, from ${first.key}`], opts.yes, name);
