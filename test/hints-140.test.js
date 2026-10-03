@@ -149,6 +149,22 @@ test('#140 item 14b [SPC-3] contrast: the same history, a pending add of PAY-4 (
   strict(repo, 0);
 });
 
+// PAY-4 only mentioned in a section's body ("see [PAY-4]"), never a heading:
+// still in the baseline, or there in an earlier commit and edited out since.
+const MENTION = PAY(2, 'Payments rule 2 holds; see [PAY-4].');
+for (const [label, history] of [
+  ['in the baseline now', [{ 'specs/pay.md': file(PAY(1), MENTION) }]],
+  ['in an earlier commit only', [{ 'specs/pay.md': file(PAY(1), MENTION) }, { 'specs/pay.md': file(PAY(1), PAY(2)) }]],
+]) {
+  test(`#140 item 14b [SPC-3] contrast: [PAY-4] only mentioned in a section's body (${label}), never heading a section: a pending add of PAY-4 draws no [SPC-3] reuse not ok, and check --strict exits 0`, (t) => {
+    const repo = reuse(t, history, 4);
+    const out = check(repo, '--all');
+    noHint(out, 'not ok', '[SPC-3]');
+    assert.deepEqual(notOks(out), [], `no not ok:\n${out}`);
+    strict(repo, 0);
+  });
+}
+
 test('#140 item 14b [SPC-3][HNT-3] a pending add of PAY-5, an ID only an archived request\'s change.md used, is not ok citing [SPC-3], naming PAY-6; a pending add of PAY-6 is not', (t) => {
   const build = (n) => {
     const repo = makeRepo(t);
