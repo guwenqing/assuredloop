@@ -16,9 +16,9 @@ export class Fail extends Error {
 let asked = null;
 export const remember = () => { asked = new Map(); };
 
-export function git(cwd, args, { text = true, allowFail = false, worktree = false } = {}) {
-  const key = asked && !worktree ? JSON.stringify([cwd, ...args]) : null;
-  const r = asked?.get(key) ?? spawnSync('git', args, { cwd, maxBuffer: 1 << 30 });
+export function git(cwd, args, { text = true, allowFail = false, worktree = false, env } = {}) {
+  const key = asked && !worktree && !env ? JSON.stringify([cwd, ...args]) : null;
+  const r = asked?.get(key) ?? spawnSync('git', args, { cwd, maxBuffer: 1 << 30, env });
   if (key) asked.set(key, r);
   if (r.error) throw new Fail(`git could not run: ${r.error.message}`, 'install git and try again');
   if (r.status !== 0) {

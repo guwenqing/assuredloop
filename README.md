@@ -22,6 +22,12 @@ tool, which puts `al` on your PATH (nothing is published to a registry):
     git clone https://github.com/guwenqing/assuredloop <dir>
     npm install --global <dir>
 
+The global `al` links to `<dir>`, so it follows whatever `<dir>` checks out.
+To pin a version, check out its SHA in a clone of its own (`git -C <dir>
+checkout <sha>`) and run `node <dir>/bin/al.js` in place of `al`; it needs no
+install, having no dependencies. `al --version` prints the version, and the
+commit and folder it runs from.
+
 Then add one line to the project's AGENTS.md:
 
 ```
