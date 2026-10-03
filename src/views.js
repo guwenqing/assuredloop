@@ -337,7 +337,7 @@ export function liveCode(top, name, root, onlyIds, at) {
     if (files.some((f) => found.has(f))) files.forEach((f) => found.add(f));
   }
   // The working tree's uncommitted changes count as one more such change: a git mv takes the lines to its new path.
-  const working = at ? [] : paths(git(top, ['diff', '--name-only', '-z', '--no-renames', 'HEAD'], { allowFail: true })).filter(isCode(root));
+  const working = at ? [] : paths(git(top, ['diff', '--name-only', '-z', '--no-renames', 'HEAD'], { allowFail: true, worktree: true })).filter(isCode(root));
   if (working.some((f) => found.has(f))) working.forEach((f) => found.add(f));
   const touched = [...found].sort();
   const out = [];
