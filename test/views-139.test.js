@@ -9,12 +9,12 @@
 // request and never re-judges an archived block against today's baseline;
 // (6) [VW-7][REC-5] the audit of an inheriting child shows its sign-off
 // through the parent; (7) [VW-5] a consolidated "remove, was first in
-// <path>" shows under that file in al spec --list; (8) [VW-4][REC-10] a
-// section moved unchanged between files is not shown twice, or as a text
-// change, by context --diff; (9) [HNT-2] an open request's Amends: citing an
-// unknown ID is not ok; (11) [VW-9] context --diff says its results come
-// from the working tree; (12) [VW-3] context <ID> of an uncommitted section
-// says so instead of an empty Shaped by line.
+// <path>" shows under that file in al spec --list; (8) [VW-4][REC-10][REC-11]
+// a section moved unchanged between files is shown once, as a move, by
+// context --diff, its review mode and check's Evidence; (9) [HNT-2] an open
+// request's Amends: citing an unknown ID is not ok; (11) [VW-9] context
+// --diff says its results come from the working tree; (12) [VW-3] context
+// <ID> of an uncommitted section says so instead of an empty Shaped by line.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
@@ -329,7 +329,13 @@ test('#139 (7) [VW-5] al spec --list: a consolidated "remove, was first in specs
 
 // --- (8) a section moved unchanged between files ---
 
-test('#139 (8) [VW-4][REC-10] context --diff: a section moved from specs/a.md to specs/b.md, its text unchanged, is not shown twice or as a text change; if named, once, as a move naming both files', (t) => {
+// The architect's ruling on #139 item 8: a section moved between baseline
+// files with its text unchanged is no text change, but it is shown once, as
+// a move naming the old file and the new, never left out and never listed
+// twice; check's Evidence names the move.
+// Main: specs/a.md holds X-1 and X-2, specs/b.md holds Y-1. The branch moves
+// X-2, its text unchanged, to the end of specs/b.md.
+function moved(t) {
   const X1 = '## [X-1] First\nThe first MUST hold.\n';
   const X2 = '## [X-2] Second\nThe second MUST hold.\n';
   const Y1 = '## [Y-1] Other\nThe other MUST hold.\n';
@@ -340,20 +346,38 @@ test('#139 (8) [VW-4][REC-10] context --diff: a section moved from specs/a.md to
   repo.git(['checkout', '-q', '-b', 'move']);
   repo.write('specs/a.md', X1);
   repo.write('specs/b.md', file(Y1, X2));
-  repo.commit(message('Move X-2', { tier: '0 — moves X-2; no promise changes' }), { date: '2026-09-22T12:00:00Z' });
-  assert.ok(lineWith(check(repo), /^Evidence\b/, 'no baseline section'), 'the fixture: check says the branch edits no baseline section');
+  // The claim does not name X-2, so only the move itself can.
+  repo.commit(message('Move a section', { tier: '0 — moves a section; no promise changes' }), { date: '2026-09-22T12:00:00Z' });
+  return repo;
+}
+// The one line naming X-2 is a move naming both files.
+function assertMove(ls, out) {
+  const named = ls.filter((l) => hasId(l, 'X-2'));
+  assert.equal(named.length, 1, `X-2 is shown once, got ${named.length} lines:\n${out}`);
+  assert.match(named[0], /\bmoved\b/, `X-2 is shown as a move:\n${out}`);
+  assert.ok(named[0].includes('specs/a.md') && named[0].includes('specs/b.md'), `the move names both files:\n${out}`);
+}
 
-  const r = contextDiff(repo, 'main...HEAD');
+test('#139 (8) [VW-4][REC-10] context --diff: X-2, moved from specs/a.md to specs/b.md with its text unchanged, is one Changes entry, a move naming both files, not two', (t) => {
+  const r = contextDiff(moved(t), 'main...HEAD');
   ok(r, 'context --diff main...HEAD');
   assertDiffFrame(r.stdout);
   const changes = labelled(r.stdout, 'Changes');
   assert.ok(changes, `expected a Changes line:\n${r.stdout}`);
-  const named = lines(changes).filter((l) => hasId(l, 'X-2'));
-  assert.ok(named.length <= 1, `X-2 is shown once at most, got ${named.length} lines:\n${r.stdout}`);
-  for (const l of named) {
-    assert.match(l, /\bmoved\b/, `X-2 is shown as a move:\n${r.stdout}`);
-    assert.ok(l.includes('specs/a.md') && l.includes('specs/b.md'), `the move names both files:\n${r.stdout}`);
-  }
+  assertMove(lines(changes), r.stdout);
+});
+
+test('#139 (8) [VW-4][REC-10] context --diff --for review: the moved X-2 is named on one line, as a move naming both files, and on no other line', (t) => {
+  const { out } = review(moved(t));
+  assertMove(lines(out), out);
+});
+
+test('#139 (8) [REC-11][REC-10] check: the Evidence line names the move of X-2, not "edits no baseline section"', (t) => {
+  const out = check(moved(t));
+  const evidence = startingWith(out, 'Evidence');
+  assert.ok(evidence, `expected an Evidence line:\n${out}`);
+  assert.ok(hasId(evidence, 'X-2') && /\bmove[sd]?\b/.test(evidence), `the Evidence line names the move of X-2:\n${out}`);
+  assert.ok(!evidence.includes('edits no baseline section'), `the branch moves X-2; it is not left out:\n${out}`);
 });
 
 // --- (9) Amends: citing an ID that does not exist ---
