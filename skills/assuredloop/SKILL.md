@@ -11,11 +11,12 @@ description: >-
 1. Run `al context`. Read its hints and its Next line; they say what to do.
 2. No promise in the baseline (`specs/`) changes: tier 0. Write no record. The
    PR says `Tier: 0 — <what it restores>; no promise changes`.
-3. A small change to a promise: tier 1. `al new <name> --tier 1 --from -`,
-   with the owner's words on standard input.
-4. In its `request.md`, add `## Organized requirement` with `### R1 <title>`:
-   what is wanted, in MUST/SHOULD/MAY words, and `Amends: [ID]`; then the
-   `Out:` and `Assumed:` lines. Show it to the owner.
+3. A small change to a promise: tier 1, several small ones in one request for
+   one sign-off. `al new <name> --tier 1 --from -`, the owner's words on stdin.
+4. In its `request.md`, add `## Organized requirement` in plain words the owner
+   reads, no jargon: a line each, `R1: <MUST/SHOULD/MAY …>. Amends: [ID]` (or
+   `### R1` sub-sections); `Assumed:` for anything you added, `Out:` if needed.
+   Show it to the owner.
 5. On their OK: `al record <name> signoff --source <where> --words <quote>`.
 6. Edit the baseline section. Then `al conclude <name>`, and the PR says
    `Tier: 1 — <claim>`.
