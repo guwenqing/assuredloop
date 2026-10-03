@@ -22,9 +22,17 @@ function inside(top, tree, at, key, raw) {
   return path;
 }
 
+// `text` without the spaces and tabs at its ends, and nothing else. A loop:
+// a regex that trims a long line's spaces takes quadratic time.
+export function trimBlanks(text) {
+  let [a, b] = [0, text.length];
+  while (a < b && (text[a] === ' ' || text[a] === '\t')) a++;
+  while (b > a && (text[b - 1] === ' ' || text[b - 1] === '\t')) b--;
+  return text.slice(a, b);
+}
+
 // The values of the `<key>: <path>` lines of `.assuredloop`, as written.
-// Captured whole and trimmed in JS: a regex that trims a long line's spaces takes quadratic time.
-const values = (tree, key) => [...(tree.read('.assuredloop')?.toString('utf8') ?? '').matchAll(new RegExp(`^${key}:(.*)$`, 'gm'))].map((m) => m[1].trim()).filter(Boolean);
+const values = (tree, key) => [...(tree.read('.assuredloop')?.toString('utf8') ?? '').matchAll(new RegExp(`^${key}:(.*)$`, 'gm'))].map((m) => trimBlanks(m[1])).filter(Boolean);
 
 // The checked paths of the `tests:`, `results:` or `adrs:` lines ([LNK-3], [LNK-4]).
 export const configured = (top, tree, at, key) => values(tree, key).map((raw) => inside(top, tree, at, key, raw));

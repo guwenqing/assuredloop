@@ -5,7 +5,7 @@
 import { posix } from 'node:path';
 import { git } from './git.js';
 import { folderOf, isName, openTree } from './tree.js';
-import { rootOf, rootLine, baseline, duplicateIds } from './spec.js';
+import { rootOf, rootLine, baseline, duplicateIds, trimBlanks } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
 import { sameSection, unheld } from './sections.js';
 import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled } from './signoff.js';
@@ -49,7 +49,7 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   const delivered = new Set(mapped.flatMap((c) => c.names.filter((n) => work(n, c.sha))));
   for (const p of changed) if (/^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(p) && folderOf(p)) delivered.add(folderOf(p));
   // Captured whole and trimmed in JS: a regex that trims a long line's spaces takes quadratic time.
-  const tiers = commits.map((sha) => [...git(top, ['show', '-s', '--format=%B', sha]).matchAll(/^[ \t]*Tier:(.*)$/gm)].map((m) => m[1].trim()).filter(Boolean).at(-1));
+  const tiers = commits.map((sha) => [...git(top, ['show', '-s', '--format=%B', sha]).matchAll(/^[ \t]*Tier:(.*)$/gm)].map((m) => trimBlanks(m[1])).filter(Boolean).at(-1));
   const tier = tiers.filter(Boolean).at(-1) ?? null;
   return { root, files, before, was, now, changedIds, changed, requests, blocks: allBlocks(tree), seen, mapped, served, archived, delivered, work, tier, base, commits, tree, at, range };
 }

@@ -8,17 +8,21 @@ export function openTree(top, at) {
   if (!at) {
     return {
       label: 'working tree',
+      // No read goes through a symlink anywhere on its path, and a symlink is
+      // never listed, so no read leaves the repo through one ([SPC-1]).
       read(path) {
+        if (!noSymlinkOn(top, path)) return null;
         try { return readFileSync(join(top, path)); } catch { return null; }
       },
-      // A symlink is never listed: no read leaves the repo through one ([SPC-1]).
       list(dir) {
+        if (!noSymlinkOn(top, dir)) return null;
         try { return readdirSync(join(top, dir), { withFileTypes: true }).filter((d) => !d.isSymbolicLink()).map((d) => d.name).sort(); } catch { return null; }
       },
       // Every file under `dir`, as repo-relative paths in path order, going
-      // down real folders only, never through a symlink ([SPC-1]).
+      // down real folders only.
       walk(dir) {
         const out = [];
+        if (!noSymlinkOn(top, dir)) return out;
         const down = (d) => {
           let entries;
           try { entries = readdirSync(join(top, d), { withFileTypes: true }); } catch { return; }
