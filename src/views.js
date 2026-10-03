@@ -258,10 +258,6 @@ function review(tree, files, served, code, tier, changedIds) {
   return [...intent, ...evidence];
 }
 
-// [VW-6]: each section an archived request held, "as at conclusion" or what
-// changed it since, and the requests that follow it.
-// Under --at, everything is read at that commit, and the conclusion counts
-// only when that commit's history holds it.
 // The generated lines of request.md's `## Outcome` ([REC-9]): up to its
 // `Notes:` line or the next heading, so nothing people add counts.
 function outcomeLines(md) {
@@ -272,6 +268,10 @@ function outcomeLines(md) {
   return lines.slice(at + 1, end < 0 ? lines.length : end);
 }
 
+// [VW-6]: each section an archived request held, "as at conclusion" or what
+// changed it since, and the requests that follow it.
+// Under --at, everything is read at that commit, and the conclusion counts
+// only when that commit's history holds it.
 export function archivedLines(top, name, at, all) {
   const tree = openTree(top, at);
   const rev = at ? resolveCommit(top, at) : null;

@@ -11,6 +11,9 @@ const SIGNED_OFF = /^Signed off:/;
 
 // [REC-4]: only a tier-1 request (`Tier: 1` on its status line) MAY write a
 // requirement as one line, `R1: …`.
+// Whether a tier claim, such as `0 — a fix`, is tier `t`.
+export const tierIs = (claim, t) => new RegExp(`^${t}\\b`).test(claim ?? '');
+
 export const tierOne = (md) => /\bTier:\s*1\b/.test(md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '');
 
 // The organized section of request.md: from its heading to the next heading of
@@ -104,11 +107,11 @@ export function parentOf(tree, name) {
 }
 
 // Whether a request is blocked, and why ([REC-6]). One function for every
-// command that must know: context now; consolidate, conclude and check later.
+// command that must know.
 export function signoffState(tree, dir, name) {
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const org = organized(md);
-  if (!org) return { blocked: true, reason: 'no organized requirement in request.md' };
+  if (!org) return { blocked: true, unwritten: true, reason: 'no organized requirement in request.md' };
   const { signoff: own, tie } = latestSignoff(tree, dir, md);
   const parent = parentOf(tree, name);
   const parentSignoff = parent ? latestSignoff(tree, parent.dir, parent.md).signoff : null;
@@ -133,6 +136,11 @@ export function signoffState(tree, dir, name) {
   if (own) return { blocked: true, reason: `changed since ${own.file}`, signoff: own, parent: parent.name, parentSignoff, changed };
   return { blocked: true, reason: `awaiting owner sign-off (not in ${parent.name}'s signed text)`, parent: parent.name, parentSignoff, changed };
 }
+
+// The step that unblocks request `name` at `dir`, given its signoffState:
+// write the organized section, or, on the owner's OK only, record the sign-off.
+export const signoffStep = (name, dir, state) => (state.unwritten ? `write the organized requirement in ${dir}/request.md, then al context ${name}`
+  : `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`);
 
 // The parts added, changed or removed between the signed text and now.
 export function changedParts(now, signed, oneLine) {

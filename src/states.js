@@ -66,6 +66,9 @@ export function parseChange(text, request) {
   return blocks;
 }
 
+// A state as the views say it: `waiting on <block>`, `carried by <block>`.
+export const stateText = (e, by = e.by) => `${e.state}${by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${by}` : ''}`;
+
 const same = (a, b) => a != null && b != null && sameSection(a, b);
 // A section's body: the lines under its heading, trailing spaces and blank edge lines
 // dropped ([SPC-4]); indentation is kept.

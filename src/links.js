@@ -44,7 +44,6 @@ export function ownFiles(top, sha) {
   return paths(git(top, ['diff-tree', '-r', '-z', '--no-commit-id', '--name-only', '-c', sha]));
 }
 
-// The request a commit maps to ([LNK-2]): { names, how, when }, cached in `seen`.
 // The commits up to `rev` that map to request `name`, by every route [LNK-2]
 // maps by: a Request: line, its folder, an issue number in its owner's words
 // (`issues`, such as ['#123']). Each as requestOf gives it.
@@ -57,6 +56,7 @@ export function requestCommits(top, name, issues, rev, requests, seen = new Map(
   return shas.map((sha) => requestOf(top, sha, requests, seen)).filter((c) => c.names.includes(name));
 }
 
+// The request a commit maps to ([LNK-2]): { names, how, when }, cached in `seen`.
 // `files` gives a commit's files for the folder route (ownFiles for a branch's commits).
 export function requestOf(top, sha, requests, seen = new Map(), files = filesOf) {
   if (seen.has(sha)) return seen.get(sha);

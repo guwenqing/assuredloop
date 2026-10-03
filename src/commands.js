@@ -1,12 +1,12 @@
-// The commands built so far: new, record origin, context.
+// The commands new, record and context, and the readers of request.md they share.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { Fail, git, hasCommits, historyGap, isShallow, mainCommit, mainName, now, ownCommits, resolveCommit, stamp } from './git.js';
 import { openTree, findRequest, isName, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug, snapshots } from './snapshot.js';
 import { prose } from './sections.js';
-import { organized, parts, signoffState } from './signoff.js';
-import { changeStates } from './states.js';
+import { organized, parts, signoffState, signoffStep, tierIs, tierOne } from './signoff.js';
+import { changeStates, stateText } from './states.js';
 import { recordSection } from './record-section.js';
 import { archivedLines, diffView, sectionView } from './views.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
@@ -14,8 +14,6 @@ import { decisions as decisionIds } from './record-section.js';
 import { rootOf, baseline } from './spec.js';
 import { requestsIn } from './links.js';
 import { audit } from './audit.js';
-
-const BAD = ['differs', 'broken link', 'base revised', 'base dropped', 'not found'];
 
 // The entries of a `## <title>` section: its bullet or numbered items, each with its continuation lines.
 export function entriesOf(text, title) {
@@ -41,9 +39,9 @@ export const childrenOf = (md) => partsOf(md).map(childOf).filter(Boolean);
 // The entries of `## Decisions`: each one's ID, date and Source clause (up to
 // its first ". "). A clause that names the agent makes it an agent ruling.
 export function decisionList(md) {
-  return entriesOf(md, 'Decisions').filter((e) => /^- D\d+/.test(e)).map((e) => {
+  return entriesOf(md, 'Decisions').filter((e) => /^- D\d+\b/.test(e)).map((e) => {
     const source = e.match(/Source:\s*([\s\S]*?)(?:\.\s|\.$|$)/)?.[1] ?? '';
-    return { id: e.match(/^- (D\d+)/)[1], date: e.match(/\d{4}-\d\d-\d\d/)?.[0] ?? '', source, agent: /\bagent\b/.test(source) };
+    return { id: e.match(/^- (D\d+)\b/)[1], date: e.match(/\d{4}-\d\d-\d\d/)?.[0] ?? '', source, agent: /\bagent\b/.test(source) };
   });
 }
 
@@ -321,9 +319,9 @@ function recordEntry({ top, args, opts }, kind) {
   if (end < 0) end = lines.length;
   let last = end;
   while (at >= 0 && last > at + 1 && !lines[last - 1].trim()) last--;
-  const n = kind === 'decision' ? Math.max(0, ...decisionIds(md).ids) + 1
-    : at < 0 ? 1 : Math.max(0, ...lines.slice(at + 1, end).map((l) => Number(l.match(/^(\d+)\.\s/)?.[1] ?? 0))) + 1;
-  const entry = kind === 'decision' ? `- D${n}, ${stamp(now()).slice(0, 10)}. Source: ${opts.source}. ${opts.text}` : `${n}. ${opts.text}`;
+  const n = kind === 'decision' ? Math.max(0, ...decisionIds(md).ids) + 1 : partsOf(md).length + 1;
+  const bullets = partsOf(md).at(-1)?.startsWith('-');
+  const entry = kind === 'decision' ? `- D${n}, ${stamp(now()).slice(0, 10)}. Source: ${opts.source}. ${opts.text}` : bullets ? `- ${opts.text}` : `${n}. ${opts.text}`;
   const next = at < 0 ? `${md.replace(/\n*$/, '\n')}\n## ${title}\n\n${entry}\n` : [...lines.slice(0, last), entry, ...lines.slice(last)].join('\n');
   if (!opts.yes) return { body: [`Would add to ${dir}/request.md, ## ${title}:`, entry], next: 'run the same command with --yes to write it', notKnown: [] };
   writeFileSync(join(top, dir, 'request.md'), next);
@@ -389,7 +387,7 @@ export function context({ top, args, opts }) {
   // [VW-2]: a block marked Dropped or Kept shows by its marker, not its content state.
   const shown = held.map((e) => (e.mark ? { ...e, state: e.mark, by: null } : e));
   const own = (key) => (key.startsWith(`${name}/`) ? key.slice(name.length + 1) : key);
-  const full = (e) => `${label(e)} ${e.state}${e.by ? ` ${e.state === 'waiting' ? 'on' : 'by'} ${own(e.by)}` : ''}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`;
+  const full = (e) => `${label(e)} ${stateText(e, e.by && own(e.by))}${e.forR.length ? ` (${e.forR.join(', ')})` : ''}`;
   // [VW-2]: one section per line with --all; else the list while it fits in
   // 100 characters; else every section grouped by state, none left out.
   const list = line('Spec', shown.map(full).join(' · '));
@@ -412,7 +410,7 @@ export function context({ top, args, opts }) {
   const b = readBranch(top, { base, commits, tree, at: opts.at, range: `${mainName(top)}..HEAD` });
   // conclude's rules re-run on an archived request are check's ([STA-8]); a view never re-checks one.
   const hints = ranked(hintsOf(top, b, { main }), b).filter((h) => h.owners.includes(name) && h.rank !== 7);
-  if (field('Tier') === '0') hints.push({ kind: 'note', text: TIER0, command: `al new ${name} --tier 1 for a change of promise` });
+  if (tierIs(field('Tier'), '0')) hints.push({ kind: 'note', text: TIER0, command: `set the Tier line of ${dir}/request.md to 1 or higher, then al context ${name}; for a fix, drop the record` });
   partsOf(text).forEach((p, k) => {
     const c = childOf(p);
     const d = c && findRequest(tree, c);
@@ -421,19 +419,33 @@ export function context({ top, args, opts }) {
     if (now) hints.push({ kind: 'note', text: `part ${k + 1} names request ${c}: ${now}`, command: `al context ${c}` });
   });
   const cap = opts.all ? hints.length : Math.max(0, Math.min(3, 12 - body.length - 3));
-  body.push(...hintLines(hints, cap));
+  body.push(...hintLines(hints, cap, { self: name }));
   const hidden = cap === 0 && hints.length ? `; hints: ${hints.length} more hidden, --all` : '';
   return {
     tree,
     body,
     // [REC-1]: an archived request is not edited; its Next is a read command.
     next: (dir.startsWith('requests/archive/') ? `al context ${name} --audit for the whole trace`
-      : state.blocked ? `show the owner the organized requirement; on their OK: al record ${name} signoff --source <where> --words <quote> --yes`
+      : state.blocked ? signoffStep(name, dir, state)
       : bad.length
       ? `re-fetch the source of origin/${bad[0][0]}, then al record ${name} origin ${bad[0][1].startsWith('no longer') ? `--verify ${bad[0][0]}` : '--url <source>'} --from -`
-      : `al record ${name} origin --url <source> --from - to snapshot a new original`) + hidden,
+      : nextStep(name, dir, text, held, tree)) + hidden,
     notKnown: [historyNote(top), 'whether the sources changed since they were fetched', opts.at && 'the hints that compare with main (not read under --at)'].filter(Boolean),
   };
+}
+
+// [VW-2]: the step a signed request is at, from its held sections: align what
+// needs it, consolidate what is pending, write a Now still unchanged, else
+// conclude. The first that holds wins.
+const ALIGN = ['differs', 'broken link', 'base revised', 'base dropped', 'not found', 'waiting'];
+function nextStep(name, dir, md, held, tree) {
+  const live = held.filter((e) => e.mark !== 'dropped');
+  if (held.some((e) => ALIGN.includes(e.state) && !(e.mark === 'dropped' && e.retainsNothing))) return `al context ${name} --all`;
+  if (live.some((e) => e.state === 'pending')) return `al consolidate ${name}`;
+  const unchanged = live.find((e) => e.state === 'no change yet');
+  if (unchanged) return `edit the Now of ${unchanged.block} in ${dir}/change.md, then al context ${name}`;
+  if (tree.read(`${dir}/change.md`) === null && tierOne(md)) return `edit the sections it amends in the baseline, then al conclude ${name}`;
+  return `al conclude ${name}`;
 }
 
 // al context: the open requests, one line each, the blocked ones first ([VW-1]).
