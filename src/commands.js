@@ -1,11 +1,11 @@
 // The commands new, record and context, and the readers of request.md they share.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
-import { Fail, git, hasCommits, historyGap, isShallow, mainCommit, mainName, now, ownCommits, resolveCommit, stamp } from './git.js';
+import { Fail, HISTORY, gapFail, git, hasCommits, historyGap, isShallow, mainCommit, mainName, now, ownCommits, resolveCommit, STAMP, stamp, day, unavailable } from './git.js';
 import { openTree, findRequest, isName, noSymlinkOn } from './tree.js';
-import { formatSnapshot, parseSnapshot, sha256, slug, snapshots } from './snapshot.js';
-import { prose } from './sections.js';
-import { organized, parts, signoffState, signoffStep, tierIs, tierOne } from './signoff.js';
+import { formatSnapshot, notSnapshot, parseSnapshot, sha256, slug, snapshots } from './snapshot.js';
+import { ID_TEXT, PREFIX_TEXT, TITLES, headingAt, prose } from './sections.js';
+import { SIGNED_OFF, organized, parts, signoffState, signoffStep, statusField, tierIs, tierOne } from './signoff.js';
 import { changeStates, stateText } from './states.js';
 import { recordSection } from './record-section.js';
 import { archivedLines, diffView, sectionView } from './views.js';
@@ -14,11 +14,12 @@ import { decisions as decisionIds } from './record-section.js';
 import { rootOf, baseline } from './spec.js';
 import { requestsIn } from './links.js';
 import { audit } from './audit.js';
+import { noChangeMd } from './conclude.js';
 
 // The entries of a `## <title>` section: its bullet or numbered items, each with its continuation lines.
 export function entriesOf(text, title) {
   const lines = text.split('\n');
-  const at = lines.findIndex((l) => new RegExp(`^##\\s+${title}\\s*$`).test(l));
+  const at = headingAt(lines, title);
   if (at < 0) return [];
   const out = [];
   for (const l of lines.slice(at + 1)) {
@@ -33,13 +34,13 @@ export function entriesOf(text, title) {
 // `request <name>`, or ends with `: request <name>`. Null for any other part.
 // Parts are read out of fenced code.
 export const childOf = (entry) => entry.match(/^(?:-|\d+\.)\s+(?:.*:\s+)?request ([a-z0-9][a-z0-9-]*)$/)?.[1] ?? null;
-export const partsOf = (md) => entriesOf(prose(md), 'Parts');
+export const partsOf = (md) => entriesOf(prose(md), TITLES.parts);
 export const childrenOf = (md) => partsOf(md).map(childOf).filter(Boolean);
 
 // The entries of `## Decisions`: each one's ID, date and Source clause (up to
 // its first ". "). A clause that names the agent makes it an agent ruling.
 export function decisionList(md) {
-  return entriesOf(md, 'Decisions').filter((e) => /^- D\d+\b/.test(e)).map((e) => {
+  return entriesOf(md, TITLES.decisions).filter((e) => /^- D\d+\b/.test(e)).map((e) => {
     const source = e.match(/Source:\s*([\s\S]*?)(?:\.\s|\.$|$)/)?.[1] ?? '';
     return { id: e.match(/^- (D\d+)\b/)[1], date: e.match(/\d{4}-\d\d-\d\d/)?.[0] ?? '', source, agent: /\bagent\b/.test(source) };
   });
@@ -54,10 +55,10 @@ export function concluding(top, name, at) {
   const main = at ? resolveCommit(top, at) : mainCommit(top);
   // With no main, a clone that lacks history cannot tell whether main concluded it ([VW-9]).
   const gap = !main && historyGap(top);
-  if (gap) return { none: `history unavailable (${gap.kind} clone without main)`, gap: `history unavailable (${gap.kind} clone)` };
+  if (gap) return { none: unavailable(gap.kind, ' without main'), gap: unavailable(gap.kind) };
   if (!main || git(top, ['cat-file', '-e', `${main}:${path}`], { allowFail: true }) === null) return { none: 'not on main yet' };
   const unknown = `on main; which commit added ${path} is not known`;
-  if (isShallow(top)) return { none: `${unknown}: history unavailable (shallow clone)`, gap: 'history unavailable (shallow clone)' };
+  if (isShallow(top)) return { none: `${unknown}: ${HISTORY}`, gap: HISTORY };
   const found = git(top, ['log', '--first-parent', '--no-renames', '--diff-filter=A', '--format=%H %ct', main, '--', path]);
   if (!found) return { none: unknown };
   const [sha, when] = found.split('\n')[0].split(' ');
@@ -69,12 +70,11 @@ export function concludedOnMain(top, name, at) {
   return c.sha ? `${at ? `in the history of ${at.slice(0, 7)}` : 'on main'} at ${c.sha.slice(0, 7)} (${stamp(c.when)}), where requests/archive/${name}/request.md arrived` : c.none;
 }
 
-const ID_ARG = /^\[?([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]?$/;
+const ID_ARG = new RegExp(`^\\[?(${ID_TEXT})\\]?$`);
 
 export const BAD_NAME = (name) => `${JSON.stringify(name ?? '')} is not a request name: a name is lowercase letters, digits and hyphens, never a path ([REC-1])`;
 const TIERS = ['0', '1', '2', '3', 'S'];
 const TIER0 = 'tier 0 has no record ([REC-10]): if this is a fix, say why in the commit and drop the record; otherwise its tier is 1 or higher';
-const FETCHED = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
 
 // A labelled line, as in `Next      al context x`.
 export const line = (label, text) => `${label.padEnd(10)}${text}`;
@@ -83,7 +83,7 @@ export const line = (label, text) => `${label.padEnd(10)}${text}`;
 // out. IDs the same up to a last number that runs on read as a range, REC-1–3,
 // so it expands back to the exact IDs: the text before it the same, and no
 // leading zero. An item marked `alone` (an ID@n, a waiting block) never is.
-const ID_RUN = /^([A-Z][A-Z0-9]*-(?:\d+\.)*)(0|[1-9]\d*)$/;
+const ID_RUN = new RegExp(`^(${PREFIX_TEXT}-(?:\\d+\\.)*)(0|[1-9]\\d*)$`);
 export function grouped(label, items) {
   const groups = [...new Set(items.map((x) => x.state))].map((s) => {
     const xs = items.filter((x) => x.state === s);
@@ -116,7 +116,7 @@ function readInput(from, cwd) {
 }
 
 function historyNote(top) {
-  return !hasCommits(top) ? 'no commits yet, so no history' : isShallow(top) ? 'history unavailable (shallow clone)' : null;
+  return !hasCommits(top) ? 'no commits yet, so no history' : isShallow(top) ? HISTORY : null;
 }
 
 // al new <name> --from <file|-> [--title <t>] [--tier <t>]
@@ -141,8 +141,9 @@ export function newRequest({ top, cwd, args, opts }) {
     throw new Fail('requests/ is a symlink; records are written only through real folders, and nothing was written', 'make requests/ a real folder in this repo');
   }
 
-  const date = stamp(now());
-  const snapName = `${date.slice(0, 10)}-owner-words.md`;
+  const when = now();
+  const date = stamp(when);
+  const snapName = `${day(when)}-owner-words.md`;
   const dir = join(top, 'requests', name);
   mkdirSync(join(dir, 'origin'), { recursive: true });
   writeFileSync(join(dir, 'origin', snapName), formatSnapshot({
@@ -152,9 +153,9 @@ export function newRequest({ top, cwd, args, opts }) {
     `# ${opts.title ?? name}`,
     opts.tier === undefined ? 'Status: open' : `Tier: ${opts.tier} · Status: open`,
     '',
-    "## Owner's words and dialog",
+    `## ${TITLES.words}`,
     '',
-    `- ${date.slice(0, 10)} the owner's words, snapshot origin/${snapName}`,
+    `- ${day(when)} the owner's words, snapshot origin/${snapName}`,
     '',
   ].join('\n'));
   return {
@@ -179,7 +180,7 @@ export function recordOrigin(ctx) {
     throw new Fail(`${origin} is reached through a symlink; records are written only through real folders, and nothing was written`, `make ${origin} a real folder in this repo`);
   }
   if ((opts.url === undefined) === (opts.verify === undefined)) throw new Fail('give one of --url <source> or --verify <snapshot>');
-  if (opts.fetched !== undefined && !FETCHED.test(opts.fetched)) throw new Fail(`--fetched ${opts.fetched}: write it as YYYY-MM-DDTHH:MMZ`);
+  if (opts.fetched !== undefined && !STAMP.test(opts.fetched)) throw new Fail(`--fetched ${opts.fetched}: write it as YYYY-MM-DDTHH:MMZ`);
   const text = readInput(opts.from, cwd);
   if (text.length === 0) throw new Fail('the text is empty', 'pass the fetched text with --from <file> or on standard input');
   const fetched = opts.fetched ?? stamp(now());
@@ -193,7 +194,7 @@ export function recordOrigin(ctx) {
     const bytes = (isAbsolute(path) ? null : tree.read(path)) ?? (existsSync(resolve(cwd, path)) ? readFileSync(resolve(cwd, path)) : null);
     if (bytes === null) throw new Fail(`no snapshot ${opts.verify}`, `ls ${dir}/origin`);
     const old = parseSnapshot(bytes);
-    if (!old) throw new Fail(`${opts.verify} is not a valid snapshot: it needs Source, Fetched and SHA-256, then a --- line`);
+    if (!old) throw new Fail(notSnapshot(opts.verify));
     if (!old.intact) body.push(`not ok: ${opts.verify} text no longer matches its SHA-256`);
     if (sha256(text) === old.recorded) {
       body.push(`unchanged since ${old.fields.Fetched}`);
@@ -228,7 +229,7 @@ export function requestToWrite(top, tree, name) {
   if (!dir) throw new Fail(`no request named ${name ?? ''}`, 'al new <name> --from <file|->');
   const main = mainCommit(top);
   const gap = dir.startsWith('requests/archive/') && !main && historyGap(top);
-  if (gap) throw new Fail(`history unavailable: this clone is ${gap.kind} with no main, so whether ${name} is archived on main is not known; nothing was written`, gap.next);
+  if (gap) throw gapFail(gap, ` with no main, so whether ${name} is archived on main is not known; nothing was written`);
   if (dir.startsWith('requests/archive/') && main && git(top, ['cat-file', '-e', `${main}:${dir}/request.md`], { allowFail: true }) !== null) {
     throw new Fail(`${name} is archived on ${main.replace('refs/remotes/', '').replace('refs/heads/', '')}, and an archived request is not edited`,
       'start a new request that follows it: al new <name> --from <file|->');
@@ -262,22 +263,21 @@ function recordSignoff({ top, args, opts }) {
     ? parts(org.text, org.oneLine).filter((p) => changed.includes(p.key)).flatMap((p) => p.text.replace(/\n+$/, '').split('\n'))
     : org.text.replace(/\n+$/, '').split('\n');
   const removed = changed ? changed.filter((k) => !parts(org.text, org.oneLine).some((p) => p.key === k)) : [];
-  const fetched = stamp(now());
-  let file = `${fetched.slice(0, 10)}-signoff.md`;
-  for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${fetched.slice(0, 10)}-signoff-${n}.md`;
+  const when = now();
+  const fetched = stamp(when);
+  let file = `${day(when)}-signoff.md`;
+  for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${day(when)}-signoff-${n}.md`;
   const body = [since ? `Changed since ${since}:` : 'To be signed (first sign-off):', ...shown];
   if (removed.length) body.push(`Removed: ${removed.join(', ')}`);
   if (!opts.yes) {
     body.push(`Would write ${dir}/origin/${file} and set the Signed off line`);
     return { body, next: 'show this to the owner; on their OK, run the same command with --yes', notKnown };
   }
-  const header = [`Source: ${opts.source}`, ...(opts.words !== undefined ? [`Owner's words: ${opts.words}`] : []),
-    `Fetched: ${fetched}`, `SHA-256: ${sha256(org.text)}   (of the signed text below)`, '--- signed text ---', ''].join('\n');
   mkdirSync(join(top, dir, 'origin'), { recursive: true });
-  writeFileSync(join(top, dir, 'origin', file), header + org.text);
-  const signedOff = `Signed off: ${fetched.slice(0, 10)} owner, origin/${file}\n`;
+  writeFileSync(join(top, dir, 'origin', file), formatSnapshot({ source: opts.source, words: opts.words, fetched, text: org.text, signed: true }));
+  const signedOff = `Signed off: ${day(when)} owner, origin/${file}\n`;
   const lines = org.raw.split(/(?<=\n)/);
-  const at = lines.findIndex((l) => /^Signed off:/.test(l));
+  const at = lines.findIndex((l) => SIGNED_OFF.test(l));
   if (at >= 0) lines.splice(at, 1, signedOff);
   else {
     const end = lines.findLastIndex((l) => l.trim());
@@ -302,16 +302,16 @@ function recordEntry({ top, args, opts }, kind) {
   const dir = requestToWrite(top, tree, name);
   if (!noSymlinkOn(top, `${dir}/request.md`)) throw new Fail(`${dir} is reached through a symlink; records are written only through real folders, and nothing was written`, `make ${dir} a real folder in this repo`);
   const md = tree.read(`${dir}/request.md`).toString('utf8');
-  const title = kind === 'decision' ? 'Decisions' : 'Parts';
+  const title = kind === 'decision' ? TITLES.decisions : TITLES.parts;
   const lines = md.split('\n');
-  const at = lines.findIndex((l) => new RegExp(`^##\\s+${title}\\s*$`).test(l));
+  const at = headingAt(lines, title);
   let end = at < 0 ? lines.length : lines.findIndex((l, i) => i > at && /^#{1,2}\s/.test(l));
   if (end < 0) end = lines.length;
   let last = end;
   while (at >= 0 && last > at + 1 && !lines[last - 1].trim()) last--;
   const n = kind === 'decision' ? Math.max(0, ...decisionIds(md).ids) + 1 : partsOf(md).length + 1;
   const bullets = partsOf(md).at(-1)?.startsWith('-');
-  const entry = kind === 'decision' ? `- D${n}, ${stamp(now()).slice(0, 10)}. Source: ${opts.source}. ${opts.text}` : bullets ? `- ${opts.text}` : `${n}. ${opts.text}`;
+  const entry = kind === 'decision' ? `- D${n}, ${day(now())}. Source: ${opts.source}. ${opts.text}` : bullets ? `- ${opts.text}` : `${n}. ${opts.text}`;
   const next = at < 0 ? `${md.replace(/\n*$/, '\n')}\n## ${title}\n\n${entry}\n` : [...lines.slice(0, last), entry, ...lines.slice(last)].join('\n');
   if (!opts.yes) return { body: [`Would add to ${dir}/request.md, ## ${title}:`, entry], next: 'run the same command with --yes to write it', notKnown: [] };
   writeFileSync(join(top, dir, 'request.md'), next);
@@ -342,15 +342,14 @@ export function context({ top, args, opts }) {
 
   const md = tree.read(`${dir}/request.md`).toString('utf8').split('\n');
   const title = (md.find((l) => l.startsWith('# ')) ?? `# ${name}`).slice(2).trim();
-  const facts = md.find((l) => /\bStatus:/.test(l)) ?? '';
-  const field = (key) => facts.match(new RegExp(`${key}:\\s*([^·]+)`))?.[1].trim();
+  const field = (key) => statusField(md.join('\n'), key);
   const head = [field('Type'), field('Tier') && `tier ${field('Tier')}`, field('Status') ?? 'status unknown'].filter(Boolean);
 
   const read = snapshots(tree, dir).reverse();
   const files = read.map((x) => x.file);
   const bad = [];
   for (const { file: f, s } of read) {
-    if (!s) bad.push([f, 'is not a valid snapshot (it needs Source, Fetched, SHA-256, then ---)']);
+    if (!s) bad.push([f, notSnapshot(f)]);
     else if (!s.intact) bad.push([f, 'no longer matches its SHA-256']);
   }
   const state = signoffState(tree, dir, name);
@@ -368,7 +367,7 @@ export function context({ top, args, opts }) {
   const text = md.join('\n');
   const decisions = decisionList(text).reverse().map((d) => `${d.id} ${d.date}${d.agent ? ' (agent ruling)' : ''}`.trim());
   // --all, the verbose mode ([VW-2]): each decision in full, newest first.
-  if (opts.all) body.push(...lines('Decided', entriesOf(text, 'Decisions').filter((e) => /^- D\d+/.test(e)).reverse().map((e) => e.slice(2))));
+  if (opts.all) body.push(...lines('Decided', entriesOf(text, TITLES.decisions).filter((e) => /^- D\d+/.test(e)).reverse().map((e) => e.slice(2))));
   else if (decisions.length) body.push(line('Decided', decisions.join(' · ')));
   const all = changeStates(top, { at: opts.at });
   const held = all.filter((e) => e.request === name);
@@ -404,7 +403,7 @@ export function context({ top, args, opts }) {
   partsOf(text).forEach((p, k) => {
     const c = childOf(p);
     const d = c && findRequest(tree, c);
-    const status = d && tree.read(`${d}/request.md`).toString('utf8').match(/\bStatus:\s*(\w+)/)?.[1];
+    const status = d && statusField(tree.read(`${d}/request.md`).toString('utf8'), 'Status');
     const now = !d ? null : d.startsWith('requests/archive/') ? status : signoffState(tree, d, c).blocked ? 'blocked' : 'open';
     if (now) hints.push({ kind: 'note', text: `part ${k + 1} names request ${c}: ${now}`, command: `al context ${c}` });
   });
@@ -434,7 +433,7 @@ function nextStep(name, dir, md, held, tree) {
   if (live.some((e) => e.state === 'pending')) return `al consolidate ${name}`;
   const unchanged = live.find((e) => e.state === 'no change yet');
   if (unchanged) return `edit the Now of ${unchanged.block} in ${dir}/change.md, then al context ${name}`;
-  if (tree.read(`${dir}/change.md`) === null && tierOne(md)) return `edit the sections it amends in the baseline, then al conclude ${name}`;
+  if (noChangeMd(tree, dir) && tierOne(md)) return `edit the sections it amends in the baseline, then al conclude ${name}`;
   return `al conclude ${name}`;
 }
 
@@ -444,7 +443,7 @@ function projectView(top, at) {
   const rows = requestsIn(tree).filter((r) => r.open).map((r) => {
     const s = signoffState(tree, r.dir, r.name);
     const title = (r.md.match(/^# (.*)$/m)?.[1] ?? r.name).trim();
-    return { blocked: s.blocked, text: `${r.name}  ${title}  ${s.blocked ? `BLOCKED: ${s.reason}` : r.md.match(/\bStatus:\s*(\w+)/)?.[1] ?? 'status unknown'}` };
+    return { blocked: s.blocked, text: `${r.name}  ${title}  ${s.blocked ? `BLOCKED: ${s.reason}` : statusField(r.md, 'Status') ?? 'status unknown'}` };
   }).sort((x, y) => y.blocked - x.blocked);
   const body = rows.length ? rows.map((r) => r.text) : ['no open requests'];
   if (!baseline(tree, rootOf(top, tree, at)).length) body.push('no baseline yet; requests add sections as they go');

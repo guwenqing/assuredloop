@@ -2,21 +2,20 @@
 // nothing capped, every hash re-checked. History is main's first-parent line
 // (the --at commit's under --at): what reached main.
 import { isAbsolute } from 'node:path';
-import { Fail, git, isShallow, mainCommit, resolveCommit } from './git.js';
+import { Fail, HISTORY, day, git, isShallow, mainCommit, resolveCommit } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
-import { rootOf, rootLine, baseline, configured } from './spec.js';
+import { ROOT, rootOf, rootLine, baseline, configured } from './spec.js';
 import { allBlocks, stateText, statesOf } from './states.js';
-import { sameSection } from './sections.js';
+import { ID_TEXT, TITLES, headingAt, sameSection, sectionsById } from './sections.js';
 import { isSignoff, snapshots } from './snapshot.js';
 import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
-import { blame, byId, filesOf, requestCommits, requestOf, requestsIn } from './links.js';
+import { blame, filesOf, requestCommits, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
 import { adrsOf } from './adrs.js';
 import { organized, parentOf, parts, samePart, signoffState } from './signoff.js';
 import { sinceConclusion } from './views.js';
 
-const HISTORY = 'history unavailable (shallow clone)';
-const ID = /^[A-Z][A-Z0-9]*-\d+(?:\.\d+)*$/;
+const ID = new RegExp(`^${ID_TEXT}$`);
 const indented = (text) => text.replace(/\n+$/, '').split('\n').map((l) => `            ${l}`);
 
 export function audit(top, target, at) {
@@ -34,7 +33,7 @@ export function audit(top, target, at) {
   };
 }
 
-const commitLine = (a, c) => `${c.sha.slice(0, 7)} ${c.when.toISOString().slice(0, 10)} ${git(a.top, ['show', '-s', '--format=%s', c.sha])} (${c.names.length ? `${c.names.join(', ')} by ${c.how}` : 'no request'})`;
+const commitLine = (a, c) => `${c.sha.slice(0, 7)} ${day(c.when)} ${git(a.top, ['show', '-s', '--format=%s', c.sha])} (${c.names.length ? `${c.names.join(', ')} by ${c.how}` : 'no request'})`;
 
 // Main's first-parent commits that changed the baseline, oldest first, each
 // with its sections by ID.
@@ -43,13 +42,13 @@ const commitLine = (a, c) => `${c.sha.slice(0, 7)} ${c.when.toISOString().slice(
 function history(a) {
   if (a.walk || a.gap) return a.walk ?? [];
   const shas = (args) => git(a.top, args).split('\n').filter(Boolean);
-  const roots = new Set([a.root, 'specs', ...shas(['log', '--format=%H', a.tip, '--', '.assuredloop']).map((sha) => rootLine(a.top, openTree(a.top, sha), sha))]);
+  const roots = new Set([a.root, ROOT, ...shas(['log', '--format=%H', a.tip, '--', '.assuredloop']).map((sha) => rootLine(a.top, openTree(a.top, sha), sha))]);
   roots.delete(null);
   // .assuredloop too: a commit that only switches root: can change a section's text.
   a.walk = shas(['log', '--first-parent', '--reverse', '--format=%H', a.tip, '--', '.assuredloop', ...[...roots].map((r) => `${r}/`)]).map((sha) => {
     const tree = openTree(a.top, sha);
     const root = rootLine(a.top, tree, sha);
-    return { sha, sections: new Map(root ? baseline(tree, root).flatMap((f) => [...byId(f.text)]) : []) };
+    return { sha, sections: root ? sectionsById(baseline(tree, root)) : new Map() };
   });
   return a.walk;
 }
@@ -60,7 +59,7 @@ function trace(a, name) {
   const dir = findRequest(tree, name);
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const body = [line('Audit', `${name}  ${(md.match(/^# (.*)$/m)?.[1] ?? name).trim()}  (${dir})`),
-    ...entriesOf(md, "Owner's words and dialog").map((e) => line('Words', e))];
+    ...entriesOf(md, TITLES.words).map((e) => line('Words', e))];
   // Each snapshot of `from`'s origin/, re-checked; with `signoffsOnly`, its sign-offs and any file that is
   // not a valid snapshot, which may have been one. `whose` names another request's.
   const recheck = (from, signoffsOnly, whose = '') => {
@@ -82,7 +81,7 @@ function trace(a, name) {
     if (copied.length) body.push(line('Sign-off', `through ${parent.name} for ${copied.join(', ')}, copied word for word from its origin/${s.parentSignoff.file}${s.blocked ? `; ${s.reason}` : ''}`));
     recheck(parent.dir, true, `parent ${parent.name}: `);
   }
-  body.push(...entriesOf(md, 'Decisions').map((e) => line('Decision', e)));
+  body.push(...entriesOf(md, TITLES.decisions).map((e) => line('Decision', e)));
   const place = (f) => [`requests/${name}/${f}`, `requests/archive/${name}/${f}`];
   const records = [...place('request.md'), ...place('change.md')];
   const versions = a.gap ? [] : git(top, ['log', '--first-parent', '--format=%H', a.tip, '--', ...records]).split('\n').filter(Boolean);
@@ -119,7 +118,7 @@ function trace(a, name) {
   else {
     const rev = a.at ?? 'HEAD';
     // Every route [LNK-2] maps by: a Request: line, the folder, an issue number in the owner's words.
-    const issues = [...new Set(entriesOf(md, "Owner's words and dialog").join('\n').match(/#\d+/g) ?? [])];
+    const issues = [...new Set(entriesOf(md, TITLES.words).join('\n').match(/#\d+/g) ?? [])];
     const mine = requestCommits(top, name, issues, rev, a.requests, a.seen);
     body.push(...mine.map((c) => line('Commit', commitLine(a, c))));
     const isTest = testMatcher(a.root, configured(top, tree, a.at, 'tests'));
@@ -128,7 +127,10 @@ function trace(a, name) {
   const adrs = adrsOf(top, tree, a.at, name, a.requests);
   body.push(line('ADRs', [...adrs.added.map((x) => `${x.path} (added)`), ...adrs.superseded.map((x) => `${x.path} (superseded)`)].join(' · ') || 'none'));
   if (dir.startsWith('requests/archive/')) body.push(line('Concluded', concludedOnMain(top, name, a.at)));
-  const outcome = md.match(/^## Outcome[ \t]*\n([\s\S]*?)(?=^#{1,2} |(?![\s\S]))/m)?.[1].trim();
+  const mdLines = md.split('\n');
+  const head = headingAt(mdLines, TITLES.outcome);
+  const stop = mdLines.findIndex((l, i) => i > head && /^#{1,2} /.test(l));
+  const outcome = head < 0 ? '' : mdLines.slice(head + 1, stop < 0 ? mdLines.length : stop).join('\n').trim();
   body.push(...(outcome ? [line('Outcome', ''), ...indented(outcome)] : [line('Outcome', 'none yet')]));
   return body;
 }

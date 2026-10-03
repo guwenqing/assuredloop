@@ -1,15 +1,19 @@
 // al spec: the design as it stands ([VW-5]), and numbering headings ([SPC-2], [SPC-3]).
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { isAbsolute, join, posix, relative, resolve } from 'node:path';
-import { Fail, git, historyGap, isShallow } from './git.js';
+import { Fail, HISTORY, gapFail, git, historyGap, isShallow } from './git.js';
 import { openTree, noSymlinkOn } from './tree.js';
-import { parseSections, numberHeadings } from './sections.js';
+import { ID_TEXT, PREFIX_TEXT, parseSections, numberHeadings } from './sections.js';
 import { line } from './commands.js';
 import { hintLines } from './hints.js';
 import { allBlocks, parseChange, stateText, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 
-const PREFIX = /^[A-Z][A-Z0-9]*$/;
+// The baseline root when .assuredloop names none ([SPC-1]).
+export const ROOT = 'specs';
+
+const PREFIX = new RegExp(`^${PREFIX_TEXT}$`);
+const ID_OPEN = new RegExp(`\\[(${ID_TEXT})`, 'g');
 
 // A path `.assuredloop` names must lie inside this repo: never absolute,
 // through `..`, or through a symlink.
@@ -43,14 +47,14 @@ export const configured = (top, tree, at, key) => values(tree, key).map((raw) =>
 // other path the file names is checked here too, so a bad one stops any command.
 export function rootOf(top, tree, at) {
   for (const key of ['tests', 'results', 'adrs']) configured(top, tree, at, key);
-  return inside(top, tree, at, 'root', values(tree, 'root')[0] ?? 'specs');
+  return inside(top, tree, at, 'root', values(tree, 'root')[0] ?? ROOT);
 }
 
 // A past tree's root, from its `root:` line only, or null when that line is
 // not a folder inside this repo; the other lines are not checked, so one old
 // bad line does not stop a read of history ([VW-7], [VW-8]).
 export function rootLine(top, tree, at) {
-  try { return inside(top, tree, at, 'root', values(tree, 'root')[0] ?? 'specs'); } catch { return null; }
+  try { return inside(top, tree, at, 'root', values(tree, 'root')[0] ?? ROOT); } catch { return null; }
 }
 
 // A past tree's paths for `key`: only its lines that lie inside this repo, for
@@ -90,7 +94,7 @@ export function spec(ctx) {
   const tree = openTree(top, opts.at);
   const root = rootOf(top, tree, opts.at);
   const files = baseline(tree, root);
-  const notKnown = [isShallow(top) && 'history unavailable (shallow clone)', 'whether the code does what the spec says (tests and review judge that)'].filter(Boolean);
+  const notKnown = [isShallow(top) && HISTORY, 'whether the code does what the spec says (tests and review judge that)'].filter(Boolean);
   // [VW-5]: each open change under the section it holds; an add not in the
   // baseline yet under the baseline section its chain of anchors starts
   // from; the rest (a new file) after the text. With no baseline yet, the
@@ -152,7 +156,7 @@ export function spec(ctx) {
 export function idsUsed(top, tree, root, rev = '--all') {
   const used = new Map();
   const note = (path, text) => {
-    for (const [, id] of text.matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)/g)) if (!used.has(id)) used.set(id, new Set());
+    for (const [, id] of text.matchAll(ID_OPEN)) if (!used.has(id)) used.set(id, new Set());
     const headed = path.startsWith(`${root}/`) && path.endsWith('.md') ? parseSections(text).map((s) => s.id).filter(Boolean)
       : /^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(path) ? parseChange(text, '').map((b) => b.id) : [];
     for (const id of headed) used.get(id).add(path);
@@ -207,7 +211,7 @@ function addIds({ top, cwd, opts }) {
     throw new Fail(`${opts['add-ids']}: give a .md file under the baseline root ${root}/, not through a symlink`, `al spec --list shows the files under ${root}/`);
   }
   const gap = historyGap(top);
-  if (gap) throw new Fail(`history unavailable: this clone is ${gap.kind}, and IDs can't be allocated safely without the full history`, gap.next);
+  if (gap) throw gapFail(gap, ", and IDs can't be allocated safely without the full history");
 
   const before = readFileSync(join(top, path), 'utf8');
   const first = Number(nextId(idsUsed(top, tree, root), opts.prefix).split('-')[1]);
