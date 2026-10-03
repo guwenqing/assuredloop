@@ -95,7 +95,10 @@ export function spec(ctx) {
     return ids.has(anchor) ? anchor : up && n < 50 ? placed(up, n + 1) : null;
   };
   const under = (id) => held.filter((e) => e.id === id || (!ids.has(e.id) && placed(e) === id));
-  const loose = held.filter((e) => !ids.has(e.id) && !placed(e));
+  // A remove of a file's first section, gone from it, shows first under that file.
+  const paths = new Set(files.map((f) => f.path));
+  const first = (path) => held.filter((e) => !ids.has(e.id) && !placed(e) && e.op === 'remove' && e.file === path);
+  const loose = held.filter((e) => !ids.has(e.id) && !placed(e) && !(e.op === 'remove' && paths.has(e.file)));
   const overlay = (s, text, list = under(s.id)) => list.flatMap((e) => {
     const now = blocks.get(e.block).now;
     const same = now && e.id === s.id && sameSection(now, s.text);
@@ -104,7 +107,7 @@ export function spec(ctx) {
   });
   const body = files.length ? [] : [empty];
   for (const f of files) {
-    body.push(line(body.length ? '' : 'Map', f.path));
+    body.push(line(body.length ? '' : 'Map', f.path), ...overlay({}, false, first(f.path)).map((l) => `${' '.repeat(14)}${l}`));
     for (const s of f.sections) body.push(`${' '.repeat(12)}${s.id ? `[${s.id}] ` : ''}${s.title}`, ...overlay(s).map((l) => `${' '.repeat(14)}${l}`));
   }
   const into = [...new Set(loose.map((e) => e.file ?? 'no file named'))].map((p) => [p, loose.filter((e) => (e.file ?? 'no file named') === p)]);
@@ -115,7 +118,7 @@ export function spec(ctx) {
   if (!opts.list) {
     for (const f of files) {
       const preamble = f.text.slice(0, f.text.length - f.sections.reduce((n, s) => n + s.text.length, 0));
-      body.push('', `==> ${f.path}`, ...(preamble ? [preamble.replace(/\n$/, '')] : []));
+      body.push('', `==> ${f.path}`, ...(preamble ? [preamble.replace(/\n$/, '')] : []), ...overlay({}, true, first(f.path)));
       for (const s of f.sections) body.push(s.text.replace(/\n$/, ''), ...overlay(s, true));
     }
     for (const [p, list] of into) body.push('', `==> ${p} (not in the baseline yet)`, ...overlay({}, true, list));

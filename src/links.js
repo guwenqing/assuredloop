@@ -131,6 +131,15 @@ export function sectionsChanged(top, from, to, root, files, tree) {
   return ids;
 }
 
+// The sections found in another file of `after` than in `before` (baseline
+// files, each with its sections), their text unchanged ([SPC-4]): { id, from, to }.
+export function movesOf(before, after) {
+  const where = (files) => new Map(files.flatMap((f) => f.sections.filter((s) => s.id).map((s) => [s.id, { path: f.path, text: s.text }])));
+  const [was, now] = [where(before), where(after)];
+  return [...now].filter(([id, n]) => was.has(id) && was.get(id).path !== n.path && sameSection(was.get(id).text, n.text))
+    .map(([id, n]) => ({ id, from: was.get(id).path, to: n.path }));
+}
+
 // Link 3: the commits (up to `rev`) that changed `path`, with their files;
 // commits over 30 files are skipped and counted.
 export function changedWith(top, rev, path) {

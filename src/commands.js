@@ -81,16 +81,6 @@ const FETCHED = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
 // A labelled line, as in `Next      al context x`.
 export const line = (label, text) => `${label.padEnd(10)}${text}`;
 
-// [VW-2]: held sections, each as `text(e)`, while the line fits in 100
-// characters; else the count in each state, naming each by `id(e)` except the
-// consolidated, carried and pending ones.
-export function fitOrCount(label, held, text, id) {
-  const full = line(label, held.map(text).join(' · '));
-  if (full.length <= 100) return full;
-  return line(label, [...new Set(held.map((e) => e.state))].map((s) => [s, held.filter((e) => e.state === s)])
-    .map(([s, es]) => `${es.length} ${s}${['consolidated', 'carried', 'pending'].includes(s) ? '' : ` (${es.map(id).join(', ')})`}`).join(' · '));
-}
-
 // [VW-2], [VW-6]: items grouped by state, `<count> <state>: <ids>`, none left
 // out. IDs the same up to a last number that runs on read as a range, REC-1–3,
 // so it expands back to the exact IDs: the text before it the same, and no
