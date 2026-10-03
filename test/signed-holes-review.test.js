@@ -14,7 +14,9 @@
 // (E) [REC-6] check judges the branch's final state: a baseline edit undone
 //     by a later commit delivers nothing;
 // (F) [REC-8][VW-2] the parent's Parts line lists only parts outside fenced
-//     code.
+//     code;
+// (G) [REC-6][HNT-2] baseline text outside any section with an ID (a
+//     heading with no ID, or a preamble before the first heading) is work.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, runAl } from './helpers/fixture.js';
@@ -165,3 +167,17 @@ test('#136 (E) [REC-6] blocked tier-1 x: one Request: x commit edits A-1, a late
   noHint(check(repo, '--all'), 'not ok', 'delivers work for');
   strict(repo, 0);
 });
+
+for (const [label, edit] of [
+  ['appends "## Extra", a heading with no ID, and "The extra MUST be new." to specs/rules.md', (text) => `${text}\n## Extra\nThe extra MUST be new.\n`],
+  ['adds a preamble line before the first heading of specs/rules.md', (text) => `Every rule here MUST hold.\n\n${text}`],
+]) {
+  test(`#136 (G) [REC-6][HNT-2] blocked tier-1 x: a Request: x commit ${label}: not ok "this branch delivers work for x, which is blocked"; check --strict exits 1`, (t) => {
+    const repo = blockedTier1(t);
+    repo.write('specs/rules.md', edit(repo.read('specs/rules.md').toString()));
+    repo.commit(message('Extra text for x', { request: 'x', tier: '1 — extra promise' }), { date: '2026-09-22T12:00:00Z' });
+    assert.match(repo.read('specs/rules.md').toString(), /\[A-1\] Promise\nThe promise MUST be old\.\n/, 'the fixture: A-1 is unchanged');
+    assertCounts(hint(check(repo, '--all'), 'not ok', /delivers work for x\b/, 'blocked'));
+    strict(repo, 1);
+  });
+}
