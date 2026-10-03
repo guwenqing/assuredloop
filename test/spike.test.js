@@ -280,3 +280,66 @@ test('#128 [REC-10] a tier-1 request with no findings.md whose branch edits A-1:
   noSpikeNotes(conclude(repo, '--yes'));
   assert.match(read(repo, `${ARCHIVE}/request.md`), /^Tier: 1 · Status: concluded$/m);
 });
+
+// --- PR #133 review: uncommitted baseline edits in the working-tree views ---
+
+// The spike with a good findings.md, committed on its branch; then A-1
+// changed in specs/rules.md and not committed.
+function uncommittedEdit(t) {
+  const repo = spike(t, { findings: GOOD });
+  repo.write('specs/rules.md', file(A1B, A2));
+  assert.equal(repo.git(['status', '--porcelain']), 'M specs/rules.md', 'the fixture: only the baseline edit is uncommitted');
+  assert.equal(repo.git(['diff', '--name-only', 'main..HEAD', '--', 'specs']), '', 'the fixture: no commit on the branch changes specs/');
+  return repo;
+}
+
+test('PR #133 [REC-10] a spike the branch serves, with an uncommitted change to A-1: "edits the baseline" in context csv-speed --all', (t) => {
+  hint(context(uncommittedEdit(t), NAME, '--all'), 'note', NAME, BASELINE);
+});
+
+test('PR #133 [REC-10] a spike the branch serves, with an uncommitted change to A-1: "edits the baseline" in check --all', (t) => {
+  hint(check(uncommittedEdit(t), '--all'), 'note', NAME, BASELINE);
+});
+
+test('PR #133 [REC-10][VW-8] under --at HEAD only HEAD\'s history counts: the same uncommitted change to A-1 gives no "edits the baseline" note in check or context', (t) => {
+  const repo = uncommittedEdit(t);
+  for (const args of [['check', '--at', 'HEAD', '--all'], ['context', NAME, '--at', 'HEAD', '--all']]) {
+    const r = al(repo, args);
+    ok(r, args.join(' '));
+    noHint(r.stdout, NAME, BASELINE);
+  }
+});
+
+// --- PR #133 review: [STA-7]'s bound when conclude's notes combine ---
+
+// A signed spike whose findings.md has its Answer later, whose branch changes
+// A-1 with "Request: csv-speed", and whose Parts name csv-child, open.
+function crowded(t) {
+  const repo = spike(t, { findings: TITLE_FIRST });
+  const md = `${DIR}/request.md`;
+  repo.write(md, `${read(repo, md)}\n## Parts\n\n1. request csv-child\n`);
+  addRequest(repo, 'csv-child', null, { line: 'Type: story · Tier: 1 · Status: open', decisions: '' });
+  repo.commit(message('Plan csv-child', { request: NAME, tier: 'S — csv speed' }), { date: '2026-09-24T13:00:00Z' });
+  editBaseline(repo);
+  assert.doesNotMatch(lines(context(repo, NAME))[0], /^BLOCKED/, 'the fixture: still signed with Parts added');
+  assert.match(read(repo, 'requests/csv-child/request.md'), /^Type: story · Tier: 1 · Status: open$/m, 'the fixture: csv-child is open');
+  return repo;
+}
+// Each text on some line starting "note: " (one line may hold several).
+function notesSay(out, ...texts) {
+  const noted = lines(out).filter((l) => l.startsWith('note: '));
+  for (const text of texts) assert.ok(noted.some((l) => l.includes(text)), `expected "${text}" on a "note: " line:\n${out}`);
+}
+const CROWD = [NOT_FIRST, BASELINE, 'csv-child', 'still open'];
+
+test('PR #133 [STA-7] conclude csv-speed with three notes (Answer later, baseline edit, open child): exit 0, three lines or fewer under the frame, every note still said', (t) => {
+  const repo = crowded(t);
+  notesSay(conclude(repo), ...CROWD);
+  assert.ok(existsSync(join(repo.dir, DIR, 'request.md')), 'the preview writes nothing');
+});
+
+test('PR #133 [STA-7] conclude csv-speed --yes with the same three notes: exit 0, three lines or fewer under the frame, every note said, and it concludes', (t) => {
+  const repo = crowded(t);
+  notesSay(conclude(repo, '--yes'), ...CROWD);
+  assertConcluded(repo, TITLE_FIRST);
+});
