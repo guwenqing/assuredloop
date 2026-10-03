@@ -393,7 +393,7 @@ export function context({ top, args, opts }) {
       : [grouped('Spec', shown.map((e) => (e.state === 'waiting' ? { state: e.state, text: `${e.id}@${e.n} on ${own(e.by)}`, alone: true }
         : { state: e.state, text: label(e), alone: count(e.id) > 1 })))]));
   }
-  const parts = entriesOf(text, 'Parts');
+  const parts = partsOf(text);
   if (parts.length) body.push(line('Parts', parts.map((p) => p.replace(/\s+/g, ' ')).join(' · ')));
   const mine = new Set(held.map((e) => e.file).filter(Boolean));
   const others = all.filter((e) => e.request !== name && mine.has(e.file));
