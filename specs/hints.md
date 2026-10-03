@@ -21,7 +21,8 @@ The tool MUST give at least these hints. `not ok`:
   blocked request;
 - a branch whose final state delivers spec work or other work for a request
   that is still blocked in that state;
-- a tier-0 claim with a baseline edit;
+- a tier-0 claim with a baseline edit that does more than add section IDs or
+  move a section without changing its text;
 - a snapshot whose text no longer matches its SHA-256.
 
 `note`:

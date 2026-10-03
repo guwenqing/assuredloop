@@ -68,7 +68,7 @@ Signed off: 2026-10-03 owner, origin/2026-10-03-signoff.md
 - R4 Commands and settings are given in the form that works: in [SPC-2], [LNK-4], [LNK-3], [LNK-2]
 - R5 Lightweight means the overhead on people: in [TL-4]
 - Added: none
-- Modified: [HNT-3], [LNK-2], [LNK-3], [LNK-4], [REC-1], [REC-6], [REC-10], [SPC-1], [SPC-2], [SPC-5], [STA-1], [STA-2], [STA-4], [TL-4], [VW-2]
+- Modified: [HNT-2], [HNT-3], [LNK-2], [LNK-3], [LNK-4], [REC-1], [REC-6], [REC-10], [REC-11], [REC-12], [SPC-1], [SPC-2], [SPC-5], [STA-1], [STA-2], [STA-4], [TL-4], [VW-2]
 - Removed: none
 - Dropped: none
 - Kept: none
