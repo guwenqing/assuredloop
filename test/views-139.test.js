@@ -331,6 +331,41 @@ test('#139 (6) [VW-7][REC-5] audit of the inheriting child when the parent\'s si
   assert.ok(throughParent(r.stdout).some((l) => l.includes('not ok')), `the sign-off through invoices, "not ok": it no longer matches its SHA-256:\n${r.stdout}`);
 });
 
+test('#139 (6) [VW-7][REC-5] audit of the inheriting child when the parent\'s sign-off file is no longer a valid snapshot (its SHA-256 header damaged): the file is still shown, naming invoices, "not ok"', (t) => {
+  const repo = inheriting(t);
+  repo.write(PARENT_SIGNOFF, repo.read(PARENT_SIGNOFF).toString().replace(/^SHA-256:/m, 'SHA-255:'));
+  repo.commit('Damage the parent\'s sign-off header', { date: '2026-09-23T12:00:00Z' });
+  const parent = al(repo, 'context', 'invoices', '--audit');
+  ok(parent, 'context invoices --audit');
+  assert.ok(lines(parent.stdout).some((l) => l.includes('2026-09-21-signoff.md') && l.includes('not a valid snapshot')),
+    `the fixture: invoices' own audit says its sign-off file is not a valid snapshot:\n${parent.stdout}`);
+  const r = al(repo, 'context', 'child', '--audit');
+  ok(r, 'context child --audit');
+  assert.ok(lines(r.stdout).some((l) => l.includes('2026-09-21-signoff.md') && l.includes('invoices') && l.includes('not ok')),
+    `the parent's sign-off file, naming invoices, "not ok":\n${r.stdout}`);
+});
+
+test('#139 (6) [VW-7][REC-5] audit of a child with its own sign-off and its own text, under a parent invoices with none: it never says the child is signed off through invoices, and shows its own sign-off', (t) => {
+  const OWN = '## Organized requirement\n\n### R1 Totals\nTotals MUST show two decimals.\n';
+  const repo = makeRepo(t);
+  addRequest(repo, 'invoices', null, { line: TIER1, signed: false, decisions: '', rest: '\n## Parts\n\n1. request child\n' });
+  const pmd = 'requests/invoices/request.md';
+  repo.write(pmd, repo.read(pmd).toString().replace(/^Signed off: .*\n/m, ''));
+  repo.commit('The parent', { date: '2026-09-21T12:00:00Z' });
+  addRequest(repo, 'child', null, { line: TIER1, org: OWN, signedText: OWN, decisions: '' });
+  repo.commit('The child', { date: '2026-09-22T12:00:00Z' });
+
+  const ctx = al(repo, 'context', 'child');
+  ok(ctx, 'context child');
+  const require = lines(ctx.stdout).find((l) => /^Require\b/.test(l)) ?? '';
+  assert.ok(require.includes('origin/2026-09-21-signoff.md') && !require.includes('through'), `the fixture: context names the child's own sign-off:\n${ctx.stdout}`);
+  const r = al(repo, 'context', 'child', '--audit');
+  ok(r, 'context child --audit');
+  assert.ok(!lines(r.stdout).some((l) => l.includes('through invoices') && /signed off/i.test(l)), `invoices signed nothing; the child is not signed off through it:\n${r.stdout}`);
+  assert.ok(lines(r.stdout).some((l) => /^Sign-off\b/.test(l) && l.includes('origin/2026-09-21-signoff.md') && l.includes('SHA-256 matches') && !l.includes('invoices')),
+    `the child's own sign-off, re-checked:\n${r.stdout}`);
+});
+
 // --- (5) a tier-1 request that adds the first baseline section ---
 
 test('#139 (5) [VW-7] audit of a concluded tier-1 request that adds [A-1], the first baseline section of all: its Section line names the main commit where A-1 landed, as context A-1 --audit does', (t) => {
