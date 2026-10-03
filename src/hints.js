@@ -56,20 +56,31 @@ export function readBranch(top, { base, commits, tree, at, range }) {
 // added to headings that had none and by sections moved with their text
 // unchanged ([SPC-4]): each section after matches one before, its ID kept or
 // newly given, and each file's text before its first heading is the same as
-// that file's before ([SPC-4]); a file added or removed has none.
-function onlyIdsOrMoves(before, after) {
+// that file's before ([SPC-4]); a file added or removed has none. `causes`
+// names, beyond sections with an ID, what does more ([HNT-1]).
+function idsOrMoves(before, after) {
   const intros = (fs) => new Map(fs.map((f) => [f.path, f.text.slice(0, f.text.length - f.sections.reduce((n, s) => n + s.text.length, 0))]));
   const [was, now] = [intros(before), intros(after)];
+  const causes = [...new Set([...was.keys(), ...now.keys()])].filter((p) => !sameSection(was.get(p) ?? '', now.get(p) ?? '')).map((p) => `${p}, its intro text changed`);
   const plain = (s) => s.text.replace(/^[^\n]*/, () => `${'#'.repeat(s.level)} ${s.title}`);
-  const left = before.flatMap((f) => f.sections);
-  const right = after.flatMap((f) => f.sections);
-  if ([...new Set([...was.keys(), ...now.keys()])].some((p) => !sameSection(was.get(p) ?? '', now.get(p) ?? '')) || left.length !== right.length) return false;
-  return right.every((s) => {
+  const heading = (s) => s.text.replace(/\r?\n[\s\S]*$/, '').trim();
+  const left = before.flatMap((f) => f.sections.map((s) => ({ ...s, path: f.path })));
+  const right = after.flatMap((f) => f.sections.map((s) => ({ ...s, path: f.path })));
+  const extra = right.filter((s) => {
     const same = (x) => sameSection(plain(x), plain(s));
     const i = [left.findIndex((x) => x.id === s.id && same(x)), left.findIndex((x) => x.id === null && same(x))].find((k) => k >= 0) ?? -1;
     if (i >= 0) left.splice(i, 1);
-    return i >= 0;
+    return i < 0;
   });
+  const ok = !causes.length && !extra.length && !left.length;
+  for (const s of extra.filter((x) => x.id === null)) {
+    const i = left.findIndex((x) => x.id === null && x.path === s.path && x.title === s.title);
+    if (i >= 0) left.splice(i, 1);
+    causes.push(`${s.path}, ${i >= 0 ? `the text under ${heading(s)} changed` : `a new heading without an ID: ${heading(s)}`}`);
+  }
+  // A heading given an ID with its text changed is named by that ID.
+  for (const x of left.filter((y) => y.id === null && !extra.some((s) => s.id && s.title === y.title))) causes.push(`${x.path}, a heading without an ID removed: ${heading(x)}`);
+  return { ok, causes };
 }
 
 // Every hint for branch `b` ([HNT-2]), unranked: { kind, rank (HNT-2's list
@@ -227,8 +238,10 @@ export function hintsOf(top, b, { main }) {
   // [REC-10]: tier 0 and S change no promise; a file under the root that is not .md is outside the baseline ([SPC-1]).
   const edits = b.changed.filter((p) => p.startsWith(`${b.root}/`) && p.endsWith('.md'));
   const promiseless = ['0', 'S'].find((t) => tierIs(b.tier, t));
-  if (promiseless && edits.length && !onlyIdsOrMoves(b.before, b.files)) {
-    add('not ok', 10, [], `the claim is tier ${promiseless}, but ${b.range} edits the baseline${b.changedIds.length ? `: ${b.changedIds.map((i) => `[${i}]`).join(', ')}` : ''}`, `al context --diff ${b.range}`);
+  const moves = promiseless && edits.length ? idsOrMoves(b.before, b.files) : { ok: true };
+  if (!moves.ok) {
+    const causes = [...(b.changedIds.length ? [b.changedIds.map((i) => `[${i}]`).join(', ')] : []), ...moves.causes];
+    add('not ok', 10, [], `the claim is tier ${promiseless}, but ${b.range} edits the baseline${causes.length ? `: ${causes.join('; ')}` : ''}`, `al context --diff ${b.range}`);
   }
 
   // Snapshots: a text that no longer matches its hash; a served request's web source not re-checked.
