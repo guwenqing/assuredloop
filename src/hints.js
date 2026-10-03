@@ -56,13 +56,15 @@ export function readBranch(top, { base, commits, tree, at, range }) {
 // [REC-10]: whether baseline files `after` differ from `before` only by IDs
 // added to headings that had none and by sections moved with their text
 // unchanged ([SPC-4]): each section after matches one before, its ID kept or
-// newly given, and the text before any first heading stays the same.
+// newly given, and each file's text before its first heading is the same as
+// that file's before ([SPC-4]); a file added or removed has none.
 function onlyIdsOrMoves(before, after) {
-  const lead = (fs) => fs.map((f) => f.text.slice(0, f.text.length - f.sections.reduce((n, s) => n + s.text.length, 0)).trim()).filter(Boolean).sort().join('\0');
+  const intros = (fs) => new Map(fs.map((f) => [f.path, f.text.slice(0, f.text.length - f.sections.reduce((n, s) => n + s.text.length, 0))]));
+  const [was, now] = [intros(before), intros(after)];
   const plain = (s) => s.text.replace(/^[^\n]*/, () => `${'#'.repeat(s.level)} ${s.title}`);
   const left = before.flatMap((f) => f.sections);
   const right = after.flatMap((f) => f.sections);
-  if (lead(before) !== lead(after) || left.length !== right.length) return false;
+  if ([...new Set([...was.keys(), ...now.keys()])].some((p) => !sameSection(was.get(p) ?? '', now.get(p) ?? '')) || left.length !== right.length) return false;
   return right.every((s) => {
     const same = (x) => sameSection(plain(x), plain(s));
     const i = [left.findIndex((x) => x.id === s.id && same(x)), left.findIndex((x) => x.id === null && same(x))].find((k) => k >= 0) ?? -1;
