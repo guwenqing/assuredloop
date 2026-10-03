@@ -91,6 +91,12 @@ test('[REC-10][REC-11][HNT-2][HNT-3] a tier-0 commit that only moves [TXT-1] unc
   assertNoPromiseChange(repo);
 });
 
+// Two files' introductions, the text before their first heading.
+const DOMESTIC = 'These rules apply only to domestic orders.\n';
+const INTERNATIONAL = 'These rules apply only to international orders.\n';
+const ORD1 = '## [ORD-1] Delivery\nOrders MUST ship within two days.\n';
+const ORD2 = '## [ORD-2] Delivery\nOrders MUST ship within ten days.\n';
+
 // Each: what it does, the files on main, the files the tier-0 commit writes,
 // and the IDs the not ok may name (one of them).
 const contrasts = [
@@ -104,6 +110,12 @@ const contrasts = [
     { ...BASE, 'specs/a.md': 'Promises about invoices.\n\n' + file(DATES, TOTALS) },
     { 'specs/a.md': 'Promises about invoices and receipts.\n\n' + file(DATES, TOTALS) }, []],
   ['adds only specs/diagram.txt, a file under the root that is not .md', BASE, { 'specs/diagram.txt': 'invoice -> csv\n' }, []],
+  ['swaps the introductions of specs/a.md and specs/b.md, every section the same',
+    { 'specs/a.md': `${DOMESTIC}\n${ORD1}`, 'specs/b.md': `${INTERNATIONAL}\n${ORD2}` },
+    { 'specs/a.md': `${INTERNATIONAL}\n${ORD1}`, 'specs/b.md': `${DOMESTIC}\n${ORD2}` }, []],
+  ['takes the four-space indent off the introduction of specs/a.md (a code block becomes a paragraph), every section the same',
+    { 'specs/a.md': `    Returns are forbidden.\n\n${ORD1}` },
+    { 'specs/a.md': `Returns are forbidden.\n\n${ORD1}` }, []],
 ];
 
 for (const [what, before, after, ids] of contrasts) {
