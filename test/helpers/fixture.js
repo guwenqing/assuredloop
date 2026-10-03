@@ -92,12 +92,14 @@ export function addOrigin(t, repo, { fetchedAt = DEFAULT_DATE } = {}) {
 }
 
 // A clone of `repo` over file://; `depth` makes it shallow, `singleBranch`
-// true or false passes --single-branch or --no-single-branch.
-export function cloneRepo(t, repo, { depth, singleBranch, date } = {}) {
+// true or false passes --single-branch or --no-single-branch, and `branch`
+// checks out that branch instead of the source's HEAD.
+export function cloneRepo(t, repo, { depth, singleBranch, branch, date } = {}) {
   const dir = join(tempDir(t), 'clone');
   const args = ['clone', '-q'];
   if (depth) args.push('--depth', String(depth));
   if (singleBranch !== undefined) args.push(singleBranch ? '--single-branch' : '--no-single-branch');
+  if (branch) args.push('--branch', branch);
   git(dirname(dir), [...args, `file://${repo.dir}`, dir], { date });
   return wrap(dir);
 }
