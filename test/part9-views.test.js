@@ -3,9 +3,10 @@
 // re-checked, a tampered one named "not ok" on a line of its own (no intact
 // one beside it); [VW-3] context <ID> for a pending add
 // shows each holder's "now"; [VW-4] the review view's intent lists only the
-// blocks whose sections the branch changes, counted by state as [VW-2]@2 has
-// it when they do not fit; [HNT-1] hidden hints are always counted, even when
-// context <name>'s twelve lines leave no room for a hint line; and [VW-2] a
+// blocks whose sections the branch changes, grouped by state when they do
+// not fit, naming every section ID (#139 item 3); [HNT-1] hidden hints are
+// always counted, even when context <name>'s twelve lines leave no room for a
+// hint line; and [VW-2] a
 // chained add (add after an add in the same request) shows on another
 // request's Same file line.
 import { test } from 'node:test';
@@ -18,7 +19,6 @@ import { block } from './helpers/change.js';
 import { ORG, addRequest, both, hasId, statusLine } from './helpers/request.js';
 import { contextOf, contextDiff, file, indexOf, labelled } from './helpers/links.js';
 import { viewHints } from './helpers/hints.js';
-import { count } from './helpers/evidence.js';
 
 const INV1 = '## [INV-1] Totals\nTotals MUST show two decimals.\n';
 const S0 = "## [INV-3] Dates\nDates show in the customer's local format.\n";
@@ -126,7 +126,16 @@ const N = (n) => `## [INV-${n}] Rule ${n}\nRule ${n} MUST hold.\n`;
 const X = (n) => `## [INV-${n}] Rule ${n}\nRule ${n} MUST NOT hold.\n`;
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
-test('[VW-4][VW-2]@2 --for review, intent: 28 changed sections do not fit on one line, so one line with the count in each state, naming every one except the consolidated or pending; INV-42, which the branch leaves alone, is not counted', (t) => {
+// The IDs a text names, an en-dash run such as INV-11–30 read as each ID in it.
+function idsIn(text) {
+  const out = new Set();
+  for (const m of text.matchAll(/\b([A-Z][A-Z0-9]*-(?:\d+\.)*)(\d+)(?:@\d+)?(?:–(\d+))?/g)) {
+    for (let n = Number(m[2]); n <= Number(m[3] ?? m[2]); n++) out.add(`${m[1]}${n}`);
+  }
+  return out;
+}
+
+test('[VW-4][VW-2]@2 --for review, intent: 28 changed sections do not fit on one line, so the Blocks line groups them by state, with the count in each, naming every section ID in its state\'s group (#139 item 3); INV-42, which the branch leaves alone, is not named', (t) => {
   const consolidated = range(11, 30); // W at base, N at head
   const pending = range(31, 35); // X at base, W at head
   const differs = [36, 37]; // W at base, X at head
@@ -141,18 +150,23 @@ test('[VW-4][VW-2]@2 --for review, intent: 28 changed sections do not fit on one
   repo.commit('Many sections\n\nRequest: big-change', { date: '2026-09-22T12:00:00Z' });
 
   const { out, intent } = review(repo);
-  const text = intent.join('\n');
-  const line = intent.find((l) => count(consolidated.length, 'consolidated').test(l));
-  assert.ok(line, `the intent part should give ${consolidated.length} consolidated:\n${out}`);
-  // One line, far shorter than listing all 28 blocks (well over 800 characters).
-  assert.ok(line.length < 160, `the line with the counts should be far shorter than the full list, under 160 characters, got ${line.length}:\n${line}`);
-  for (const [n, state] of [[pending.length, 'pending'], [differs.length, 'differs'], [1, 'not found']]) {
-    assert.match(text, count(n, state), `the intent part should give ${n} ${state}:\n${out}`);
+  const blocks = labelled(intent.join('\n'), 'Blocks');
+  assert.ok(blocks, `expected a Blocks line in the intent part:\n${out}`);
+  // Each group "<count> <state>: <ids>", joined by " · ".
+  const groups = blocks.replace(/^Blocks\s+/, '').split(/\s+·\s+/).map((g) => g.match(/^(\d+) (.+?): (.+)$/));
+  assert.ok(groups.every(Boolean), `each group should read "<count> <state>: <ids>":\n${blocks}`);
+  const named = (state) => {
+    const g = groups.find((x) => x[2] === state);
+    assert.ok(g, `a group for ${state}:\n${blocks}`);
+    const ids = idsIn(g[3]);
+    assert.equal(Number(g[1]), ids.size, `"${g[1]} ${state}" should name ${g[1]} sections:\n${blocks}`);
+    return ids;
+  };
+  for (const [ns, state] of [[consolidated, 'consolidated'], [pending, 'pending'], [differs, 'differs'], [[38], 'not found']]) {
+    const ids = named(state);
+    for (const n of ns) assert.ok(ids.has(`INV-${n}`), `the ${state} group names INV-${n}:\n${out}`);
   }
-  for (const n of [...differs, 38]) assert.ok(intent.some((l) => hasId(l, `INV-${n}`)), `the intent part should name INV-${n}:\n${out}`);
-  for (const n of [...consolidated, ...pending, 42]) {
-    assert.ok(!intent.some((l) => hasId(l, `INV-${n}`)), `the intent part should not name INV-${n}:\n${out}`);
-  }
+  assert.ok(!intent.some((l) => hasId(l, 'INV-42')), `the intent part should not name INV-42:\n${out}`);
 });
 
 // --- 7d [HNT-1] hidden hints are always counted ---

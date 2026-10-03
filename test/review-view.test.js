@@ -3,8 +3,9 @@
 // [REC-5], the blocks whose sections the branch changes, with their states,
 // its decisions with the agent's rulings apart [REC-7]), then an evidence
 // part (per R of a served request, the changed files linked, with the reason
-// [LNK-1], to a section whose block cites that R, or "none found"; then the
-// changed files linked to no served request).
+// [LNK-1], to a section whose block cites that R, or, when none is, what was
+// searched: "no linked code or test file among the changed files" (#139);
+// then the changed files linked to no served request).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
@@ -29,7 +30,9 @@ const DECIDED = '\n## Decisions\n\n' +
 // csv-export holds INV-7 (for R1) and INV-3 (for R2); nothing is for R3. It
 // was signed on 09-19 (an older text) and again on 09-21 (ORG, the latest).
 // The branch consolidates INV-7, then changes src/export.js under its
-// [INV-7] marker and src/logger.js, which nothing links to csv-export.
+// [INV-7] marker, then src/logger.js in a commit with no Request line, so
+// nothing links it to csv-export (#139: a file a served request's commit
+// changed is linked to it).
 function reviewed(t) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, S0));
@@ -48,8 +51,9 @@ function reviewed(t) {
   repo.write('specs/invoices.md', file(INV1, S0, INV7));
   repo.commit('Consolidate INV-7\n\nRequest: csv-export', { date: '2026-09-23T12:00:00Z' });
   repo.write('src/export.js', "// [INV-7] CSV rows\nexport function csvRow(invoice) {\n  return [invoice.number, invoice.total].join(';');\n}\n");
-  repo.write('src/logger.js', "export function log(line) {\n  process.stderr.write(`${line}\\n`);\n}\n");
   repo.commit('CSV rows\n\nRequest: csv-export', { date: '2026-09-23T13:00:00Z' });
+  repo.write('src/logger.js', "export function log(line) {\n  process.stderr.write(`${line}\\n`);\n}\n");
+  repo.commit('Logger', { date: '2026-09-23T14:00:00Z' });
   assert.match(repo.read('requests/csv-export/request.md').toString(), /Signed off: 2026-09-21 owner, origin\/2026-09-21-signoff\.md/,
     'the fixture: request.md points to the 09-21 sign-off');
   return repo;
@@ -97,7 +101,7 @@ test('[VW-4][REC-7] --for review, intent: the blocks whose sections the branch c
   assert.ok(/agent/i.test(intent[at]) || /agent/i.test(heading), `D2 is marked as the agent's ruling:\n${out}`);
 });
 
-test('[VW-4][LNK-1] --for review, evidence: R1 has src/export.js with its reason, R2 and R3 "none found", then src/logger.js, linked to no served request', (t) => {
+test('[VW-4][LNK-1] --for review, evidence: R1 has src/export.js with its reason, R2 and R3 "no linked code or test file among the changed files" (#139), then src/logger.js, linked to no served request', (t) => {
   const { out, evidence } = review(reviewed(t));
   const r1 = indexOf(evidence, /\bR1\b/);
   const r2 = indexOf(evidence, /\bR2\b/, r1 + 1);
@@ -109,7 +113,7 @@ test('[VW-4][LNK-1] --for review, evidence: R1 has src/export.js with its reason
   const forR1 = evidence.slice(r1, r2).join('\n');
   assert.ok(lineWith(forR1, 'src/export.js', 'names [INV-7]'), `R1's evidence: src/export.js, which names [INV-7]:\n${out}`);
   for (const [label, part] of [['R2', evidence.slice(r2, r3)], ['R3', evidence.slice(r3, logger)]]) {
-    assert.ok(part.join('\n').includes('none found'), `${label}: "none found":\n${out}`);
+    assert.ok(part.join('\n').includes('no linked code or test file among the changed files'), `${label}: says what was searched:\n${out}`);
     assert.ok(!part.join('\n').includes('src/'), `${label} has no evidence:\n${out}`);
   }
   assert.ok(!evidence.slice(logger).join('\n').includes('src/export.js'), `src/export.js is linked to csv-export:\n${out}`);
@@ -150,7 +154,7 @@ test('[VW-4] --for review with two served requests: each one\'s signed text verb
   assert.ok(ev.includes('Time stamps'), `iso-dates' R1, Time stamps, in the evidence part:\n${out}`);
   assert.ok(lineWith(ev, 'src/export.js', 'names [INV-7]'), `csv-export's R1 evidence:\n${out}`);
   assert.ok(lineWith(ev, 'src/dates.js', 'names [INV-3]'), `iso-dates' R1 evidence:\n${out}`);
-  assert.ok(ev.includes('none found'), `csv-export's R2 and R3 have none:\n${out}`);
+  assert.ok(ev.includes('no linked code or test file among the changed files'), `csv-export's R2 and R3 have none, and say what was searched:\n${out}`);
   const logger = indexOf(evidence, /src\/logger\.js/);
   assert.ok(logger > indexOf(evidence, /src\/export\.js/) && logger > indexOf(evidence, /src\/dates\.js/),
     `src/logger.js comes after the Rs, as linked to no served request:\n${out}`);
