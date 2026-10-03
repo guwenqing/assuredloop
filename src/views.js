@@ -54,11 +54,11 @@ export function sectionView(top, id, at) {
       else links.push(...files.filter(isCode(root)).map((p) => [p, `${p}  changed together with [${id}] (${day(c.when)}, ${describe(c)})`]));
     }
   }
-  const named = git(top, ['grep', '-n', '-z', '-F', `[${id}]`, ...(rev ? [rev] : []), '--', '.', ':!requests', `:!${root}`], { allowFail: true }) ?? '';
+  const named = git(top, ['grep', '-n', '-z', '-F', `[${id}]`, ...(rev ? [rev] : []), '--', '.', ':!requests', `:!${root}`], { allowFail: true, worktree: !rev }) ?? '';
   const byName = named.split('\n').filter(Boolean).map((l) => l.split('\0')).map(([p, n]) => [p.replace(`${rev}:`, ''), n])
     .map(([p, n]) => [p, `${p}:${n}  names [${id}]`]);
   const heading = s ? wordsOf(s.title) : new Set();
-  const byWord = paths(git(top, rev ? ['ls-tree', '-r', '-z', '--name-only', rev] : ['ls-files', '-z'])).filter(isCode(root)).flatMap((p) => {
+  const byWord = paths(git(top, rev ? ['ls-tree', '-r', '-z', '--name-only', rev] : ['ls-files', '-z'], { worktree: !rev })).filter(isCode(root)).flatMap((p) => {
     const w = [...wordsOf(p)].find((x) => heading.has(x));
     return w ? [[p, `${p}  shares the word "${w}"`]] : [];
   });
@@ -84,7 +84,7 @@ export function sectionView(top, id, at) {
 
 // The hunks of `path` between two revs (the working tree when `head` is null): old and new start and count.
 function hunks(top, base, head, path) {
-  return git(top, ['diff', '-U0', '--no-renames', base, ...(head ? [head] : []), '--', path]).split('\n').map((l) => l.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/))
+  return git(top, ['diff', '-U0', '--no-renames', base, ...(head ? [head] : []), '--', path], { worktree: !head }).split('\n').map((l) => l.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/))
     .filter(Boolean).map((m) => ({ a: Number(m[1]), b: Number(m[2] ?? 1), c: Number(m[3]), d: Number(m[4] ?? 1) }));
 }
 

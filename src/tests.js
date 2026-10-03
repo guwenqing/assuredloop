@@ -150,7 +150,7 @@ export function testFacts(top, b) {
   const found = results(top, r.tree, r.at, head, b.base);
   const adr = adrFolders(top, b.tree, b.at);
   const text = (p) => b.tree.read(p)?.toString('utf8') ?? null;
-  const tracked = new Set(paths(b.at ? git(top, ['ls-tree', '-r', '-z', '--name-only', head]) : git(top, ['ls-files', '-z'])));
+  const tracked = new Set(paths(b.at ? git(top, ['ls-tree', '-r', '-z', '--name-only', head]) : git(top, ['ls-files', '-z'], { worktree: true })));
   const tests = [...new Set([...tracked, ...b.changed])].filter((p) => isTest(p) && text(p) !== null);
   const names = new Map(tests.map((t) => [t, new Set(idsOn(text(t)))]));
   const observed = b.changed.filter(isTest).map((p) => observe(p, b.base && git(top, ['show', `${b.base}:${p}`], { allowFail: true }), text(p)));

@@ -36,8 +36,8 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   const [was, now] = [sections(before), sections(files)];
   const changedIds = [...new Set([...was.keys(), ...now.keys()])].filter((id) => !(was.has(id) && now.has(id) && sameSection(was.get(id), now.get(id))));
   // The working tree's final state includes its untracked files; a commit's is only its tree.
-  const changed = base ? [...paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, ...(at ? [at] : [])])),
-    ...(at ? [] : paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z'])))] : [];
+  const changed = base ? [...paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, ...(at ? [at] : [])], { worktree: !at })),
+    ...(at ? [] : paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z'], { worktree: true })))] : [];
   const requests = requestsIn(tree);
   const seen = new Map();
   const mapped = commits.map((sha) => requestOf(top, sha, requests, seen));
@@ -147,7 +147,7 @@ export function hintsOf(top, b, { main }) {
   // records and the baseline's .md files; a baseline section, unless every block of it retains nothing
   // ([STA-3]), as after a revert; baseline text outside any section with an ID; its change.md, unless
   // every block is Dropped, not Kept, and retains nothing.
-  const uncommitted = b.at ? [] : [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];
+  const uncommitted = b.at ? [] : [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true, worktree: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z'], { worktree: true }))];
   const textAt = (rev, p) => (rev ? git(top, ['show', `${rev}:${p}`], { allowFail: true }) : b.tree.read(p)?.toString('utf8')) ?? '';
   const applied = (name) => {
     const touched = (p) => b.mapped.some((c) => c.names.includes(name) && filesOf(top, c.sha).includes(p)) || (b.served.has(name) && uncommitted.includes(p));
