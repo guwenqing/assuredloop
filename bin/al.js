@@ -2,7 +2,7 @@
 // al: AssuredLoop's command line. Every output names what it read and ends
 // with a Next line and a Not known line ([VW-9]).
 import { parseArgs } from 'node:util';
-import { Fail, mainRef, resolveCommit, topLevel } from '../src/git.js';
+import { Fail, mainRef, remember, resolveCommit, topLevel } from '../src/git.js';
 import { newRequest, recordOrigin, context, line } from '../src/commands.js';
 import { spec } from '../src/spec.js';
 import { consolidate } from '../src/consolidate.js';
@@ -36,6 +36,7 @@ function main(argv) {
   const cwd = process.cwd();
   let top = null;
   let read = 'working tree';
+  remember();
   try {
     top = topLevel(cwd);
     const [name, ...rest] = argv;

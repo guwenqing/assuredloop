@@ -118,7 +118,7 @@ export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
     each[0].forEach((id) => each.every((s) => s.has(id)) && ids.add(id));
   }
   if (working) {
-    const files = [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];
+    const files = [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true, worktree: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z'], { worktree: true }))];
     sectionsChanged(top, 'HEAD', null, root, files, openTree(top)).forEach((id) => ids.add(id));
   }
   return ids;
