@@ -16,7 +16,9 @@
 // (F) [REC-8][VW-2] the parent's Parts line lists only parts outside fenced
 //     code;
 // (G) [REC-6][HNT-2] baseline text outside any section with an ID (a
-//     heading with no ID, or a preamble before the first heading) is work.
+//     heading with no ID, or a preamble before the first heading) is work;
+// (H) [REC-6] the final state decides for code too: code added and then
+//     deleted on the branch delivers nothing.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, runAl } from './helpers/fixture.js';
@@ -181,3 +183,20 @@ for (const [label, edit] of [
     strict(repo, 1);
   });
 }
+
+test('#136 (H) [REC-6] blocked tier-2 x: one Request: x commit adds src/example.js, the next deletes it (git diff main...HEAD is empty): no "delivers work for x" not ok; check --strict exits 0', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/rules.md', file('# Rules\n', A0));
+  repo.commit('Baseline', { date: '2026-09-20T12:00:00Z' });
+  addRequest(repo, 'x', null, { line: TIER2, org: ORG, signed: false, decisions: '' });
+  repo.commit('x: request', { date: '2026-09-21T12:00:00Z' });
+  assert.match(firstLine(context(repo, 'x')), /^BLOCKED/, 'the fixture: x is blocked');
+  repo.git(['checkout', '-q', '-b', 'work']);
+  repo.write('src/example.js', 'export const example = "new";\n');
+  repo.commit(message('Example for x', { request: 'x', tier: '2 — promise' }), { date: '2026-09-22T12:00:00Z' });
+  repo.git(['rm', '-q', 'src/example.js']);
+  repo.commit(message('Withdraw example for x', { request: 'x', tier: '2 — promise' }), { date: '2026-09-23T12:00:00Z' });
+  assert.equal(repo.git(['diff', 'main...HEAD']), '', 'the fixture: no net change on the branch');
+  noHint(check(repo, '--all'), 'not ok', 'delivers work for');
+  strict(repo, 0);
+});
