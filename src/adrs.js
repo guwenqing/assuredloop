@@ -10,6 +10,11 @@ import { cites, idsOn, paths, requestOf } from './links.js';
 // A file name is bounded (255 bytes), so the name is too: unbounded, a long token takes quadratic time.
 const numbers = (s) => [...new Set([...s.matchAll(/\bADR[ \t]+(\d{4})\b|(?<![\w-])(\d{4})-[\w.-]{0,250}\.md\b/g)].map((m) => m[1] ?? m[2]))];
 const numberOf = (p) => p.match(/(?:^|\/)(\d{4})-[^/]*\.md$/)?.[1];
+// `Status:` anywhere in the header, the lines before the first `##` heading,
+// so `Date: … Status: superseded by …` on one line is read. The status ends
+// with its sentence, so a field after it on the line is not part of it.
+const STATUS = /(?<![\w-])Status:[ \t]*(.*?)(?:\.(?=[ \t]|$)|$)/m;
+const statusIn = (text) => { const end = text.search(/^##[ \t]/m); return (end < 0 ? text : text.slice(0, end)).match(STATUS); };
 
 // A `past` tree's `adrs:` lines are read leniently ([VW-8]).
 export const adrFolders = (top, tree, at, past = false) => [...new Set(['docs/adr', ...(past ? pastLines : configured)(top, tree, at, 'adrs')])];
@@ -19,9 +24,11 @@ export function adrsIn(top, tree, at, past = false) {
   return adrFolders(top, tree, at, past).flatMap((d) => (tree.list(d) ?? []).filter((f) => numberOf(f)).map((f) => {
     const text = tree.read(`${d}/${f}`)?.toString('utf8') ?? '';
     const field = (k) => text.match(new RegExp(`^${k}:[ \\t]*(.*)$`, 'm'))?.[1] ?? '';
-    const status = field('Status');
-    return { path: `${d}/${f}`, n: numberOf(f), text, status: status.match(/^[a-z]+/i)?.[0].toLowerCase() ?? '',
-      by: /^superseded/i.test(status) ? numbers(status) : [], supersedes: numbers(field('Supersedes')), request: field('Request').trim(), governs: idsOn(field('Governs')) };
+    const m = statusIn(text);
+    const status = m?.[1] ?? '';
+    return { path: `${d}/${f}`, n: numberOf(f), text, status: status.match(/^[a-z]+/i)?.[0].toLowerCase() ?? '', hasStatus: Boolean(m),
+      by: /^superseded/i.test(status) ? numbers(status) : [], supersedes: numbers(field('Supersedes')), hasSupersedes: /^Supersedes:/m.test(text),
+      request: field('Request').trim(), governs: idsOn(field('Governs')) };
   }));
 }
 
@@ -74,16 +81,19 @@ export function adrHints(top, b) {
   for (const a of all) names.set(a.n, (names.get(a.n) ?? new Set()).add(a.path));
   for (const [n, ps] of names) if (ps.size > 1) add('not ok', [], `ADR number ${n} is reused: ${[...ps].join(' and ')}; a number is never reused`, 'git mv the newer one to the next free number, then al check');
   for (const a of all) {
-    const links = [...a.supersedes.map((n) => [n, 'supersedes', (t) => t.by.includes(a.n), `Status: superseded by ADR ${a.n}`]),
-      ...a.by.map((n) => [n, 'is superseded by', (t) => t.supersedes.includes(a.n), `Supersedes: ADR ${a.n}`])];
+    // A field the record already has is changed, never added again.
+    const links = [...a.supersedes.map((n) => [n, 'supersedes', (t) => t.by.includes(a.n),
+      (t) => (t.hasStatus ? `set its Status: to "superseded by ADR ${a.n}" in` : `add "Status: superseded by ADR ${a.n}" to`)]),
+    ...a.by.map((n) => [n, 'is superseded by', (t) => t.supersedes.includes(a.n),
+      (t) => (t.hasSupersedes ? `add ADR ${a.n} to the Supersedes: line of` : `add "Supersedes: ADR ${a.n}" to`)])];
     for (const [n, says, back, fix] of links) {
       const t = byN.get(n);
       if (!t) add('not ok', [], `a broken supersede link: ${a.path} ${says} ADR ${n}, which does not exist`, `correct the link in ${a.path}, then al check`);
-      else if (!t.some(back)) add('not ok', [], `a one-way supersede link: ${a.path} ${says} ADR ${n}, but ${t[0].path} does not say so back`, `add "${fix}" to ${t[0].path}, then al check`);
+      else if (!t.some(back)) add('not ok', [], `a one-way supersede link: ${a.path} ${says} ADR ${n}, but ${t[0].path} does not say so back`, `${fix(t[0])} ${t[0].path}, then al check`);
     }
   }
   if (b.base) {
-    const strip = (t) => t.replace(/^Status:.*$/m, '');
+    const strip = (t) => { const m = statusIn(t); return m ? t.slice(0, m.index) + t.slice(m.index + m[0].length) : t; };
     for (const a of adrsIn(top, openTree(top, b.base), b.base, true).filter((x) => x.status === 'accepted')) {
       const now = b.tree.read(a.path)?.toString('utf8');
       if (now === undefined || strip(now) !== strip(a.text)) {
