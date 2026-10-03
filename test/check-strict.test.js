@@ -322,6 +322,9 @@ test('C8 [HNT-3] real data: al check in a clone of this repo exits 0, with part 
   const base = tempDir(t);
   const dir = join(base, 'clone');
   git(base, ['clone', '-q', root, dir]);
+  // A CI checkout is a detached commit with no local main, so its clone has no
+  // origin/main: give it the checkout's own origin/main.
+  if (!git(dir, ['for-each-ref', 'refs/remotes/origin/main'])) git(dir, ['fetch', '-q', root, '+refs/remotes/origin/main:refs/remotes/origin/main']);
   const r = runAl(dir, ['check']);
   assert.equal(r.code, 0, both(r));
   assertCheckFrame(r.stdout, 'origin/main');
