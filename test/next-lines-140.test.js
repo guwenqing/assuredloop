@@ -259,6 +259,58 @@ test('#140 item 24 [HNT-3][VW-2] on main, a not ok owned by two requests (INV-3 
 });
 
 // The two holders' not ok, served by one of them: it counts there (a pin, as today).
+// --- (3) three holders: the not ok names a pair truly unlinked, and following it leaves one chain ---
+
+const EX = (v) => `## [EX-1] Example\nThe example is version ${v}.\n`;
+// The heading of `name`'s EX-1@1 block: its builds-on marker, if any.
+const exHead = (on) => `[EX-1]@1 modify${on ? `   builds on ${on}` : ''}   for R1`;
+
+// Main: specs/ex.md at EX(0); requests a, b, c, signed, each holding EX-1@1
+// as `holders` gives it: { name: [was, now, builds on or null] }.
+function holders3(t, holders) {
+  const repo = makeRepo(t);
+  repo.write('specs/ex.md', EX(0));
+  for (const [name, [was, now, on]] of Object.entries(holders)) addRequest(repo, name, [block(exHead(on), { was: EX(was), now: EX(now) })]);
+  repo.commit('a, b and c', { date: '2026-09-21T12:00:00Z' });
+  return repo;
+}
+
+// Read the not ok, check it names a pair of requests not linked either way
+// (`linked` lists the pairs that are), follow its instruction, and check that
+// no not ok on EX-1 is left: no "neither builds on the other", no broken link.
+function followThree(repo, holders, linked) {
+  const line = hint(check(repo, '--all'), 'not ok', 'neither builds on the other', 'EX-1');
+  const other = line.match(/builds on ([abc])\/EX-1@1/);
+  const edit = line.match(/requests\/([abc])\/change\.md/);
+  assert.ok(other && edit, `the not ok should name a change.md and the block to build on:\n${line}`);
+  const [p, q] = [edit[1], other[1]];
+  assert.notEqual(p, q, `a block does not build on its own request:\n${line}`);
+  assert.ok(!linked.some((pair) => pair.includes(p) && pair.includes(q)), `${p} and ${q} are already linked; the not ok should name a pair that is not:\n${line}`);
+  // In place of a builds on the block has, when the line says so; else added to its heading.
+  const replace = /\bin place of\b|\breplac/i.test(line);
+  const [, now, on] = holders[p];
+  const head = replace || !on ? exHead(`${q}/EX-1@1`) : `${exHead(on)}   builds on ${q}/EX-1@1`;
+  const path = `requests/${p}/change.md`;
+  const text = repo.read(path).toString();
+  const old = block(exHead(on), { was: EX(holders[p][0]), now: EX(now) });
+  assert.ok(text.includes(old), `the fixture: ${path} holds ${p}'s block`);
+  repo.write(path, text.replace(old, block(head, { was: EX(holders[q][1]), now: EX(now) })));
+  const after = check(repo, '--all');
+  noHint(after, 'neither builds on the other');
+  noHint(after, 'broken link');
+  noHint(after, 'not ok', 'EX-1');
+}
+
+test('#140 item 3 [HNT-1][HNT-2] three holders, a builds on b and c unlinked: the not ok names c and one of a or b, never a and b; following it leaves one chain, no not ok on EX-1', (t) => {
+  const holders = { a: [1, 2, 'b/EX-1@1'], b: [0, 1, null], c: [0, 3, null] };
+  followThree(holders3(t, holders), holders, [['a', 'b']]);
+});
+
+test('#140 item 3 [HNT-1][HNT-2] three holders branching, a and c both build on b: the not ok names a and c; following it leaves one chain, no not ok on EX-1', (t) => {
+  const holders = { a: [1, 2, 'b/EX-1@1'], b: [0, 1, null], c: [1, 3, 'b/EX-1@1'] };
+  followThree(holders3(t, holders), holders, [['a', 'b'], ['c', 'b']]);
+});
+
 test('#140 item 3 pin: the two-holders not ok still counts on the branch serving one holder, and check --strict exits 1', (t) => {
   const repo = twoHolders(t);
   assertCounts(hint(check(repo, '--all'), 'not ok', 'neither builds on the other', 'INV-3'));
