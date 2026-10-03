@@ -217,6 +217,8 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
     }
     // A shallower anchor is the parent: the section goes back first under it.
     // The removal's Was, which the check held against the anchor, says which.
+    const unread = headingFault(removal, removal.was, 'Was');
+    if (unread) return refuse([unread], `fix the block named in its change.md`);
     const under = where.section.level < parseSections(removal.was)[0].level;
     texts.set(where.path, insertAt(where.text, under ? where.section.stop : afterSubtree(where.list, where.i), tidy(first.was)));
     did = `[${id}] back ${under ? 'first under' : 'after'} [${anchor}] in ${where.path}`;
