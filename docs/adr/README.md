@@ -25,8 +25,20 @@ changes only its status.
 - Earlier drafts, the adversary's challenges, the case tests, and the
   research notes cited as [A]-[L] and [G]: the bots repository, under
   `bots/assuredloop/design/` and `bots/assuredloop/research/`.
-- "input N": the owner's inputs, snapshotted in
-  `requests/archive/assuredloop-v1/origin/2026-09-27-owner-inputs.md`.
+- "input N": the owner's inputs, snapshotted twice in
+  `requests/archive/assuredloop-v1/origin/`: `2026-09-27-owner-inputs.md`
+  holds inputs 1-48, and the later `2026-09-27-owner-inputs-2.md` holds 1-53,
+  so inputs 49-53 (50 and 52 among them) are only in the second.
 - The request concluded on 2026-09-28 and moved to
   `requests/archive/assuredloop-v1/`. The ADRs keep the paths they were
   written with, under `requests/assuredloop-v1/`.
+
+**Where an ADR and the spec differ.** `specs/` is the current contract. Where
+an accepted ADR or the archived `design.md` says something else, `specs/`
+holds. ADRs 0003, 0005, 0006 and 0011 keep some older detail; they are not
+edited, since an accepted record changes only by a new one.
+
+**ADR 0008 and roles.** Its line "What the way of working does not contain:
+roles, phases, approvals…" is about AssuredLoop's records: they hold no roles,
+phases or approvals beyond the sign-off. It does not forbid roles in the bots'
+own work; the bots choose who develops, tests and reviews.
