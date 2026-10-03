@@ -22,25 +22,25 @@ description: >-
 7. Before review, run `al check`. Fix or explain each `not ok`; read each `note`.
 `al new` writes at once. Other commands that write show first; add `--yes` to write.
 
-## Larger work (tiers 2, 3 and S)
-- Tier 2 needs a design; tier 3 lands in parts; S is a spike that answers a question.
-  `al new <name> --tier <2|3|S> --from -`, then `### R1` sub-sections, `Out:` and
-  `Assumed:` (one-line `R1:` is tier 1 only); for S, an `## Organized question`. The
-  owner signs it (step 5). Draft freely; deliver the work with the sign-off or after it.
-- `change.md` holds the design, then `## Spec changes`: a block per section, its heading
-  ending in `for R<n>` (else `al conclude` reports R<n> in no section). To change a
-  section, `al record <name> section <ID>` copies it into "was" and "now"; edit "now".
-  `--builds-on <request>` starts from another request's version instead. For a new
-  section, write `### [PAY-1]@1 add in specs/pay.md` (or `add after [ID]`), then `Now:`
-  and the section, indented. Its ID is one more than the highest ever used for that prefix.
+## Larger work: tier 2 needs a design, 3 lands in parts, S is a spike
+- `al new <name> --tier <2|3|S> --from -`, then step 4's `## Organized requirement`, with
+  `### R1` sub-sections, `Out:` and `Assumed:` (one-line `R1:` is tier 1 only). S writes
+  `## Organized question` instead, then `findings.md` opening with its Answer, and no spec
+  change. The owner signs (step 5). Draft freely; deliver with the sign-off or after it.
+- `change.md` holds the design, then `## Spec changes`: a block per section. End each
+  heading with `for R<n>`, so the Outcome links R<n> to it (an `Amends: [ID]` under R<n>
+  also does). `al record <name> section <ID>` copies a section into "was" and "now"; edit
+  "now". `--builds-on <request>` starts from another request's version. For a new section,
+  write `### [PAY-1]@1 add in specs/pay.md` (or `add after [ID]`), then `Now:` and the
+  section, indented. Its ID is one more than the highest ever used for that prefix.
 - Each later decision (D1, D2…): `al record <name> decision --source <who> --text <it>`.
   Snapshot every link or chat you rely on: `al record <name> origin --url <u> --from -`,
   with `--updated <time>` when the source shows when it last changed.
-- As a part lands, `al consolidate <name> --section <ID>` writes its "now" into the
-  baseline. `al conclude <name>` needs each section consolidated; carried (a later block
-  built on it is in the baseline); `Dropped <date> (Dn)` on its heading, reverted if applied
-  (consolidate's `--revert <ID>`); or `Kept <date> (Dn)`: Dn from the owner, or `for R<n>`.
-- A spike writes `findings.md`, starting with its Answer, and changes no spec.
+- `al consolidate <name> --section <ID>` writes a part's "now" into the baseline.
+  `al conclude <name>` needs each section consolidated; carried (a later block built on
+  it is in the baseline; if dropped, keep it, never revert); `Dropped <date> (Dn)`, with
+  applied text also reverted by consolidate's `--revert <ID>`; or `Kept <date> (Dn)`, for
+  a consolidated or carried section with `for R<n>` or Dn from the owner.
 
 ## Reading where things stand
 - `al context <name>`: a request in twelve lines. `al context <ID>`: one section, with
