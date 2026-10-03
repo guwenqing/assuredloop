@@ -143,25 +143,47 @@ export function spec(ctx) {
 
 // Every `[ID` ever used ([SPC-3]): in the root and every request's change.md
 // now, and under the root and requests/ anywhere in the history of `rev`
-// (every ref by default), each ID with the paths where it headed a section
-// (a block's heading in a change.md included).
+// (every ref by default), each ID with the paths where it headed a section:
+// a heading of a root .md file, out of code ([SPC-2]), or a block heading of
+// a change.md.
 export function idsUsed(top, tree, root, rev = '--all') {
   const used = new Map();
   const note = (path, text) => {
-    for (const l of text.split('\n')) {
-      for (const [, id] of l.matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)/g)) if (!used.has(id)) used.set(id, new Set());
-      const headed = l.match(/^[-+ ]?[ \t]*#{1,6}[ \t]+\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/)?.[1];
-      if (headed) used.get(headed).add(path);
-    }
+    for (const [, id] of text.matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)/g)) if (!used.has(id)) used.set(id, new Set());
+    const headed = path.endsWith('/change.md') ? [...text.matchAll(/^### \[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]@/gm)].map((m) => m[1])
+      : path.startsWith(`${root}/`) && path.endsWith('.md') ? parseSections(text).map((s) => s.id).filter(Boolean) : [];
+    for (const id of headed) used.get(id).add(path);
   };
   for (const p of [...tree.walk(root).filter((x) => x.endsWith('.md')), ...tree.walk('requests').filter((x) => x.endsWith('/change.md'))]) note(p, tree.read(p).toString('utf8'));
-  let path = '';
-  for (const l of (git(top, ['log', rev, '-p', '--no-renames', '--format=', '--', root, 'requests'], { allowFail: true }) ?? '').split('\n')) {
-    const m = l.match(/^diff --git a\/(.*) b\//);
-    if (m) path = m[1];
-    else note(path, l);
+  // Each changed file whole, both sides, so headings are read with their fences.
+  const log = git(top, ['log', rev, '-p', '--no-renames', '-U1000000', '--format=', '--', root, 'requests'], { allowFail: true }) ?? '';
+  let file = null;
+  const flush = () => { if (file?.path) { note(file.path, file.old.join('\n')); note(file.path, file.now.join('\n')); } };
+  for (const l of log.split('\n')) {
+    if (l.startsWith('diff --git ')) { flush(); file = { path: diffPath(l), old: [], now: [], hunk: false }; continue; }
+    if (!file) continue;
+    if (l.startsWith('@@')) file.hunk = true;
+    else if (file.hunk && (l[0] === ' ' || l[0] === '-')) file.old.push(l.slice(1));
+    if (file.hunk && (l[0] === ' ' || l[0] === '+')) file.now.push(l.slice(1));
   }
+  flush();
   return used;
+}
+
+// The path of a `diff --git` header under --no-renames, whose two sides name
+// one path: `a/P b/P`, or each side C-quoted by git when P has bytes it quotes.
+function diffPath(header) {
+  const rest = header.slice('diff --git '.length);
+  if (rest[0] !== '"') return rest.length % 2 ? rest.slice(2, 2 + (rest.length - 5) / 2) : null;
+  const bytes = [];
+  const ESC = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
+  for (let i = 1; i < rest.length && rest[i] !== '"'; i++) {
+    if (rest[i] !== '\\') bytes.push(...Buffer.from(rest[i]));
+    else if (/[0-7]/.test(rest[i + 1])) { bytes.push(parseInt(rest.slice(i + 1, i + 4), 8)); i += 3; }
+    else bytes.push(ESC[rest[++i]] ?? rest.charCodeAt(i));
+  }
+  const path = Buffer.from(bytes).toString('utf8');
+  return path.startsWith('a/') ? path.slice(2) : null;
 }
 
 // The next ID for `prefix`: one more than the highest n of any `[PREFIX-n` in `used` ([SPC-3]).

@@ -106,10 +106,20 @@ export function hintsOf(top, b, { main }) {
     const reaches = (p, q) => xs.some((x) => x.request === p && reached(x).includes(q));
     const loose = reqs.filter((p) => reqs.some((q) => q !== p && !reaches(p, q) && !reaches(q, p)));
     if (!loose.length) continue;
-    const [first, last] = [xs.filter((x) => x.request === loose[1]).reduce((m, x) => (x.n < m.n ? x : m)), xs.filter((x) => x.request === loose[0]).reduce((m, x) => (x.n > m.n ? x : m))];
-    const dir = b.requests.find((r) => r.name === loose[1]).dir;
+    // The fix: a tip (no holder builds on it) and a holder unlinked from it whose
+    // own base the tip already reaches; that one's first block builds on the
+    // tip's latest. The tip does not reach it, so no cycle, and what it reached
+    // the tip reaches, so no holder is left loose by it.
+    const unlinked = (p, q) => p !== q && !reaches(p, q) && !reaches(q, p);
+    const of = (q) => xs.filter((x) => x.request === q).sort((x, y) => x.n - y.n);
+    const below = (q) => reached(of(q)[0]).find((r) => r !== q);
+    // A broken chain can leave no tip; then any unlinked pair.
+    const tip = loose.find((p) => !reqs.some((q) => q !== p && reaches(q, p))) ?? loose[0];
+    const onto = reqs.find((q) => unlinked(tip, q) && (!below(q) || reaches(tip, below(q)))) ?? reqs.find((q) => unlinked(tip, q));
+    const [first, last] = [of(onto)[0], of(tip).at(-1)];
+    const dir = b.requests.find((r) => r.name === onto).dir;
     add('not ok', 2, loose, `[${id}] held by ${loose.join(' and ')}, neither builds on the other`,
-      `in ${dir}/change.md, add "builds on ${last.key}" to the heading of ${first.key} and set its Was to the Now of ${last.key}, then al check`);
+      `in ${dir}/change.md, set "builds on ${last.key}" in the heading of ${first.key} (in place of any builds on there) and set its Was to the Now of ${last.key}, then al check`);
   }
   if (main) out.push(...appendOnly(top, main, b.commits));
 
