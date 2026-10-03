@@ -185,7 +185,9 @@ export function consolidate({ top, args, opts }) {
 // --revert <ID>: the "was" of the request's first block for the ID goes back.
 function revert({ top, root, name, id, mine, blocks, texts, original, opts, refuse }) {
   const first = mine.reduce((m, b) => (b.n < m.n ? b : m));
-  const carried = statesOf(filesOf(texts), blocks, (b) => mine.includes(b))
+  // A Dropped marker never lifts the guard: carried is read as if no block were dropped ([STA-6]).
+  const undropped = new Map([...blocks].map(([k, b]) => [k, { ...b, dropped: null, requestDropped: false }]));
+  const carried = statesOf(filesOf(texts), undropped, (b) => mine.some((m) => m.key === b.key))
     .find((e) => e.state === 'carried' && !e.by.startsWith(`${name}/`));
   if (carried) return refuse([`[${id}] is carried by ${carried.by}; a section carried by a successor is not reverted, only kept ([STA-6])`]);
   const fault = first.was !== null && headingFault(first, first.was, 'Was');

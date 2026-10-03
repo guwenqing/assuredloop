@@ -10,11 +10,11 @@ import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, rootLine, baseline } from './spec.js';
 import { allBlocks, blockFault, statesOf } from './states.js';
 import { organized, parts, signoffState } from './signoff.js';
-import { requestToWrite, decisionList, entriesOf } from './commands.js';
+import { requestToWrite, decisionList, childrenOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
 import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
-import { sameSection } from './sections.js';
+import { prose, sameSection } from './sections.js';
 import { adrsOf } from './adrs.js';
 
 const HELD = ['consolidated', 'carried'];
@@ -50,7 +50,7 @@ export function outcomeFacts(org, fates) {
   const kinds = new Map([...ids].map(([id, fs]) => [id, kind(fs)]));
   // A tier-1 record names the sections it amends with `Amends: [ID]`: under
   // R<n>, for R<n>; anywhere else in the organized section, for every R-line.
-  const all = org ? parts(org.text) : [];
+  const all = org ? parts(org.text, org.oneLine) : [];
   const isR = (x) => /^R\d+$/.test(x.key);
   const level = (x) => x.text.match(/^\s*(#+)\s/)?.[1].length ?? 0;
   // A part under a deeper heading inside R<n> stays in R<n>'s scope.
@@ -67,8 +67,9 @@ export function outcomeFacts(org, fates) {
   return { kinds, rs };
 }
 
-// The IDs an `Amends:` names: the bracketed ones after it, on its line.
-const amends = (text) => [...text.matchAll(/\bAmends:([^\n]*)/g)]
+// The IDs an `Amends:` names: the bracketed ones after it, on its line, out
+// of fenced code.
+const amends = (text) => [...prose(text).matchAll(/\bAmends:([^\n]*)/g)]
   .flatMap((m) => [...m[1].matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g)].map((x) => `[${x[1]}]`));
 
 // A request with no change.md ([REC-9]): the sections its branch added,
@@ -121,6 +122,15 @@ export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
 
 // The baseline's sections by ID in `tree`, under `root`.
 const sectionsOf = (tree, root) => new Map(baseline(tree, root).flatMap((f) => [...byId(f.text)]));
+
+// baselineLists for request `name`'s own work in `tree` (at commit `at`, or the
+// working tree, its uncommitted changes included), from `fork`.
+// The fork's tree is a past tree: its root: line alone, or today's root ([VW-8]).
+const ownLists = (top, tree, at, fork, name, org) => {
+  const root = rootOf(top, tree, at);
+  const was = fork ? sectionsOf(openTree(top, fork), rootLine(top, openTree(top, fork), fork) ?? root) : sectionsOf(tree, root);
+  return baselineLists(was, sectionsOf(tree, root), org, ownIds(top, name, fork, root, requestsIn(tree), !at, at ?? 'HEAD'));
+};
 
 // The generated block of the Outcome ([REC-9]): content facts only.
 function outcome(md, org, fates, droppedBy, live, adrs, lists) {
@@ -184,7 +194,9 @@ export function conclude({ top, args, opts }) {
   }
   if (moving && existsSync(join(top, target))) throw new Fail(`${target} already exists; a request name is never reused`, `al context ${name}`);
 
-  const { sign, org, fates, refusals } = judge(top, tree, name, dir, dropped);
+  const main = mainCommit(top);
+  const fork = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
+  const { sign, org, fates, refusals } = judge(top, tree, name, dir, dropped, undefined, fork);
   const body = refusals.map((r) => `refused: ${r}`);
   if (body.length) {
     return {
@@ -199,15 +211,10 @@ export function conclude({ top, args, opts }) {
   const root = rootOf(top, tree);
   const live = (ids) => liveCode(top, name, root, ids);
   const adrs = adrsOf(top, tree, undefined, name, requestsIn(tree));
-  const main = mainCommit(top);
-  const fork = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
-  // The fork's tree is a past tree: its root: line alone, or today's root ([VW-8]).
-  const was = () => (fork ? sectionsOf(openTree(top, fork), rootLine(top, openTree(top, fork), fork) ?? root) : sectionsOf(tree, root));
-  const own = () => baselineLists(was(), sectionsOf(tree, root), org, ownIds(top, name, fork, root, requestsIn(tree), true));
+  const own = () => ownLists(top, tree, undefined, fork, name, org);
   const lists = tree.read(`${dir}/change.md`) !== null ? null : own();
   const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs, lists));
-  const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])
-    .filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
+  const children = childrenOf(md).filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
   // [STA-7]: three lines or fewer, so every note shares one line.
   const notes = [...spikeNotes(tree, name, dir, md, () => { const l = lists ?? own(); return [...l.Added, ...l.Modified, ...l.Removed]; }),
     ...(children.length ? [`child request ${children.join(', ')} is still open`] : []),
@@ -225,8 +232,9 @@ export function conclude({ top, args, opts }) {
 }
 
 // conclude's rules on request `name` in `tree` (at commit `at`, or the working
-// tree): the refusals, none when it may conclude, and the facts they rest on.
-export function judge(top, tree, name, dir, dropped, at) {
+// tree), its branch forked from main at `fork`: the refusals, none when it may
+// conclude, and the facts they rest on.
+export function judge(top, tree, name, dir, dropped, at, fork) {
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const sign = signoffState(tree, dir, name);
   const org = organized(md);
@@ -236,7 +244,7 @@ export function judge(top, tree, name, dir, dropped, at) {
     if (!signed.has(request)) {
       const d = findRequest(tree, request);
       const o = d && organized(tree.read(`${d}/request.md`).toString('utf8'));
-      signed.set(request, o && !signoffState(tree, d, request).blocked ? parts(o.text).map((p) => p.key) : []);
+      signed.set(request, o && !signoffState(tree, d, request).blocked ? parts(o.text, o.oneLine).map((p) => p.key) : []);
     }
     return signed.get(request);
   };
@@ -249,9 +257,14 @@ export function judge(top, tree, name, dir, dropped, at) {
   };
   const fates = statesOf(baseline(tree, rootOf(top, tree, at)), blocks, (b) => b.request === name)
     .map((e) => ({ e, b: blocks.get(e.block), ...fateOf(e, blocks.get(e.block), facts) }));
+  // [STA-3]: with no change.md, a dropped request retains its own baseline
+  // changes; it has no block to revert or keep them by.
+  const lists = dropped && tree.read(`${dir}/change.md`) === null && ownLists(top, tree, at, fork, name, org);
+  const retained = lists ? [...lists.Added, ...lists.Modified, ...lists.Removed] : [];
   // [REC-6]: blocked, only a drop where every section retains nothing goes ahead.
   const refusals = [];
-  if (sign.blocked && !(dropped && fates.every((f) => f.fate === 'dropped'))) refusals.push(`${name} is blocked: ${sign.reason} ([REC-6])`);
+  if (sign.blocked && !(dropped && !retained.length && fates.every((f) => f.fate === 'dropped'))) refusals.push(`${name} is blocked: ${sign.reason} ([REC-6])`);
+  if (retained.length) refusals.push(`${name} is dropped but its baseline changes are retained: ${retained.map((id) => `[${id}]`).join(', ')}; revert them by hand ([STA-7])`);
   // [SPC-5]: a block that can't be read as written is fixed before anything is judged.
   const unreadable = [...blocks.values()].filter((b) => b.request === name).map(blockFault).filter(Boolean);
   if (unreadable.length) refusals.push(unreadable.join(' · '));

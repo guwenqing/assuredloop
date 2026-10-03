@@ -229,9 +229,9 @@ function review(tree, files, served, code, tier, changedIds) {
       if (s.signoff) intent.push(...s.signoff.text.replace(/\n+$/, '').split('\n').map((l) => `  ${l}`));
     } else {
       intent.push(`${r.name}  ${status}, part by part:`);
-      for (const p of parts(asked.text)) {
-        const own = s.signoff && parts(s.signoff.text).some((q) => samePart(p, q));
-        const inherited = s.parentSignoff && parts(s.parentSignoff.text).some((q) => samePart(p, q));
+      for (const p of parts(asked.text, asked.oneLine)) {
+        const own = s.signoff && parts(s.signoff.text, s.signoff.oneLine).some((q) => samePart(p, q));
+        const inherited = s.parentSignoff && parts(s.parentSignoff.text, s.parentSignoff.oneLine).some((q) => samePart(p, q));
         intent.push(`  ${p.key}: ${own ? `origin/${s.signoff.file}` : inherited ? `through ${s.parent}, origin/${s.parentSignoff.file}` : 'not signed'}`,
           ...p.text.replace(/\n+$/, '').split('\n').map((l) => `    ${l}`));
       }
@@ -246,7 +246,7 @@ function review(tree, files, served, code, tier, changedIds) {
     if (decided.some((d) => d.agent)) intent.push(line('Agent', `${decided.filter((d) => d.agent).map((d) => `${d.id} ${d.date}`).join(' · ')} (agent rulings)`));
     evidence.push(r.name);
     const org = organized(r.md);
-    for (const p of org ? parts(org.text).filter((x) => /^R\d+$/.test(x.key)) : []) {
+    for (const p of org ? parts(org.text, org.oneLine).filter((x) => /^R\d+$/.test(x.key)) : []) {
       const ids = new Set(blocks.filter((b) => b.request === r.name && b.forR.includes(p.key)).map((b) => b.id));
       const found = code.flatMap((f) => [...f.ids].filter(([id]) => ids.has(id)).map(([, reason]) => reason));
       evidence.push(`${p.text.split('\n')[0].replace(/^\s*#+\s+/, '')}`, ...(found.length ? found.map((f) => `  ${f}`) : ['  none found']));
