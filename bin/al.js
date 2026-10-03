@@ -39,8 +39,10 @@ const USAGE = 'al new | record | context | spec | consolidate | conclude | check
 function version() {
   const dir = realpathSync(fileURLToPath(new URL('..', import.meta.url)));
   const pkg = JSON.parse(readFileSync(`${dir}/package.json`, 'utf8'));
-  const top = git(dir, ['rev-parse', '--show-toplevel'], { allowFail: true });
-  const sha = top && realpathSync(top) === dir ? git(dir, ['rev-parse', 'HEAD'], { allowFail: true }) : null;
+  // The caller's GIT_DIR and the like point at the caller's repo, not this folder.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  const top = git(dir, ['rev-parse', '--show-toplevel'], { allowFail: true, env });
+  const sha = top && realpathSync(top) === dir ? git(dir, ['rev-parse', 'HEAD'], { allowFail: true, env }) : null;
   const where = sha ? `${sha.slice(0, 7)} · ${dir}` : `not a git checkout: ${dir}`;
   print([`al ${pkg.version ?? 'unreleased'} · ${where}`], 'the install folder', { label: 'no project read' }, 'al context',
     sha ? ['whether the install folder has uncommitted changes'] : ['which commit it was installed from']);

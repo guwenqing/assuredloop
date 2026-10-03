@@ -191,7 +191,7 @@ export function testFacts(top, b) {
     links.set(c, ls);
   }
   // A changed ADR counts as a linked change for a test's assertions, as code does.
-  const adrLinks = new Map((b.base ? b.changed.filter((p) => isAdr(p) && !isTest(p) && text(p) !== null) : []).map((p) => [p, linked(p).ls]));
+  const adrLinks = new Map((b.base ? b.changed.filter((p) => isAdr(p) && !isTest(p)) : []).map((p) => [p, linked(p).ls]));
   b.testFacts = { head, tests, names, observed, links, adrLinks, near, results: found };
   return b.testFacts;
 }

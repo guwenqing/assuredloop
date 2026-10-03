@@ -11,8 +11,9 @@ import { cites, idsOn, paths, requestOf } from './links.js';
 const numbers = (s) => [...new Set([...s.matchAll(/\bADR[ \t]+(\d{4})\b|(?<![\w-])(\d{4})-[\w.-]{0,250}\.md\b/g)].map((m) => m[1] ?? m[2]))];
 const numberOf = (p) => p.match(/(?:^|\/)(\d{4})-[^/]*\.md$/)?.[1];
 // `Status:` anywhere in the header, the lines before the first `##` heading,
-// so `Date: … Status: superseded by …` on one line is read.
-const STATUS = /(?<![\w-])Status:[ \t]*(.*)$/m;
+// so `Date: … Status: superseded by …` on one line is read. The status ends
+// with its sentence, so a field after it on the line is not part of it.
+const STATUS = /(?<![\w-])Status:[ \t]*(.*?)(?:\.(?=[ \t]|$)|$)/m;
 const statusIn = (text) => { const end = text.search(/^##[ \t]/m); return (end < 0 ? text : text.slice(0, end)).match(STATUS); };
 
 // A `past` tree's `adrs:` lines are read leniently ([VW-8]).
