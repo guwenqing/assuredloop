@@ -9,8 +9,17 @@ export class Fail extends Error {
   }
 }
 
-export function git(cwd, args, { text = true, allowFail = false } = {}) {
-  const r = spawnSync('git', args, { cwd, maxBuffer: 1 << 30 });
+// Once remember() is called (bin/al.js, at the start of a run), the same call in
+// the same folder is asked of git once and its answer kept until the process
+// ends; nothing outlives the run ([TL-2]). A `worktree` call reads the working
+// tree or the index, and is asked every time.
+let asked = null;
+export const remember = () => { asked = new Map(); };
+
+export function git(cwd, args, { text = true, allowFail = false, worktree = false } = {}) {
+  const key = asked && !worktree ? JSON.stringify([cwd, ...args]) : null;
+  const r = asked?.get(key) ?? spawnSync('git', args, { cwd, maxBuffer: 1 << 30 });
+  if (key) asked.set(key, r);
   if (r.error) throw new Fail(`git could not run: ${r.error.message}`, 'install git and try again');
   if (r.status !== 0) {
     if (allowFail) return null;

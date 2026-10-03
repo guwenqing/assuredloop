@@ -1,7 +1,7 @@
 // Throwaway git repos for end-to-end tests, and a runner for the CLI.
 // Deterministic: fixed identities and dates, no user or system git config.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, realpathSync, utimesSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, realpathSync, utimesSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,15 +66,23 @@ function wrap(dir) {
   };
 }
 
-// A new repo on branch main with one initial commit.
+// A new repo on branch main with one initial commit. It is built once per
+// process for each `date` and copied into each test's own dir.
+const built = new Map();
 export function makeRepo(t, { date } = {}) {
+  if (!built.has(date)) {
+    const dir = join(mkdtempSync(join(realpathSync(tmpdir()), 'al-fixture-')), 'repo');
+    process.on('exit', () => rmSync(dirname(dir), { recursive: true, force: true }));
+    mkdirSync(dir);
+    git(dir, ['init', '-q']);
+    const repo = wrap(dir);
+    repo.write('README.md', 'fixture\n');
+    repo.commit('initial', { date });
+    built.set(date, dir);
+  }
   const dir = join(tempDir(t), 'repo');
-  mkdirSync(dir);
-  git(dir, ['init', '-q']);
-  const repo = wrap(dir);
-  repo.write('README.md', 'fixture\n');
-  repo.commit('initial', { date });
-  return repo;
+  cpSync(built.get(date), dir, { recursive: true });
+  return wrap(dir);
 }
 
 // A bare repo holding `repo`'s main, set as `repo`'s origin, then fetched at
