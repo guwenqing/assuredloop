@@ -141,9 +141,18 @@ code and tests that name it.
 
 Keep the ID: it names the promise, not the file it sits in. If it must change,
 claim tier 1, with the owner's sign-off and `Amends: [R-2], [SIZE-1]` (name
-both, or a note says the new one is not named). Change every citation of
-`[R-2]` in the same PR; `al context R-2` lists those in code and tests. `[R-2]`
-is never used again.
+both, or a note says the new one is not named). In the same PR, change the
+citations in code and tests; `al context R-2` lists them. `[R-2]` is never used
+again.
+
+Do not replace `[R-2]` across the whole repo:
+- Archived requests and the other append-only records ([REC-12]) stay as they
+  are, and keep `[R-2]` as history. Editing one gives
+  `not ok: <sha> requests/archive/<name>/request.md: changes a request archived on main ([REC-12])`.
+- An open request that holds `[R-2]` then reads it as
+  `not found; candidates SIZE-1`, shown as that request's own information. It
+  is re-aligned in that request's own work. A replace there edits its signed
+  `origin/` snapshot, which gives a `not ok`.
 
 ## What is enforced, and by whom
 
