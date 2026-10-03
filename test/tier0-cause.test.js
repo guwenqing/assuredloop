@@ -177,6 +177,16 @@ test('#156 [HNT-1][REC-11] [R-3] moved unchanged out of specs/old.md, titled "# 
   assertCauses(tierLine(strict(repo, 1), '0'), { others: ['specs/old.md, a heading without an ID removed: # Old'] });
 });
 
+test('#156 [HNT-1][REC-11][SPC-2] "## Dates", without an ID in specs/rules.md, gets the ID [R-5] and its body changes: the not ok names [R-5] and nothing else about that heading', (t) => {
+  const repo = branch(t, { 'specs/rules.md': file(R1, R4, '## Dates\nDates show in ISO 8601.\n') },
+    { 'specs/rules.md': file(R1, R4, "## [R-5] Dates\nDates show in the customer's local format.\n") });
+  const line = tierLine(strict(repo, 1), '0');
+  assertCauses(line, { ids: ['R-5'] });
+  for (const extra of ['a heading without an ID removed', 'a new heading without an ID', 'the text under']) {
+    assert.ok(!line.includes(extra), `the ID names the change; no "${extra}":\n${line}`);
+  }
+});
+
 // --- a Tier: S claim ---
 
 test('#156 [HNT-1][REC-11][REC-10] a Tier: S claim whose branch moves [R-3] unchanged into a new specs/dates.md titled "# Dates": check --strict exits 1, its not ok reads "the claim is tier S, but main..HEAD edits the baseline: specs/dates.md, a new heading without an ID: # Dates"', (t) => {
