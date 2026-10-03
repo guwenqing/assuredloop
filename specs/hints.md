@@ -48,4 +48,5 @@ The tool MUST give at least these hints. `not ok`:
 request owns (such as duplicate IDs or conflict markers). Other requests'
 alignment debt caused by this branch MUST be shown as information and MUST
 NOT count. `conclude` and `consolidate` MUST exit 1 when they refuse. The tool
-MUST exit 2 when it fails itself. Nothing is installed in git hooks.
+MUST exit 2, whatever the command, when it fails itself or a command is misused
+(an unknown request, a bad option). Nothing is installed in git hooks.
