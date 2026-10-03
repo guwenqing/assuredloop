@@ -28,6 +28,15 @@ export function git(cwd, args, { text = true, allowFail = false, worktree = fals
   return text ? r.stdout.toString().replace(/\n$/, '') : r.stdout;
 }
 
+// [VW-9]: how the tool says a clone lacks history: `unavailable('single-branch',
+// ' without main')` is `history unavailable (single-branch clone without main)`.
+export const unavailable = (kind = 'shallow', rest = '') => `history unavailable (${kind} clone${rest})`;
+export const HISTORY = unavailable();
+
+// The failure of a read that needs history this clone lacks, given
+// historyGap's answer; `rest` says what is missing.
+export const gapFail = (gap, rest) => new Fail(`history unavailable: this clone is ${gap.kind}${rest}`, gap.next);
+
 export function topLevel(cwd) {
   const top = git(cwd, ['rev-parse', '--show-toplevel'], { allowFail: true });
   if (top === null) throw new Fail('not inside a git repository', 'cd into the project and run it again');
@@ -40,7 +49,7 @@ export function resolveCommit(top, rev) {
   const sha = git(top, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${rev}^{commit}`], { allowFail: true });
   if (sha) return sha;
   const gap = historyGap(top);
-  if (gap) throw new Fail(`history unavailable: this clone is ${gap.kind}, and ${rev} is not in it`, gap.next);
+  if (gap) throw gapFail(gap, `, and ${rev} is not in it`);
   throw new Fail(`${rev}: unknown commit`, 'name a commit in this repo');
 }
 
@@ -93,7 +102,7 @@ export function mainRef(top) {
   const main = mainCommit(top);
   if (!main) {
     const gap = historyGap(top);
-    return { label: 'no main (no origin/main, no main branch)', unknown: gap && `history unavailable (${gap.kind} clone without main)` };
+    return { label: 'no main (no origin/main, no main branch)', unknown: gap && unavailable(gap.kind, ' without main') };
   }
   if (main !== 'refs/remotes/origin/main') return { label: 'local main' };
   const [last] = reflogTimes(top, 'refs/remotes/origin/main');
@@ -114,10 +123,15 @@ function reflogTimes(top, ref) {
     .map((m) => ({ when: new Date(Number(m[1]) * 1000), subject: m[2] }));
 }
 
-// A timestamp as the tool writes it: UTC to the minute, `2026-09-23T10:14Z`.
+// A timestamp as the tool writes it: UTC to the minute, `2026-09-23T10:14Z`;
+// STAMP is its form, so stamps sort as strings in time order.
+export const STAMP = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
 export function stamp(date) {
   return date.toISOString().slice(0, 16) + 'Z';
 }
+
+// The day of a date as the tool writes it: UTC, `2026-09-23`.
+export const day = (date) => date.toISOString().slice(0, 10);
 
 // The clock, read only to stamp what the tool writes ([TL-2]).
 // SOURCE_DATE_EPOCH (seconds) stands in for it when set.

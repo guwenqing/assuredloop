@@ -5,25 +5,23 @@
 // grow at the end; a file in origin/ never changes or goes; nothing changes
 // under a request archived on main; the move to archive/ is not an edit.
 // check exits 0, and --strict exits 1 on a not ok that counts ([HNT-3]).
-import { git, hasCommits, isShallow, mainCommit, mainName, ownCommits, resolveCommit } from './git.js';
-import { openTree } from './tree.js';
+import { HISTORY, git, hasCommits, isShallow, mainCommit, mainName, ownCommits, resolveCommit } from './git.js';
+import { folderName, openTree } from './tree.js';
 import { movesOf, ownFiles } from './links.js';
 import { line } from './commands.js';
+import { TITLES, headingAt } from './sections.js';
 import { hintText, hintsOf, ranked, readBranch } from './hints.js';
 import { assertionsChanged, headNote, nearIds, resultLines, testLines } from './tests.js';
 
 const NOTE = 'append-only is checked per commit over main..HEAD; this protects a PR only when check runs on it';
-const APPEND_ONLY = ["Owner's words and dialog", 'Decisions'];
-
-// The request a path under requests/ belongs to.
-const requestOf = (path) => path.match(/^requests\/archive\/([^/]+)\//)?.[1] ?? path.match(/^requests\/(?!archive\/)([^/]+)\//)?.[1];
+const APPEND_ONLY = [TITLES.words, TITLES.decisions];
 
 // Git's path lists, NUL-separated, so every name comes as it is (never quoted).
 const paths = (out) => out.split('\0').filter(Boolean);
 
 // The files of request `name` at `rev`, by their path inside the request folder
 // (open or archived), each with its blob and full path.
-function filesOf(top, rev, name) {
+function requestFiles(top, rev, name) {
   const out = git(top, ['ls-tree', '-r', '-z', rev, '--', `requests/${name}/`, `requests/archive/${name}/`]);
   const files = new Map();
   for (const l of paths(out)) {
@@ -37,7 +35,7 @@ function filesOf(top, rev, name) {
 // each top-level item with its continuation lines, trailing spaces dropped.
 function entries(md, title) {
   const lines = md.replace(/\r\n/g, '\n').split('\n');
-  const at = lines.findIndex((l) => new RegExp(`^##\\s+${title}\\s*$`).test(l));
+  const at = headingAt(lines, title);
   const out = [];
   for (const l of at < 0 ? [] : lines.slice(at + 1)) {
     if (/^#{1,2}\s/.test(l)) break;
@@ -48,8 +46,8 @@ function entries(md, title) {
 }
 
 function problems(top, parent, commit, name, frozen) {
-  const before = filesOf(top, parent, name);
-  const after = filesOf(top, commit, name);
+  const before = requestFiles(top, parent, name);
+  const after = requestFiles(top, commit, name);
   const out = [];
   const bad = (path, what) => out.push({ kind: 'not ok', rank: 3, owners: [name], text: `${commit.slice(0, 7)} ${path}: ${what} ([REC-12])`, command: `git show ${commit.slice(0, 7)} -- ${path}` });
   if (frozen.has(name)) {
@@ -82,7 +80,7 @@ export function appendOnly(top, main, commits) {
     const parent = git(top, ['rev-parse', '--verify', '--quiet', `${commit}^1`], { allowFail: true });
     if (!parent) continue;
     const changed = ownFiles(top, commit).filter((p) => p.startsWith('requests/'));
-    for (const name of new Set(changed.map(requestOf).filter(Boolean))) out.push(...problems(top, parent, commit, name, frozen));
+    for (const name of new Set(changed.map(folderName).filter(Boolean))) out.push(...problems(top, parent, commit, name, frozen));
   }
   return out;
 }
@@ -100,7 +98,7 @@ export function check({ top, opts }) {
   const list = ranked(hintsOf(top, b, { main: opts.at ? base : main }), b);
   const notKnown = [...headNote(top, b), ...(opts.at ? ["main after X's fork point (read only up to it under --at)"] : [])];
   if (!hasCommits(top)) notKnown.push('no commits yet, so no history');
-  if (isShallow(top)) notKnown.push('history unavailable (shallow clone): commits before the shallow boundary');
+  if (isShallow(top)) notKnown.push(`${HISTORY}: commits before the shallow boundary`);
   const body = [line('Serves', [...[...b.served].filter((n) => !b.archived.has(n)), ...[...b.archived].map((n) => `archives ${n}`)].join(' · ') || 'no request')];
   if (b.tier) {
     // [REC-11]: the claim with its evidence: the spec edits, the sections near the changed code, the tests whose assertions changed.

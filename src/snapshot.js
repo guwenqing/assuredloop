@@ -4,12 +4,19 @@ import { createHash } from 'node:crypto';
 
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
-export function formatSnapshot({ source, fetched, updated, text }) {
-  const header = [`Source: ${source}`, `Fetched: ${fetched}`];
+// A snapshot's bytes; `signed` makes it a sign-off ([REC-5]): the owner's
+// `words` after Source, and SIGNED as its separator.
+export function formatSnapshot({ source, words, fetched, updated, text, signed = false }) {
+  const header = [`Source: ${source}`];
+  if (words !== undefined) header.push(`Owner's words: ${words}`);
+  header.push(`Fetched: ${fetched}`);
   if (updated) header.push(`Target updated: ${updated}`);
-  header.push(`SHA-256: ${sha256(text)}`, '---', '');
-  return Buffer.concat([Buffer.from(header.join('\n')), text]);
+  header.push(`SHA-256: ${sha256(text)}${signed ? '   (of the signed text below)' : ''}`, signed ? SIGNED : '---', '');
+  return Buffer.concat([Buffer.from(header.join('\n')), Buffer.from(text)]);
 }
+
+// What a file that is not a valid snapshot is said to lack.
+export const notSnapshot = (what) => `${what} is not a valid snapshot: it needs Source, Fetched and SHA-256, then a --- line`;
 
 // Every file in a request's origin/, whatever its name, each a snapshot
 // ([REC-3]): { file, s }, s null when it is not a valid one. Every reader
