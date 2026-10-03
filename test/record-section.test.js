@@ -231,12 +231,13 @@ test('[STA-5] --accept for an ID the request does not hold, or that is not in th
   assert.equal(section(repo, ['INV-3', '--accept']).code, 0);
 });
 
-test('[STA-5] record section <ID> in neither the baseline nor the request exits 2, writes nothing, and points to the add block and spec --add-ids', (t) => {
+test('[STA-5][SPC-3] record section <ID> in neither the baseline nor the request exits 2, writes nothing, and names the next free ID, INV-5, with the add block\'s heading, not spec --add-ids (#140 item 14a)', (t) => {
   const repo = setup(t);
   for (const extra of [[], ['--yes']]) {
     const r = section(repo, ['INV-9', ...extra]);
     assert.equal(r.code, 2, r.stdout + r.stderr);
-    assert.ok((r.stdout + r.stderr).includes('spec --add-ids'), r.stdout + r.stderr);
+    assert.ok((r.stdout + r.stderr).includes('### [INV-5]@1 add in '), r.stdout + r.stderr);
+    assert.doesNotMatch(r.stdout + r.stderr, /--add-ids/, r.stdout + r.stderr);
     clean(repo);
   }
   assert.equal(section(repo, ['INV-3']).code, 0, 'an ID in the baseline is accepted');
