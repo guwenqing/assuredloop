@@ -49,16 +49,16 @@ function repoWithHistory(t) {
 }
 
 // Each clone lacks history its own way: the shallow one holds one commit
-// where the source has four; the single-branch one lacks the branch `other`.
+// where the source has four; the single-branch one, of the branch `other`,
+// holds no main at all.
 for (const [kind, opts, lacks] of [
   ['a shallow clone (--depth 1 --no-single-branch)', { depth: 1, singleBranch: false }, (clone, repo) => {
     assert.equal(clone.git(['rev-list', '--count', 'HEAD']), '1');
     assert.equal(repo.git(['rev-list', '--count', 'HEAD']), '4');
   }],
-  ['a single-branch clone (--single-branch, not shallow)', { singleBranch: true }, (clone, repo) => {
+  ['a single-branch clone of other (--single-branch --branch other, not shallow)', { singleBranch: true, branch: 'other' }, (clone) => {
     assert.equal(clone.git(['rev-parse', '--is-shallow-repository']), 'false');
-    assert.equal(clone.git(['branch', '-r', '--list', 'origin/other']), '');
-    assert.notEqual(repo.git(['branch', '--list', 'other']), '');
+    for (const ref of ['refs/heads/main', 'refs/remotes/origin/main']) assert.throws(() => clone.git(['rev-parse', '--verify', ref]), `no ${ref}`);
   }],
 ]) {
   test(`[VW-9] in ${kind} that lacks history, context and context --at say "history unavailable", never "nothing found"`, (t) => {
