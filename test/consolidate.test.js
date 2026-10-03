@@ -453,12 +453,19 @@ test('[STA-4][SPC-5] add in a path not written in canonical form (specs/./a.md, 
   assert.equal(spec(repo, 'specs/a.md'), file(INV1, INV8));
 });
 
-test('[STA-4][HNT-3] consolidate of an unknown request exits 2 and writes nothing; the known one exits 0', (t) => {
+test('[STA-4][HNT-3] consolidate of an unknown request, or --section or --revert of an ID the request holds no block for (INV-9), exits 2, names it, and writes nothing; the known one exits 0', (t) => {
   const repo = setup(t, [block('[INV-3]@1 modify', { was: S0, now: S1 })]);
   for (const extra of [[], ['--yes']]) {
     const r = consolidate(repo, 'no-such-request', ...extra);
     assert.equal(r.code, 2, both(r));
     clean(repo);
+    for (const which of ['--section', '--revert']) {
+      const m = consolidate(repo, 'inv', which, 'INV-9', ...extra);
+      assert.equal(m.code, 2, `${which} INV-9 ${extra.join(' ')}:\n${both(m)}`);
+      assert.doesNotMatch(m.stderr, /internal error/, `${which} INV-9: the tool does not fail itself:\n${both(m)}`);
+      assert.ok(m.stdout.includes('[INV-9]'), `${which} INV-9: it names INV-9:\n${both(m)}`);
+      clean(repo);
+    }
   }
   ok(consolidate(repo, 'inv'));
 });

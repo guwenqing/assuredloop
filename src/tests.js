@@ -143,7 +143,7 @@ function results(top, tree, at, head, base) {
   return out;
 }
 
-// What part 8 reads of branch `b` (readBranch's), once: the changed tests and
+// What check and the views read of branch `b` (readBranch's), once: the changed tests and
 // their assertions, the tests linked to each changed code file, the sections
 // near the changed code, and the named results.
 export function testFacts(top, b) {

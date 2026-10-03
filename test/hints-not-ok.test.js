@@ -219,6 +219,19 @@ test('[HNT-2][SPC-5] check: a block whose Now holds two headings ("holds 2 headi
   strict(repo, 1);
 });
 
+test('[HNT-3][SPC-5] contrast: the same heading faults, on a branch that serves another request, are information owned by invoice-download, and check --strict exits 0', (t) => {
+  const repo = served(t, (r) => {
+    r.write('specs/invoices.md', file(INV1, S0, INV4A));
+    addRequest(r, 'invoice-download', [TWO_HEADINGS, OTHER_ID, TWO_WAS]);
+    addRequest(r, 'csv-rows', null);
+  }, 'csv-rows');
+  const out = check(repo, '--all');
+  assertInformation(hint(out, 'not ok', 'holds 2 headings', 'INV-7'), 'invoice-download');
+  assertInformation(hint(out, 'not ok', 'holds 2 headings', 'INV-1'), 'invoice-download');
+  assertInformation(hint(out, 'not ok', 'carries [INV-5], not [INV-4]'), 'invoice-download');
+  strict(repo, 0);
+});
+
 test('[SPC-5] contrast: the same blocks with one heading each, carrying their own IDs, give neither', (t) => {
   const repo = served(t, (r) => {
     r.write('specs/invoices.md', file(INV1, S0, INV4A));
