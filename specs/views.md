@@ -4,7 +4,8 @@ state, blocked ones first. On a repo with no baseline it MUST say so, and that
 requests add sections as they go.
 
 ## [VW-2] Where a request stands
-`al context <name>` MUST print twelve lines or fewer: the request's title,
+`al context <name>` MUST print twelve lines or fewer, its Read, Next and Not
+known lines ([VW-9]) included: the request's title,
 tier and state; its owner's words and snapshots, with whether each was
 re-checked; its sign-off state, and which requirements changed since, if any;
 the decisions, newest first, with agent rulings marked; each held section
