@@ -7,7 +7,7 @@
 // check exits 0, and --strict exits 1 on a not ok that counts ([HNT-3]).
 import { git, hasCommits, isShallow, mainCommit, mainName, ownCommits, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
-import { ownFiles } from './links.js';
+import { movesOf, ownFiles } from './links.js';
 import { line } from './commands.js';
 import { hintText, hintsOf, ranked, readBranch } from './hints.js';
 import { assertionsChanged, headNote, nearIds, resultLines, testLines } from './tests.js';
@@ -104,7 +104,10 @@ export function check({ top, opts }) {
   const body = [line('Serves', [...[...b.served].filter((n) => !b.archived.has(n)), ...[...b.archived].map((n) => `archives ${n}`)].join(' · ') || 'no request')];
   if (b.tier) {
     // [REC-11]: the claim with its evidence: the spec edits, the sections near the changed code, the tests whose assertions changed.
-    body.push(line('Tier', b.tier), line('Evidence', [`edits ${b.changedIds.map((i) => `[${i}]`).join(', ') || 'no baseline section'}`,
+    // A section moved to another file, its text unchanged, is a move, not an edit ([REC-10]).
+    const moves = movesOf(b.before, b.files).map((m) => `[${m.id}] ${m.from} → ${m.to}`);
+    body.push(line('Tier', b.tier), line('Evidence', [...(b.changedIds.length || !moves.length ? [`edits ${b.changedIds.map((i) => `[${i}]`).join(', ') || 'no baseline section'}`] : []),
+      ...(moves.length ? [`moves ${moves.join(', ')}, text unchanged`] : []),
       `near the changed code: ${nearIds(top, b).map((i) => `[${i}]`).join(', ') || 'none'}`,
       `tests whose assertions changed: ${assertionsChanged(top, b).join(', ') || 'none'}`].join(' · ')));
   }

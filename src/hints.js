@@ -12,7 +12,7 @@ import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled
 import { isSignoff, snapshots } from './snapshot.js';
 import { childrenOf, entriesOf, line, partsOf } from './commands.js';
 import { headingFault } from './consolidate.js';
-import { baselineLists, judge, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
+import { amends, baselineLists, judge, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
 import { appendOnly } from './check.js';
 import { liveCode } from './views.js';
 import { byId, filesOf, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
@@ -146,6 +146,10 @@ export function hintsOf(top, b, { main }) {
     for (const l of org ? unlabelled(org) : []) {
       add('note', 24, [r.name], `${r.name}'s organized requirement says "${l.length > 60 ? `${l.slice(0, 59)}…` : l}" before any requirement, so it is not read as a requirement ([REC-4])`,
         `make it ${org.oneLine ? 'an R<n>: line or ' : ''}an ### R<n> sub-section in ${r.dir}/request.md, then al context ${r.name}`);
+    }
+    // An Amends: names a section in the baseline, at the fork or now, or in a block.
+    for (const id of new Set(org ? amends(org.text).map((x) => x.slice(1, -1)) : [])) {
+      if (!known(id) && !b.was.has(id)) add('not ok', 5, [r.name], `${r.name} cites [${id}] in its Amends:, which is in no section or block`, `al context ${r.name}`);
     }
     for (const e of entriesOf(r.md, 'Decisions')) {
       for (const [, id] of e.matchAll(ID_TOKEN)) if (!known(id)) add('not ok', 5, [r.name], `${r.name} cites [${id}] in ${e.match(/^- (D\d+)/)?.[1] ?? 'a decision'}, which is in no section or block`, `al context ${r.name}`);
