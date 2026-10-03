@@ -11,7 +11,7 @@ import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
 import { blame, byId, filesOf, requestCommits, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
 import { adrsOf } from './adrs.js';
-import { signoffState } from './signoff.js';
+import { parentOf, signoffState } from './signoff.js';
 import { sinceConclusion } from './views.js';
 
 const HISTORY = 'history unavailable (shallow clone)';
@@ -60,16 +60,24 @@ function trace(a, name) {
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const body = [line('Audit', `${name}  ${(md.match(/^# (.*)$/m)?.[1] ?? name).trim()}  (${dir})`),
     ...entriesOf(md, "Owner's words and dialog").map((e) => line('Words', e))];
-  for (const f of tree.list(`${dir}/origin`) ?? []) {
-    const bytes = tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0);
-    const s = parseSnapshot(bytes);
-    const ok = !s ? 'not ok: not a valid snapshot' : s.intact ? 'SHA-256 matches' : 'not ok: no longer matches its SHA-256';
-    if (isSignoff(s)) body.push(line('Sign-off', `origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
-    else body.push(line('Snapshot', `origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
+  // Each snapshot of `from`'s origin/, or only its sign-offs, each re-checked; `whose` names another request's.
+  const snapshots = (from, signoffsOnly, whose = '') => {
+    for (const f of tree.list(`${from}/origin`) ?? []) {
+      const bytes = tree.read(`${from}/origin/${f}`) ?? Buffer.alloc(0);
+      const s = parseSnapshot(bytes);
+      const ok = !s ? 'not ok: not a valid snapshot' : s.intact ? 'SHA-256 matches' : 'not ok: no longer matches its SHA-256';
+      if (isSignoff(s)) body.push(line('Sign-off', `${whose}origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
+      else if (!signoffsOnly) body.push(line('Snapshot', `origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
+    }
+  };
+  snapshots(dir, false);
+  // [REC-5]: a child inherits its parent's sign-off for the parts it copies word for word, so those are re-checked too.
+  const parent = parentOf(tree, name);
+  if (parent) {
+    const s = signoffState(tree, dir, name);
+    body.push(line('Sign-off', `through ${parent.name}, for the parts copied word for word: ${s.blocked ? s.reason : 'signed off'}`));
+    snapshots(parent.dir, true, `through ${parent.name}, `);
   }
-  // [REC-5]: a child signed through its parent, for the parts it copies word for word.
-  const s = signoffState(tree, dir, name);
-  if (s.parent && s.parentSignoff) body.push(line('Sign-off', `through ${s.parent}, its origin/${s.parentSignoff.file} (${s.parentSignoff.fetched}), for the parts copied word for word${s.blocked ? `; ${s.reason}` : ''}`));
   body.push(...entriesOf(md, 'Decisions').map((e) => line('Decision', e)));
   const place = (f) => [`requests/${name}/${f}`, `requests/archive/${name}/${f}`];
   const records = [...place('request.md'), ...place('change.md')];
@@ -94,9 +102,12 @@ function trace(a, name) {
       : walk.find((c) => c.sections.has(b.id) && sameSection(c.sections.get(b.id), b.now ?? ''));
     body.push(line('Section', `${e.block} ${since ? since.say(e.id) : `${e.state}${e.by ? ` ${e.by}` : ''}`}; ${where(landed)}`));
   }
-  // A concluded request with no blocks (tier 1): the sections its Outcome lists, each landing where its text changed.
+  // A concluded request with no blocks (tier 1): the sections its Outcome lists, each landing where it
+  // first took the text it had at conclusion, or, removed, where it went from present to absent.
+  const last = walk.at(-1)?.sections ?? new Map();
   for (const id of held.length ? [] : since?.ids ?? []) {
-    const landed = walk.find((c) => c.before && (c.sections.has(id) !== c.before.sections.has(id) || (c.sections.has(id) && !sameSection(c.sections.get(id), c.before.sections.get(id)))));
+    const landed = last.has(id) ? walk.find((c) => c.sections.has(id) && sameSection(c.sections.get(id), last.get(id)))
+      : walk.find((c) => !c.sections.has(id) && c.before?.sections.has(id));
     body.push(line('Section', `[${id}] ${since.say(id)}; ${where(landed)}`));
   }
   // The linked commits ([LNK-2]) and the test files they changed.
