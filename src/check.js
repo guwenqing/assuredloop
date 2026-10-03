@@ -94,6 +94,7 @@ export function check({ top, opts }) {
   const commits = main ? ownCommits(top, main, head) : [];
   const range = `${mainName(top)}..${to}`;
   const b = readBranch(top, { base, commits, tree: openTree(top, opts.at), at: opts.at, range });
+  b.all = opts.all; // the linked-tests note names every test only under --all
   // Under --at, main is read only up to X's fork point, so no later commit leaks in.
   const list = ranked(hintsOf(top, b, { main: opts.at ? base : main }), b);
   const notKnown = [...headNote(top, b), ...(opts.at ? ["main after X's fork point (read only up to it under --at)"] : [])];
