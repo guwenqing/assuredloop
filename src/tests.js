@@ -161,27 +161,53 @@ export function testFacts(top, b) {
   const tests = [...new Set([...tracked, ...b.changed])].filter((p) => isTest(p) && text(p) !== null);
   const names = new Map(tests.map((t) => [t, new Set(idsOn(text(t)))]));
   const observed = b.changed.filter(isTest).map((p) => observe(p, b.base && git(top, ['show', `${b.base}:${p}`], { allowFail: true }), text(p)));
+  const isAdr = (p) => adr.some((d) => p.startsWith(`${d}/`));
   const code = b.changed.filter((p) => !isTest(p) && !p.startsWith('requests/') && !p.startsWith(`${b.root}/`)
-    && !adr.some((d) => p.startsWith(`${d}/`)) && !found.some((r) => r.path === p));
+    && !isAdr(p) && !found.some((r) => r.path === p));
   const ctx = { root: b.root, requests: b.requests, seen: b.seen, shallow: isShallow(top), headings: new Map() };
+  // The tests linked to changed file `c`, each with its reason and, as `how`,
+  // the reason without its commit, by which the note groups them.
+  const linked = (c) => {
+    // check reads the working tree; an untracked file has no history, only its own [ID] lines.
+    const lines = (text(c) ?? '').split('\n');
+    const reached = tracked.has(c) ? fileLinks(top, b.base, b.at ? head : null, c, ctx).ids
+      : new Map(idNear(lines, 1, lines.map((_, i) => i + 1)).map((x) => [x.id, `${c}  ${x.reason}`]));
+    const together = tracked.has(c) ? changedWith(top, head, c).commits : [];
+    const ls = tests.flatMap((t) => {
+      const id = [...reached.keys()].find((i) => names.get(t).has(i));
+      const commit = together.find((x) => x.files.includes(t));
+      const [reason, how] = id ? [`names [${id}], near ${c}`, `naming [${id}] (${reached.get(id).replace(/ {2,}/, ': ')})`]
+        : commit ? [`changed together with ${c} (${commit.sha.slice(0, 7)})`, `changed together with ${c}`]
+          : stem(t) === stem(c) ? [`the same stem as ${c}`, `with the same stem as ${c}`] : [];
+      return reason ? [{ test: t, reason, how }] : [];
+    });
+    return { reached: [...reached.keys()], ls };
+  };
   const links = new Map();
   const near = new Map();
   for (const c of b.base ? code : []) {
-    // check reads the working tree; an untracked file has no history, only its own [ID] lines.
-    const lines = (text(c) ?? '').split('\n');
-    const reached = tracked.has(c) ? [...fileLinks(top, b.base, b.at ? head : null, c, ctx).ids.keys()]
-      : [...new Set(idNear(lines, 1, lines.map((_, i) => i + 1)).map((x) => x.id))];
+    const { reached, ls } = linked(c);
     near.set(c, reached);
-    const together = tracked.has(c) ? changedWith(top, head, c).commits : [];
-    links.set(c, tests.flatMap((t) => {
-      const id = reached.find((i) => names.get(t).has(i));
-      const commit = together.find((x) => x.files.includes(t));
-      const reason = id ? `names [${id}], near ${c}` : commit ? `changed together with ${c} (${commit.sha.slice(0, 7)})` : stem(t) === stem(c) ? `the same stem as ${c}` : null;
-      return reason ? [{ test: t, reason }] : [];
-    }));
+    links.set(c, ls);
   }
-  b.testFacts = { head, tests, names, observed, links, near, results: found };
+  // A changed ADR counts as a linked change for a test's assertions, as code does.
+  const adrLinks = new Map((b.base ? b.changed.filter((p) => isAdr(p) && !isTest(p) && text(p) !== null) : []).map((p) => [p, linked(p).ls]));
+  b.testFacts = { head, tests, names, observed, links, adrLinks, near, results: found };
   return b.testFacts;
+}
+
+// Linked tests grouped by how they are linked, with `cap` paths named in all
+// and the rest counted ([HNT-1]): `8 naming [X] (<how c reaches X>): a, b, c; and 5 more; …`.
+function grouped(ls, cap) {
+  const groups = new Map();
+  for (const l of ls) groups.set(l.how, [...(groups.get(l.how) ?? []), l.test]);
+  let left = cap;
+  const out = [...groups].map(([how, ts]) => {
+    const named = ts.slice(0, left);
+    left -= named.length;
+    return `${ts.length} ${how}${named.length ? `: ${named.join(', ')}` : ''}`;
+  });
+  return `${out.join('; ')}${ls.length > cap ? `; and ${ls.length - cap} more; al check --all lists them` : ''}`;
 }
 
 // [HNT-2]'s test notes for branch `b`.
@@ -191,13 +217,14 @@ export function testHints(top, b) {
   const add = (rank, text, command) => out.push({ kind: 'note', rank, owners: [], text, command });
   const diff = `al context --diff ${b.range}`;
   for (const [c, ls] of f.links) {
-    if (ls.length && !ls.some((l) => b.changed.includes(l.test))) add(15, `${c} changed, but its linked tests did not: ${ls.map((l) => l.test).join(', ')}`, diff);
+    if (ls.length && !ls.some((l) => b.changed.includes(l.test))) add(15, `${c} changed, but its linked tests did not: ${grouped(ls, b.all ? ls.length : 3)}`, diff);
   }
   const nearIds = new Set([...f.near.values()].flat());
   for (const o of f.observed.filter(moved)) {
     const code = [...f.links].filter(([, ls]) => ls.some((l) => l.test === o.path)).map(([c]) => c);
+    const adrs = [...f.adrLinks].filter(([, ls]) => ls.some((l) => l.test === o.path));
     const named = [...(f.names.get(o.path) ?? [])];
-    if (!code.length && !named.some((id) => b.changedIds.includes(id))) add(16, `${o.path} changed its assertions (${o.was} → ${o.now}) with no linked code or spec change`, diff);
+    if (!code.length && !adrs.length && !named.some((id) => b.changedIds.includes(id))) add(16, `${o.path} changed its assertions (${o.was} → ${o.now}) with no linked code or spec change`, diff);
     const ids = [...new Set([...named.filter((id) => nearIds.has(id)), ...code.flatMap((c) => f.near.get(c))])];
     if (/^0\b/.test(b.tier ?? '') && ids.length) add(21, `the claim is tier 0, but ${o.path}, a test of ${ids.map((i) => `[${i}]`).join(', ')} near the changed code, changed its assertions`, `${diff} --for review`);
   }
