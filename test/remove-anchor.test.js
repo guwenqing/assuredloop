@@ -5,7 +5,9 @@
 // level, with no shallower heading in between. --revert puts it back there,
 // after [X] and the deeper headings under it. When the anchor does not hold,
 // consolidate refuses (exit 1, naming the block, writing nothing) and check
-// gives a not ok naming the block, owned by its request.
+// gives a not ok naming the block, owned by its request. Issue #131 also
+// lets [X] be [ID]'s parent when [ID] is its first sub-section; --revert then
+// puts it back first under [X] (test/remove-first-child.test.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, runAl } from './helpers/fixture.js';
@@ -84,9 +86,11 @@ test('#124 [STA-4] 4: nested: A-1 (##) with its child A-1.1 (###), then A-2 (##)
   holds(t, NESTED, 'A-2@1', block('[A-2]@1 remove, was after [A-1]   for R1', { was: A2 }), 'specs/f.md', ['A-1', 'A-1.1', 'A-2']);
 });
 
-test('#124 [STA-4][HNT-3] 4: nested: a first child, [A-1.1]@1 remove, was after [A-1], does not hold (a revert would put it after A-1\'s whole subtree): refused, and both the refusal and the not ok say it is "first under [A-1]" and "no remove form records that place"', (t) => {
-  refused(t, NESTED, 'A-1.1@1', block('[A-1.1]@1 remove, was after [A-1]   for R1', { was: A11 }),
-    ['first under [A-1]', 'no remove form records that place']);
+// #131 replaced the refusal this test stated: a first child names its parent
+// as its anchor, and its revert puts it back first under it (more in
+// test/remove-first-child.test.js).
+test('#124 #131 [STA-4] 4: nested: a first child, [A-1.1]@1 remove, was after [A-1], holds, and its revert puts A-1.1 back first under A-1, before A-2', (t) => {
+  holds(t, NESTED, 'A-1.1@1', block('[A-1.1]@1 remove, was after [A-1]   for R1', { was: A11 }), 'specs/f.md', ['A-1', 'A-1.1', 'A-2']);
 });
 
 test('#124 contrast, as today: [A-1]@1 remove, was first in specs/f.md still holds for the file\'s first section', (t) => {
