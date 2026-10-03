@@ -6,8 +6,9 @@ const HEADING = /^( {0,3}#{1,6})([ \t]+|$)(.*)$/;
 const ID = /^\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\][ \t]*/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
-// Each line of `text` with its ending, and whether it is a heading: lines in
-// fenced code are not, and indented code never matches HEADING.
+// Each line of `text` with its ending, whether it is a heading, and whether it
+// is fenced code (a fence line included): lines in fenced code are not
+// headings, and indented code never matches HEADING.
 function scan(text) {
   const lines = text.split(/(?<=\n)/);
   let fence = null;
@@ -16,15 +17,18 @@ function scan(text) {
     const f = line.match(FENCE);
     if (fence) {
       if (f && f[1][0] === fence[0] && f[1].length >= fence.length && line.trim() === f[1]) fence = null;
-      return { raw, heading: null };
+      return { raw, heading: null, code: true };
     }
     if (f) {
       fence = f[1];
-      return { raw, heading: null };
+      return { raw, heading: null, code: true };
     }
-    return { raw, heading: line.match(HEADING) };
+    return { raw, heading: line.match(HEADING), code: false };
   });
 }
+
+// For each line of `text` (split after each newline), whether it is fenced code.
+export const codeLines = (text) => scan(text).map((l) => l.code);
 
 // A section is one heading and the text up to the next heading of any level.
 export function parseSections(text) {
