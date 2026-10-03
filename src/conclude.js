@@ -60,7 +60,7 @@ export function outcomeFacts(org, fates) {
   const everyR = under(null);
   const rs = all.filter(isR).map((p) => ({
     key: p.key,
-    title: p.text.split('\n')[0].replace(/^\s*#+\s+R\d+\s*/, '').trim(),
+    title: p.text.split('\n')[0].replace(/^\s*#+\s+R\d+\s*/, '').replace(/^R\d+:\s*/, '').replace(/\s*\bAmends:.*$/, '').trim(),
     ids: [...new Set([...[...ids].filter(([id, fs]) => kinds.get(id) !== 'Dropped' && fs.some((f) => f.b.forR.includes(p.key))).map(([id]) => `[${id}]`),
       ...under(p.key), ...everyR])],
   }));
