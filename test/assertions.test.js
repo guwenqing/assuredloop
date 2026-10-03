@@ -4,8 +4,8 @@
 // or expect(…); the count is the number of such calls in the file. check's
 // Tests block shows "<a> → <b> assertions", base to working tree, for each
 // changed supported test file, and "skipped" for every other test file,
-// Python included, which never gets a count. Observations, never verdicts.
-// Acceptance C6.
+// which never gets a count. Python and Go are counted too (#130): see
+// assertions-python-go.test.js. Observations, never verdicts. Acceptance C6.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo } from './helpers/fixture.js';
@@ -66,21 +66,24 @@ test('C6 [LNK-3] the count is the number of assertion calls: assert(…), assert
   has(testsBlock(check(repo, '--all')), 'test/totals.test.js', assertions(4, 9));
 });
 
-test('C6 [LNK-3] each supported extension gets a count (.js .mjs .cjs .ts .tsx .jsx: 1 → 2); every other test file is skipped and gets none (.py, .rb, .go, .java, .json)', (t) => {
+test('C6 [LNK-3] each supported extension gets a count (.js .mjs .cjs .ts .tsx .jsx, test_*.py, *_test.go: 1 → 2); every other test file is skipped and gets none (.rb, .java, .rs, .json)', (t) => {
   const SUPPORTED = ['test/a.test.js', 'test/b.test.mjs', 'test/c.test.cjs', 'test/d.test.ts', 'test/e.test.tsx', 'test/f.test.jsx'];
-  const OTHER = {
+  const COUNTED = {
     'tests/test_ledger.py': (n) => `def test_ledger():\n${'    assert ledger() == 1\n'.repeat(n)}`,
-    'spec/ledger_spec.rb': (n) => `describe 'ledger' do\n${'  it { expect(ledger).to eq(1) }\n'.repeat(n)}end\n`,
     'pkg/ledger_test.go': (n) => `package pkg\n\nfunc TestLedger(t *testing.T) {\n${'\tassert.Equal(t, 1, ledger())\n'.repeat(n)}}\n`,
+  };
+  const OTHER = {
+    'spec/ledger_spec.rb': (n) => `describe 'ledger' do\n${'  it { expect(ledger).to eq(1) }\n'.repeat(n)}end\n`,
+    'tests/ledger.rs': (n) => `#[test]\nfn ledger() {\n${'    assert_eq!(ledger(), 1);\n'.repeat(n)}}\n`,
     'test/LedgerTest.java': (n) => `class LedgerTest {\n  void ledger() {\n${'    assertEquals(1, ledger());\n'.repeat(n)}  }\n}\n`,
     'test/fixtures/rows.json': (n) => `${JSON.stringify({ rows: n })}\n`,
   };
   const at = (n) => ({
     ...Object.fromEntries(SUPPORTED.map((p) => [p, js(FOUR.slice(0, n))])),
-    ...Object.fromEntries(Object.entries(OTHER).map(([p, f]) => [p, f(n)])),
+    ...Object.fromEntries(Object.entries({ ...COUNTED, ...OTHER }).map(([p, f]) => [p, f(n)])),
   });
   const b = testsBlock(check(branch(t, at(1), at(2)), '--all'));
-  for (const p of SUPPORTED) has(b, p, assertions(1, 2));
+  for (const p of [...SUPPORTED, ...Object.keys(COUNTED)]) has(b, p, assertions(1, 2));
   for (const p of Object.keys(OTHER)) {
     const line = lineWith(b, p);
     assert.ok(line && /\bskipped\b/.test(line), `${p} should be listed as skipped:\n${b}`);

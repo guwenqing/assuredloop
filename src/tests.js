@@ -1,8 +1,8 @@
 // Tests and their results ([LNK-3]), observed and never judged: test files
 // by common path patterns or the `tests:` paths of .assuredloop; assertion
-// counts for JS/TS; the result files `results:` names, each classed by the
-// revision it names; the tests linked to the changed code, each with its
-// reason; and [HNT-2]'s four test notes.
+// counts for JS/TS, Python and Go; the result files `results:` names, each
+// classed by the revision it names; the tests linked to the changed code,
+// each with its reason; and [HNT-2]'s four test notes.
 import { basename } from 'node:path';
 import { git, hasCommits, isShallow } from './git.js';
 import { configured } from './spec.js';
@@ -16,6 +16,11 @@ const NAME = /^test_|\.(test|spec)\.|_test\.|Tests?\.[^.]+$/;
 const MARK = /^test_|\.(test|spec)(?=\.)|_test(?=\.)|Tests?(?=\.[^.]+$)/g;
 const JS = /\.[cm]?[jt]sx?$/;
 const ASSERT = /(?<![\w$.])(?:t\.)?assert(?:\.\w+)*\s*\(|(?<![\w$.])expect\s*\(/g;
+// Python and Go: a line that starts with an assertion, no tokenizer (#130).
+const LINE_ASSERT = [
+  [/^test_.*\.py$|_test\.py$/, /^(?:assert |self\.assert\w*\(|(?:with )?pytest\.raises\()/],
+  [/_test\.go$/, /^(?:t\.(?:Errorf?|Fatalf?)|(?:assert|require)\.\w+)\(/],
+];
 const REVISION = /\brevision:[ \t]*([0-9a-f]{7,40})\b/i;
 const stem = (p) => basename(p).replace(MARK, '').replace(/\..*$/, '');
 const COMMENT = /\/\/[^\n]*|\/\*[\s\S]*?\*\//y;
@@ -57,10 +62,12 @@ export const testMatcher = (root, named) => (p) => !p.startsWith(`${root}/`) && 
 // A test file's assertions from `before` to `after` (null when absent): the
 // counts, and the assertion lines added and removed; other syntax is skipped.
 function observe(path, before, after) {
-  if (!JS.test(path)) return { path, skipped: 'not JS/TS, the syntax al counts' };
-  const lines = (t) => { const src = (t ?? '').split('\n'); return codeOf(t ?? '').split('\n').flatMap((l, i) => (l.match(ASSERT) ? [src[i].trim()] : [])); };
+  const starts = LINE_ASSERT.find(([name]) => name.test(basename(path)))?.[1];
+  if (!JS.test(path) && !starts) return { path, skipped: 'not JS/TS, Python or Go, the syntax al counts' };
+  const lines = starts ? (t) => (t ?? '').split('\n').map((l) => l.trim()).filter((l) => starts.test(l))
+    : (t) => { const src = (t ?? '').split('\n'); return codeOf(t ?? '').split('\n').flatMap((l, i) => (l.match(ASSERT) ? [src[i].trim()] : [])); };
   const minus = (x, y) => { const left = [...y]; return x.filter((l) => { const i = left.indexOf(l); return i < 0 || !left.splice(i, 1); }); };
-  const count = (t) => codeOf(t ?? '').match(ASSERT)?.length ?? 0;
+  const count = starts ? (t) => lines(t).length : (t) => codeOf(t ?? '').match(ASSERT)?.length ?? 0;
   const [a, b] = [lines(before), lines(after)];
   return { path, was: count(before), now: count(after), added: minus(b, a).length, removed: minus(a, b).length };
 }

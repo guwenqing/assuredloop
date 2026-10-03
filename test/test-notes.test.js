@@ -164,15 +164,16 @@ test('C6 [HNT-2] contrast: an assertion change in a test naming [INV-9], beside 
   hint(other, 'note', 'test/cents.test.js', /assert/i);
 });
 
-test('C6 [HNT-2][LNK-3] contrast: a test edit that changes no assertion line (its title and setup) gives no note; nor does an assertion change in a Python test (not a supported syntax); test/cents.test.js, whose assertion changed beside them, gets its note', (t) => {
-  const repo = main(t, { 'test/rounding.test.js': ROUNDS('1.01'), 'tests/test_ledger.py': 'def test_ledger():\n    assert ledger() == 1\n',
+test('C6 [HNT-2][LNK-3] contrast: a test edit that changes no assertion line (its title and setup) gives no note; nor does an assertion change in a Rust test (not a supported syntax); test/cents.test.js, whose assertion changed beside them, gets its note', (t) => {
+  const rs = (n) => `#[test]\nfn ledger() {\n    assert_eq!(ledger(), ${n});\n}\n`;
+  const repo = main(t, { 'test/rounding.test.js': ROUNDS('1.01'), 'tests/ledger.rs': rs(1),
     'test/cents.test.js': ROUNDS('1.01', 'cents') });
   const renamed = ROUNDS('1.01', 'rounds to the cent').replace('const cents = 100;', 'const cents = 10 * 10;');
-  const out = work(repo, { 'test/rounding.test.js': renamed, 'tests/test_ledger.py': 'def test_ledger():\n    assert ledger() == 2\n',
+  const out = work(repo, { 'test/rounding.test.js': renamed, 'tests/ledger.rs': rs(2),
     'test/cents.test.js': ROUNDS('1.00', 'cents') });
   hint(out, 'note', 'test/cents.test.js', /assert/i);
   noHint(out, 'test/rounding.test.js');
-  noHint(out, 'tests/test_ledger.py');
+  noHint(out, 'tests/ledger.rs');
 });
 
 // --- tier 0 where a nearby promise's tests changed; the Evidence line ---
