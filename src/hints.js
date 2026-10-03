@@ -143,10 +143,10 @@ export function hintsOf(top, b, { main }) {
     }
   }
   // [REC-6]: work for a blocked request counts only when the branch's final state leaves something
-  // applied: a file outside its records and the baseline's .md files; a baseline section its own work
-  // changed and the branch still changes, unless every block of it retains nothing ([STA-3]), as after a
-  // revert; baseline text outside any section with an ID that its own work changed and the branch still
-  // changes; its change.md, unless every block is Dropped, not Kept, and retains nothing.
+  // applied, each part touched by its own work and still changed by the branch: a file outside its
+  // records and the baseline's .md files; a baseline section, unless every block of it retains nothing
+  // ([STA-3]), as after a revert; baseline text outside any section with an ID; its change.md, unless
+  // every block is Dropped, not Kept, and retains nothing.
   const uncommitted = b.at ? [] : [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];
   const textAt = (rev, p) => (rev ? git(top, ['show', `${rev}:${p}`], { allowFail: true }) : b.tree.read(p)?.toString('utf8')) ?? '';
   const applied = (name) => {
@@ -155,7 +155,7 @@ export function hintsOf(top, b, { main }) {
     const change = new RegExp(`^requests/(?:archive/)?${name}/change\\.md$`);
     const left = (id) => !es.some((e) => e.id === id) || es.some((e) => e.id === id && !e.retainsNothing);
     const withdrawn = es.length > 0 && es.every((e) => b.blocks.get(e.block).dropped && !b.blocks.get(e.block).kept && e.retainsNothing);
-    return b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, (f) => (f.startsWith(`${b.root}/`) && f.endsWith('.md')) || change.test(f)))
+    return b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, (f) => !b.changed.includes(f) || (f.startsWith(`${b.root}/`) && f.endsWith('.md')) || change.test(f)))
       || [...ownIds(top, name, b.base, b.root, b.requests, !b.at && b.served.has(name), b.at ?? 'HEAD')].some((id) => b.changedIds.includes(id) && left(id))
       || b.changed.some((p) => p.startsWith(`${b.root}/`) && p.endsWith('.md') && touched(p) && !sameSection(unheld(textAt(b.base, p)), unheld(textAt(null, p))))
       || (!withdrawn && b.changed.some((p) => change.test(p)));
