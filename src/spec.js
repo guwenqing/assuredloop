@@ -6,7 +6,7 @@ import { openTree, noSymlinkOn } from './tree.js';
 import { parseSections, numberHeadings } from './sections.js';
 import { line } from './commands.js';
 import { hintLines } from './hints.js';
-import { allBlocks, stateText, statesOf } from './states.js';
+import { allBlocks, parseChange, stateText, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 
 const PREFIX = /^[A-Z][A-Z0-9]*$/;
@@ -147,14 +147,14 @@ export function spec(ctx) {
 // Every `[ID` ever used ([SPC-3]): in the root and every request's change.md
 // now, and under the root and requests/ anywhere in the history of `rev`
 // (every ref by default), each ID with the paths where it headed a section:
-// a heading of a root .md file, out of code ([SPC-2]), or a block heading of
-// a change.md.
+// a heading of a root .md file, out of code ([SPC-2]), or a block of a
+// change.md as the states read it ([SPC-5]).
 export function idsUsed(top, tree, root, rev = '--all') {
   const used = new Map();
   const note = (path, text) => {
     for (const [, id] of text.matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)/g)) if (!used.has(id)) used.set(id, new Set());
-    const headed = path.endsWith('/change.md') ? [...text.matchAll(/^### \[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]@/gm)].map((m) => m[1])
-      : path.startsWith(`${root}/`) && path.endsWith('.md') ? parseSections(text).map((s) => s.id).filter(Boolean) : [];
+    const headed = path.startsWith(`${root}/`) && path.endsWith('.md') ? parseSections(text).map((s) => s.id).filter(Boolean)
+      : /^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(path) ? parseChange(text, '').map((b) => b.id) : [];
     for (const id of headed) used.get(id).add(path);
   };
   for (const p of [...tree.walk(root).filter((x) => x.endsWith('.md')), ...tree.walk('requests').filter((x) => x.endsWith('/change.md'))]) note(p, tree.read(p).toString('utf8'));
