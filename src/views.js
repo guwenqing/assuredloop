@@ -9,7 +9,7 @@ import { sameSection } from './sections.js';
 import { organized, parts, samePart, signoffState } from './signoff.js';
 import { line, lines, grouped, decisionList, entriesOf, concluding, fitOrCount } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
-import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
+import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, ownFiles, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
 import { headNote, resultLines, testLines, testMatcher } from './tests.js';
 import { adrFolders, governing } from './adrs.js';
 
@@ -145,7 +145,7 @@ export function diffView(top, range, forReview, all, at) {
   const m = range.match(/^(.*?)(\.\.\.?)(.*)$/);
   // A bare `main` is the main the tool reads ([VW-9]).
   const side = (x) => (!x || x === 'HEAD' ? at ?? 'HEAD' : x === 'main' ? mainCommit(top) ?? x : x);
-  const [a, dots, b] = m ? [side(m[1]), m[2], side(m[3])] : [range, '...', side()];
+  const [a, dots, b] = m ? [side(m[1]), m[2], side(m[3])] : [side(range), '...', side()];
   const head = resolveCommit(top, b);
   const from = resolveCommit(top, a);
   const base = dots === '...' ? git(top, ['merge-base', from, head], { allowFail: true }) : from;
@@ -159,7 +159,7 @@ export function diffView(top, range, forReview, all, at) {
   const seen = new Map();
   const files = baseline(tree, root);
   const headings = titles(files);
-  const commits = ownCommits(top, base, head).map((c) => requestOf(top, c, requests, seen));
+  const commits = ownCommits(top, base, head).map((c) => requestOf(top, c, requests, seen, ownFiles));
   const served = new Map();
   for (const c of commits) for (const n of c.names) if (!served.has(n)) served.set(n, c.how);
   const none = commits.filter((c) => !c.names.length).length;
@@ -336,6 +336,9 @@ export function liveCode(top, name, root, onlyIds, at) {
     const files = filesOf(top, sha).filter(isCode(root));
     if (files.some((f) => found.has(f))) files.forEach((f) => found.add(f));
   }
+  // The working tree's uncommitted changes count as one more such change: a git mv takes the lines to its new path.
+  const working = at ? [] : paths(git(top, ['diff', '--name-only', '-z', '--no-renames', 'HEAD'], { allowFail: true })).filter(isCode(root));
+  if (working.some((f) => found.has(f))) working.forEach((f) => found.add(f));
   const touched = [...found].sort();
   const out = [];
   for (const path of touched) {
