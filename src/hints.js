@@ -142,16 +142,21 @@ export function hintsOf(top, b, { main }) {
       }
     }
   }
-  // A request whose every block is Dropped, not Kept, and retains nothing ([STA-3]) has nothing
-  // applied: its reverts and markers deliver nothing; other work for it still does.
-  const withdrawn = (name) => {
+  // [REC-6]: work for a blocked request counts only when it leaves something applied: a file outside its
+  // records and the baseline; a baseline section its own work changed, unless every block of it retains
+  // nothing ([STA-3]), as after a revert; its change.md, unless every block is Dropped, not Kept, and
+  // retains nothing.
+  const applied = (name) => {
     const es = statesOf(b.files, b.blocks, (x) => x.request === name);
-    const spec = (f) => f.startsWith(`${b.root}/`) || new RegExp(`^requests/(?:archive/)?${name}/change\\.md$`).test(f);
-    return es.length > 0 && es.every((e) => b.blocks.get(e.block).dropped && !b.blocks.get(e.block).kept && e.retainsNothing)
-      && !b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, spec));
+    const change = new RegExp(`^requests/(?:archive/)?${name}/change\\.md$`);
+    const left = (id) => !es.some((e) => e.id === id) || es.some((e) => e.id === id && !e.retainsNothing);
+    const withdrawn = es.length > 0 && es.every((e) => b.blocks.get(e.block).dropped && !b.blocks.get(e.block).kept && e.retainsNothing);
+    return b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, (f) => f.startsWith(`${b.root}/`) || change.test(f)))
+      || [...ownIds(top, name, b.base, b.root, b.requests, !b.at && b.served.has(name), b.at ?? 'HEAD')].some(left)
+      || (!withdrawn && b.changed.some((p) => change.test(p)));
   };
   for (const name of b.delivered) {
-    if (signed.get(name)?.blocked && !withdrawn(name)) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, `al record ${name} signoff --source <where> --words <quote> --yes`, true);
+    if (signed.get(name)?.blocked && applied(name)) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, `al record ${name} signoff --source <where> --words <quote> --yes`, true);
   }
   if (b.tier && /^0\b/.test(b.tier) && b.changed.some((p) => p.startsWith(`${b.root}/`))) {
     add('not ok', 10, [], `the claim is tier 0, but ${b.range} edits the baseline${b.changedIds.length ? `: ${b.changedIds.map((i) => `[${i}]`).join(', ')}` : ''}`, `al context --diff ${b.range}`);

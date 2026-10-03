@@ -30,6 +30,9 @@ function scan(text) {
 // For each line of `text` (split after each newline), whether it is fenced code.
 export const codeLines = (text) => scan(text).map((l) => l.code);
 
+// `text` without its fenced code.
+export const prose = (text) => scan(text).filter((l) => !l.code).map((l) => l.raw).join('');
+
 // A section is one heading and the text up to the next heading of any level.
 export function parseSections(text) {
   const sections = [];

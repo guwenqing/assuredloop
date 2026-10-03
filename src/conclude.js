@@ -14,7 +14,7 @@ import { requestToWrite, decisionList, childrenOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
 import { byId, filesOf, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
-import { codeLines, sameSection } from './sections.js';
+import { prose, sameSection } from './sections.js';
 import { adrsOf } from './adrs.js';
 
 const HELD = ['consolidated', 'carried'];
@@ -69,12 +69,8 @@ export function outcomeFacts(org, fates) {
 
 // The IDs an `Amends:` names: the bracketed ones after it, on its line, out
 // of fenced code.
-const amends = (text) => {
-  const code = codeLines(text);
-  const prose = text.split(/(?<=\n)/).filter((l, i) => !code[i]).join('');
-  return [...prose.matchAll(/\bAmends:([^\n]*)/g)]
-    .flatMap((m) => [...m[1].matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g)].map((x) => `[${x[1]}]`));
-};
+const amends = (text) => [...prose(text).matchAll(/\bAmends:([^\n]*)/g)]
+  .flatMap((m) => [...m[1].matchAll(/\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g)].map((x) => `[${x[1]}]`));
 
 // A request with no change.md ([REC-9]): the sections its branch added,
 // modified and removed, from `was` (the baseline at its fork) to `now`, both
