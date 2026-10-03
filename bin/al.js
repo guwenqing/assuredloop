@@ -2,7 +2,9 @@
 // al: AssuredLoop's command line. Every output names what it read and ends
 // with a Next line and a Not known line ([VW-9]).
 import { parseArgs } from 'node:util';
-import { Fail, mainRef, remember, resolveCommit, topLevel } from '../src/git.js';
+import { readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { Fail, git, mainRef, remember, resolveCommit, topLevel } from '../src/git.js';
 import { newRequest, recordOrigin, context, line } from '../src/commands.js';
 import { spec } from '../src/spec.js';
 import { consolidate } from '../src/consolidate.js';
@@ -30,7 +32,22 @@ const COMMANDS = {
   check: { run: check, options: { at: { type: 'string' }, strict: { type: 'boolean' }, all: { type: 'boolean' } } },
 };
 const ONE_LINE = ['words', 'source', 'text', 'url', 'updated', 'title'];
-const USAGE = 'al new | record | context | spec | consolidate | conclude | check';
+const USAGE = 'al new | record | context | spec | consolidate | conclude | check | --version';
+
+// `al --version`: the package version, and the commit of the install folder
+// when that folder is the top of a git checkout, so a run says what it runs.
+function version() {
+  const dir = realpathSync(fileURLToPath(new URL('..', import.meta.url)));
+  const pkg = JSON.parse(readFileSync(`${dir}/package.json`, 'utf8'));
+  // The caller's GIT_DIR and the like point at the caller's repo, not this folder.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  const top = git(dir, ['rev-parse', '--show-toplevel'], { allowFail: true, env });
+  const sha = top && realpathSync(top) === dir ? git(dir, ['rev-parse', 'HEAD'], { allowFail: true, env }) : null;
+  const where = sha ? `${sha.slice(0, 7)} · ${dir}` : `not a git checkout: ${dir}`;
+  print([`al ${pkg.version ?? 'unreleased'} · ${where}`], 'the install folder', { label: 'no project read' }, 'al context',
+    sha ? ['whether the install folder has uncommitted changes'] : ['which commit it was installed from']);
+  return 0;
+}
 
 function main(argv) {
   const cwd = process.cwd();
@@ -38,6 +55,7 @@ function main(argv) {
   let read = 'working tree';
   remember();
   try {
+    if (argv.length === 1 && ['--version', '-v'].includes(argv[0])) return version();
     top = topLevel(cwd);
     const [name, ...rest] = argv;
     const command = COMMANDS[name];
