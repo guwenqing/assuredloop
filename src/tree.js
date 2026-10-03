@@ -31,7 +31,7 @@ export function openTree(top, at) {
     },
     list(dir) {
       // -z: names as stored, never quoted (a non-ASCII or quoted name included).
-      const out = git(top, ['ls-tree', '-z', '--name-only', sha, `${dir}/`], { allowFail: true });
+      const out = git(top, ['ls-tree', '-z', '--name-only', sha, '--', `${dir}/`], { allowFail: true });
       if (!out) return null;
       return out.split('\0').filter(Boolean).map((p) => p.slice(dir.length + 1)).sort();
     },

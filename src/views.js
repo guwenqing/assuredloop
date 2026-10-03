@@ -1,15 +1,15 @@
 // al context <ID> ([VW-3]), al context --diff <range> [--for review] ([VW-4]),
 // an archived request's sections ([VW-6]), and the code still live for
 // dropped work ([REC-9]), all from the rough links ([LNK-1], [LNK-2]).
-import { Fail, git, historyGap, isShallow, mainCommit, resolveCommit } from './git.js';
+import { Fail, git, historyGap, isShallow, mainCommit, ownCommits, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
-import { rootOf, baseline, configured } from './spec.js';
+import { rootOf, rootLine, baseline, configured } from './spec.js';
 import { allBlocks, changeStates, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { organized, parts, samePart, signoffState } from './signoff.js';
 import { line, lines, grouped, decisionList, entriesOf, concluding, fitOrCount } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
-import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
+import { WIDE, blame, byId, changedWith, cites, describe, filesOf, idNear, idsOn, ownFiles, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
 import { headNote, resultLines, testLines, testMatcher } from './tests.js';
 import { adrFolders, governing } from './adrs.js';
 
@@ -143,8 +143,9 @@ export function fileLinks(top, base, head, path, { root, requests, seen, shallow
 // Under --at X, HEAD and an omitted side read as X.
 export function diffView(top, range, forReview, all, at) {
   const m = range.match(/^(.*?)(\.\.\.?)(.*)$/);
-  const side = (x) => (!x || x === 'HEAD' ? at ?? 'HEAD' : x);
-  const [a, dots, b] = m ? [side(m[1]), m[2], side(m[3])] : [range, '...', side()];
+  // A bare `main` is the main the tool reads ([VW-9]).
+  const side = (x) => (!x || x === 'HEAD' ? at ?? 'HEAD' : x === 'main' ? mainCommit(top) ?? x : x);
+  const [a, dots, b] = m ? [side(m[1]), m[2], side(m[3])] : [side(range), '...', side()];
   const head = resolveCommit(top, b);
   const from = resolveCommit(top, a);
   const base = dots === '...' ? git(top, ['merge-base', from, head], { allowFail: true }) : from;
@@ -158,7 +159,7 @@ export function diffView(top, range, forReview, all, at) {
   const seen = new Map();
   const files = baseline(tree, root);
   const headings = titles(files);
-  const commits = git(top, ['rev-list', '--reverse', `${base}..${head}`]).split('\n').filter(Boolean).map((c) => requestOf(top, c, requests, seen));
+  const commits = ownCommits(top, base, head).map((c) => requestOf(top, c, requests, seen, ownFiles));
   const served = new Map();
   for (const c of commits) for (const n of c.names) if (!served.has(n)) served.set(n, c.how);
   const none = commits.filter((c) => !c.names.length).length;
@@ -281,16 +282,15 @@ export function archivedLines(top, name, at, all) {
     ? [...new Set([...allBlocks(tree).values()].filter((b) => b.request === name).map((b) => b.id))]
     : [...new Set(outcomeLines(tree.read(`${dir}/request.md`)?.toString('utf8') ?? '')
       .filter((l) => /^- (Added|Modified|Removed):/.test(l)).flatMap((l) => [...l.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])))];
-  const found = concluding(top, name);
-  const c = found.sha && rev && git(top, ['merge-base', '--is-ancestor', found.sha, rev], { allowFail: true }) === null ? {} : found;
+  const c = concluding(top, name, at);
   const root = rootOf(top, tree, at);
   const now = baseline(tree, root);
   const nowById = new Map(now.flatMap((f) => f.sections.filter((s) => s.id).map((s) => [s.id, { ...s, path: f.path }])));
-  const then = c.sha ? byIdAt(top, c.sha) : null;
+  const then = c.sha ? byIdAt(top, c.sha, root) : null;
   const requests = requestsIn(tree);
   const seen = new Map();
   const say = (id) => {
-    if (!c.sha) return c.shallow ? HISTORY : 'as at conclusion';
+    if (!c.sha) return c.gap ?? 'as at conclusion';
     const [was, is] = [then.get(id), nowById.get(id)];
     if (!was && !is) return 'as at conclusion';
     if (was && is && sameSection(was, is.text)) return 'as at conclusion';
@@ -309,41 +309,47 @@ export function archivedLines(top, name, at, all) {
   return out;
 }
 
-// The baseline's sections by ID at a commit.
-function byIdAt(top, sha) {
+// The baseline's sections by ID at a past commit: its root: line alone, or `root` ([VW-8]).
+function byIdAt(top, sha, root) {
   const tree = openTree(top, sha);
-  return new Map(baseline(tree, rootOf(top, tree, sha)).flatMap((f) => [...byId(f.text)]));
+  return new Map(baseline(tree, rootLine(top, tree, sha) ?? root).flatMap((f) => [...byId(f.text)]));
 }
 
-// [REC-9]: the code still live at HEAD from the commits that map to `name`
-// by a Request: line or its folder, as `path:a-b`; only under the markers of
-// `onlyIds` when given. `at` is the revision read (HEAD, with the working
-// tree's records, by default).
-export function liveCode(top, name, root, onlyIds, at = 'HEAD') {
-  const requests = requestsIn(openTree(top, at === 'HEAD' ? undefined : at));
+// [REC-9]: the code still live from the commits that map to `name` by a
+// Request: line or its folder, as `path:a-b`; only under the markers of
+// `onlyIds` when given. `at` is the commit read; without it, the working
+// tree, its records and its files. null in a shallow clone, where blame
+// gives the boundary commit every line it cannot trace ([VW-9]).
+export function liveCode(top, name, root, onlyIds, at) {
+  if (isShallow(top)) return null;
+  const tree = openTree(top, at);
+  const requests = requestsIn(tree);
   // Every route [LNK-2] maps by, the issue numbers in its owner's words included.
   const md = requests.find((r) => r.name === name)?.md ?? '';
   const issues = [...new Set(entriesOf(md, "Owner's words and dialog").join('\n').match(/#\d+/g) ?? [])];
-  const mine = new Set(requestCommits(top, name, issues, at, requests).map((c) => c.sha));
+  const mine = new Set(requestCommits(top, name, issues, at ?? 'HEAD', requests).map((c) => c.sha));
   const found = new Set([...mine].flatMap((sha) => filesOf(top, sha)).filter(isCode(root)));
   // Code moves: a later commit that changed one of these files may have taken
   // its lines into its other files, so those are read too.
-  const history = git(top, ['rev-list', '--reverse', at]).split('\n').filter(Boolean);
+  const history = git(top, ['rev-list', '--reverse', at ?? 'HEAD']).split('\n').filter(Boolean);
   for (const sha of mine.size ? history.slice(history.findIndex((s) => mine.has(s)) + 1) : []) {
     const files = filesOf(top, sha).filter(isCode(root));
     if (files.some((f) => found.has(f))) files.forEach((f) => found.add(f));
   }
+  // The working tree's uncommitted changes count as one more such change: a git mv takes the lines to its new path.
+  const working = at ? [] : paths(git(top, ['diff', '--name-only', '-z', '--no-renames', 'HEAD'], { allowFail: true })).filter(isCode(root));
+  if (working.some((f) => found.has(f))) working.forEach((f) => found.add(f));
   const touched = [...found].sort();
   const out = [];
   for (const path of touched) {
-    const text = git(top, ['show', `${at}:${path}`], { allowFail: true });
+    const text = tree.read(path)?.toString('utf8') ?? null;
     if (text === null) continue;
     const fileLines = text.split('\n');
     const under = (n) => {
       for (let i = n; i >= 1; i--) if (idsOn(fileLines[i - 1]).length) return idsOn(fileLines[i - 1]);
       return [];
     };
-    const live = blame(top, at, path, [[1, lineCount(text)]], { code: true })
+    const live = blame(top, at ?? null, path, [[1, lineCount(text)]], { code: true })
       .filter((b) => mine.has(b.sha) && (!onlyIds || under(b.line).some((id) => onlyIds.includes(id)))).map((b) => b.line);
     out.push(...ranges(live).map((r) => `${path}:${r}`));
   }

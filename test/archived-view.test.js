@@ -200,7 +200,7 @@ test('[VW-6][VW-8] context <archived-name> --at <commit> describes that commit\'
   assert.ok(!lines(r.stdout).some((l) => /^Spec\b/.test(l)) && !r.stdout.includes('differs'), r.stdout);
 });
 
-test('[VW-6][VW-8] --at a branch commit whose history lacks main\'s concluding commit compares with that commit\'s tree: INV-3 reads "as at conclusion", with no "since changed"', (t) => {
+test('[VW-6][VW-8] --at a branch commit whose history lacks main\'s concluding commit compares with the commit where that history archived it: INV-3 reads "since changed by branch-dates", INV-7 "as at conclusion", and nothing from main after it shows', (t) => {
   const S3 = '## [INV-3] Dates\nDates MUST show in ISO 8601, to the second.\n';
   const repo = concluded(t, { keepBranch: true });
   const squash = repo.git(['log', '--diff-filter=A', '--format=%H', '--', 'requests/archive/iso-dates/request.md']);
@@ -210,7 +210,8 @@ test('[VW-6][VW-8] --at a branch commit whose history lacks main\'s concluding c
   const b2 = repo.commit('Seconds in dates\n\nRequest: branch-dates', { date: '2026-09-24T12:00:00Z' });
   repo.git(['checkout', '-q', 'main']);
   laterChange(repo);
-  assert.ok(repo.git(['ls-tree', '--name-only', b2, 'requests/archive/']).includes('requests/archive/iso-dates'), 'the fixture: archived at B2');
+  const archived = repo.git(['log', '--first-parent', '--diff-filter=A', '--format=%H', b2, '--', 'requests/archive/iso-dates/request.md']);
+  assert.ok(archived && archived !== squash, 'the fixture: B2\'s own history archived iso-dates, at a commit other than main\'s squash');
   assert.ok(!repo.git(['rev-list', b2]).split('\n').includes(squash), 'the fixture: main\'s squash is not in B2\'s history');
 
   // Today, on main: since changed by tz-dates (the contrast).
@@ -219,8 +220,11 @@ test('[VW-6][VW-8] --at a branch commit whose history lacks main\'s concluding c
   const r = runAl(repo.dir, ['context', 'iso-dates', '--at', b2]);
   assert.equal(r.code, 0, both(r));
   assertFrame(r.stdout, { read: b2.slice(0, 7) });
-  is(r.stdout, 'INV-3', 'as at conclusion');
-  assert.ok(!r.stdout.includes('since changed'), `B2's tree is the comparison, so nothing changed INV-3 since:\n${r.stdout}`);
+  const concludedLine = lines(r.stdout).find((l) => /^Concluded\b/.test(l)) ?? '';
+  assert.ok(concludedLine.includes(archived.slice(0, 7)), `the Concluded line reads B2's history:\n${r.stdout}`);
+  is(r.stdout, 'INV-3', /since changed by branch-dates \(2026-09-24/);
+  is(r.stdout, 'INV-7', 'as at conclusion');
+  assert.ok(!r.stdout.includes('tz-dates'), `tz-dates changed INV-3 on main, after B2:\n${r.stdout}`);
   assert.ok(!lines(r.stdout).some((l) => /^Spec\b/.test(l)) && !r.stdout.includes('differs'), r.stdout);
 });
 

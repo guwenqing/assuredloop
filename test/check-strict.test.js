@@ -322,6 +322,15 @@ test('C8 [HNT-3] real data: al check in a clone of this repo exits 0, with part 
   const base = tempDir(t);
   const dir = join(base, 'clone');
   git(base, ['clone', '-q', root, dir]);
+  // The clone's origin/main, written again so its reflog gives it a known time.
+  // A clone of a detached checkout has no origin/HEAD clone entry to time it
+  // by, and a CI checkout (no local main) gives it no origin/main at all: then
+  // it takes the checkout's own origin/main.
+  const main = git(dir, ['for-each-ref', '--format=%(objectname)', 'refs/remotes/origin/main']);
+  if (main) {
+    git(dir, ['update-ref', '-d', 'refs/remotes/origin/main']);
+    git(dir, ['update-ref', '-m', 'fixture: origin/main', 'refs/remotes/origin/main', main]);
+  } else git(dir, ['fetch', '-q', root, '+refs/remotes/origin/main:refs/remotes/origin/main']);
   const r = runAl(dir, ['check']);
   assert.equal(r.code, 0, both(r));
   assertCheckFrame(r.stdout, 'origin/main');

@@ -58,6 +58,7 @@ function fetchAt(clone, args, iso) {
   return readFileSync(join(clone.dir, '.git/FETCH_HEAD'), 'utf8');
 }
 
+// --date=iso-strict writes UTC as Z from git 2.45, as +00:00 before it (the README asks for 2.31+).
 const reflog = (clone) => clone.git(['reflog', 'show', '--date=iso-strict', 'refs/remotes/origin/main']);
 
 test('[VW-9] a fresh clone names origin/main "as of" the clone\'s time, labelled (clone), and Not known says it may have moved since', (t) => {
@@ -87,6 +88,23 @@ test('[VW-9] after a fetch that moved origin/main, its reflog time is shown, not
   assert.ok(notKnown.includes('2026-09-24T12:30Z'), notKnown);
 });
 
+test('[VW-9] after two fetches that each moved origin/main, the later one\'s time is shown, not the earlier one\'s', (t) => {
+  const { repo, clone } = clonedSource(t);
+  repo.write('later.txt', 'more\n');
+  repo.commit('later', { date: '2026-09-22T10:00:00Z' });
+  fetchAt(clone, ['origin'], '2026-09-24T12:30:00Z');
+  repo.write('later.txt', 'even more\n');
+  repo.commit('even later', { date: '2026-09-25T10:00:00Z' });
+  fetchAt(clone, ['origin'], '2026-09-26T18:05:00Z');
+  assert.equal(clone.git(['reflog', 'show', '--format=%gs', 'refs/remotes/origin/main']).split('\n').length, 2, 'the fixture: two fetches moved origin/main');
+  const r = runAl(clone.dir, ['context', 'invoice-download'], { env: ENV });
+  assert.equal(r.code, 0, r.stderr);
+  const line = assertAsOf(r.stdout, '2026-09-26T18:05Z');
+  assert.ok(!line.includes('2026-09-24T12:30Z'), line);
+  const notKnown = lines(r.stdout).at(-1);
+  assert.ok(notKnown.includes('2026-09-26T18:05Z'), notKnown);
+});
+
 test('[VW-9] a fetch that found nothing new leaves no record: the clone time is still shown, not FETCH_HEAD\'s time', (t) => {
   const { clone } = clonedSource(t);
   fetchAt(clone, ['origin'], '2026-09-25T06:10:00Z');
@@ -113,7 +131,7 @@ test('[VW-9] when FETCH_HEAD is newer than origin/main\'s last reflog entry, the
   repo.commit('later', { date: '2026-09-22T10:00:00Z' });
   fetchAt(clone, ['origin'], '2026-09-24T12:30:00Z'); // moves origin/main: reflog T1
   fetchAt(clone, ['origin'], '2026-09-26T18:05:00Z'); // nothing new: FETCH_HEAD only
-  assert.ok(reflog(clone).includes('2026-09-24T12:30:00Z'), 'the fixture reflog should still say T1');
+  assert.match(reflog(clone), /2026-09-24T12:30:00(?:Z|\+00:00)/, 'the fixture reflog should still say T1');
   const r = runAl(clone.dir, ['context', 'invoice-download'], { env: ENV });
   assert.equal(r.code, 0, r.stderr);
   const line = assertAsOf(r.stdout, '2026-09-24T12:30Z');
@@ -132,7 +150,7 @@ test('[VW-9] regression: fetch origin main at T1, then fetch --append origin fea
   // FETCH_HEAD still lists origin's main, yet its mtime is T2.
   assert.match(fetchHead, /branch 'main' of /, fetchHead);
   assert.match(fetchHead, /branch 'feature' of /, fetchHead);
-  assert.ok(reflog(clone).includes('2026-09-24T12:30:00Z'), 'the fixture reflog should say T1');
+  assert.match(reflog(clone), /2026-09-24T12:30:00(?:Z|\+00:00)/, 'the fixture reflog should say T1');
   const r = runAl(clone.dir, ['context', 'invoice-download'], { env: ENV });
   assert.equal(r.code, 0, r.stderr);
   const line = assertAsOf(r.stdout, '2026-09-24T12:30Z');
@@ -183,8 +201,8 @@ test('[VW-9] a later `git remote set-head` entry in origin/HEAD\'s reflog is not
   const { clone } = clonedSource(t);
   clone.git(['remote', 'set-head', 'origin', 'main'], { date: '2026-09-26T18:05:00Z' });
   const headLog = clone.git(['reflog', 'show', '--date=iso-strict', '--format=%gd %gs', 'refs/remotes/origin/HEAD']).split('\n');
-  assert.match(headLog[0], /2026-09-26T18:05:00Z.*remote set-head/, 'the newest origin/HEAD entry is the set-head');
-  assert.match(headLog[1], /2026-09-21T07:45:00Z.*clone:/, 'the clone: entry is below it');
+  assert.match(headLog[0], /2026-09-26T18:05:00(?:Z|\+00:00).*remote set-head/, 'the newest origin/HEAD entry is the set-head');
+  assert.match(headLog[1], /2026-09-21T07:45:00(?:Z|\+00:00).*clone:/, 'the clone: entry is below it');
   assert.ok(!existsSync(join(clone.dir, '.git/logs/refs/remotes/origin/main')), 'the fixture has no origin/main reflog');
   const r = runAl(clone.dir, ['context', 'invoice-download'], { env: ENV });
   assert.equal(r.code, 0, r.stderr);
