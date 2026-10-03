@@ -52,6 +52,10 @@ test('C6 [LNK-3] a root plan of 1..1 followed by two passing points: the head is
   flawed(results(t, ['1..1', 'ok 1 - first', 'ok 2 - second']));
 });
 
+test('#138 [LNK-3] a TAP file with no plan line (a run killed early), its two points ok: the head is incomplete', (t) => {
+  flawed(results(t, ['ok 1 - first', 'ok 2 - second']));
+});
+
 test('C6 [LNK-3] contrast: node\'s reporter output with nested groups and every plan met (a failure and a skip among them) is neither incomplete nor invalid', (t) => {
   const b = results(t, (head) => tap(head, [
     ['group one', [['first', 'ok'], ['second', 'not ok'], ['third', 'skip']]],

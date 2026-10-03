@@ -1,12 +1,13 @@
 // --audit ([VW-7]): the whole trace of a request, a section or a code line,
 // nothing capped, every hash re-checked. History is main's first-parent line
 // (the --at commit's under --at): what reached main.
+import { isAbsolute } from 'node:path';
 import { Fail, git, isShallow, mainCommit, resolveCommit } from './git.js';
-import { openTree, findRequest } from './tree.js';
+import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, rootLine, baseline, configured } from './spec.js';
 import { allBlocks, statesOf } from './states.js';
 import { sameSection } from './sections.js';
-import { isSignoff, parseSnapshot } from './snapshot.js';
+import { isSignoff, snapshots } from './snapshot.js';
 import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
 import { blame, byId, filesOf, requestCommits, requestOf, requestsIn } from './links.js';
 import { testMatcher } from './tests.js';
@@ -61,22 +62,20 @@ function trace(a, name) {
   const body = [line('Audit', `${name}  ${(md.match(/^# (.*)$/m)?.[1] ?? name).trim()}  (${dir})`),
     ...entriesOf(md, "Owner's words and dialog").map((e) => line('Words', e))];
   // Each snapshot of `from`'s origin/, or only its sign-offs, each re-checked; `whose` names another request's.
-  const snapshots = (from, signoffsOnly, whose = '') => {
-    for (const f of tree.list(`${from}/origin`) ?? []) {
-      const bytes = tree.read(`${from}/origin/${f}`) ?? Buffer.alloc(0);
-      const s = parseSnapshot(bytes);
+  const recheck = (from, signoffsOnly, whose = '') => {
+    for (const { file: f, s } of snapshots(tree, from)) {
       const ok = !s ? 'not ok: not a valid snapshot' : s.intact ? 'SHA-256 matches' : 'not ok: no longer matches its SHA-256';
       if (isSignoff(s)) body.push(line('Sign-off', `${whose}origin/${f} (${s.fields.Fetched}) ${ok}; signed text:`), ...indented(s.text.toString('utf8')));
       else if (!signoffsOnly) body.push(line('Snapshot', `origin/${f} ${s ? `(${s.fields.Source}, fetched ${s.fields.Fetched}) ` : ''}${ok}`));
     }
   };
-  snapshots(dir, false);
+  recheck(dir, false);
   // [REC-5]: a child inherits its parent's sign-off for the parts it copies word for word, so those are re-checked too.
   const parent = parentOf(tree, name);
   if (parent) {
     const s = signoffState(tree, dir, name);
     body.push(line('Sign-off', `through ${parent.name}, for the parts copied word for word: ${s.blocked ? s.reason : 'signed off'}`));
-    snapshots(parent.dir, true, `through ${parent.name}, `);
+    recheck(parent.dir, true, `through ${parent.name}, `);
   }
   body.push(...entriesOf(md, 'Decisions').map((e) => line('Decision', e)));
   const place = (f) => [`requests/${name}/${f}`, `requests/archive/${name}/${f}`];
@@ -152,6 +151,10 @@ function fromSection(a, id) {
 
 // A code or baseline line: blame, the commit's request, then its trace.
 function fromLine(a, path, n) {
+  // Only a path inside the repo, never through a symlink, as the tool writes ([SPC-1]).
+  if (isAbsolute(path) || path.split('/').includes('..') || (a.at ? a.tree.linkOn(path) : !noSymlinkOn(a.top, path))) {
+    throw new Fail(`${path} is not a path inside this repo, or goes through a symlink`, 'al context <path>:<line> --audit, for a repo-relative path');
+  }
   const lines = a.tree.read(path)?.toString('utf8').replace(/\n$/, '').split('\n');
   if (!lines || n < 1 || n > lines.length) throw new Fail(`${path}:${n}: no such line in the ${a.tree.label}`, 'al context <path>:<line> --audit, for a line that exists');
   const body = [line('Audit', `${path}:${n}  ${lines[n - 1].trim()}`)];
