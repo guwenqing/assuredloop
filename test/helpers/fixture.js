@@ -104,11 +104,12 @@ export function cloneRepo(t, repo, { depth, singleBranch, branch, date } = {}) {
   return wrap(dir);
 }
 
-// Run `node bin/al.js ...args` in `cwd`. `input` is fed to stdin.
-export function runAl(cwd, args, { input, env } = {}) {
+// Run `node bin/al.js ...args` in `cwd`. `input` is fed to stdin. With
+// `timeout` (ms) the process is killed after that long: `signal` says so.
+export function runAl(cwd, args, { input, env, timeout } = {}) {
   const r = spawnSync(process.execPath, [AL, ...args],
-    { cwd, input: input ?? '', env: cleanEnv(env), encoding: 'utf8' });
-  return { code: r.status, stdout: r.stdout, stderr: r.stderr };
+    { cwd, input: input ?? '', env: cleanEnv(env), encoding: 'utf8', timeout });
+  return { code: r.status, stdout: r.stdout, stderr: r.stderr, signal: r.signal };
 }
 
 export const sha256 = (text) => createHash('sha256').update(text).digest('hex');
