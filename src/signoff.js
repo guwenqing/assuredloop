@@ -1,7 +1,7 @@
 // The organized section ([REC-4]), its sign-offs ([REC-5]) and the blocked
 // state ([REC-6]). Everything is judged from the text in the files, never from
 // commits, so a squash changes nothing.
-import { codeLines, parseSections, sameSection } from './sections.js';
+import { codeLines, parseSections, prose, sameSection } from './sections.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
 import { childrenOf } from './commands.js';
 
@@ -64,8 +64,7 @@ export function parts(text, oneLine = false) {
 export function unlabelled(org) {
   if (!/requirement/.test(org.text.split('\n')[0])) return [];
   const intro = parts(org.text, org.oneLine).find((p) => p.key === 'intro')?.text ?? '';
-  const code = codeLines(intro);
-  return intro.split(/(?<=\n)/).filter((l, i) => !code[i] && /\b(MUST|SHOULD|MAY)\b/.test(l)).map((l) => l.trim());
+  return prose(intro).split('\n').filter((l) => /\b(MUST|SHOULD|MAY)\b/.test(l)).map((l) => l.trim());
 }
 
 // The same part, ignoring the number in `### R<n>` (a child renumbers what it copies).

@@ -4,6 +4,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { Fail, git, hasCommits, isShallow, mainCommit, now, resolveCommit, stamp } from './git.js';
 import { openTree, findRequest, isName, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
+import { prose } from './sections.js';
 import { organized, parts, signoffState } from './signoff.js';
 import { changeStates } from './states.js';
 import { recordSection } from './record-section.js';
@@ -32,8 +33,10 @@ export function entriesOf(text, title) {
 
 // [REC-8]: the child request a part names, in its one form: the part is
 // `request <name>`, or ends with `: request <name>`. Null for any other part.
+// Parts are read out of fenced code.
 export const childOf = (entry) => entry.match(/^(?:-|\d+\.)\s+(?:.*:\s+)?request ([a-z0-9][a-z0-9-]*)$/)?.[1] ?? null;
-export const childrenOf = (md) => entriesOf(md, 'Parts').map(childOf).filter(Boolean);
+export const partsOf = (md) => entriesOf(prose(md), 'Parts');
+export const childrenOf = (md) => partsOf(md).map(childOf).filter(Boolean);
 
 // The entries of `## Decisions`: each one's ID, date and Source clause (up to
 // its first ". "). A clause that names the agent makes it an agent ruling.
@@ -405,7 +408,7 @@ export function context({ top, args, opts }) {
   // conclude's rules re-run on an archived request are check's ([STA-8]); a view never re-checks one.
   const hints = ranked(hintsOf(top, b, { main }), b).filter((h) => h.owners.includes(name) && h.rank !== 7);
   if (field('Tier') === '0') hints.push({ kind: 'note', text: TIER0, command: `al new ${name} --tier 1 for a change of promise` });
-  entriesOf(text, 'Parts').forEach((p, k) => {
+  partsOf(text).forEach((p, k) => {
     const c = childOf(p);
     const d = c && findRequest(tree, c);
     const status = d && tree.read(`${d}/request.md`).toString('utf8').match(/\bStatus:\s*(\w+)/)?.[1];
