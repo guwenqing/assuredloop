@@ -7,10 +7,10 @@ import { git } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, baseline, duplicateIds } from './spec.js';
 import { allBlocks, anchorFault, blockFault, statesOf } from './states.js';
-import { sameSection } from './sections.js';
-import { organized, parentOf, parts, samePart, signoffState } from './signoff.js';
+import { sameSection, unheld } from './sections.js';
+import { organized, parentOf, parts, samePart, signoffState, tierOne, unlabelled } from './signoff.js';
 import { isSignoff, parseSnapshot } from './snapshot.js';
-import { entriesOf, line } from './commands.js';
+import { childrenOf, entriesOf, line, partsOf } from './commands.js';
 import { headingFault } from './consolidate.js';
 import { baselineLists, judge, outcomeFacts, ownIds, spikeNotes } from './conclude.js';
 import { appendOnly } from './check.js';
@@ -24,7 +24,6 @@ const ID_TOKEN = /\[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]/g;
 const statusOf = (md) => md.split('\n').find((l) => /\bStatus:/.test(l)) ?? '';
 const isDropped = (md) => /\bStatus:\s*dropped\b/.test(statusOf(md));
 const folderOf = (p) => p.match(/^requests\/archive\/([^/]+)\//)?.[1] ?? p.match(/^requests\/(?!archive\/)([^/]+)\//)?.[1];
-const childrenOf = (md) => [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1]);
 const sections = (files) => new Map(files.flatMap((f) => [...byId(f.text)]));
 
 // What the hints read: the final state (`tree`, the working tree or the tree
@@ -45,7 +44,7 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   const served = new Set([...mapped.flatMap((c) => c.names), ...changed.map(folderOf).filter(Boolean)]);
   const archived = new Set(base ? requests.filter((r) => !r.open && git(top, ['cat-file', '-e', `${base}:${r.dir}/request.md`], { allowFail: true }) === null).map((r) => r.name) : []);
   // Work is anything a request's commits touch beyond its own request.md and origin/.
-  const work = (name, sha) => filesOf(top, sha).some((f) => !new RegExp(`^requests/(?:archive/)?${name}/(?:request\\.md$|origin/)`).test(f));
+  const work = (name, sha, skip = () => false) => filesOf(top, sha).some((f) => !new RegExp(`^requests/(?:archive/)?${name}/(?:request\\.md$|origin/)`).test(f) && !skip(f));
   const delivered = new Set(mapped.flatMap((c) => c.names.filter((n) => work(n, c.sha))));
   for (const p of changed) if (/^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(p)) delivered.add(folderOf(p));
   const tiers = commits.map((sha) => [...git(top, ['show', '-s', '--format=%B', sha]).matchAll(/^[ \t]*Tier:[ \t]*(.+?)[ \t]*$/gm)].at(-1)?.[1]);
@@ -97,7 +96,7 @@ export function hintsOf(top, b, { main }) {
   // An open request citing what does not exist, or a block that breaks [SPC-5].
   for (const r of open) {
     const org = organized(r.md);
-    const rKeys = org ? parts(org.text).map((p) => p.key) : null;
+    const rKeys = org ? parts(org.text, org.oneLine).map((p) => p.key) : null;
     for (const x of [...b.blocks.values()].filter((y) => y.request === r.name)) {
       const unreadable = blockFault(x);
       if (unreadable) add('not ok', 5, [r.name], unreadable, `fix the block in ${r.dir}/change.md, then al check`);
@@ -113,6 +112,10 @@ export function hintsOf(top, b, { main }) {
         if (fault) add('not ok', 5, [r.name], fault, `al context ${r.name}`);
       }
     }
+    for (const l of org ? unlabelled(org) : []) {
+      add('note', 24, [r.name], `${r.name}'s organized requirement says "${l.length > 60 ? `${l.slice(0, 59)}…` : l}" before any requirement, so it is not read as a requirement ([REC-4])`,
+        `make it ${org.oneLine ? 'an R<n>: line or ' : ''}an ### R<n> sub-section in ${r.dir}/request.md, then al context ${r.name}`);
+    }
     for (const e of entriesOf(r.md, 'Decisions')) {
       for (const [, id] of e.matchAll(ID_TOKEN)) if (!known(id)) add('not ok', 5, [r.name], `${r.name} cites [${id}] in ${e.match(/^- (D\d+)/)?.[1] ?? 'a decision'}, which is in no section or block`, `al context ${r.name}`);
     }
@@ -126,7 +129,7 @@ export function hintsOf(top, b, { main }) {
   const facts = new Map();
   for (const name of b.archived) {
     const r = b.requests.find((x) => x.name === name);
-    const j = judge(top, b.tree, name, r.dir, isDropped(r.md), b.at);
+    const j = judge(top, b.tree, name, r.dir, isDropped(r.md), b.at, b.base);
     facts.set(name, { r, j });
     if (j.refusals.length) add('not ok', 7, [name], `${name} is archived on this branch but no longer meets conclude's rules: ${j.refusals.join('; ')}`, `al conclude ${name}`);
   }
@@ -139,8 +142,26 @@ export function hintsOf(top, b, { main }) {
       }
     }
   }
+  // [REC-6]: work for a blocked request counts only when the branch's final state leaves something
+  // applied, each part touched by its own work and still changed by the branch: a file outside its
+  // records and the baseline's .md files; a baseline section, unless every block of it retains nothing
+  // ([STA-3]), as after a revert; baseline text outside any section with an ID; its change.md, unless
+  // every block is Dropped, not Kept, and retains nothing.
+  const uncommitted = b.at ? [] : [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z']))];
+  const textAt = (rev, p) => (rev ? git(top, ['show', `${rev}:${p}`], { allowFail: true }) : b.tree.read(p)?.toString('utf8')) ?? '';
+  const applied = (name) => {
+    const touched = (p) => b.mapped.some((c) => c.names.includes(name) && filesOf(top, c.sha).includes(p)) || (b.served.has(name) && uncommitted.includes(p));
+    const es = statesOf(b.files, b.blocks, (x) => x.request === name);
+    const change = new RegExp(`^requests/(?:archive/)?${name}/change\\.md$`);
+    const left = (id) => !es.some((e) => e.id === id) || es.some((e) => e.id === id && !e.retainsNothing);
+    const withdrawn = es.length > 0 && es.every((e) => b.blocks.get(e.block).dropped && !b.blocks.get(e.block).kept && e.retainsNothing);
+    return b.mapped.some((c) => c.names.includes(name) && b.work(name, c.sha, (f) => !b.changed.includes(f) || (f.startsWith(`${b.root}/`) && f.endsWith('.md')) || change.test(f)))
+      || [...ownIds(top, name, b.base, b.root, b.requests, !b.at && b.served.has(name), b.at ?? 'HEAD')].some((id) => b.changedIds.includes(id) && left(id))
+      || b.changed.some((p) => p.startsWith(`${b.root}/`) && p.endsWith('.md') && touched(p) && !sameSection(unheld(textAt(b.base, p)), unheld(textAt(null, p))))
+      || (!withdrawn && b.changed.some((p) => change.test(p)));
+  };
   for (const name of b.delivered) {
-    if (signed.get(name)?.blocked) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, `al record ${name} signoff --source <where> --words <quote> --yes`, true);
+    if (signed.get(name)?.blocked && applied(name)) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, `al record ${name} signoff --source <where> --words <quote> --yes`, true);
   }
   if (b.tier && /^0\b/.test(b.tier) && b.changed.some((p) => p.startsWith(`${b.root}/`))) {
     add('not ok', 10, [], `the claim is tier 0, but ${b.range} edits the baseline${b.changedIds.length ? `: ${b.changedIds.map((i) => `[${i}]`).join(', ')}` : ''}`, `al context --diff ${b.range}`);
@@ -179,7 +200,7 @@ export function hintsOf(top, b, { main }) {
     if (!r || !(isDropped(r.md) || ids.length)) continue;
     const live = liveCode(top, name, b.root, isDropped(r.md) ? null : ids, b.at ?? 'HEAD');
     if (!live.length) continue;
-    const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => entriesOf(p.md, 'Parts').map((e) => [p.name, e]))
+    const plans = [r, ...b.requests.filter((p) => childrenOf(p.md).includes(name))].flatMap((p) => partsOf(p.md).map((e) => [p.name, e]))
       .find(([, e]) => live.some((l) => e.includes(l.split(':')[0])));
     // Ranked first among the notes: live code for dropped work is a hazard on main.
     const files = [...new Set(live.map((l) => l.split(':')[0]))];
@@ -231,12 +252,13 @@ function earlyWork(top, b, mainSha) {
     if (!r) continue;
     // Its own sign-offs, and a parent's where it inherits from them: those
     // holding one of its parts word for word ([REC-5]).
-    const mine = parts(organized(r.md)?.text ?? '');
-    const copied = (s) => parts(s.text.toString('utf8')).some((q) => mine.some((p) => samePart(p, q)));
+    const org = organized(r.md);
+    const mine = parts(org?.text ?? '', org?.oneLine);
     const signoffsOf = (n, dir, keep = () => true) => (b.tree.list(`${dir}/origin`) ?? [])
       .filter((f) => { const s = parseSnapshot(b.tree.read(`${dir}/origin/${f}`) ?? Buffer.alloc(0)); return isSignoff(s) && keep(s); })
       .flatMap((f) => [`requests/${n}/origin/${f}`, `requests/archive/${n}/origin/${f}`]);
     const parent = parentOf(b.tree, name);
+    const copied = (s) => parts(s.text.toString('utf8'), tierOne(parent.md)).some((q) => mine.some((p) => samePart(p, q)));
     const places = [...signoffsOf(name, r.dir), ...(parent ? signoffsOf(parent.name, parent.dir, copied) : [])];
     const first = places.length ? git(top, ['log', '--reverse', '--diff-filter=A', '--format=%H', mainSha, '--', ...places]).split('\n')[0] : '';
     line ??= git(top, ['rev-list', '--first-parent', mainSha]).split('\n').filter(Boolean).map((c) => ({

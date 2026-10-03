@@ -4,8 +4,8 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { Fail, git, hasCommits, isShallow, mainCommit, now, resolveCommit, stamp } from './git.js';
 import { openTree, findRequest, isName, noSymlinkOn } from './tree.js';
 import { formatSnapshot, parseSnapshot, sha256, slug } from './snapshot.js';
-import { sameSection } from './sections.js';
-import { changedParts, latestSignoff, organized, parts, signoffState } from './signoff.js';
+import { prose } from './sections.js';
+import { organized, parts, signoffState } from './signoff.js';
 import { changeStates } from './states.js';
 import { recordSection } from './record-section.js';
 import { archivedLines, diffView, sectionView } from './views.js';
@@ -30,6 +30,13 @@ export function entriesOf(text, title) {
   }
   return out;
 }
+
+// [REC-8]: the child request a part names, in its one form: the part is
+// `request <name>`, or ends with `: request <name>`. Null for any other part.
+// Parts are read out of fenced code.
+export const childOf = (entry) => entry.match(/^(?:-|\d+\.)\s+(?:.*:\s+)?request ([a-z0-9][a-z0-9-]*)$/)?.[1] ?? null;
+export const partsOf = (md) => entriesOf(prose(md), 'Parts');
+export const childrenOf = (md) => partsOf(md).map(childOf).filter(Boolean);
 
 // The entries of `## Decisions`: each one's ID, date and Source clause (up to
 // its first ". "). A clause that names the agent makes it an agent ruling.
@@ -249,19 +256,23 @@ function recordSignoff({ top, args, opts }) {
   const md = tree.read(`${dir}/request.md`).toString('utf8');
   const org = organized(md);
   if (!org) throw new Fail(`${dir}/request.md has no "## Organized requirement" (or question) to sign`, `write the organized requirement in ${dir}/request.md`);
-  const { signoff: last } = latestSignoff(tree, dir, md);
+  // What changed is what context reads: since its own sign-off, or, for a child, its parent's ([REC-5]).
+  const state = signoffState(tree, dir, name);
+  const last = state.signoff;
+  const since = last ? last.file : state.parentSignoff && `${state.parent}'s origin/${state.parentSignoff.file}`;
   const notKnown = ['whether the owner read what was signed (the file records only what they said)'];
-  if (last && sameSection(org.text, last.text)) {
-    return { body: [`unchanged since ${last.file}; nothing to sign`], next: `al context ${name}`, notKnown };
+  if (!state.blocked) {
+    return { body: [`${last ? `unchanged since ${last.file}` : `signed off through ${state.parent}; unchanged since`}; nothing to sign`], next: `al context ${name}`, notKnown };
   }
-  const shown = last
-    ? parts(org.text).filter((p) => changedParts(org.text, last.text).includes(p.key)).map((p) => p.text.replace(/\n+$/, ''))
+  const changed = since ? state.changed : null;
+  const shown = changed
+    ? parts(org.text, org.oneLine).filter((p) => changed.includes(p.key)).map((p) => p.text.replace(/\n+$/, ''))
     : [org.text.replace(/\n+$/, '')];
-  const removed = last ? changedParts(org.text, last.text).filter((k) => !parts(org.text).some((p) => p.key === k)) : [];
+  const removed = changed ? changed.filter((k) => !parts(org.text, org.oneLine).some((p) => p.key === k)) : [];
   const fetched = stamp(now());
   let file = `${fetched.slice(0, 10)}-signoff.md`;
   for (let n = 2; taken(join(top, dir, 'origin', file)); n++) file = `${fetched.slice(0, 10)}-signoff-${n}.md`;
-  const body = [last ? `Changed since ${last.file}:` : 'To be signed (first sign-off):', ...shown];
+  const body = [since ? `Changed since ${since}:` : 'To be signed (first sign-off):', ...shown];
   if (removed.length) body.push(`Removed: ${removed.join(', ')}`);
   if (!opts.yes) {
     body.push(`Would write ${dir}/origin/${file} and set the Signed off line`);
@@ -275,7 +286,12 @@ function recordSignoff({ top, args, opts }) {
   const lines = org.raw.split(/(?<=\n)/);
   const at = lines.findIndex((l) => /^Signed off:/.test(l));
   if (at >= 0) lines.splice(at, 1, signedOff);
-  else lines.splice(lines.findLastIndex((l) => l.trim()) + 1, 0, signedOff);
+  else {
+    const end = lines.findLastIndex((l) => l.trim());
+    // A last line with no newline (the end of the file) gets one, so the Signed off line stands alone.
+    if (end >= 0 && !lines[end].endsWith('\n')) lines[end] += '\n';
+    lines.splice(end + 1, 0, signedOff);
+  }
   writeFileSync(join(top, dir, 'request.md'), md.slice(0, org.start) + lines.join('') + md.slice(org.end));
   body.push(`Wrote ${dir}/origin/${file} and the Signed off line in ${dir}/request.md`);
   return { body, next: `al context ${name}`, notKnown };
@@ -377,7 +393,7 @@ export function context({ top, args, opts }) {
       : [grouped('Spec', shown.map((e) => (e.state === 'waiting' ? { state: e.state, text: `${e.id}@${e.n} on ${own(e.by)}`, alone: true }
         : { state: e.state, text: label(e), alone: count(e.id) > 1 })))]));
   }
-  const parts = entriesOf(text, 'Parts');
+  const parts = partsOf(text);
   if (parts.length) body.push(line('Parts', parts.map((p) => p.replace(/\s+/g, ' ')).join(' · ')));
   const mine = new Set(held.map((e) => e.file).filter(Boolean));
   const others = all.filter((e) => e.request !== name && mine.has(e.file));
@@ -392,13 +408,12 @@ export function context({ top, args, opts }) {
   // conclude's rules re-run on an archived request are check's ([STA-8]); a view never re-checks one.
   const hints = ranked(hintsOf(top, b, { main }), b).filter((h) => h.owners.includes(name) && h.rank !== 7);
   if (field('Tier') === '0') hints.push({ kind: 'note', text: TIER0, command: `al new ${name} --tier 1 for a change of promise` });
-  entriesOf(text, 'Parts').forEach((p, k) => {
-    for (const [, c] of p.matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)) {
-      const d = findRequest(tree, c);
-      const status = d && tree.read(`${d}/request.md`).toString('utf8').match(/\bStatus:\s*(\w+)/)?.[1];
-      const now = !d ? null : d.startsWith('requests/archive/') ? status : signoffState(tree, d, c).blocked ? 'blocked' : 'open';
-      if (now) hints.push({ kind: 'note', text: `part ${k + 1} names request ${c}: ${now}`, command: `al context ${c}` });
-    }
+  partsOf(text).forEach((p, k) => {
+    const c = childOf(p);
+    const d = c && findRequest(tree, c);
+    const status = d && tree.read(`${d}/request.md`).toString('utf8').match(/\bStatus:\s*(\w+)/)?.[1];
+    const now = !d ? null : d.startsWith('requests/archive/') ? status : signoffState(tree, d, c).blocked ? 'blocked' : 'open';
+    if (now) hints.push({ kind: 'note', text: `part ${k + 1} names request ${c}: ${now}`, command: `al context ${c}` });
   });
   const cap = opts.all ? hints.length : Math.max(0, Math.min(3, 12 - body.length - 3));
   body.push(...hintLines(hints, cap));
