@@ -12,7 +12,7 @@ import { makeRepo, runAl } from './helpers/fixture.js';
 import { assertFrame, lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
 import { ORG, addRequest, both, hasId } from './helpers/request.js';
-import { file } from './helpers/links.js';
+import { file, says } from './helpers/links.js';
 import { count, short } from './helpers/evidence.js';
 import { stateOf } from './helpers/grouped.js';
 
@@ -166,8 +166,9 @@ test('[VW-2] a request holding a few sections: the Spec line names each with its
   const r = project(repo, 'small-change');
   ok(r);
   const spec = specLine(r.stdout);
-  assert.ok(hasId(spec, 'INV-3') && spec.includes('consolidated'), `INV-3 consolidated:\n${spec}`);
-  assert.ok(hasId(spec, 'INV-4') && spec.includes('pending'), `INV-4 pending:\n${spec}`);
+  // Each ID with its own state, not a state that belongs to the other (#139 item 13).
+  assert.ok(says(spec, 'INV-3', 'consolidated'), `INV-3 consolidated:\n${spec}`);
+  assert.ok(says(spec, 'INV-4', 'pending'), `INV-4 pending:\n${spec}`);
 });
 
 test('[VW-2]@2 a request holding 30 sections: the Spec line is one line, far shorter than the full list, gives the count in each state, and names every section in its state\'s group, none left out (context-all R1)', (t) => {

@@ -12,6 +12,7 @@ import { assertFrame, lines } from './helpers/output.js';
 import { block, changeMd } from './helpers/change.js';
 import { stateOf } from './helpers/grouped.js';
 import { count } from './helpers/evidence.js';
+import { says } from './helpers/links.js';
 
 const WORDS = 'Customers keep asking to download their invoices.\n';
 const ORG = '## Organized requirement\n\n### R1 Invoice export\nA customer MUST be able to export one invoice as CSV.\n\n' +
@@ -51,6 +52,14 @@ function assertLine(stdout, ...parts) {
   assert.ok(lineWith(stdout, ...parts), `expected a line with ${parts.map((p) => JSON.stringify(p)).join(' and ')}:\n${stdout}`);
 }
 const assertCap = (r) => assert.ok(lines(r.stdout).length <= 12, `more than 12 lines:\n${r.stdout}`);
+// The Spec line gives `id` the state `state` (and the R `r`), on that ID's own
+// part of the line: not a hint line, and not another ID's state (#139 item 13).
+function assertSpec(stdout, id, state, r) {
+  const spec = lines(stdout).find((l) => /^Spec\b/.test(l));
+  assert.ok(spec, `expected a line starting with Spec:\n${stdout}`);
+  assert.ok(says(spec, id, state), `the Spec line should give ${id} ${state}:\n${stdout}`);
+  if (r) assert.ok(says(spec, id, r), `the Spec line should give ${id} ${r}:\n${stdout}`);
+}
 
 test('[VW-2] context shows the title, type, tier and status, and each held section with its state and its R', (t) => {
   const repo = makeRepo(t);
@@ -66,8 +75,8 @@ test('[VW-2] context shows the title, type, tier and status, and each held secti
   assert.ok(r.stdout.includes('story'), r.stdout);
   assert.match(r.stdout, /tier\W{0,3}2\b/i);
   assert.ok(r.stdout.includes('open'), r.stdout);
-  assertLine(r.stdout, 'INV-3', 'consolidated', 'R2');
-  assertLine(r.stdout, 'INV-4', 'pending', 'R1');
+  assertSpec(r.stdout, 'INV-3', 'consolidated', 'R2');
+  assertSpec(r.stdout, 'INV-4', 'pending', 'R1');
   assert.ok(!r.stdout.includes('not ok'), r.stdout);
   assertCap(r);
   assertFrame(r.stdout);
@@ -225,13 +234,13 @@ const HINT_CASES = {
 };
 
 for (const [state, setup] of Object.entries(HINT_CASES)) {
-  test(`[VW-2][STA-1][STA-2] a held section that reads ${state}: a "not ok" hint naming its ID, and the section line says ${state}`, (t) => {
+  test(`[VW-2][STA-1][STA-2] a held section that reads ${state}: a "not ok" hint naming its ID, and the Spec line gives it ${state}`, (t) => {
     const repo = makeRepo(t);
     const id = setup(repo);
     const r = context(repo);
     assert.equal(r.code, 0, r.stderr);
     assertLine(r.stdout, 'not ok', id);
-    assertLine(r.stdout, id, state);
+    assertSpec(r.stdout, id, state);
     assertCap(r);
     assertFrame(r.stdout);
   });
