@@ -5,10 +5,10 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Fail, now, stamp } from './git.js';
-import { openTree, noSymlinkOn } from './tree.js';
+import { openTree, noSymlinkOn, findRequest, isName } from './tree.js';
 import { rootOf, baseline } from './spec.js';
 import { blockFault, parseChange, takeText, withRepeats } from './states.js';
-import { requestToWrite } from './commands.js';
+import { BAD_NAME, requestToWrite } from './commands.js';
 import { headingFault } from './consolidate.js';
 
 const indent = (text) => text.replace(/\n+$/, '').split('\n').map((l) => (l ? `    ${l}` : '')).join('\n') + '\n';
@@ -71,7 +71,7 @@ export function recordSection({ top, args, opts }) {
     const d = `- D${Math.max(0, ...ids) + 1}, ${date}. Source: the agent. Accepted the text underneath [${id}] as the new "now" for ${latest.key}.`;
     newRequest = at < 0 ? `${md.replace(/\n*$/, '\n')}\n## Decisions\n\n${d}\n`
       : [...mdLines.slice(0, insertAt), d, ...mdLines.slice(insertAt)].join('\n');
-    shown = [`${latest.key}: Now becomes the text underneath:`, underneath.replace(/\n$/, ''), `and request.md gets: ${d}`];
+    shown = [`${latest.key}: Now becomes the text underneath:`, ...underneath.replace(/\n$/, '').split('\n'), `and request.md gets: ${d}`];
   } else if (latest) {
     if (opts['builds-on']) throw new Fail(`${name} already holds [${id}] (${latest.key}); a new version builds on it`, `al record ${name} section ${id} --decision Dn`);
     const d = opts.decision;
@@ -84,13 +84,16 @@ export function recordSection({ top, args, opts }) {
     const marked = `${lines[start]}   Revised ${date} (${d})`;
     const next = render(`[${id}]@${latest.n + 1} modify`, latest.now, latest.now);
     newChange = [...lines.slice(0, start), marked, ...lines.slice(start + 1, end), next, ...lines.slice(end)].join('\n');
-    shown = [`${latest.key} is marked Revised ${date} (${d}), and after it:`, next.replace(/\n$/, '')];
+    shown = [`${latest.key} is marked Revised ${date} (${d}), and after it:`, ...next.replace(/\n$/, '').split('\n')];
   } else {
     let head = `[${id}]@1 modify`;
     let text = underneath;
     if (opts['builds-on']) {
       const other = opts['builds-on'];
-      const theirs = parseChange(tree.read(`requests/${other}/change.md`)?.toString('utf8') ?? '', other).filter((b) => b.id === id);
+      if (!isName(other)) throw new Fail(BAD_NAME(other), `al record ${name} section ${id} --builds-on <request>`);
+      const dir = findRequest(tree, other);
+      if (!dir) throw new Fail(`no request named ${other} in the ${tree.label}`, 'al context for the requests there are');
+      const theirs = parseChange(tree.read(`${dir}/change.md`)?.toString('utf8') ?? '', other).filter((b) => b.id === id);
       const top1 = theirs.reduce((m, b) => (!m || b.n > m.n ? b : m), null);
       if (!top1) throw new Fail(`${other} holds no block for [${id}]`, `al context ${other}`);
       head += `   builds on ${top1.key}`;
@@ -102,7 +105,7 @@ export function recordSection({ top, args, opts }) {
     const base = change ?? '## Spec changes\n';
     const withSpec = /^##\s+Spec changes\s*$/m.test(base) ? base : `${base.replace(/\n*$/, '\n')}\n## Spec changes\n`;
     newChange = `${withSpec.replace(/\n*$/, '\n')}\n${block}`;
-    shown = [block.replace(/\n$/, '')];
+    shown = block.replace(/\n$/, '').split('\n');
   }
 
   // [SPC-5]: the request's blocks that break the one-heading rule, said; drafting is never refused.

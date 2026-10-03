@@ -97,6 +97,7 @@ for (const [label] of FORMS('x')) {
       const [, args, input] = FORMS(n).find(([l]) => l === label);
       const r = al(repo, [...args, '--yes'], input);
       assert.equal(r.code, 2, `${args.join(' ')} --yes:\n${both(r)}`);
+      assert.match(both(r), /is not a request name/, `${args.join(' ')} --yes: refused for its name, not for another reason:\n${both(r)}`);
       assert.equal(status(repo), '', `${n}: nothing written`);
     }
     assert.deepEqual(tree(repo.dir), before, 'every file as it was');

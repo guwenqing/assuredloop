@@ -1,8 +1,8 @@
 // The change spec ([SPC-5]) and the state of each held section: the link
 // first ([STA-1]), then the content ([STA-2]), and whether a block retains
 // nothing, shown positively ([STA-3]).
-import { openTree } from './tree.js';
-import { parseSections, sameSection } from './sections.js';
+import { openTree, requestDirs } from './tree.js';
+import { closes, parseSections, sameSection } from './sections.js';
 import { rootOf, baseline } from './spec.js';
 
 const HEAD = /^### \[([A-Z][A-Z0-9]*-\d+(?:\.\d+)*)\]@(\d+)\s*(.*)$/;
@@ -15,7 +15,7 @@ export function takeText(lines, i) {
   const f = lines[i]?.match(FENCE);
   if (f) {
     const out = [];
-    for (i++; i < lines.length && !(lines[i].trim().startsWith(f[1]) && lines[i].trim() === lines[i].trim().match(/^[`~]+/)[0]); i++) out.push(lines[i]);
+    for (i++; i < lines.length && !closes(lines[i], f[1]); i++) out.push(lines[i]);
     return { text: out.join('\n') + '\n', next: i + 1 };
   }
   const out = [];
@@ -75,11 +75,7 @@ const body = (text) => text.replace(/\r\n/g, '\n').split('\n').slice(1).map((l) 
 // request's status.
 export function allBlocks(tree) {
   const blocks = new Map();
-  const dirs = [
-    ...(tree.list('requests') ?? []).filter((d) => d !== 'archive').map((d) => ({ dir: `requests/${d}`, name: d, open: true })),
-    ...(tree.list('requests/archive') ?? []).map((d) => ({ dir: `requests/archive/${d}`, name: d, open: false })),
-  ];
-  for (const { dir, name, open } of dirs) {
+  for (const { dir, name, open } of requestDirs(tree)) {
     const text = tree.read(`${dir}/change.md`)?.toString('utf8');
     if (!text) continue;
     const md = tree.read(`${dir}/request.md`)?.toString('utf8') ?? '';
