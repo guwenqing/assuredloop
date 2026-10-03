@@ -41,13 +41,17 @@ function archive(repo, name, status = 'concluded') {
 
 // --- 1. merging main into a branch [HNT-3] [REC-12] ---
 
-// Main: the baseline and the signed request `done`. The branch `feature`
-// forks there and serves its own request `inv`. Then main moves on with
-// `after(repo)`, and the branch merges main, as GitHub's "Update branch" does.
-function mergedMain(t, after) {
+// Main: the baseline and the signed request `done`, and whatever `before(repo)`
+// adds. The branch `feature` forks there and serves its own request `inv`.
+// Then main moves on with `after(repo)`, and the branch merges main, as
+// GitHub's "Update branch" does. With `own`, the merge stops before its
+// commit, `own(repo)` edits on top of what main brought, and the merge is
+// committed with `subject`: those edits are the merge's own.
+function mergedMain(t, after, { before, own, subject = "Merge branch 'main' into feature" } = {}) {
   const repo = makeRepo(t);
   repo.write('specs/invoices.md', file(INV1, S0));
   addRequest(repo, 'done', null);
+  before?.(repo);
   repo.commit('Baseline and done', { date: '2026-09-20T12:00:00Z' });
   repo.git(['checkout', '-q', '-b', 'feature']);
   addRequest(repo, 'inv', null);
@@ -56,7 +60,11 @@ function mergedMain(t, after) {
   repo.git(['checkout', '-q', 'main']);
   after(repo);
   repo.git(['checkout', '-q', 'feature']);
-  repo.git(['merge', '-q', '--no-ff', '-m', "Merge branch 'main' into feature", 'main'], { date: '2026-09-23T12:00:00Z' });
+  if (own) {
+    repo.git(['merge', '-q', '--no-ff', '--no-commit', 'main'], { date: '2026-09-23T12:00:00Z' });
+    own(repo);
+    repo.commit(subject, { date: '2026-09-23T12:00:00Z' });
+  } else repo.git(['merge', '-q', '--no-ff', '-m', subject, 'main'], { date: '2026-09-23T12:00:00Z' });
   assert.equal(repo.git(['rev-list', '--count', '--merges', 'main..HEAD']), '1', 'the fixture: the branch holds one merge of main');
   return repo;
 }
@@ -484,4 +492,90 @@ test('#137 (9) [VW-8][LNK-4] an adrs: folder named --decisions: context INV-3 --
   const at = runAl(repo.dir, ['context', 'INV-3', '--at', 'HEAD']);
   ok(at);
   assert.deepEqual(adrOrder(at.stdout).numbers, ['0001'], `HEAD's tree holds --decisions/0001-iso-dates.md:\n${at.stdout}`);
+});
+
+// --- review of PR #145 ---
+
+// (1) A merge's own edits are the branch's: only what it brought from main is not.
+
+test('#137 review (1a) [REC-12][HNT-3] a merge of main that also edits requests/archive/done/request.md, done archived on main: check --strict says not ok, it changes a request archived on main, and exits 1', (t) => {
+  const repo = mergedMain(t, concludeDone, {
+    own: (r) => r.write('requests/archive/done/request.md', `${r.read('requests/archive/done/request.md')}- one more line, edited in the merge\n`),
+  });
+  assert.throws(() => repo.git(['diff', '--quiet', 'main', 'HEAD', '--', 'requests/archive/done/request.md']), 'the fixture: the merge\'s done/request.md is not main\'s');
+  const r = runAl(repo.dir, ['check', '--strict', '--all']);
+  assert.ok(checkHints(r.stdout).some((l) => l.startsWith('not ok') && l.includes('requests/archive/done/request.md') && l.includes('changes a request archived on main')),
+    `the edit is the merge's own, not main's:\n${r.stdout}`);
+  assert.equal(r.code, 1, both(r));
+});
+
+// x: on main before the fork, not signed off (so blocked). The merge of main
+// adds src/x.js, which neither parent has, with "Request: x" and a tier-0 claim.
+const ownWorkForX = {
+  before: (r) => addRequest(r, 'x', null, { signed: false }),
+  own: (r) => r.write('src/x.js', 'export const x = 1;\n'),
+  subject: message("Merge branch 'main' into feature, with x's code", { request: 'x', tier: '0 — x' }),
+};
+const mainMovesOn = (repo) => {
+  repo.write('main.txt', 'main moves on\n');
+  repo.commit('Main moves on', { date: '2026-09-22T12:00:00Z' });
+};
+function mergedWithX(t) {
+  const repo = mergedMain(t, mainMovesOn, ownWorkForX);
+  for (const parent of ['HEAD^1', 'HEAD^2']) assert.throws(() => repo.git(['cat-file', '-e', `${parent}:src/x.js`]), `the fixture: ${parent} has no src/x.js`);
+  return repo;
+}
+
+test('#137 review (1b) [REC-6][REC-11][HNT-3] a merge of main that adds src/x.js with "Request: x", x blocked: check --strict says this branch delivers work for x, claims the merge\'s tier 0, and exits 1', (t) => {
+  const repo = mergedWithX(t);
+  const r = runAl(repo.dir, ['check', '--strict', '--all']);
+  hint(r.stdout, 'not ok', 'delivers work for x', 'blocked');
+  assert.match(startingWith(r.stdout, 'Tier') ?? '', /^Tier\s+0 — x$/, `the merge's Tier line is the latest claim:\n${r.stdout}`);
+  assert.equal(r.code, 1, both(r));
+});
+
+test('#137 review (1b) [VW-4][REC-11] a merge of main that adds src/x.js with "Request: x": the review view serves x and shows the merge\'s tier 0', (t) => {
+  const repo = mergedWithX(t);
+  const r = runAl(repo.dir, ['context', '--diff', 'main...HEAD', '--for', 'review']);
+  ok(r);
+  const serves = startingWith(r.stdout, 'Serves') ?? '';
+  assert.ok(/\bx\b/.test(serves) && serves.includes('inv'), `the branch serves inv and x:\n${r.stdout}`);
+  assert.match(startingWith(r.stdout, 'Tier') ?? '', /^Tier\s+0 — x$/, r.stdout);
+});
+
+// (2) The single-ref shorthand --diff main reads as main...HEAD, with the main the tool reads.
+
+test('#137 review (2) [VW-4][VW-9] with a stale local main, context --diff main --for review reads origin/main: other\'s merged work is neither served nor Unlinked', (t) => {
+  const clone = staleMain(t);
+  const r = runAl(clone.dir, ['context', '--diff', 'main', '--for', 'review']);
+  ok(r);
+  const serves = startingWith(r.stdout, 'Serves') ?? '';
+  assert.ok(serves.includes('mine') && !serves.includes('other'), `the branch serves mine alone:\n${r.stdout}`);
+  const unlinked = startingWith(r.stdout, 'Unlinked');
+  assert.ok(unlinked && !unlinked.includes('src/other.js'), `src/other.js is not this branch's file:\n${r.stdout}`);
+});
+
+test('#137 review (2) [VW-4][VW-9] with no local main (a CI checkout), context --diff main reads origin/main and exits 0', (t) => {
+  const clone = noLocalMain(t);
+  const r = runAl(clone.dir, ['context', '--diff', 'main']);
+  ok(r);
+  const serves = startingWith(r.stdout, 'Serves') ?? '';
+  assert.ok(serves.includes('mine') && !serves.includes('other'), `the branch serves mine alone:\n${r.stdout}`);
+});
+
+// (3) The working tree's name of the dropped work's code.
+
+test('#137 review (3) [REC-9] conclude --dropped after an uncommitted git mv of its code: the Outcome names the code by its working-tree name, src/renamed.js:1-2', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0));
+  addRequest(repo, 'x', null, { signed: false });
+  repo.commit('x: request', { date: '2026-09-20T12:00:00Z' });
+  repo.write('src/x.js', "export const x1 = 'first line of x';\nexport const x2 = 'second line of x';\n");
+  repo.commit(message('x code', { request: 'x' }), { date: '2026-09-21T12:00:00Z' });
+  repo.git(['mv', 'src/x.js', 'src/renamed.js']);
+  assert.match(repo.git(['status', '--porcelain']), /^R {2}src\/x\.js -> src\/renamed\.js$/m, 'the fixture: the rename is staged, not committed');
+  const r = runAl(repo.dir, ['conclude', 'x', '--dropped', 'D4', '--yes'], { env: ENV });
+  ok(r);
+  const g = outcome(repo.read('requests/archive/x/request.md').toString()).generated;
+  assert.deepEqual(liveIn(g), ['src/renamed.js:1-2'], g.join('\n'));
 });
