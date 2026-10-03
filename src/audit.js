@@ -5,7 +5,7 @@ import { isAbsolute } from 'node:path';
 import { Fail, git, isShallow, mainCommit, resolveCommit } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, rootLine, baseline, configured } from './spec.js';
-import { allBlocks, statesOf } from './states.js';
+import { allBlocks, stateText, statesOf } from './states.js';
 import { sameSection } from './sections.js';
 import { isSignoff, snapshots } from './snapshot.js';
 import { line, entriesOf, concludedOnMain, concluding } from './commands.js';
@@ -82,7 +82,7 @@ function trace(a, name) {
     // A removal lands where the section goes from present to absent.
     const landed = b.op === 'remove' ? walk.find((c) => !c.sections.has(b.id) && c.before?.sections.has(b.id))
       : walk.find((c) => c.sections.has(b.id) && sameSection(c.sections.get(b.id), b.now ?? ''));
-    body.push(line('Section', `${e.block} ${e.state}${e.by ? ` ${e.by}` : ''}; ${a.gap ?? (landed ? `consolidated on main at ${landed.sha.slice(0, 7)}` : 'not consolidated on main')}`));
+    body.push(line('Section', `${e.block} ${stateText(e)}; ${a.gap ?? (landed ? `consolidated on main at ${landed.sha.slice(0, 7)}` : 'not consolidated on main')}`));
   }
   // The linked commits ([LNK-2]) and the test files they changed.
   if (a.shallow) body.push(line('Commits', HISTORY));

@@ -41,7 +41,7 @@ function main(argv) {
     top = topLevel(cwd);
     const [name, ...rest] = argv;
     const command = COMMANDS[name];
-    if (!command) throw new Fail(name ? `unknown or not yet built command: ${name}` : 'no command given', USAGE);
+    if (!command) throw new Fail(name ? `unknown command: ${name}` : 'no command given', USAGE);
     let parsed;
     try {
       parsed = parseArgs({ args: rest, options: command.options, allowPositionals: true, strict: true });

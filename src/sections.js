@@ -61,11 +61,11 @@ export function parseSections(text) {
   return sections;
 }
 
-// The text outside every section with an ID: before the first heading, and
-// under headings with none.
+// The text outside every section with an ID, one piece each: before the
+// first heading, then each section whose heading has none.
 export function unheld(text) {
   const sections = parseSections(text);
-  return text.slice(0, text.length - sections.reduce((n, s) => n + s.text.length, 0)) + sections.filter((s) => !s.id).map((s) => s.text).join('');
+  return [text.slice(0, text.length - sections.reduce((n, s) => n + s.text.length, 0)), ...sections.filter((s) => !s.id).map((s) => s.text)];
 }
 
 // `text` with every heading that has no ID given `[<prefix>-n] `, n counting
