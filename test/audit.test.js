@@ -19,9 +19,10 @@ import { join } from 'node:path';
 import { makeRepo, cloneRepo, runAl, sha256 } from './helpers/fixture.js';
 import { assertFrame, lines } from './helpers/output.js';
 import { block } from './helpers/change.js';
-import { ORG, addRequest, both, lineWith, requestText } from './helpers/request.js';
+import { ORG, addRequest, both, hasId, lineWith, requestText } from './helpers/request.js';
 import { assertBlamed, file } from './helpers/links.js';
 import { short } from './helpers/evidence.js';
+import { message } from './helpers/hints.js';
 
 const INV1 = '## [INV-1] Totals\nTotals MUST show two decimals.\n';
 const S0 = "## [INV-3] Dates\nDates show in the customer's local format.\n";
@@ -284,12 +285,60 @@ test('[VW-7] audit of a section ID: its text, the commits on main that changed i
   const r = audit(repo, 'INV-3');
   ok(r);
   assert.ok(r.stdout.includes('Dates MUST show in ISO 8601.'), `the section's text:\n${r.stdout}`);
-  names(r.stdout, c.m1, 'the commit that wrote INV-3');
-  has(r.stdout, short(c.m4), 'csv-export');
+  // On the Changed lines, not the Commit lines of a request's trace (#139 item 14).
+  const changed = lines(r.stdout).filter((l) => /^Changed\b/.test(l)).join('\n');
+  assert.ok(changed.includes(short(c.m1)), `a Changed line should name the commit that wrote INV-3, ${short(c.m1)}:\n${r.stdout}`);
+  has(changed, short(c.m4), 'csv-export');
+  assert.ok(!changed.includes(short(c.m9)), `m9 changed the file, not INV-3:\n${r.stdout}`);
   assert.ok(!r.stdout.includes(short(c.m9)), `m9 changed the file, not INV-3:\n${r.stdout}`);
   signedText(r.stdout, '2026-09-25-signoff.md', ORG2, 'csv-export\'s signed text');
   showsDecisions(r.stdout, 7);
   assertFrame(r.stdout);
+});
+
+// #139 item 14: when a section reached main, read only over the request's own
+// life there, its first record to its conclusion.
+
+test('#139 [VW-7][STA-2] audit of a request dropped before its INV-3 landed: INV-3 is not consolidated; the commit of another request that later writes the same text is not credited', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0));
+  addRequest(repo, 'first', [block('[INV-3]@1 modify   Dropped 2026-09-03 (D4)   for R2', { was: S0, now: S1 })]);
+  repo.commit(message('first: request', { request: 'first' }), { date: '2026-09-02T12:00:00Z' });
+  // Dropped, archived by hand as conclude --dropped leaves it, the baseline untouched.
+  mkdirSync(join(repo.dir, 'requests/archive'), { recursive: true });
+  repo.git(['mv', 'requests/first', 'requests/archive/first']);
+  const md = repo.read('requests/archive/first/request.md').toString().replace('Status: open', 'Status: dropped');
+  repo.write('requests/archive/first/request.md', `${md}\n## Outcome\n\n- R2 Dates: in no section\n- Dropped: [INV-3]\n`);
+  repo.commit(message('Drop first', { request: 'first' }), { date: '2026-09-03T12:00:00Z' });
+  addRequest(repo, 'second', null);
+  repo.write('specs/invoices.md', file(INV1, S1));
+  const later = repo.commit(message('ISO dates after all', { request: 'second' }), { date: '2026-09-04T12:00:00Z' });
+
+  const r = audit(repo, 'first');
+  ok(r);
+  const s = lines(r.stdout).find((l) => /^Section\b/.test(l) && hasId(l, 'INV-3'));
+  assert.ok(s, `a Section line for INV-3:\n${r.stdout}`);
+  assert.match(s, /not (yet )?consolidated/, `first never consolidated INV-3:\n${r.stdout}`);
+  assert.ok(!s.includes(short(later)), `${short(later)} is second's, after first was dropped:\n${r.stdout}`);
+});
+
+test('#139 [VW-7][STA-2] audit of a request that removes INV-4, which another commit removed before the request was recorded: no commit of the request\'s life is credited with the removal', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', file(INV1, S0, INV4));
+  repo.commit('Baseline', { date: '2026-09-01T12:00:00Z' });
+  repo.write('specs/invoices.md', file(INV1, S0));
+  repo.commit('Tidy', { date: '2026-09-02T12:00:00Z' });
+  addRequest(repo, 'no-separator', [block('[INV-4]@1 remove, was after [INV-3]   for R1', { was: INV4 })]);
+  repo.commit(message('no-separator: request', { request: 'no-separator' }), { date: '2026-09-03T12:00:00Z' });
+  // A baseline commit during the request's life, while INV-4 is already gone.
+  repo.write('specs/invoices.md', file(INV1, S1));
+  const during = repo.commit('ISO dates', { date: '2026-09-04T12:00:00Z' });
+
+  const r = audit(repo, 'no-separator');
+  ok(r);
+  const s = lines(r.stdout).find((l) => /^Section\b/.test(l) && hasId(l, 'INV-4'));
+  assert.ok(s, `a Section line for INV-4:\n${r.stdout}`);
+  assert.ok(!s.includes(short(during)), `${short(during)} did not remove INV-4; it was gone before:\n${r.stdout}`);
 });
 
 test('[VW-7] audit of an ID not in the baseline and held by no block says it is not found', (t) => {
