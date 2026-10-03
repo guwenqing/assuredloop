@@ -3,9 +3,12 @@
 // edited origin/signoff.txt, whose text no longer matches its SHA-256, is a
 // `not ok` in check as it is in --audit, and context <name> lists it among
 // the snapshots as it lists the .md ones. A hidden file (its name starting
-// with ".", such as a stray .DS_Store) is no snapshot: every reader ignores it.
+// with ".", such as a stray .DS_Store) that is not a valid snapshot is
+// ignored by every reader; one that is a valid snapshot counts like any other.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { renameSync } from 'node:fs';
+import { join } from 'node:path';
 import { makeRepo, runAl, sha256 } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { addRequest, both, lineWith } from './helpers/request.js';
@@ -97,4 +100,34 @@ test('#138 [REC-3][HNT-2][HNT-3] contrast: a visible origin/notes.txt that is no
   strict(repo, 1);
   const r = runAl(repo.dir, ['context', 'csv']);
   assert.ok(lineWith(r.stdout, '2026-09-20-owner-words.md', 'notes.txt'), `the snapshots line lists notes.txt:\n${r.stdout}`);
+});
+
+test('#138 [REC-5][VW-2][VW-7] a committed hidden origin/.signoff.md, a valid sign-off that request.md\'s Signed off line names: context csv says signed off (not BLOCKED), and --audit shows it with "SHA-256 matches" and its signed text', (t) => {
+  const repo = makeRepo(t);
+  repo.write('specs/invoices.md', INV1);
+  addRequest(repo, 'csv', null);
+  const dir = join(repo.dir, 'requests/csv');
+  renameSync(join(dir, 'origin/2026-09-21-signoff.md'), join(dir, 'origin/.signoff.md'));
+  const md = repo.read('requests/csv/request.md').toString();
+  repo.write('requests/csv/request.md', md.replace('origin/2026-09-21-signoff.md', 'origin/.signoff.md'));
+  repo.commit('csv: request, its sign-off in origin/.signoff.md', { date: '2026-09-22T12:00:00Z' });
+  assert.match(repo.read('requests/csv/request.md').toString(), /^Signed off: 2026-09-21 owner, origin\/\.signoff\.md$/m, 'the fixture: the Signed off line names .signoff.md');
+  assert.equal(repo.git(['ls-files', 'requests/csv/origin/.signoff.md']), 'requests/csv/origin/.signoff.md', 'the fixture: .signoff.md is committed');
+  const c = runAl(repo.dir, ['context', 'csv']);
+  assert.equal(c.code, 0, both(c));
+  assert.doesNotMatch(c.stdout, /BLOCKED/, `csv is signed off:\n${c.stdout}`);
+  assert.ok(lineWith(c.stdout, /^Require\b/, 'signed off', '.signoff.md'), `the Require line says signed off from origin/.signoff.md:\n${c.stdout}`);
+  const a = runAl(repo.dir, ['context', 'csv', '--audit']);
+  assert.equal(a.code, 0, both(a));
+  assert.ok(lineWith(a.stdout, /^Sign-off\b/, 'origin/.signoff.md', 'SHA-256 matches', 'signed text'), `--audit shows the sign-off, re-checked:\n${a.stdout}`);
+  assert.ok(a.stdout.includes('A customer MUST be able to export one invoice as CSV.'), `--audit shows the signed text:\n${a.stdout}`);
+});
+
+test('#138 [REC-3][HNT-2][HNT-3] a hidden valid snapshot origin/.issue.md, committed on the branch, its text edited after hashing: al check says not ok naming origin/.issue.md, "no longer matches its SHA-256", and check --strict exits 1', (t) => {
+  const repo = stray(t, '.issue.md', snap(TEXT), { committed: true });
+  repo.write('requests/csv/origin/.issue.md', snap('Please add a PDF download to the invoice page.\n'));
+  const out = check(repo, '--all');
+  assert.ok(checkHints(out).some((l) => l.startsWith('not ok') && l.includes('origin/.issue.md') && l.includes('no longer matches its SHA-256')),
+    `expected a not ok naming origin/.issue.md:\n${out}`);
+  strict(repo, 1);
 });
