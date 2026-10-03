@@ -104,12 +104,14 @@ Every PR MUST state its tier and its claim in one line, for example
 `Tier: 0 — restores [INV-4]; no promise changes`. The tool MUST show the claim
 with its evidence (the spec sections near the changed code, the tests whose
 assertions changed, the spec edits) and flag what contradicts it: a tier-0
-claim with a baseline edit is `not ok`. Validating the claim is the
+claim with a baseline edit is `not ok`, unless the edit only adds section IDs
+or moves a section without changing its text. Validating the claim is the
 reviewer's job under the bots' own review rule, not the tool's.
 
 ## [REC-12] Append-only records
-The owner's words and dialog, the decisions, everything in `origin/`, and
-everything in `archive/` are append-only. A request archived in the same
-branch MAY still be edited before that branch merges. `check` MUST verify
+The owner's words and dialog, the decisions and everything in `origin/` are
+append-only. A request in `archive/` on main is not edited ([REC-1]). A
+request archived in the same branch MAY still be edited before that branch
+merges. `check` MUST verify
 append-only per commit over `main..HEAD`, and say that this protects a PR
 only when `check` runs on it.
