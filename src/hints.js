@@ -193,9 +193,13 @@ export function hintsOf(top, b, { main }) {
     add('note', 18, [name], s.signoff ? `${name} changed since its sign-off (${s.signoff.file})${s.changed?.length ? `: ${s.changed.join(', ')}` : ''}` : `${name} is not signed off yet: ${s.reason}`,
       `al record ${name} signoff --source <where> --words <quote> --yes`);
   }
-  // [REC-10]: a spike open, or archived on this branch, with no findings.md, its Answer not first, or a baseline edit.
+  // [REC-10]: a spike open, or archived on this branch, with no findings.md, its Answer not first, or a baseline edit:
+  // by its own commits, and, in the working tree, by uncommitted edits when the branch serves it.
   for (const r of [...open, ...[...facts.values()].map((f) => f.r)]) {
-    const edited = () => { const own = ownIds(top, r.name, b.base, b.root, b.requests, false, b.at ?? 'HEAD'); return b.changedIds.filter((id) => own.has(id)); };
+    const edited = () => {
+      const own = ownIds(top, r.name, b.base, b.root, b.requests, !b.at && b.served.has(r.name), b.at ?? 'HEAD');
+      return b.changedIds.filter((id) => own.has(id));
+    };
     for (const n of spikeNotes(b.tree, r.name, r.dir, r.md, edited)) add('note', 24, [r.name], n, n.includes('findings.md') ? `write ${r.dir}/findings.md, starting with its Answer, then al context ${r.name}` : `al context --diff ${b.range}`);
   }
   if (b.commits.length && !b.tier) add('note', 22, [], `no Tier line in ${b.range}`, 'add "Tier: <n> — <claim>" to the PR, e.g. with git commit --amend');
