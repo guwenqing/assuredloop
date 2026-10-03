@@ -4,10 +4,11 @@
 // and an ADR whose Status and Supersedes lines hold a very long run of
 // ADR-name-like tokens each leave check, spec and context quick (bounded; a
 // quadratic read of these inputs takes minutes). A well-formed Tier line is
-// read as before.
+// read as before. A value keeps the whitespace that belongs to its path:
+// only leading and trailing ASCII spaces and tabs are stripped.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo } from './helpers/fixture.js';
+import { makeRepo, runAl } from './helpers/fixture.js';
 import { both } from './helpers/request.js';
 import { check, hint } from './helpers/hints.js';
 import { lines } from './helpers/output.js';
@@ -63,4 +64,29 @@ test(`#138 [LNK-4][HNT-3] an ADR governing INV-1 whose Status and Supersedes lin
   const repo = branch(t, 'Totals to three decimals\n\nTier: 1 — totals', { 'docs/adr/0001-totals.md': crafted });
   assertQuick(repo, ['check']);
   assertQuick(repo, ['context', 'INV-1']);
+});
+
+test('#138 [SPC-1] .assuredloop "root: baseline<NBSP>" keeps the no-break space: al spec and al spec --at HEAD read "baseline<NBSP>/truth.md", exit 0, and show [WS-1]', (t) => {
+  const repo = makeRepo(t);
+  repo.write('.assuredloop', 'root: baseline\u00a0\n');
+  repo.write('baseline\u00a0/truth.md', '## [WS-1] Spaces\nPaths keep their spaces.\n');
+  repo.commit('root with a no-break space');
+  for (const args of [['spec'], ['spec', '--at', 'HEAD']]) {
+    const r = timed(repo.dir, args);
+    assertFinished(r, args);
+    assert.equal(r.code, 0, `al ${args.join(' ')}:\n${both(r)}`);
+    assert.ok(r.stdout.includes('[WS-1]') && !r.stdout.includes('no baseline'), `al ${args.join(' ')} should read the root with its NBSP:\n${r.stdout}`);
+  }
+});
+
+test('#138 [SPC-1] contrast: .assuredloop "root:   specs  <tab>" still reads specs/: al spec and al spec --at HEAD show [WS-1]', (t) => {
+  const repo = makeRepo(t);
+  repo.write('.assuredloop', 'root:   specs  \t\n');
+  repo.write('specs/truth.md', '## [WS-1] Spaces\nPaths keep their spaces.\n');
+  repo.commit('root with ASCII spaces and a tab around it');
+  for (const args of [['spec'], ['spec', '--at', 'HEAD']]) {
+    const r = runAl(repo.dir, args);
+    assert.equal(r.code, 0, `al ${args.join(' ')}:\n${both(r)}`);
+    assert.ok(r.stdout.includes('[WS-1]'), `al ${args.join(' ')}:\n${r.stdout}`);
+  }
 });
