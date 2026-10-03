@@ -97,9 +97,9 @@ export function fileLinks(top, base, head, path, { root, requests, seen, shallow
   const hs = hunks(top, base, head, path);
   for (const h of hs) {
     const at = h.d ? h.c : h.c + 1;
-    for (const { id, reason } of idNear(fileLines, at, Array.from({ length: h.d }, (_, i) => h.c + i))) {
-      out.push(`${path}:${at}  ${reason}`);
-      reach(id, `${path}:${at}  ${reason}`);
+    for (const { id, line, reason } of idNear(fileLines, at, Array.from({ length: h.d }, (_, i) => h.c + i))) {
+      out.push(`${path}:${line}  ${reason}`);
+      reach(id, `${path}:${line}  ${reason}`);
     }
   }
   const blamed = new Set();

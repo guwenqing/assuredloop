@@ -150,13 +150,15 @@ export function changedWith(top, rev, path) {
 }
 
 // Link 1 for a change at new-side line `at` (the first changed line) of a file:
-// the IDs on the changed lines, else the nearest [ID] line above, with its distance.
+// the IDs on the changed lines, each at the first line naming it, else the
+// nearest [ID] line above, at `at` with its distance.
 export function idNear(fileLines, at, changed) {
-  const on = [...new Set(changed.flatMap((n) => idsOn(fileLines[n - 1] ?? '')))];
-  if (on.length) return on.map((id) => ({ id, reason: `names [${id}] on the changed line` }));
+  const on = new Map();
+  for (const n of changed) for (const id of idsOn(fileLines[n - 1] ?? '')) if (!on.has(id)) on.set(id, n);
+  if (on.size) return [...on].map(([id, line]) => ({ id, line, reason: `names [${id}] on the changed line` }));
   for (let n = at - 1; n >= 1; n--) {
     const ids = idsOn(fileLines[n - 1] ?? '');
-    if (ids.length) return ids.map((id) => ({ id, reason: `names [${id}], ${at - n} line${at - n === 1 ? '' : 's'} above` }));
+    if (ids.length) return ids.map((id) => ({ id, line: at, reason: `names [${id}], ${at - n} line${at - n === 1 ? '' : 's'} above` }));
   }
   return [];
 }
