@@ -21,7 +21,8 @@ The tool MUST give at least these hints. `not ok`:
   blocked request;
 - a branch whose final state delivers spec work or other work for a request
   that is still blocked in that state;
-- a tier-0 claim with a baseline edit;
+- a tier-0 claim with a baseline edit that does more than add section IDs or
+  move a section without changing its text;
 - a snapshot whose text no longer matches its SHA-256.
 
 `note`:
@@ -48,4 +49,5 @@ The tool MUST give at least these hints. `not ok`:
 request owns (such as duplicate IDs or conflict markers). Other requests'
 alignment debt caused by this branch MUST be shown as information and MUST
 NOT count. `conclude` and `consolidate` MUST exit 1 when they refuse. The tool
-MUST exit 2 when it fails itself. Nothing is installed in git hooks.
+MUST exit 2, whatever the command, when it fails itself or a command is misused
+(an unknown request, a bad option). Nothing is installed in git hooks.

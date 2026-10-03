@@ -51,7 +51,27 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   for (const p of changed) if (/^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(p)) delivered.add(folderOf(p));
   const tiers = commits.map((sha) => [...git(top, ['show', '-s', '--format=%B', sha]).matchAll(/^[ \t]*Tier:[ \t]*(.+?)[ \t]*$/gm)].at(-1)?.[1]);
   const tier = tiers.filter(Boolean).at(-1) ?? null;
-  return { root, files, was, now, changedIds, changed, requests, blocks: allBlocks(tree), seen, mapped, served, archived, delivered, work, tier, base, commits, tree, at, range };
+  return { root, files, before, was, now, changedIds, changed, requests, blocks: allBlocks(tree), seen, mapped, served, archived, delivered, work, tier, base, commits, tree, at, range };
+}
+
+// [REC-10]: whether baseline files `after` differ from `before` only by IDs
+// added to headings that had none and by sections moved with their text
+// unchanged ([SPC-4]): each section after matches one before, its ID kept or
+// newly given, and each file's text before its first heading is the same as
+// that file's before ([SPC-4]); a file added or removed has none.
+function onlyIdsOrMoves(before, after) {
+  const intros = (fs) => new Map(fs.map((f) => [f.path, f.text.slice(0, f.text.length - f.sections.reduce((n, s) => n + s.text.length, 0))]));
+  const [was, now] = [intros(before), intros(after)];
+  const plain = (s) => s.text.replace(/^[^\n]*/, () => `${'#'.repeat(s.level)} ${s.title}`);
+  const left = before.flatMap((f) => f.sections);
+  const right = after.flatMap((f) => f.sections);
+  if ([...new Set([...was.keys(), ...now.keys()])].some((p) => !sameSection(was.get(p) ?? '', now.get(p) ?? '')) || left.length !== right.length) return false;
+  return right.every((s) => {
+    const same = (x) => sameSection(plain(x), plain(s));
+    const i = [left.findIndex((x) => x.id === s.id && same(x)), left.findIndex((x) => x.id === null && same(x))].find((k) => k >= 0) ?? -1;
+    if (i >= 0) left.splice(i, 1);
+    return i >= 0;
+  });
 }
 
 // Every hint for branch `b` ([HNT-2]), unranked: { kind, rank (HNT-2's list
@@ -165,7 +185,8 @@ export function hintsOf(top, b, { main }) {
   for (const name of b.delivered) {
     if (signed.get(name)?.blocked && applied(name)) add('not ok', 9, [name], `this branch delivers work for ${name}, which is blocked (${signed.get(name).reason})`, `al record ${name} signoff --source <where> --words <quote> --yes`, true);
   }
-  if (b.tier && /^0\b/.test(b.tier) && b.changed.some((p) => p.startsWith(`${b.root}/`))) {
+  const edits = b.changed.filter((p) => p.startsWith(`${b.root}/`));
+  if (b.tier && /^0\b/.test(b.tier) && edits.length && !(edits.every((p) => p.endsWith('.md')) && onlyIdsOrMoves(b.before, b.files))) {
     add('not ok', 10, [], `the claim is tier 0, but ${b.range} edits the baseline${b.changedIds.length ? `: ${b.changedIds.map((i) => `[${i}]`).join(', ')}` : ''}`, `al context --diff ${b.range}`);
   }
 

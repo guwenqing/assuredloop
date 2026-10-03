@@ -24,11 +24,12 @@ takes a hint for a guarantee. The way of working (tests-first, review, the PR
 flow) belongs to the bots and is out of this table.
 
 ## [TL-4] The formality budget
-The formality a request costs the AI (records written, commands run, output
-and skill read) SHOULD stay at or below about a fifth of the change (the lines
-changed plus the lines read to make them) at typical sizes. It MUST be
-measured on real work, with owner round trips reported apart. The skill MUST
-open with a quick path of fifteen lines or fewer for tiers 0 and 1.
+The formality budget is the overhead the method puts on people. The agents'
+extra work (records written, commands run, output and skill read) SHOULD stay
+at or below about a fifth of the change (the lines changed plus the lines read
+to make them) at typical sizes. It MUST be measured on real work, with the
+owner's round trips reported beside it. The skill MUST open with a quick path
+of fifteen lines or fewer for tiers 0 and 1.
 
 ## [TL-5] Beyond code
 The records, states, links and hints SHOULD work on a repo of documents alone.
