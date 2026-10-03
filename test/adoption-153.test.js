@@ -351,3 +351,31 @@ test('#153 (4) [LNK-3] control: the same branch without the ADR change gives the
 test('#153 (4) [LNK-4] control: a change to an ADR the test is not linked to (never changed together, no shared ID, another stem) leaves the note', (t) => {
   hint(assertions(t, [ZONES]), 'note', HISTORY, CHANGED, 'no linked code or spec change');
 });
+
+// Main: test/0001-keep-records.test.js (2 assertions), then `linked` (an ADR
+// or code of the same stem) in a commit of its own, so the link is the stem
+// alone. The branch changes the test to 3 assertions, then deletes `linked`.
+const STEM_TEST = 'test/0001-keep-records.test.js';
+function deleted(t, linked) {
+  const repo = makeRepo(t);
+  repo.write(STEM_TEST, jsTest('records are kept', 2));
+  repo.commit('The records test', { date: '2026-09-01T12:00:00Z' });
+  repo.write(linked, linked.endsWith('.md') ? keep('Records get lost.') : 'export const keep = true;\n');
+  repo.commit(`Add ${linked}`, { date: '2026-09-02T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'work']);
+  repo.write(STEM_TEST, jsTest('records are kept', 3));
+  repo.commit(message('One more check', { tier: '0 — records' }), { date: '2026-09-21T12:00:00Z' });
+  repo.git(['rm', '-q', linked]);
+  repo.commit(message(`Remove ${linked}`, { tier: '0 — records' }), { date: '2026-09-22T12:00:00Z' });
+  const out = check(repo, '--all');
+  assert.ok(lines(out).some((l) => l.includes(STEM_TEST) && l.includes('2 → 3')), `the fixture: the test's assertions went 2 → 3:\n${out}`);
+  return out;
+}
+
+test('#153 (4b) [LNK-3][LNK-4] a deleted ADR counts as a linked change, as deleted code does: docs/adr/0001-keep-records.md (same stem as the test) deleted on the branch beside test/0001-keep-records.test.js going 2 → 3 assertions: no "changed its assertions … with no linked code or spec change" note', (t) => {
+  noHint(deleted(t, 'docs/adr/0001-keep-records.md'), STEM_TEST, CHANGED);
+});
+
+test('#153 (4b) [LNK-3] control: the same with src/0001-keep-records.js deleted instead of the ADR gives no such note', (t) => {
+  noHint(deleted(t, 'src/0001-keep-records.js'), STEM_TEST, CHANGED);
+});
