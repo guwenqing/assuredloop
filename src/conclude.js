@@ -205,9 +205,11 @@ export function conclude({ top, args, opts }) {
   const text = withOutcome(withStatus(md, status), outcome(md, org, fates, opts.dropped, live, adrs, lists));
   const children = [...entriesOf(md, 'Parts').join('\n').matchAll(/\brequest ([a-z0-9][a-z0-9-]*)/g)].map((m) => m[1])
     .filter((c) => c !== name && tree.read(`requests/${c}/request.md`) !== null);
-  const note = [...spikeNotes(tree, name, dir, md, () => { const l = lists ?? own(); return [...l.Added, ...l.Modified, ...l.Removed]; }).map((n) => `note: ${n}`),
-    ...(children.length ? [`note: child request ${children.join(', ')} is still open`] : []),
-    ...adrs.added.filter((a) => a.status === 'proposed').map((a) => `note: ${a.path}, added by ${name}, is still proposed`)];
+  // [STA-7]: three lines or fewer, so every note shares one line.
+  const notes = [...spikeNotes(tree, name, dir, md, () => { const l = lists ?? own(); return [...l.Added, ...l.Modified, ...l.Removed]; }),
+    ...(children.length ? [`child request ${children.join(', ')} is still open`] : []),
+    ...adrs.added.filter((a) => a.status === 'proposed').map((a) => `${a.path}, added by ${name}, is still proposed`)];
+  const note = notes.length ? [`note: ${notes.join('; ')}`] : [];
   const what = `the Outcome, Status: ${status}${moving ? `, and ${dir}/ moved to ${target}/` : ''}`;
   if (!opts.yes) return { body: [`Would conclude ${name}: ${what}`, ...note], next: 'run the same command with --yes to do it', notKnown: NOT_KNOWN };
 
