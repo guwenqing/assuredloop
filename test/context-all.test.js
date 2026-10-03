@@ -43,7 +43,8 @@ function context(repo, name, ...args) {
 }
 // The lines above the frame (Read, Next, Not known).
 const body = (out) => lines(out).filter((l) => !/^(Read|Next|Not known)\b/.test(l));
-const assertCap = (out) => assert.ok(body(out).length <= 12, `more than twelve lines above the frame (${body(out).length}):\n${out}`);
+// [VW-2]'s twelve lines hold Read, Next and Not known too.
+const assertCap = (out) => assert.ok(lines(out).length <= 12, `more than twelve lines, Read, Next and Not known included (${lines(out).length}):\n${out}`);
 
 // The line starting with `label`.
 function labelLine(out, label) {

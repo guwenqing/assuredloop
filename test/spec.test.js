@@ -2,9 +2,11 @@
 // the baseline root [SPC-1], with duplicate IDs flagged [SPC-3].
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { makeRepo, runAl } from './helpers/fixture.js';
+import { pathToFileURL } from 'node:url';
+import { makeRepo, runAl, tempDir } from './helpers/fixture.js';
 import { assertFrame, lines } from './helpers/output.js';
 
 const USERS =
@@ -191,11 +193,28 @@ test('[VW-8] spec --at shows the baseline as it was at that commit, root and fil
   assert.ok(!now.stdout.includes('DOC-1'), now.stdout);
 });
 
-test('[VW-9] spec does not read the clock: the same repo gives the same output whatever SOURCE_DATE_EPOCH is', (t) => {
+// A module for NODE_OPTIONS=--import: Date, new Date() and Date.now(), 400 days ahead.
+const SHIFT_DAYS = 400;
+const SHIFTED_DATE = `const Real = Date;
+const shift = ${SHIFT_DAYS} * 86400000;
+globalThis.Date = class extends Real {
+  constructor(...args) { if (args.length) super(...args); else super(Real.now() + shift); }
+  static now() { return Real.now() + shift; }
+};
+`;
+
+test('[TL-2] spec does not read the clock: the same repo gives the same output with the clock moved 400 days ahead (Date, through NODE_OPTIONS=--import) and SOURCE_DATE_EPOCH changed', (t) => {
   const repo = baseline(t);
+  const mod = join(tempDir(t), 'shifted-date.mjs');
+  writeFileSync(mod, SHIFTED_DATE);
+  const NODE_OPTIONS = `--import=${pathToFileURL(mod).href}`;
+  const clock = (env) => Number(spawnSync(process.execPath, ['-p', 'Date.now()'], { env: { ...process.env, ...env }, encoding: 'utf8' }).stdout);
+  assert.ok(clock({ NODE_OPTIONS }) - clock({}) > (SHIFT_DAYS - 1) * 86400000, 'the fixture: the module moves the clock');
+
   const a = runAl(repo.dir, ['spec'], { env: { SOURCE_DATE_EPOCH: '1780000000' } });
-  const b = runAl(repo.dir, ['spec'], { env: { SOURCE_DATE_EPOCH: '1790000000' } });
+  const b = runAl(repo.dir, ['spec'], { env: { SOURCE_DATE_EPOCH: '1790000000', NODE_OPTIONS } });
   assert.equal(a.code, 0, a.stdout + a.stderr);
+  assert.equal(b.code, 0, b.stdout + b.stderr);
   assert.ok(a.stdout.includes('INV-2'), a.stdout);
   assert.equal(a.stdout, b.stdout);
 });

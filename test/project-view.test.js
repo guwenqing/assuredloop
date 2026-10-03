@@ -194,9 +194,9 @@ test('[VW-2]@2 a request holding 30 sections: the Spec line is one line, far sho
   assertFrame(r.stdout);
 });
 
-test('[VW-2]@2 context of the 30-section request stays at twelve lines or fewer above Read, Next and Not known', (t) => {
+test('[VW-2]@2 context of the 30-section request stays at twelve lines or fewer, Read, Next and Not known included', (t) => {
   const repo = bigRequest(t);
   const r = project(repo, 'big-change');
   ok(r);
-  assert.ok(body(r.stdout).length <= 12, `more than twelve lines above the frame (${body(r.stdout).length}):\n${r.stdout}`);
+  assert.ok(lines(r.stdout).length <= 12, `more than twelve lines, Read, Next and Not known included (${lines(r.stdout).length}):\n${r.stdout}`);
 });

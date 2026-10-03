@@ -3,10 +3,11 @@
 // [REC-11] whose baseline edit only adds an ID, or only moves a section, is
 // not flagged, and check --strict exits 0 [HNT-3]. A tier-0 claim with a
 // baseline edit that does more [HNT-2] (a changed text, an added or removed
-// section, a renamed ID, the text before a file's first heading, a file under
-// the root that is not .md) is still `not ok`, counting, and check --strict
-// exits 1. Built from the spec text and the CLI; nothing here reads the code
-// under test.
+// section, a renamed ID, the text before a file's first heading) is still
+// `not ok`, counting, and check --strict exits 1. The baseline is Markdown
+// [SPC-1]: a file under the root that is not .md is outside it, so adding or
+// editing one is no baseline edit (#140 item 25). Built from the spec text and
+// the CLI; nothing here reads the code under test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, runAl } from './helpers/fixture.js';
@@ -127,7 +128,6 @@ const contrasts = [
   ['changes only the text before the first heading of specs/a.md, every section the same',
     { ...BASE, 'specs/a.md': 'Promises about invoices.\n\n' + file(DATES, TOTALS) },
     { 'specs/a.md': 'Promises about invoices and receipts.\n\n' + file(DATES, TOTALS) }, []],
-  ['adds only specs/diagram.txt, a file under the root that is not .md', BASE, { 'specs/diagram.txt': 'invoice -> csv\n' }, []],
   ['swaps the introductions of specs/a.md and specs/b.md, every section the same',
     { 'specs/a.md': `${DOMESTIC}\n${ORD1}`, 'specs/b.md': `${INTERNATIONAL}\n${ORD2}` },
     { 'specs/a.md': `${INTERNATIONAL}\n${ORD1}`, 'specs/b.md': `${DOMESTIC}\n${ORD2}` }, []],
@@ -149,3 +149,25 @@ for (const [what, before, after, ids] of contrasts) {
     assertTier0NotOk(repo, ids);
   });
 }
+
+// --- #140 item 25: a file under the root that is not .md is outside the baseline [SPC-1] ---
+
+const DIAGRAM = 'invoice -> csv\n';
+
+test('#140 item 25 [SPC-1][REC-10][REC-11][HNT-3] a tier-0 commit that only adds specs/diagram.txt, a file under the root that is not .md, is not flagged, and check --strict exits 0', (t) => {
+  const repo = onBranch(t, BASE);
+  commitTier0(repo, { 'specs/diagram.txt': DIAGRAM });
+  assertNoPromiseChange(repo);
+});
+
+test('#140 item 25 [SPC-1][REC-10][REC-11][HNT-3] a tier-0 commit that only edits specs/diagram.txt is not flagged, and check --strict exits 0', (t) => {
+  const repo = onBranch(t, { ...BASE, 'specs/diagram.txt': DIAGRAM });
+  commitTier0(repo, { 'specs/diagram.txt': 'invoice -> csv -> pdf\n' });
+  assertNoPromiseChange(repo);
+});
+
+test('#140 item 25 [REC-10][REC-11][HNT-3] contrast: a tier-0 commit that adds specs/diagram.txt and changes the text of [TXT-1] is not ok, naming TXT-1, counting, and check --strict exits 1', (t) => {
+  const repo = onBranch(t, BASE);
+  commitTier0(repo, { 'specs/diagram.txt': DIAGRAM, 'specs/a.md': file(DATES_CHANGED, TOTALS) });
+  assertTier0NotOk(repo, ['TXT-1']);
+});
