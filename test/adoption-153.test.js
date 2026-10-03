@@ -58,10 +58,10 @@ function env() {
   return { ...e, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 }
 
-// `node <copy>/bin/al.js <flag>` run in `cwd`: exit 0, ending with Next then
-// Not known; its first line.
-function version(copy, cwd, flag = '--version') {
-  const r = spawnSync(process.execPath, [join(copy, 'bin', 'al.js'), flag], { cwd, env: env(), encoding: 'utf8' });
+// `node <copy>/bin/al.js <flag>` run in `cwd`, with `extra` added to the
+// environment: exit 0, ending with Next then Not known; its first line.
+function version(copy, cwd, flag = '--version', extra = {}) {
+  const r = spawnSync(process.execPath, [join(copy, 'bin', 'al.js'), flag], { cwd, env: { ...env(), ...extra }, encoding: 'utf8' });
   const both = `${r.stdout}\n${r.stderr}`;
   assert.equal(r.status, 0, `al ${flag} should exit 0:\n${both}`);
   const ls = lines(r.stdout);
@@ -98,6 +98,22 @@ test('#153 (1) a copy of the tool at the top of a git checkout: al --version and
   for (const cwd of [nowhere(t), other.dir]) {
     for (const flag of ['--version', '-v']) {
       assert.equal(version(copy, cwd, flag), `al unreleased · ${sha} · ${copy}`, `run from ${cwd}`);
+    }
+  }
+});
+
+test('#153 (1b) the caller\'s environment points git at another repo (GIT_DIR; GIT_DIR and GIT_WORK_TREE): al --version on a copy of the tool at the top of its own git checkout still gives the copy\'s own commit and folder', (t) => {
+  const copy = toolCopy(join(tempDir(t), 'tool'));
+  git(copy, ['init', '-q']);
+  git(copy, ['add', '-A']);
+  git(copy, ['commit', '-q', '-m', 'The tool'], { date: DATE });
+  const sha = git(copy, ['rev-parse', '--short=7', 'HEAD']);
+  const other = makeRepo(t);
+  const elsewhere = other.git(['rev-parse', '--short=7', 'HEAD']);
+  assert.notEqual(elsewhere, sha, 'the fixture: the other repo is at another commit');
+  for (const extra of [{ GIT_DIR: join(other.dir, '.git') }, { GIT_DIR: join(other.dir, '.git'), GIT_WORK_TREE: other.dir }]) {
+    for (const cwd of [nowhere(t), other.dir]) {
+      assert.equal(version(copy, cwd, '--version', extra), `al unreleased · ${sha} · ${copy}`, `run from ${cwd} with ${JSON.stringify(extra)}`);
     }
   }
 });
@@ -211,6 +227,21 @@ for (const [label, line, body] of [
     hint(statusEdit(t, line, body), 'not ok', 'edited beyond its Status line', /\b0001\b/);
   });
 }
+
+// 0001 accepted at the base with one header line holding the date, the
+// status and who decided; on the branch that line becomes `line`.
+const ONE_LINE = 'Date: 2026-09-19. Status: accepted. Decided by: the owner.';
+const sentenceEdit = (t, line) => adrs(t, { [OLD]: oldWay(ONE_LINE) }, { [OLD]: oldWay(line), [NEW]: newWay('Supersedes: ADR 0001') });
+
+test('#153 (2b) [LNK-4] the status text ends with its sentence: "Date: 2026-09-19. Status: accepted. Decided by: the owner." becoming "… Status: superseded by ADR 0002. Decided by: the agent." is not ok, edited beyond its Status line, naming 0001', (t) => {
+  hint(sentenceEdit(t, 'Date: 2026-09-19. Status: superseded by ADR 0002. Decided by: the agent.'), 'not ok', 'edited beyond its Status line', /\b0001\b/);
+});
+
+test('#153 (2b) [LNK-4] control: the same line with only its status changed, "… Status: superseded by ADR 0002. Decided by: the owner.", gives no "edited beyond its Status line" and no not ok', (t) => {
+  const out = sentenceEdit(t, 'Date: 2026-09-19. Status: superseded by ADR 0002. Decided by: the owner.');
+  noHint(out, 'not ok', 'edited beyond its Status line');
+  assert.deepEqual(notOks(out), [], `no not ok:\n${out}`);
+});
 
 // --- (3) "<code> changed, but its linked tests did not" ---
 
