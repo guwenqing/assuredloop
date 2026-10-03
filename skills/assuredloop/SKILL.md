@@ -18,7 +18,7 @@ description: >-
 5. Show it to the owner. The owner signs, not you: only on their OK, run
    `al record <name> signoff --source <where> --words "<their words>" --yes`.
 6. Edit the baseline section, then `al conclude <name>`. The commit message and
-   the PR say `Tier: 1 — <claim>`.
+   the PR say `Tier: 1 — <claim>`. Moves and IDs: al's README, "Common situations".
 7. Before review, run `al check`. Fix or explain each `not ok`; read each `note`.
 `al new` writes at once. Other commands that write show first; add `--yes` to write.
 
