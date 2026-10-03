@@ -209,13 +209,15 @@ function revert({ top, root, name, id, mine, blocks, texts, original, opts, refu
     texts.set(path, insertAt(text, spans(text)[0]?.start ?? text.length, tidy(first.was)));
     did = `[${id}] back first in ${path}`;
   } else {
-    const anchor = mine.find((b) => b.op === 'remove' && b.anchor)?.anchor;
+    const removal = mine.find((b) => b.op === 'remove' && b.anchor);
+    const anchor = removal?.anchor;
     const where = anchor ? find(texts, anchor) : null;
     if (!where) {
       return refuse([`[${id}] cannot be put back: ${anchor ? `its anchor [${anchor}] is not in the baseline` : 'it is not in the baseline, and no remove records where it stood'}`]);
     }
     // A shallower anchor is the parent: the section goes back first under it.
-    const under = where.section.level < parseSections(first.was)[0].level;
+    // The removal's Was, which the check held against the anchor, says which.
+    const under = where.section.level < parseSections(removal.was)[0].level;
     texts.set(where.path, insertAt(where.text, under ? where.section.stop : afterSubtree(where.list, where.i), tidy(first.was)));
     did = `[${id}] back ${under ? 'first under' : 'after'} [${anchor}] in ${where.path}`;
   }
