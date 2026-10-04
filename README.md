@@ -44,9 +44,9 @@ To run `al check --strict` in CI, the job needs a clone of this repo at the
 pinned SHA, and the project checked out with its whole history
 (`fetch-depth: 0`); then it runs `node <clone>/bin/al.js check --strict`. A
 checkout with no main ref says
-`no main to compare with, so no commits were checked`: it checks none of the
-branch's commits and no history, though its checks of the working tree, such
-as duplicate IDs, still run and can fail. A shallow clone that has
+`no main to compare with, so no commits were checked`: it compares none of the
+branch's commits with main, though its other checks, such as duplicate IDs in
+the working tree, still run and can fail. A shallow clone that has
 `origin/main` does not print that line, but reads no history before its
 shallow boundary. While this repo is private, that clone
 needs a secret with read access to it, which only this repo's owner can grant.
