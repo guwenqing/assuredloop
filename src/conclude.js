@@ -5,7 +5,7 @@
 // requests/archive/. It prints three lines or fewer, plus the frame.
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Fail, HISTORY, git, mainCommit, ownCommits } from './git.js';
+import { Fail, HISTORY, cutOff, gapFail, git, historyGap, mainCommit, mainName, ownCommits } from './git.js';
 import { openTree, findRequest, noSymlinkOn } from './tree.js';
 import { rootOf, rootLine, baseline } from './spec.js';
 import { CONSOLIDATED, allBlocks, blockFault, stateText, statesOf } from './states.js';
@@ -13,7 +13,7 @@ import { organized, parts, signoffState, signoffStep, statusAt, statusField, tie
 import { requestToWrite, decisionList, childrenOf } from './commands.js';
 import { decisions } from './record-section.js';
 import { liveCode } from './views.js';
-import { filesOf, idsOn, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
+import { filesOf, idsOn, mayTouch, ownFiles, paths, requestOf, requestsIn, sectionsChanged } from './links.js';
 import { TITLES, headingAt, prose, sameSection, sectionsById } from './sections.js';
 import { adrsOf } from './adrs.js';
 
@@ -115,9 +115,10 @@ export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
   const seen = new Map();
   for (const sha of fork ? ownCommits(top, fork, tip) : []) {
     if (!requestOf(top, sha, requests, seen, ownFiles).names.includes(name)) continue;
-    // A merge's own: the sections that differ from every parent.
-    const parents = git(top, ['rev-list', '--parents', '-n', '1', sha]).split(' ').slice(1);
-    const each = (parents.length ? parents : [`${sha}^`]).map((p) => new Set(sectionsChanged(top, p, sha, root, ownFiles(top, sha))));
+    // A merge's own: the sections that differ from every parent. Past the
+    // shallow boundary, the fork stands in for the parent it lacks ([VW-9]).
+    const parents = ownFiles(top, sha) ? git(top, ['rev-list', '--parents', '-n', '1', sha]).split(' ').slice(1) : [fork];
+    const each = (parents.length ? parents : [`${sha}^`]).map((p) => new Set(sectionsChanged(top, p, sha, root, mayTouch(top, sha, fork))));
     each[0].forEach((id) => each.every((s) => s.has(id)) && ids.add(id));
   }
   if (working) {
@@ -205,6 +206,12 @@ export function conclude({ top, args, opts }) {
 
   const main = mainCommit(top);
   const fork = main && git(top, ['merge-base', main, 'HEAD'], { allowFail: true });
+  // The Outcome is written as fact: a fork not in the clone, or a commit past
+  // the shallow boundary, hides what the branch changed ([VW-9]).
+  const gap = main && !fork && historyGap(top);
+  if (gap) throw gapFail(gap, `, and the merge-base of ${mainName(top)} and HEAD is not in it; nothing was written`);
+  const cut = fork ? ownCommits(top, fork, 'HEAD').filter((c) => cutOff(top, c)).map((c) => c.slice(0, 7)) : [];
+  if (cut.length) throw gapFail(historyGap(top), `, and ${cut.join(', ')} ${cut.length === 1 ? 'has its parent' : 'have their parents'} past its boundary; nothing was written`);
   const { sign, org, fates, refusals } = judge(top, tree, name, dir, dropped, undefined, fork);
   // [STA-7]: three lines or fewer, so reasons beyond the second share the third.
   const body = [...refusals.slice(0, 2), ...(refusals.length > 2 ? [refusals.slice(2).join(' · ')] : [])].map((r) => `refused: ${r}`);

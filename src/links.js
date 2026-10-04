@@ -4,7 +4,7 @@
 // issue number in a request's owner's words.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { day, git } from './git.js';
+import { HISTORY, cutOff, day, git } from './git.js';
 import { folderOf, requestDirs } from './tree.js';
 import { ID_TEXT, TITLES, parseSections, sameSection, sectionsById } from './sections.js';
 import { entriesOf } from './commands.js';
@@ -29,20 +29,28 @@ export function requestsIn(tree) {
     .filter((r) => r.md);
 }
 
-// The files a commit changed, against its first parent (all of them for a root commit).
+// The files a commit changed, against its first parent (all of them for a root
+// commit); null, unknown, for one whose parent is past the shallow boundary ([VW-9]).
 export function filesOf(top, sha) {
   const parent = git(top, ['rev-parse', '--verify', '--quiet', `${sha}^1`], { allowFail: true });
+  if (!parent && cutOff(top, sha)) return null;
   return paths(parent ? git(top, ['diff', '--name-only', '-z', '--no-renames', parent, sha])
     : git(top, ['diff-tree', '-r', '-z', '--no-commit-id', '--name-only', '--root', sha]));
 }
 
 // The files a commit changed on its own: for a merge, those that differ from
 // every parent (an edit made while merging), never what it brought from
-// either side; for any other commit, filesOf.
+// either side; for any other commit, filesOf (null when unknown).
 export function ownFiles(top, sha) {
   if (!git(top, ['rev-parse', '--verify', '--quiet', `${sha}^2`], { allowFail: true })) return filesOf(top, sha);
   return paths(git(top, ['diff-tree', '-r', '-z', '--no-commit-id', '--name-only', '-c', sha]));
 }
+
+// For a read bounded by the branch's final state: a commit's own files, or,
+// when they are unknown, those that differ from the fork `base` (every file of
+// its tree with no fork); never to say what it changed ([VW-9]).
+export const mayTouch = (top, sha, base, files = ownFiles) => files(top, sha)
+  ?? paths(git(top, base ? ['diff', '--name-only', '-z', '--no-renames', base, sha] : ['ls-tree', '-r', '-z', '--name-only', sha]));
 
 // The commits up to `rev` that map to request `name`, by every route [LNK-2]
 // maps by: a Request: line, its folder, an issue number in its owner's words
@@ -64,8 +72,10 @@ export function requestOf(top, sha, requests, seen = new Map(), files = filesOf)
   const message = body.join('\n');
   let names = [...new Set([...message.matchAll(REQUEST_LINE)].map((m) => m[1]))];
   let how = 'Request: line';
+  let fs;
   if (!names.length) {
-    names = [...new Set(files(top, sha).map(folderOf).filter(Boolean))];
+    fs = files(top, sha);
+    names = [...new Set((fs ?? []).map(folderOf).filter(Boolean))];
     how = names.length > 1 ? 'folder, ambiguous' : 'folder';
   }
   for (const [, n] of names.length ? [] : message.matchAll(/#(\d+)(?!\d)/g)) {
@@ -73,7 +83,8 @@ export function requestOf(top, sha, requests, seen = new Map(), files = filesOf)
     how = `issue #${n}`;
     if (names.length) break;
   }
-  const found = { sha, names, how: names.length ? how : 'no request', when: new Date(Number(when) * 1000) };
+  // Its files unknown, the folder route is too: not "no request" ([VW-9]).
+  const found = { sha, names, how: names.length ? how : fs === null ? HISTORY : 'no request', when: new Date(Number(when) * 1000) };
   seen.set(sha, found);
   return found;
 }
@@ -143,6 +154,7 @@ export function changedWith(top, rev, path) {
   let skipped = 0;
   for (const sha of git(top, ['log', '--format=%H', rev, '--', path]).split('\n').filter(Boolean)) {
     const files = filesOf(top, sha);
+    if (!files) continue;
     if (files.length > WIDE) skipped++;
     else commits.push({ sha, files });
   }
