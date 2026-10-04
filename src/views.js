@@ -9,7 +9,7 @@ import { TITLES, headingAt, sameSection, sectionsById } from './sections.js';
 import { follows, isDropped, organized, parts, samePart, signoffState } from './signoff.js';
 import { line, lines, grouped, decisionList, entriesOf, concluding } from './commands.js';
 import { hintLines, hintsOf, ranked, readBranch } from './hints.js';
-import { WIDE, blame, changedWith, cites, describe, filesOf, idNear, idsOn, movesOf, ownFiles, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
+import { WIDE, blame, changedWith, cites, describe, filesOf, idNear, idsOn, mayTouch, movesOf, ownFiles, paths, ranges, requestCommits, requestOf, requestsIn, sectionsChanged, wordsOf } from './links.js';
 import { headNote, resultLines, testLines, testMatcher } from './tests.js';
 import { adrFolders, governing } from './adrs.js';
 import { amends, noChangeMd, outcomeFacts, ownIds } from './conclude.js';
@@ -275,7 +275,7 @@ function review(top, { tree, files, served, code, commits, moves, branch }) {
   // Linked: a file a served request's blocks or Amends: reach, blame names, or a range commit of it changed ([LNK-2]).
   const named = new Set(mine.flatMap((r) => { const org = organized(r.md); return org ? amends(org.text).map((i) => i.slice(1, -1)) : []; }));
   const held = (id) => named.has(id) || blocks.some((b) => b.id === id && served.has(b.request));
-  const theirs = new Set(commits.filter((c) => c.names.some((n) => served.has(n))).flatMap((c) => ownFiles(top, c.sha) ?? []));
+  const theirs = new Set(commits.filter((c) => c.names.some((n) => served.has(n))).flatMap((c) => mayTouch(top, c.sha)));
   const unlinked = code.filter((f) => !theirs.has(f.path) && ![...f.blamed].some((n) => served.has(n)) && ![...f.ids.keys()].some(held)).map((f) => f.path);
   // A commit whose files are unknown may have linked any of them ([VW-9]).
   const cut = commits.filter((c) => ownFiles(top, c.sha) === null).map((c) => c.sha.slice(0, 7));
