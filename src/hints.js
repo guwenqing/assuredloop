@@ -43,7 +43,8 @@ export function readBranch(top, { base, commits, tree, at, range }) {
   const archived = new Set(base ? requests.filter((r) => !r.open && git(top, ['cat-file', '-e', `${base}:${r.dir}/request.md`], { allowFail: true }) === null).map((r) => r.name) : []);
   // Work is anything a request's commits touch beyond its own request.md and origin/.
   // A merge on main (earlyWork) counts by all it brings: `files` is filesOf there.
-  const work = (name, sha, skip = () => false, files = ownFiles) => files(top, sha).some((f) => !new RegExp(`^requests/(?:archive/)?${name}/(?:request\\.md$|origin/)`).test(f) && !skip(f));
+  // A commit whose files are unknown (past the shallow boundary) may hold work ([VW-9]).
+  const work = (name, sha, skip = () => false, files = ownFiles) => files(top, sha)?.some((f) => !new RegExp(`^requests/(?:archive/)?${name}/(?:request\\.md$|origin/)`).test(f) && !skip(f)) ?? true;
   const delivered = new Set(mapped.flatMap((c) => c.names.filter((n) => work(n, c.sha))));
   for (const p of changed) if (/^requests\/(?:archive\/)?[^/]+\/change\.md$/.test(p) && folderOf(p)) delivered.add(folderOf(p));
   // Captured whole and trimmed in JS: a regex that trims a long line's spaces takes quadratic time.
@@ -221,7 +222,7 @@ export function hintsOf(top, b, { main }) {
   const uncommitted = b.at ? [] : [...paths(git(top, ['diff', '--name-only', '-z', 'HEAD'], { allowFail: true, worktree: true }) ?? ''), ...paths(git(top, ['ls-files', '--others', '--exclude-standard', '-z'], { worktree: true }))];
   const textAt = (rev, p) => (rev ? git(top, ['show', `${rev}:${p}`], { allowFail: true }) : b.tree.read(p)?.toString('utf8')) ?? '';
   const applied = (name) => {
-    const touched = (p) => b.mapped.some((c) => c.names.includes(name) && ownFiles(top, c.sha).includes(p)) || (b.served.has(name) && uncommitted.includes(p));
+    const touched = (p) => b.mapped.some((c) => c.names.includes(name) && (ownFiles(top, c.sha)?.includes(p) ?? true)) || (b.served.has(name) && uncommitted.includes(p));
     const es = statesOf(b.files, b.blocks, (x) => x.request === name);
     const change = new RegExp(`^requests/(?:archive/)?${name}/change\\.md$`);
     const left = (id) => !es.some((e) => e.id === id) || es.some((e) => e.id === id && !e.retainsNothing);
@@ -266,7 +267,7 @@ export function hintsOf(top, b, { main }) {
     for (const id of b.changedIds.filter((i) => moved.includes(i))) add('note', 13, [], `[${id}], edited on this branch, changed on main since the fork`, `git merge ${main.replace(/^refs\/(remotes|heads)\//, '')}`);
   }
   for (const c of b.mapped.filter((x) => !x.names.length)) {
-    const fs = ownFiles(top, c.sha).filter((p) => p.startsWith(`${b.root}/`));
+    const fs = (ownFiles(top, c.sha) ?? []).filter((p) => p.startsWith(`${b.root}/`));
     if (fs.length) add('note', 14, [], `${c.sha.slice(0, 7)} changes ${fs.join(', ')} with no request linked (fine for tier 0; say why)`, `git show ${c.sha.slice(0, 7)}`);
   }
   for (const name of new Set([...b.served, ...b.archived])) {

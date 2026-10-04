@@ -163,8 +163,10 @@ export function diffView(top, range, forReview, all, at) {
   const served = new Map();
   for (const c of commits) for (const n of c.names) if (!served.has(n)) served.set(n, c.how);
   for (const n of branch.served) if (!served.has(n)) served.set(n, 'folder');
-  const none = commits.filter((c) => !c.names.length).length;
-  const serves = [...[...served].map(([n, how]) => `${n} (${how})`), ...(none ? [`${none} commit${none === 1 ? '' : 's'} with no request`] : [])];
+  const none = commits.filter((c) => !c.names.length && c.how !== HISTORY).length;
+  const unknown = commits.filter((c) => !c.names.length && c.how === HISTORY).map((c) => c.sha.slice(0, 7));
+  const serves = [...[...served].map(([n, how]) => `${n} (${how})`), ...(none ? [`${none} commit${none === 1 ? '' : 's'} with no request`] : []),
+    ...(unknown.length ? [`${unknown.join(', ')}: request ${HISTORY}`] : [])];
   const changed = paths(git(top, ['diff', '--name-only', '-z', '--no-renames', base, head]));
   const states = changeStates(top, { at: head });
   // A section moved to another file with its text unchanged shows once, as a move ([REC-10]).
@@ -273,9 +275,12 @@ function review(top, { tree, files, served, code, commits, moves, branch }) {
   // Linked: a file a served request's blocks or Amends: reach, blame names, or a range commit of it changed ([LNK-2]).
   const named = new Set(mine.flatMap((r) => { const org = organized(r.md); return org ? amends(org.text).map((i) => i.slice(1, -1)) : []; }));
   const held = (id) => named.has(id) || blocks.some((b) => b.id === id && served.has(b.request));
-  const theirs = new Set(commits.filter((c) => c.names.some((n) => served.has(n))).flatMap((c) => ownFiles(top, c.sha)));
+  const theirs = new Set(commits.filter((c) => c.names.some((n) => served.has(n))).flatMap((c) => ownFiles(top, c.sha) ?? []));
   const unlinked = code.filter((f) => !theirs.has(f.path) && ![...f.blamed].some((n) => served.has(n)) && ![...f.ids.keys()].some(held)).map((f) => f.path);
-  evidence.push(line('Unlinked', unlinked.length ? `${unlinked.join(' · ')} (linked to no served request)` : 'none'));
+  // A commit whose files are unknown may have linked any of them ([VW-9]).
+  const cut = commits.filter((c) => ownFiles(top, c.sha) === null).map((c) => c.sha.slice(0, 7));
+  evidence.push(line('Unlinked', cut.length && unlinked.length ? `${HISTORY}: the files ${cut.join(', ')} touched`
+    : unlinked.length ? `${unlinked.join(' · ')} (linked to no served request)` : 'none'));
   return [...intent, ...evidence];
 }
 
