@@ -5,7 +5,7 @@
 // grow at the end; a file in origin/ never changes or goes; nothing changes
 // under a request archived on main; the move to archive/ is not an edit.
 // check exits 0, and --strict exits 1 on a not ok that counts ([HNT-3]).
-import { HISTORY, git, hasCommits, isShallow, mainCommit, mainName, ownCommits, resolveCommit } from './git.js';
+import { HISTORY, cutOffNotes, git, hasCommits, isShallow, mainCommit, mainName, ownCommits, resolveCommit } from './git.js';
 import { folderName, openTree } from './tree.js';
 import { movesOf, ownFiles } from './links.js';
 import { line } from './commands.js';
@@ -99,7 +99,7 @@ export function check({ top, opts }) {
   const list = ranked(hintsOf(top, b, { main: opts.at ? base : main }), b);
   const notKnown = [...headNote(top, b), ...(opts.at ? ["main after X's fork point (read only up to it under --at)"] : [])];
   if (!hasCommits(top)) notKnown.push('no commits yet, so no history');
-  if (isShallow(top)) notKnown.push(`${HISTORY}: commits before the shallow boundary`);
+  if (isShallow(top)) notKnown.push(`${HISTORY}: commits before the shallow boundary`, ...cutOffNotes(top, commits));
   const body = [line('Serves', [...[...b.served].filter((n) => !b.archived.has(n)), ...[...b.archived].map((n) => `archives ${n}`)].join(' · ') || 'no request')];
   if (b.tier) {
     // [REC-11]: the claim with its evidence: the spec edits, the sections near the changed code, the tests whose assertions changed.
