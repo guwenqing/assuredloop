@@ -1,7 +1,7 @@
 // al context <ID> ([VW-3]), al context --diff <range> [--for review] ([VW-4]),
 // an archived request's sections ([VW-6]), and the code still live for
 // dropped work ([REC-9]), all from the rough links ([LNK-1], [LNK-2]).
-import { Fail, HISTORY, day, gapFail, git, historyGap, isShallow, mainCommit, ownCommits, resolveCommit } from './git.js';
+import { Fail, HISTORY, cutOffNotes, day, gapFail, git, historyGap, isShallow, mainCommit, ownCommits, resolveCommit } from './git.js';
 import { openTree } from './tree.js';
 import { rootOf, rootLine, baseline, configured } from './spec.js';
 import { allBlocks, changeStates, stateText, statesOf } from './states.js';
@@ -203,7 +203,7 @@ export function diffView(top, range, forReview, all, at) {
     tree: { label: `commits ${base.slice(0, 7)}..${head.slice(0, 7)}${at ? '' : '; test results from the working tree'}` },
     body,
     next: forReview ? 'al context <ID> for any section named here' : `al context --diff ${range} --for review`,
-    notKnown: ['uncommitted changes (the range reads commits only)', ...headNote(top, branch), ...(shallow ? [`${HISTORY}: commits before the shallow boundary`] : []),
+    notKnown: ['uncommitted changes (the range reads commits only)', ...headNote(top, branch), ...(shallow ? [`${HISTORY}: commits before the shallow boundary`, ...cutOffNotes(top, branch.commits)] : []),
       ...(at ? ['the hints that compare with main (not read under --at)'] : [])],
   };
 }

@@ -4,7 +4,7 @@
 // issue number in a request's owner's words.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { day, git } from './git.js';
+import { cutOff, day, git } from './git.js';
 import { folderOf, requestDirs } from './tree.js';
 import { ID_TEXT, TITLES, parseSections, sameSection, sectionsById } from './sections.js';
 import { entriesOf } from './commands.js';
@@ -29,9 +29,11 @@ export function requestsIn(tree) {
     .filter((r) => r.md);
 }
 
-// The files a commit changed, against its first parent (all of them for a root commit).
+// The files a commit changed, against its first parent (all of them for a root
+// commit; none known for one whose parent is past the shallow boundary, [VW-9]).
 export function filesOf(top, sha) {
   const parent = git(top, ['rev-parse', '--verify', '--quiet', `${sha}^1`], { allowFail: true });
+  if (!parent && cutOff(top, sha)) return [];
   return paths(parent ? git(top, ['diff', '--name-only', '-z', '--no-renames', parent, sha])
     : git(top, ['diff-tree', '-r', '-z', '--no-commit-id', '--name-only', '--root', sha]));
 }

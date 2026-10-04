@@ -62,6 +62,15 @@ export function historyGap(top) {
   return null;
 }
 
+// A commit whose object names a parent this clone does not hold: it sits at
+// the shallow boundary, and what it changed cannot be read ([VW-9]).
+export const cutOff = (top, sha) => !git(top, ['rev-parse', '--verify', '--quiet', `${sha}^1`], { allowFail: true })
+  && /^parent /m.test(git(top, ['cat-file', 'commit', sha]).split('\n\n')[0]);
+
+// The Not known entries for `commits` at the shallow boundary ([VW-9]).
+export const cutOffNotes = (top, commits) => (isShallow(top) ? commits.filter((c) => cutOff(top, c))
+  .map((c) => `${HISTORY}: the files ${c.slice(0, 7)} touched (its parent is past the shallow boundary)`) : []);
+
 export function isShallow(top) {
   return git(top, ['rev-parse', '--is-shallow-repository'], { allowFail: true }) === 'true';
 }
