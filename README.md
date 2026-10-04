@@ -34,6 +34,24 @@ Then add one line to the project's AGENTS.md:
 AssuredLoop keeps this project's requests and spec: before work that changes a promise, read <dir>/skills/assuredloop/SKILL.md and run `al context`.
 ```
 
+In a shared repo whose contributors clone `al` in different places, copy
+`skills/assuredloop/SKILL.md` from `<dir>` at the pinned SHA into the project,
+for example as `.claude/skills/assuredloop/SKILL.md`. Name that path in the
+AGENTS.md line, say in the commit which SHA it came from, and copy it again
+when you re-pin.
+
+To run `al check --strict` in CI, the job needs a clone of this repo at the
+pinned SHA, and the project checked out with its whole history
+(`fetch-depth: 0`); then it runs `node <clone>/bin/al.js check --strict`. A
+checkout with no main ref says
+`no main to compare with, so no commits were checked`: it compares none of the
+branch's commits with main, though its other checks, such as duplicate IDs in
+the working tree, still run and can fail. A shallow clone that has
+`origin/main` does not print that line, but reads no history before its
+shallow boundary. While this repo is private, that clone
+needs a secret with read access to it, which only this repo's owner can grant.
+Without one, run `al check --strict` before each review instead.
+
 ## The commands
 
 - `al new <name> --from <file|-> [--tier <1|2|3|S>] [--title <text>]`: start
@@ -159,6 +177,32 @@ Do not replace `[R-2]` across the whole repo:
   `not found; candidates SIZE-1`, shown as that request's own information. It
   is re-aligned in that request's own work. A replace there edits its signed
   `origin/` snapshot, which gives a `not ok`.
+
+### Starting a new repo from an already-agreed spec
+
+Adopt the agreed text as it is, with no request: the owner signs a request's
+organized requirement, never the spec text ([REC-5]). Say in the commit
+message where and when the owner agreed it. Use two steps, as in the first
+example.
+
+PR 1, before adoption, imports the agreed text under `specs/` (with
+`.assuredloop` if the root is elsewhere). It has no AGENTS.md line and no Tier
+line: AssuredLoop is not adopted yet, and its rules start at adoption.
+`al check`, if run on it, exits 0 with the two notes PR 1 above gets. In an
+empty repo, PR 1 can instead be the first commit, straight to main.
+
+PR 2 adopts: the AGENTS.md line from Install, and the IDs. It claims
+`Tier: 0 — adds section IDs and the AGENTS line; no promise changes`:
+
+    al spec --add-ids specs/<file>.md --prefix <P> --yes
+
+`al check --strict` passes, with one note: the commit changes
+`specs/<file>.md` with no request linked (fine for tier 0; say why). Requests,
+with the owner's sign-off, start at the first promise change after that.
+
+`specs/` holds promises, and each change to one needs the owner's sign-off, so
+a build or UI design belongs in `docs/`, or as ADRs in `docs/adr/`, which `al`
+reads, unless a passage is a promise the owner wants guarded.
 
 ## What is enforced, and by whom
 
