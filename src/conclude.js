@@ -117,7 +117,7 @@ export function ownIds(top, name, fork, root, requests, working, tip = 'HEAD') {
     if (!requestOf(top, sha, requests, seen, ownFiles).names.includes(name)) continue;
     // A merge's own: the sections that differ from every parent.
     const parents = git(top, ['rev-list', '--parents', '-n', '1', sha]).split(' ').slice(1);
-    const each = (parents.length ? parents : [`${sha}^`]).map((p) => new Set(sectionsChanged(top, p, sha, root, ownFiles(top, sha))));
+    const each = (parents.length ? parents : [`${sha}^`]).map((p) => new Set(sectionsChanged(top, p, sha, root, ownFiles(top, sha) ?? [])));
     each[0].forEach((id) => each.every((s) => s.has(id)) && ids.add(id));
   }
   if (working) {
