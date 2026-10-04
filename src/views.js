@@ -275,7 +275,7 @@ function review(top, { tree, files, served, code, commits, moves, branch }) {
   // Linked: a file a served request's blocks or Amends: reach, blame names, or a range commit of it changed ([LNK-2]).
   const named = new Set(mine.flatMap((r) => { const org = organized(r.md); return org ? amends(org.text).map((i) => i.slice(1, -1)) : []; }));
   const held = (id) => named.has(id) || blocks.some((b) => b.id === id && served.has(b.request));
-  const theirs = new Set(commits.filter((c) => c.names.some((n) => served.has(n))).flatMap((c) => mayTouch(top, c.sha)));
+  const theirs = new Set(commits.filter((c) => c.names.some((n) => served.has(n))).flatMap((c) => mayTouch(top, c.sha, base)));
   const unlinked = code.filter((f) => !theirs.has(f.path) && ![...f.blamed].some((n) => served.has(n)) && ![...f.ids.keys()].some(held)).map((f) => f.path);
   // A commit whose files are unknown may have linked any of them ([VW-9]).
   const cut = commits.filter((c) => ownFiles(top, c.sha) === null).map((c) => c.sha.slice(0, 7));
