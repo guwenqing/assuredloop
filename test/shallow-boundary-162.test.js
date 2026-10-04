@@ -8,13 +8,13 @@
 // the PR head, which only touched a.txt, gets none.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { makeRepo, cloneRepo, runAl, git, tempDir } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
 import { addRequest, both, lineWith } from './helpers/request.js';
 import { labelled } from './helpers/links.js';
-import { assertCheckFrame, hint, message } from './helpers/hints.js';
+import { assertCheckFrame, hint, message, noHint } from './helpers/hints.js';
 import { short } from './helpers/evidence.js';
 
 const PANEL = '# Panel\n\n## [P-1] One\nOne thing.\n';
@@ -225,8 +225,9 @@ test('[VW-9] #162 review control: the folder route in a full clone: Serves dates
 });
 
 // B, a Request: line: `dates` is not signed off; the PR head says
-// Request: dates and adds src/work.js.
-function requestLine(t) {
+// Request: dates and adds src/work.js. With `merge`, main then moves on and
+// the branch merges it (`head` stays the src/work.js commit).
+function requestLine(t, { merge = false } = {}) {
   const repo = makeRepo(t);
   repo.write('specs/panel.md', P1);
   addRequest(repo, 'dates', null, { signed: false, decisions: '' });
@@ -235,6 +236,13 @@ function requestLine(t) {
   repo.write('src/work.js', 'export const answer = 42;\n');
   const head = repo.commit(message('work', { request: 'dates', tier: '2 — implement dates' }), { date: '2026-09-02T12:00:00Z' });
   assert.equal(repo.git(['show', '--name-only', '--format=', head]), 'src/work.js', 'the fixture: the head adds src/work.js');
+  if (merge) {
+    repo.git(['checkout', '-q', 'main']);
+    repo.write('main.txt', 'main\n');
+    repo.commit('main work', { date: '2026-09-03T12:00:00Z' });
+    repo.git(['checkout', '-q', 'pr']);
+    repo.git(['merge', '-q', '--no-ff', '-m', message('merge main', { request: 'dates', tier: '2 — implement dates' }), 'main'], { date: '2026-09-04T12:00:00Z' });
+  }
   repo.git(['checkout', '-q', 'main']);
   return { repo, head };
 }
@@ -248,15 +256,35 @@ test('[VW-9] #162 review: a Request: line at the shallow boundary: the review do
   assert.ok(!lineWith(r.stdout, 'src/work.js', 'linked to no served request'), `src/work.js's link is unknown, not absent:\n${r.stdout}`);
 });
 
-test('[VW-9] #162 check: a Request: line at the shallow boundary: the blocked-delivery not ok for dates a full clone gives is still given', (t) => {
+test('[VW-9] #162 check: a Request: line at the shallow boundary with no merge-base in the clone: what the branch delivers is unknown, so no "delivers work for dates" not ok, and Not known says "history unavailable" naming the commit (a full clone gives the not ok)', (t) => {
   const { repo, head } = requestLine(t);
   const full = runAl(prClone(t, repo, head, { shallow: false }).dir, ['check', '--all']);
   assert.equal(full.code, 0, both(full));
   hint(full.stdout, 'not ok', ...BLOCKED);
-  const r = runAl(prClone(t, repo, head, { shallow: true }).dir, ['check', '--all']);
+  const clone = prClone(t, repo, head, { shallow: true });
+  assert.throws(() => clone.git(['merge-base', 'origin/main', 'HEAD']), 'the fixture: no merge-base in the clone');
+  const r = runAl(clone.dir, ['check', '--all']);
   assert.equal(r.code, 0, both(r));
   assertCheckFrame(r.stdout, 'origin/main');
-  hint(r.stdout, 'not ok', ...BLOCKED);
+  noHint(r.stdout, 'not ok', 'delivers work for dates');
+  const nk = notKnown(r.stdout);
+  assert.ok(nk.includes('history unavailable'), `the Not known line should say "history unavailable":\n${r.stdout}`);
+  assert.ok(nk.includes(short(head)), `the Not known line should name ${short(head)}:\n${r.stdout}`);
+});
+
+test('[VW-9] #162 check: a Request: line at the shallow boundary with a known merge-base, its work still in the final state: the blocked-delivery not ok for dates a full clone gives is still given', (t) => {
+  const { repo, head } = requestLine(t, { merge: true });
+  const full = runAl(prAt(t, repo).dir, ['check', '--all']);
+  assert.equal(full.code, 0, both(full));
+  const fullLine = hint(full.stdout, 'not ok', ...BLOCKED);
+  const clone = prAt(t, repo, 2);
+  assert.ok(isBoundary(clone, head), 'the fixture: the src/work.js commit is the shallow boundary');
+  const base = clone.git(['merge-base', 'origin/main', 'HEAD']);
+  assert.ok(clone.git(['diff', '--name-only', base, 'HEAD']).split('\n').includes('src/work.js'), 'the fixture: the branch leaves src/work.js changed against its fork');
+  const r = runAl(clone.dir, ['check', '--all']);
+  assert.equal(r.code, 0, both(r));
+  assertCheckFrame(r.stdout, 'origin/main');
+  assert.ok(lines(r.stdout).includes(fullLine), `the full clone's line should be given:\n${fullLine}\n---\n${r.stdout}`);
 });
 
 test('[VW-9] #162 review control: a Request: line in a full clone: Unlinked none, and the blocked-delivery not ok for dates', (t) => {
@@ -305,3 +333,152 @@ for (const how of ['grafts', 'replace', 'root']) {
     assert.ok(!both(r).includes('history unavailable'), both(r));
   });
 }
+
+// --- From the second review of PR #163: possibly touched is not delivered ---
+// A boundary commit's files are unknown. A read bounded by the branch's final
+// state (the files it leaves changed against its fork) treats that commit as
+// possibly touching anything there: it neither invents work the final state
+// does not hold nor drops work it does hold. A command that writes facts into
+// a record refuses rather than write what history cannot establish.
+
+// The PR branch checked out as `pr`: from a full clone, or a shallow one of
+// `depth` (main and the branch both at that depth).
+function prAt(t, repo, depth) {
+  const clone = depth ? cloneRepo(t, repo, { depth, singleBranch: false }) : cloneRepo(t, repo);
+  clone.git(['checkout', '-q', '-b', 'pr', 'origin/pr']);
+  assert.equal(clone.git(['rev-parse', '--is-shallow-repository']), depth ? 'true' : 'false');
+  return clone;
+}
+const isBoundary = (clone, sha) => readFileSync(join(clone.dir, '.git', 'shallow'), 'utf8').split('\n').includes(sha);
+const strictAll = (clone) => runAl(clone.dir, ['check', '--strict', '--all']);
+
+// D, E: `dates` is open and not signed off. D: the PR head is an empty commit
+// with Request: dates. E (`record`): the PR's first commit, with Request:
+// dates, only appends a Parts section to requests/dates/request.md; then main
+// moves on and the branch merges it.
+function datesBranch(t, { record }) {
+  const repo = makeRepo(t);
+  repo.write('specs/panel.md', P1);
+  addRequest(repo, 'dates', null, { signed: false, decisions: '' });
+  repo.commit('dates request', { date: '2026-09-01T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'pr']);
+  if (record) repo.write('requests/dates/request.md', repo.read('requests/dates/request.md').toString() + '\n## Parts\n\nPart A: discussion only.\n');
+  const first = repo.commit(message('discussion only', { request: 'dates', tier: '2 — discussion only' }), { date: '2026-09-02T12:00:00Z' });
+  if (record) {
+    repo.git(['checkout', '-q', 'main']);
+    repo.write('main.txt', 'main\n');
+    repo.commit('main work', { date: '2026-09-03T12:00:00Z' });
+    repo.git(['checkout', '-q', 'pr']);
+    repo.git(['merge', '-q', '--no-ff', '-m', message('merge main', { request: 'dates', tier: '2 — discussion only' }), 'main'], { date: '2026-09-04T12:00:00Z' });
+  }
+  repo.git(['checkout', '-q', 'main']);
+  return { repo, first };
+}
+
+test('[VW-9] #162 an empty commit with Request: dates (unsigned) at the shallow boundary: check --strict --all exits 0, with no "delivers work for dates" not ok', (t) => {
+  const { repo, first } = datesBranch(t, { record: false });
+  const clone = prAt(t, repo, 1);
+  assert.equal(clone.head(), first);
+  assert.ok(isBoundary(clone, first), 'the fixture: the empty commit is the shallow boundary');
+  assert.equal(clone.git(['diff', '--name-only', 'origin/main', 'HEAD']), '', 'the fixture: the branch leaves main\'s tree as it is');
+  const r = strictAll(clone);
+  assert.equal(r.code, 0, `check --strict --all should exit 0:\n${both(r)}`);
+  noHint(r.stdout, 'not ok', 'delivers work for dates');
+});
+
+test('[VW-9] #162 control: the empty commit with Request: dates in a full clone: check --strict --all exits 0, with no "delivers work for dates" not ok', (t) => {
+  const { repo } = datesBranch(t, { record: false });
+  const r = strictAll(prAt(t, repo));
+  assert.equal(r.code, 0, both(r));
+  noHint(r.stdout, 'not ok', 'delivers work for dates');
+});
+
+test('[VW-9] #162 a record-only branch whose first commit is the shallow boundary, with a known merge-base: check --strict --all exits 0, with no "delivers work for dates" not ok', (t) => {
+  const { repo, first } = datesBranch(t, { record: true });
+  const clone = prAt(t, repo, 2);
+  assert.ok(isBoundary(clone, first), 'the fixture: the record-only commit is the shallow boundary');
+  clone.git(['merge-base', 'origin/main', 'HEAD']);
+  assert.equal(clone.git(['diff', '--name-only', 'origin/main', 'HEAD']), 'requests/dates/request.md', 'the fixture: the branch leaves only request.md changed');
+  const r = strictAll(clone);
+  assert.equal(r.code, 0, `check --strict --all should exit 0:\n${both(r)}`);
+  noHint(r.stdout, 'not ok', 'delivers work for dates');
+});
+
+test('[VW-9] #162 control: the record-only branch in a full clone: check --strict --all exits 0, with no "delivers work for dates" not ok', (t) => {
+  const { repo } = datesBranch(t, { record: true });
+  const r = strictAll(prAt(t, repo));
+  assert.equal(r.code, 0, both(r));
+  noHint(r.stdout, 'not ok', 'delivers work for dates');
+});
+
+// F: `panel`, tier 1 and signed off, amends [P-1]. On the PR branch a
+// Request: panel commit modifies [P-1]; then main moves on and the branch
+// merges it. At depth 2 the merge-base is in the clone and the spec edit's
+// commit is the shallow boundary.
+const PANEL_ORG = '## Organized requirement\n\nR1: Panel MUST include a second thing. Amends: [P-1]\n';
+function panelBranch(t) {
+  const repo = makeRepo(t);
+  repo.write('specs/panel.md', P1);
+  addRequest(repo, 'panel', null, { org: PANEL_ORG, signedText: PANEL_ORG, line: 'Type: story · Tier: 1 · Status: open', decisions: '' });
+  repo.commit('signed panel request', { date: '2026-09-01T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'pr']);
+  repo.write('specs/panel.md', '## [P-1] Panel\nOne thing and a second.\n');
+  const edit = repo.commit(message('change panel', { request: 'panel', tier: '1 — panel' }), { date: '2026-09-02T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  repo.write('main.txt', 'main\n');
+  repo.commit('main work', { date: '2026-09-03T12:00:00Z' });
+  repo.git(['checkout', '-q', 'pr']);
+  repo.git(['merge', '-q', '--no-ff', '-m', message('merge main', { request: 'panel', tier: '1 — panel' }), 'main'], { date: '2026-09-04T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  return { repo, edit };
+}
+function panelShallow(t) {
+  const { repo, edit } = panelBranch(t);
+  const clone = prAt(t, repo, 2);
+  assert.ok(isBoundary(clone, edit), 'the fixture: the spec edit\'s commit is the shallow boundary');
+  clone.git(['merge-base', 'origin/main', 'HEAD']);
+  assert.equal(clone.git(['diff', '--name-only', 'origin/main', 'HEAD']), 'specs/panel.md', 'the fixture: the branch leaves specs/panel.md changed');
+  return { clone, edit };
+}
+
+test('[VW-9] #162 a tier-1 spec edit at the shallow boundary: the review\'s Blocks line names [P-1] for panel, never "none changed by this branch"', (t) => {
+  const { repo } = panelBranch(t);
+  const full = review(prAt(t, repo).dir);
+  assert.equal(full.code, 0, both(full));
+  assert.ok(labelled(full.stdout, 'Blocks').includes('this branch changes [P-1]'), `the full clone's Blocks line:\n${full.stdout}`);
+  const { clone } = panelShallow(t);
+  const r = review(clone.dir);
+  assert.equal(r.code, 0, both(r));
+  const blocks = labelled(r.stdout, 'Blocks');
+  assert.ok(!blocks.includes('none changed by this branch'), `[P-1] is changed in the branch's final state:\n${r.stdout}`);
+  assert.ok(blocks.includes('[P-1]'), `the Blocks line should name [P-1], as the full clone's does ("no change.md; this branch changes [P-1] for it"):\n${r.stdout}`);
+});
+
+test('[VW-9] #162 a tier-1 spec edit at the shallow boundary: conclude panel (preview) says "history unavailable" and exits 2', (t) => {
+  const { clone } = panelShallow(t);
+  const r = runAl(clone.dir, ['conclude', 'panel']);
+  assert.equal(r.code, 2, `conclude should refuse:\n${both(r)}`);
+  assert.ok(both(r).includes('history unavailable'), both(r));
+  assert.doesNotMatch(both(r), /Modified: none/, both(r));
+});
+
+test('[VW-9] #162 a tier-1 spec edit at the shallow boundary: conclude panel --yes says "history unavailable", exits 2, and writes nothing', (t) => {
+  const { clone } = panelShallow(t);
+  const before = readFileSync(join(clone.dir, 'requests/panel/request.md'), 'utf8');
+  const r = runAl(clone.dir, ['conclude', 'panel', '--yes']);
+  assert.equal(r.code, 2, `conclude --yes should refuse:\n${both(r)}`);
+  assert.ok(both(r).includes('history unavailable'), both(r));
+  assert.ok(!existsSync(join(clone.dir, 'requests/archive/panel')), 'no requests/archive/panel/');
+  assert.equal(readFileSync(join(clone.dir, 'requests/panel/request.md'), 'utf8'), before, 'requests/panel/request.md unchanged');
+  assert.equal(clone.git(['status', '--porcelain']), '', 'the work tree is clean');
+});
+
+test('[VW-9] #162 control: the tier-1 spec edit in a full clone: conclude panel --yes writes "- Modified: [P-1]"', (t) => {
+  const { repo } = panelBranch(t);
+  const clone = prAt(t, repo);
+  const r = runAl(clone.dir, ['conclude', 'panel', '--yes']);
+  assert.equal(r.code, 0, both(r));
+  const md = readFileSync(join(clone.dir, 'requests/archive/panel/request.md'), 'utf8');
+  assert.ok(lines(md).includes('- Modified: [P-1]'), md);
+  assert.ok(!both(r).includes('history unavailable'), both(r));
+});
