@@ -1,5 +1,6 @@
 // Every call to git goes through here. Output is a Buffer unless asked as text.
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 
 // The tool's own failure or misuse: exit 2 ([HNT-3]), with a Next line.
 export class Fail extends Error {
@@ -61,6 +62,19 @@ export function historyGap(top) {
   }
   return null;
 }
+
+// A commit at the shallow boundary: the clone's shallow file lists it, and its
+// object names a parent the clone does not hold, so what it changed cannot be
+// read ([VW-9]). A root made by a graft is not one: git reads it as a root.
+export function cutOff(top, sha) {
+  const shallow = git(top, ['rev-parse', '--path-format=absolute', '--git-path', 'shallow']);
+  return existsSync(shallow) && readFileSync(shallow, 'utf8').split('\n').includes(sha)
+    && /^parent /m.test(git(top, ['cat-file', 'commit', sha]).split('\n\n')[0]);
+}
+
+// The Not known entries for `commits` at the shallow boundary ([VW-9]).
+export const cutOffNotes = (top, commits) => commits.filter((c) => cutOff(top, c))
+  .map((c) => `${HISTORY}: the files ${c.slice(0, 7)} touched (its parent is past the shallow boundary)`);
 
 export function isShallow(top) {
   return git(top, ['rev-parse', '--is-shallow-repository'], { allowFail: true }) === 'true';
