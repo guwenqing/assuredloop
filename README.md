@@ -42,9 +42,13 @@ when you re-pin.
 
 To run `al check --strict` in CI, the job needs a clone of this repo at the
 pinned SHA, and the project checked out with its whole history
-(`fetch-depth: 0`); then it runs `node <clone>/bin/al.js check --strict`. On a
-shallow checkout it says `no main to compare with, so no commits were checked`,
-and exits 0 having checked nothing. While this repo is private, that clone
+(`fetch-depth: 0`); then it runs `node <clone>/bin/al.js check --strict`. A
+checkout with no main ref says
+`no main to compare with, so no commits were checked`: it checks none of the
+branch's commits and no history, though its checks of the working tree, such
+as duplicate IDs, still run and can fail. A shallow clone that has
+`origin/main` does not print that line, but reads no history before its
+shallow boundary. While this repo is private, that clone
 needs a secret with read access to it, which only this repo's owner can grant.
 Without one, run `al check --strict` before each review instead.
 
@@ -178,19 +182,23 @@ Do not replace `[R-2]` across the whole repo:
 
 Adopt the agreed text as it is, with no request: the owner signs a request's
 organized requirement, never the spec text ([REC-5]). Say in the commit
-message where and when the owner agreed it.
+message where and when the owner agreed it. Use two steps, as in the first
+example.
 
-The first commit, or a first PR with no Tier line, adds the spec under
-`specs/` (with `.assuredloop` if the root is elsewhere), the AGENTS.md line
-from Install, and the IDs:
+PR 1, before adoption, imports the agreed text under `specs/` (with
+`.assuredloop` if the root is elsewhere). It has no AGENTS.md line and no Tier
+line: AssuredLoop is not adopted yet, and its rules start at adoption.
+`al check`, if run on it, exits 0 with the two notes PR 1 above gets. In an
+empty repo, PR 1 can instead be the first commit, straight to main.
+
+PR 2 adopts: the AGENTS.md line from Install, and the IDs. It claims
+`Tier: 0 — adds section IDs and the AGENTS line; no promise changes`:
 
     al spec --add-ids specs/<file>.md --prefix <P> --yes
 
-On a first PR, `al check --strict` exits 0 with the two notes PR 1 above gets:
-`changes specs/<file>.md with no request linked` and `no Tier line`. On a first
-commit straight to main, it reads `0 commit(s) over main..HEAD` and says
-nothing. Requests, with the owner's sign-off, start at the first promise change
-after that.
+`al check --strict` passes, with one note: the commit changes
+`specs/<file>.md` with no request linked (fine for tier 0; say why). Requests,
+with the owner's sign-off, start at the first promise change after that.
 
 `specs/` holds promises, and each change to one needs the owner's sign-off, so
 a build or UI design belongs in `docs/`, or as ADRs in `docs/adr/`, which `al`
