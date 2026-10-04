@@ -482,3 +482,42 @@ test('[VW-9] #162 control: the tier-1 spec edit in a full clone: conclude panel 
   assert.ok(lines(md).includes('- Modified: [P-1]'), md);
   assert.ok(!both(r).includes('history unavailable'), both(r));
 });
+
+// G: a blocked request's edit to baseline text outside any section with an
+// ID. `dates` is open and not signed off; the boundary commit, with Request:
+// dates, changes only the intro of specs/panel.md (before its first `## [P-1]`
+// heading); then main moves on and the branch merges it. At depth 2 the
+// merge-base is in the clone and that commit is the shallow boundary.
+function introEdit(t) {
+  const repo = makeRepo(t);
+  repo.write('specs/panel.md', `# Panel\n\nThe panel shows things.\n\n${P1}`);
+  addRequest(repo, 'dates', null, { signed: false, decisions: '' });
+  repo.commit('dates request', { date: '2026-09-01T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'pr']);
+  repo.write('specs/panel.md', `# Panel\n\nThe panel shows things, and dates.\n\n${P1}`);
+  const edit = repo.commit(message('panel intro', { request: 'dates', tier: '2 — panel intro' }), { date: '2026-09-02T12:00:00Z' });
+  assert.equal(repo.git(['show', '--name-only', '--format=', edit]), 'specs/panel.md', 'the fixture: the commit touches only specs/panel.md');
+  assert.doesNotMatch(repo.git(['show', '--format=', edit]), /^[-+].*\[P-1\]|^[-+]One thing\./m, 'the fixture: the edit is outside [P-1]');
+  repo.git(['checkout', '-q', 'main']);
+  repo.write('main.txt', 'main\n');
+  repo.commit('main work', { date: '2026-09-03T12:00:00Z' });
+  repo.git(['checkout', '-q', 'pr']);
+  repo.git(['merge', '-q', '--no-ff', '-m', message('merge main', { request: 'dates', tier: '2 — panel intro' }), 'main'], { date: '2026-09-04T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  return { repo, edit };
+}
+
+test('[VW-9] #162 check: a blocked request\'s edit to spec text outside any ID\'d section, at the shallow boundary with a known merge-base: the blocked-delivery not ok for dates a full clone gives is still given', (t) => {
+  const { repo, edit } = introEdit(t);
+  const full = runAl(prAt(t, repo).dir, ['check', '--all']);
+  assert.equal(full.code, 0, both(full));
+  const fullLine = hint(full.stdout, 'not ok', ...BLOCKED);
+  const clone = prAt(t, repo, 2);
+  assert.ok(isBoundary(clone, edit), 'the fixture: the intro edit\'s commit is the shallow boundary');
+  const base = clone.git(['merge-base', 'origin/main', 'HEAD']);
+  assert.ok(clone.git(['diff', '--name-only', base, 'HEAD']).split('\n').includes('specs/panel.md'), 'the fixture: the branch leaves specs/panel.md changed against its fork');
+  const r = runAl(clone.dir, ['check', '--all']);
+  assert.equal(r.code, 0, both(r));
+  assertCheckFrame(r.stdout, 'origin/main');
+  assert.ok(lines(r.stdout).includes(fullLine), `the full clone's line should be given:\n${fullLine}\n---\n${r.stdout}`);
+});
