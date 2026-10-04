@@ -34,6 +34,20 @@ Then add one line to the project's AGENTS.md:
 AssuredLoop keeps this project's requests and spec: before work that changes a promise, read <dir>/skills/assuredloop/SKILL.md and run `al context`.
 ```
 
+In a shared repo whose contributors clone `al` in different places, copy
+`skills/assuredloop/SKILL.md` from `<dir>` at the pinned SHA into the project,
+for example as `.claude/skills/assuredloop/SKILL.md`. Name that path in the
+AGENTS.md line, say in the commit which SHA it came from, and copy it again
+when you re-pin.
+
+To run `al check --strict` in CI, the job needs a clone of this repo at the
+pinned SHA, and the project checked out with its whole history
+(`fetch-depth: 0`); then it runs `node <clone>/bin/al.js check --strict`. On a
+shallow checkout it says `no main to compare with, so no commits were checked`,
+and exits 0 having checked nothing. While this repo is private, that clone
+needs a secret with read access to it, which only this repo's owner can grant.
+Without one, run `al check --strict` before each review instead.
+
 ## The commands
 
 - `al new <name> --from <file|-> [--tier <1|2|3|S>] [--title <text>]`: start
@@ -159,6 +173,28 @@ Do not replace `[R-2]` across the whole repo:
   `not found; candidates SIZE-1`, shown as that request's own information. It
   is re-aligned in that request's own work. A replace there edits its signed
   `origin/` snapshot, which gives a `not ok`.
+
+### Starting a new repo from an already-agreed spec
+
+Adopt the agreed text as it is, with no request: the owner signs a request's
+organized requirement, never the spec text ([REC-5]). Say in the commit
+message where and when the owner agreed it.
+
+The first commit, or a first PR with no Tier line, adds the spec under
+`specs/` (with `.assuredloop` if the root is elsewhere), the AGENTS.md line
+from Install, and the IDs:
+
+    al spec --add-ids specs/<file>.md --prefix <P> --yes
+
+On a first PR, `al check --strict` exits 0 with the two notes PR 1 above gets:
+`changes specs/<file>.md with no request linked` and `no Tier line`. On a first
+commit straight to main, it reads `0 commit(s) over main..HEAD` and says
+nothing. Requests, with the owner's sign-off, start at the first promise change
+after that.
+
+`specs/` holds promises, and each change to one needs the owner's sign-off, so
+a build or UI design belongs in `docs/`, or as ADRs in `docs/adr/`, which `al`
+reads, unless a passage is a promise the owner wants guarded.
 
 ## What is enforced, and by whom
 
