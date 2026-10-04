@@ -46,6 +46,10 @@ export function ownFiles(top, sha) {
   return paths(git(top, ['diff-tree', '-r', '-z', '--no-commit-id', '--name-only', '-c', sha]));
 }
 
+// For a read bounded by the branch's final state: a commit's own files, or,
+// when they are unknown, every file of its tree; never to say what it changed ([VW-9]).
+export const mayTouch = (top, sha, files = ownFiles) => files(top, sha) ?? paths(git(top, ['ls-tree', '-r', '-z', '--name-only', sha]));
+
 // The commits up to `rev` that map to request `name`, by every route [LNK-2]
 // maps by: a Request: line, its folder, an issue number in its owner's words
 // (`issues`, such as ['#123']). Each as requestOf gives it.
