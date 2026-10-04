@@ -8,11 +8,11 @@
 // the PR head, which only touched a.txt, gets none.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { makeRepo, cloneRepo, runAl, git, tempDir } from './helpers/fixture.js';
 import { lines } from './helpers/output.js';
-import { addRequest, both, lineWith } from './helpers/request.js';
+import { addRequest, both, hasId, lineWith } from './helpers/request.js';
 import { labelled } from './helpers/links.js';
 import { assertCheckFrame, hint, message, noHint } from './helpers/hints.js';
 import { short } from './helpers/evidence.js';
@@ -520,4 +520,141 @@ test('[VW-9] #162 check: a blocked request\'s edit to spec text outside any ID\'
   assert.equal(r.code, 0, both(r));
   assertCheckFrame(r.stdout, 'origin/main');
   assert.ok(lines(r.stdout).includes(fullLine), `the full clone's line should be given:\n${fullLine}\n---\n${r.stdout}`);
+});
+
+// --- From the third review of PR #163: removals are part of the final state ---
+// H: with a known merge-base, a boundary commit's removals are in the
+// branch's final state, and a read bounded by it keeps them. Each case runs
+// the same command in a full clone and takes its text from that run.
+
+const P12 = '## [P-1] Panel\nFirst requirement.\n\n## [P-2] Second\nSecond requirement.\n';
+const RETIRE_ORG = '## Organized requirement\n\nR1: Panel MUST retire its first requirement. Amends: [P-1]\n';
+
+// `kind`: 'deleted-file' (a Request: panel commit deletes specs/panel.md),
+// 'removed-section' (it removes [P-1] and leaves [P-2] as it was), or
+// 'deleted-code' (a Request: dates commit deletes src/work.js, on main
+// before). `panel` is tier 1 and signed off; `dates` is open and unsigned.
+// Then main moves on and the branch merges it.
+function removal(t, kind) {
+  const repo = makeRepo(t);
+  repo.write('specs/panel.md', P12);
+  const name = kind === 'deleted-code' ? 'dates' : 'panel';
+  if (kind === 'deleted-code') {
+    repo.write('src/work.js', 'export const answer = 42;\n');
+    addRequest(repo, 'dates', null, { signed: false, decisions: '' });
+  } else {
+    addRequest(repo, 'panel', null, { org: RETIRE_ORG, signedText: RETIRE_ORG, line: 'Type: story · Tier: 1 · Status: open', decisions: '' });
+  }
+  repo.commit('baseline with request', { date: '2026-09-01T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'pr']);
+  if (kind === 'deleted-file') rmSync(join(repo.dir, 'specs/panel.md'));
+  if (kind === 'removed-section') repo.write('specs/panel.md', '## [P-2] Second\nSecond requirement.\n');
+  if (kind === 'deleted-code') rmSync(join(repo.dir, 'src/work.js'));
+  const tier = kind === 'deleted-code' ? '2 — removal' : '1 — removal';
+  const edit = repo.commit(message('remove old work', { request: name, tier }), { date: '2026-09-02T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  repo.write('main.txt', 'main\n');
+  repo.commit('main work', { date: '2026-09-03T12:00:00Z' });
+  repo.git(['checkout', '-q', 'pr']);
+  repo.git(['merge', '-q', '--no-ff', '-m', message('merge main', { request: name, tier }), 'main'], { date: '2026-09-04T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  return { repo, edit };
+}
+// The depth-2 clone: the removal's commit is the shallow boundary, the
+// merge-base is in the clone, and the branch leaves `delta` changed against it.
+function removalShallow(t, repo, edit, delta) {
+  const clone = prAt(t, repo, 2);
+  assert.ok(isBoundary(clone, edit), 'the fixture: the removal\'s commit is the shallow boundary');
+  const base = clone.git(['merge-base', 'origin/main', 'HEAD']);
+  assert.equal(clone.git(['diff', '--name-status', base, 'HEAD']), delta, 'the fixture: what the branch leaves changed against its fork');
+  return clone;
+}
+const namesIds = (text) => ['P-1', 'P-2'].filter((id) => hasId(text, id));
+
+test('[VW-9] #162 H1 a tier-1 deletion of specs/panel.md at the shallow boundary, known merge-base: the review\'s Blocks line names the removed IDs as a full clone does, never "none changed by this branch"', (t) => {
+  const { repo, edit } = removal(t, 'deleted-file');
+  const full = review(prAt(t, repo).dir);
+  assert.equal(full.code, 0, both(full));
+  const fullBlocks = labelled(full.stdout, 'Blocks');
+  assert.deepEqual(namesIds(fullBlocks), ['P-1', 'P-2'], `the full clone's Blocks line:\n${full.stdout}`);
+  const r = review(removalShallow(t, repo, edit, 'D\tspecs/panel.md').dir);
+  assert.equal(r.code, 0, both(r));
+  const blocks = labelled(r.stdout, 'Blocks');
+  assert.ok(!blocks.includes('none changed by this branch'), `the deletion is in the branch's final state:\n${r.stdout}`);
+  assert.deepEqual(namesIds(blocks), namesIds(fullBlocks), `the Blocks line should name what the full clone's does (${fullBlocks}):\n${r.stdout}`);
+});
+
+test('[VW-9] #162 H2 a tier-1 removal of [P-1] (with [P-2] left as it was) at the shallow boundary, known merge-base: the review\'s Blocks line names [P-1] as a full clone does', (t) => {
+  const { repo, edit } = removal(t, 'removed-section');
+  const full = review(prAt(t, repo).dir);
+  assert.equal(full.code, 0, both(full));
+  const fullBlocks = labelled(full.stdout, 'Blocks');
+  assert.deepEqual(namesIds(fullBlocks), ['P-1'], `the full clone's Blocks line:\n${full.stdout}`);
+  const r = review(removalShallow(t, repo, edit, 'M\tspecs/panel.md').dir);
+  assert.equal(r.code, 0, both(r));
+  const blocks = labelled(r.stdout, 'Blocks');
+  assert.ok(!blocks.includes('none changed by this branch'), `the removal of [P-1] is in the branch's final state:\n${r.stdout}`);
+  assert.deepEqual(namesIds(blocks), namesIds(fullBlocks), `the Blocks line should name what the full clone's does (${fullBlocks}):\n${r.stdout}`);
+});
+
+test('[VW-9] #162 H3 a blocked request\'s deletion of src/work.js at the shallow boundary, known merge-base: check --strict --all gives the full clone\'s blocked-delivery not ok for dates and exits 1 as it does', (t) => {
+  const { repo, edit } = removal(t, 'deleted-code');
+  const full = strictAll(prAt(t, repo));
+  assert.equal(full.code, 1, both(full));
+  const fullLine = hint(full.stdout, 'not ok', ...BLOCKED);
+  const r = strictAll(removalShallow(t, repo, edit, 'D\tsrc/work.js'));
+  assert.ok(lines(r.stdout).includes(fullLine), `the full clone's line should be given:\n${fullLine}\n---\n${r.stdout}`);
+  assert.equal(r.code, full.code, `check --strict --all should exit ${full.code}, as the full clone does:\n${both(r)}`);
+});
+
+// I: conclude with no merge-base. `panel` (tier 1, signed off) amends [P-1];
+// the PR's one commit, Request: panel, modifies [P-1]; main does not move.
+// In a depth-1 clone the commit is the shallow boundary and no merge-base
+// is in the clone.
+function panelNoFork(t) {
+  const repo = makeRepo(t);
+  repo.write('specs/panel.md', P1);
+  addRequest(repo, 'panel', null, { org: PANEL_ORG, signedText: PANEL_ORG, line: 'Type: story · Tier: 1 · Status: open', decisions: '' });
+  repo.commit('signed panel request', { date: '2026-09-01T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'pr']);
+  repo.write('specs/panel.md', '## [P-1] Panel\nOne thing and a second.\n');
+  const edit = repo.commit(message('change panel', { request: 'panel', tier: '1 — panel' }), { date: '2026-09-02T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  return { repo, edit };
+}
+function panelNoForkShallow(t) {
+  const { repo, edit } = panelNoFork(t);
+  const clone = prAt(t, repo, 1);
+  assert.ok(isBoundary(clone, edit), 'the fixture: the spec edit\'s commit is the shallow boundary');
+  assert.throws(() => clone.git(['merge-base', 'origin/main', 'HEAD']), 'the fixture: no merge-base in the clone');
+  return clone;
+}
+
+test('[VW-9] #162 I conclude panel (preview) with no merge-base in a depth-1 clone says "history unavailable" and exits 2', (t) => {
+  const clone = panelNoForkShallow(t);
+  const r = runAl(clone.dir, ['conclude', 'panel']);
+  assert.equal(r.code, 2, `conclude should refuse:\n${both(r)}`);
+  assert.ok(both(r).includes('history unavailable'), both(r));
+  assert.doesNotMatch(both(r), /Modified: none/, both(r));
+});
+
+test('[VW-9] #162 I conclude panel --yes with no merge-base in a depth-1 clone says "history unavailable", exits 2, and writes nothing', (t) => {
+  const clone = panelNoForkShallow(t);
+  const before = readFileSync(join(clone.dir, 'requests/panel/request.md'), 'utf8');
+  const r = runAl(clone.dir, ['conclude', 'panel', '--yes']);
+  assert.equal(r.code, 2, `conclude --yes should refuse:\n${both(r)}`);
+  assert.ok(both(r).includes('history unavailable'), both(r));
+  assert.ok(!existsSync(join(clone.dir, 'requests/archive/panel')), 'no requests/archive/panel/');
+  assert.equal(readFileSync(join(clone.dir, 'requests/panel/request.md'), 'utf8'), before, 'requests/panel/request.md unchanged');
+  assert.equal(clone.git(['status', '--porcelain']), '', 'the work tree is clean');
+});
+
+test('[VW-9] #162 I control: the same branch in a full clone: conclude panel --yes writes "- Modified: [P-1]"', (t) => {
+  const { repo } = panelNoFork(t);
+  const clone = prAt(t, repo);
+  const r = runAl(clone.dir, ['conclude', 'panel', '--yes']);
+  assert.equal(r.code, 0, both(r));
+  const md = readFileSync(join(clone.dir, 'requests/archive/panel/request.md'), 'utf8');
+  assert.ok(lines(md).includes('- Modified: [P-1]'), md);
+  assert.ok(!both(r).includes('history unavailable'), both(r));
 });
