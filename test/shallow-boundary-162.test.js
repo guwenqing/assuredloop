@@ -658,3 +658,57 @@ test('[VW-9] #162 I control: the same branch in a full clone: conclude panel --y
   assert.ok(lines(md).includes('- Modified: [P-1]'), md);
   assert.ok(!both(r).includes('history unavailable'), both(r));
 });
+
+// --- J: what the final state holds, through a deletion ---
+// `kind`: 'deleted-code' (`dates`, signed off, is open; a Request: dates
+// commit deletes src/work.js, on main before) or 'deleted-notes' (`dates` is
+// open and unsigned; the baseline has specs/notes.md, a title and a paragraph
+// with no section ID; a Request: dates commit deletes it and nothing else).
+// Then main moves on and the branch merges it.
+function deletion(t, kind) {
+  const repo = makeRepo(t);
+  repo.write('specs/panel.md', P1);
+  if (kind === 'deleted-code') repo.write('src/work.js', 'export const answer = 42;\n');
+  if (kind === 'deleted-notes') repo.write('specs/notes.md', '# Notes\n\nThese notes hold no requirement.\n');
+  addRequest(repo, 'dates', null, { signed: kind === 'deleted-code', decisions: '' });
+  repo.commit('baseline with request', { date: '2026-09-01T12:00:00Z' });
+  repo.git(['checkout', '-q', '-b', 'pr']);
+  const gone = kind === 'deleted-code' ? 'src/work.js' : 'specs/notes.md';
+  rmSync(join(repo.dir, gone));
+  const edit = repo.commit(message('remove old work', { request: 'dates', tier: '2 — removal' }), { date: '2026-09-02T12:00:00Z' });
+  assert.equal(repo.git(['show', '--name-status', '--format=', edit]), `D\t${gone}`, 'the fixture: the commit only deletes that file');
+  repo.git(['checkout', '-q', 'main']);
+  repo.write('main.txt', 'main\n');
+  repo.commit('main work', { date: '2026-09-03T12:00:00Z' });
+  repo.git(['checkout', '-q', 'pr']);
+  repo.git(['merge', '-q', '--no-ff', '-m', message('merge main', { request: 'dates', tier: '2 — removal' }), 'main'], { date: '2026-09-04T12:00:00Z' });
+  repo.git(['checkout', '-q', 'main']);
+  return { repo, edit, gone };
+}
+
+test('[VW-9] #162 J1 a Request: dates deletion of src/work.js at the shallow boundary, known merge-base: the review\'s Unlinked line is the full clone\'s (src/work.js is the served request\'s work, not unlinked or unknown)', (t) => {
+  const { repo, edit, gone } = deletion(t, 'deleted-code');
+  const full = review(prAt(t, repo).dir);
+  assert.equal(full.code, 0, both(full));
+  const fullUnlinked = labelled(full.stdout, 'Unlinked');
+  assert.ok(fullUnlinked, `the full clone's Unlinked line:\n${full.stdout}`);
+  assert.ok(!fullUnlinked.includes(gone), `the full clone's Unlinked line leaves src/work.js out:\n${full.stdout}`);
+  const r = review(removalShallow(t, repo, edit, `D\t${gone}`).dir);
+  assert.equal(r.code, 0, both(r));
+  assert.ok(!labelled(r.stdout, 'Unlinked').includes(gone), `src/work.js is the served request's work, as in the full clone (${fullUnlinked}):\n${r.stdout}`);
+  assert.ok(!lineWith(r.stdout, gone, 'linked to no served request'), r.stdout);
+  // The final state holds only src/work.js's deletion, which a commit of the
+  // served request may have made: nothing is left unlinked, or unknown.
+  assert.equal(labelled(r.stdout, 'Unlinked'), fullUnlinked, `the Unlinked line should be the full clone's:\n${r.stdout}`);
+});
+
+test('[VW-9] #162 J2 a blocked request\'s deletion of specs/notes.md (no section ID) at the shallow boundary, known merge-base: check --all gives the full clone\'s blocked-delivery not ok for dates', (t) => {
+  const { repo, edit, gone } = deletion(t, 'deleted-notes');
+  const full = runAl(prAt(t, repo).dir, ['check', '--all']);
+  assert.equal(full.code, 0, both(full));
+  const fullLine = hint(full.stdout, 'not ok', ...BLOCKED);
+  const r = runAl(removalShallow(t, repo, edit, `D\t${gone}`).dir, ['check', '--all']);
+  assert.equal(r.code, 0, both(r));
+  assertCheckFrame(r.stdout, 'origin/main');
+  assert.ok(lines(r.stdout).includes(fullLine), `the full clone's line should be given:\n${fullLine}\n---\n${r.stdout}`);
+});
