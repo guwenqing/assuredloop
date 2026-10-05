@@ -240,3 +240,14 @@ with no such line, or at an older commit, is shown but is not evidence.
 The previous version is on the `legacy` branch. Its build is tagged
 `assuredloop-base-0.1.0-canonical-build`, and its issues and pull requests stay
 in this repository.
+
+## Releasing
+
+1. Bump `version` in `package.json` in a PR, and merge it.
+2. Publish a GitHub Release tagged `v<version>` on that commit. Mark it a
+   pre-release to publish under npm's `next` tag.
+
+`.github/workflows/publish.yml` does the rest: it runs the tests and
+`al check --strict`, checks that the tag matches `package.json`, and publishes
+@assuredloop/cli to npm. It stores no npm token: npm trusts the workflow by
+name.
