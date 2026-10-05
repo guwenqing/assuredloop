@@ -1,6 +1,16 @@
 {
-  "name": "assuredloop",
-  "private": true,
+  "name": "@assuredloop/cli",
+  "version": "0.1.0",
+  "description": "AssuredLoop keeps an AI focused on one change: the al command gathers and checks a change's requirement, spec, decisions, code and tests.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guwenqing/assuredloop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/guwenqing/assuredloop/issues"
+  },
+  "homepage": "https://github.com/guwenqing/assuredloop#readme",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -8,7 +18,17 @@
   "bin": {
     "al": "bin/al.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "skills/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
