@@ -50,17 +50,15 @@ checkout <sha>`) and run `node <dir>/bin/al.js` in place of `al`; it needs no
 install, having no dependencies. From a clone, `al --version` also prints the
 commit.
 
-To run `al check --strict` in CI, the job needs a clone of this repo at the
-pinned SHA, and the project checked out with its whole history
-(`fetch-depth: 0`); then it runs `node <clone>/bin/al.js check --strict`. A
+To run `al check --strict` in CI, check the project out with its whole history
+(`fetch-depth: 0`), install the pinned version
+(`npm install --global @assuredloop/cli@0.1.0`), and run `al check --strict`. A
 checkout with no main ref says
 `no main to compare with, so no commits were checked`: it compares none of the
 branch's commits with main, though its other checks, such as duplicate IDs in
 the working tree, still run and can fail. A shallow clone that has
 `origin/main` does not print that line, but reads no history before its
-shallow boundary. While this repo is private, that clone
-needs a secret with read access to it, which only this repo's owner can grant.
-Without one, run `al check --strict` before each review instead.
+shallow boundary.
 
 ## The commands
 
@@ -260,5 +258,4 @@ in this repository.
 `.github/workflows/publish.yml` does the rest: it runs the tests and
 `al check --strict`, checks that the tag matches `package.json`, and publishes
 @assuredloop/cli to npm. It stores no npm token: npm trusts the workflow by
-name. While this repo is private, npm publishes with no provenance statement,
-since npm makes one only for a public repository.
+name, and adds a provenance statement saying which commit built the package.
