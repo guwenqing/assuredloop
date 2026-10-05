@@ -16,29 +16,39 @@ It gives hints; it blocks nothing but its own `consolidate` and `conclude`.
 
 ## Install
 
-It needs Node 24 or newer and git 2.31 or newer, and nothing else. Get the
-tool, which puts `al` on your PATH (nothing is published to a registry):
+It needs Node 24 or newer and git 2.31 or newer, and nothing else. Install
+the npm package `@assuredloop/cli`, which puts `al` on your PATH:
 
-    git clone https://github.com/guwenqing/assuredloop <dir>
-    npm install --global <dir>
+    npm install --global @assuredloop/cli
 
-The global `al` links to `<dir>`, so it follows whatever `<dir>` checks out.
-To pin a version, check out its SHA in a clone of its own (`git -C <dir>
-checkout <sha>`) and run `node <dir>/bin/al.js` in place of `al`; it needs no
-install, having no dependencies. `al --version` prints the version, and the
-commit and folder it runs from.
+To pin a version, name it: `npm install --global @assuredloop/cli@0.1.0`.
+`al --version` prints the version and the folder it runs from.
 
-Then add one line to the project's AGENTS.md:
+The package carries the skill. Its folder, `<dir>` below, is
+`$(npm root -g)/@assuredloop/cli`, so the skill is at
+`$(npm root -g)/@assuredloop/cli/skills/assuredloop/SKILL.md`. Then add one
+line to the project's AGENTS.md:
 
 ```
 AssuredLoop keeps this project's requests and spec: before work that changes a promise, read <dir>/skills/assuredloop/SKILL.md and run `al context`.
 ```
 
-In a shared repo whose contributors clone `al` in different places, copy
-`skills/assuredloop/SKILL.md` from `<dir>` at the pinned SHA into the project,
-for example as `.claude/skills/assuredloop/SKILL.md`. Name that path in the
-AGENTS.md line, say in the commit which SHA it came from, and copy it again
-when you re-pin.
+In a shared repo whose contributors install `al` in different places, copy
+`skills/assuredloop/SKILL.md` from `<dir>` at the pinned version into the
+project, for example as `.claude/skills/assuredloop/SKILL.md`. Name that path
+in the AGENTS.md line, say in the commit which version it came from, and copy
+it again when you re-pin.
+
+To work on `al` itself, use a clone in place of the npm package:
+
+    git clone https://github.com/guwenqing/assuredloop <dir>
+    npm install --global <dir>
+
+The global `al` links to `<dir>`, so it follows whatever `<dir>` checks out.
+To pin a commit, check out its SHA in a clone of its own (`git -C <dir>
+checkout <sha>`) and run `node <dir>/bin/al.js` in place of `al`; it needs no
+install, having no dependencies. From a clone, `al --version` also prints the
+commit.
 
 To run `al check --strict` in CI, the job needs a clone of this repo at the
 pinned SHA, and the project checked out with its whole history
