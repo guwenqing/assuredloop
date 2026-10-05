@@ -14,8 +14,6 @@ name: publish
 on:
   release:
     types: [published]
-  push: # TEMPORARY branch run for #165; removed before merge
-    branches: [publish-workflow-165]
 
 permissions:
   contents: read
@@ -64,7 +62,7 @@ jobs:
       # have to agree, or the release says one version and npm gets another.
       - name: The release tag is v<package.json version>
         env:
-          TAG: ${{ github.event.release.tag_name || 'v0.1.0' }} # TEMPORARY for the branch run (#165)
+          TAG: ${{ github.event.release.tag_name }}
         run: |
           want="v$(node -p "require('./package.json').version")"
           if [ "$TAG" != "$want" ]; then
@@ -77,4 +75,4 @@ jobs:
         env:
           PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
-          if [ "$PRERELEASE" = "true" ]; then npm publish --dry-run --tag next; else npm publish --dry-run; fi
+          if [ "$PRERELEASE" = "true" ]; then npm publish --tag next; else npm publish; fi
