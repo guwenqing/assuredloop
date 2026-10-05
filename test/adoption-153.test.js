@@ -41,13 +41,13 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DATE = '2026-09-30T12:00:00Z';
 
 // A copy of the tool (bin/, src/ and package.json) in `dir`, with
-// package.json's "version" set to `version` when given; returns its real path.
+// package.json's "version" set to `version` when given, else taken out (an
+// unreleased tool); returns its real path.
 function toolCopy(dir, { version } = {}) {
   mkdirSync(dir, { recursive: true });
   for (const p of ['bin', 'src', 'package.json']) cpSync(join(ROOT, p), join(dir, p), { recursive: true });
-  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-  assert.equal(pkg.version, undefined, 'the fixture: the repo\'s package.json has no "version" field');
-  if (version) writeFileSync(join(dir, 'package.json'), JSON.stringify({ ...pkg, version }, null, 2) + '\n');
+  const { version: _, ...pkg } = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  writeFileSync(join(dir, 'package.json'), JSON.stringify(version ? { ...pkg, version } : pkg, null, 2) + '\n');
   return realpathSync(dir);
 }
 
