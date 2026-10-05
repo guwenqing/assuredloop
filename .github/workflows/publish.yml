@@ -64,7 +64,7 @@ jobs:
       # have to agree, or the release says one version and npm gets another.
       - name: The release tag is v<package.json version>
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.event.release.tag_name || 'v0.1.0' }} # TEMPORARY for the branch run (#165)
         run: |
           want="v$(node -p "require('./package.json').version")"
           if [ "$TAG" != "$want" ]; then
