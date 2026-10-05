@@ -250,4 +250,5 @@ in this repository.
 `.github/workflows/publish.yml` does the rest: it runs the tests and
 `al check --strict`, checks that the tag matches `package.json`, and publishes
 @assuredloop/cli to npm. It stores no npm token: npm trusts the workflow by
-name.
+name. While this repo is private, npm publishes with no provenance statement,
+since npm makes one only for a public repository.
