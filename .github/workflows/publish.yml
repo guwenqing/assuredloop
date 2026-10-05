@@ -14,6 +14,8 @@ name: publish
 on:
   release:
     types: [published]
+  push: # TEMPORARY branch run for #165; removed before merge
+    branches: [publish-workflow-165]
 
 permissions:
   contents: read
@@ -75,4 +77,4 @@ jobs:
         env:
           PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
-          if [ "$PRERELEASE" = "true" ]; then npm publish --tag next; else npm publish; fi
+          if [ "$PRERELEASE" = "true" ]; then npm publish --dry-run --tag next; else npm publish --dry-run; fi
