@@ -494,8 +494,9 @@ Why: the owner wants search at a strength the user chooses, where "all cases
 must work, it just provides different strength" (input 131). The evidence
 for free text of this size: structure beats clever methods; word search is a
 strong base; and old text must be filtered out, not ranked down.
-- Ranking alone still leaves about half the top-5 hits outdated, even with
-  recency weighting (HoH, arXiv 2503.04800). Version-aware retrieval did much
+- Ranking alone still lets nearly half of queries retrieve an outdated
+  document among the top five results, even with recency weighting (HoH,
+  arXiv 2503.04800). Version-aware retrieval did much
   better on versioned technical documents (VersionRAG, arXiv 2510.08109). So
   search filters by role.
 - Graphs built by an LLM did no better than plain retrieval on direct
