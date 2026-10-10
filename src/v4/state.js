@@ -98,9 +98,11 @@ export function loadState(top, rev = null) {
       get tier() { return tierOf(); },
       get spike() { return tierOf() === 'S' || /^##\s+Organized question\s*$/m.test(md); },
       // Whether the record's text names `x`, so that a reader parses only the
-      // records that can hold what it looks for; mayAdopt for the adoption entries.
-      mentions: (x) => typeof text === 'string' && text.includes(x),
-      mayAdopt: typeof text === 'string' && text.includes('adoption'),
+      // records that can hold what it looks for; mayAdopt for the adoption
+      // entries. YAML writes a word another way only through an escape in a
+      // double-quoted string, so a record with a backslash always counts.
+      mentions: (x) => typeof text === 'string' && (text.includes(x) || text.includes('\\')),
+      mayAdopt: typeof text === 'string' && (text.includes('adoption') || text.includes('\\')),
       reqs: requirements(md), paras: new Map(paras.map((p) => [p.id, p])),
     });
   };
