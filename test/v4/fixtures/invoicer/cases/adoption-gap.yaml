@@ -1,0 +1,23 @@
+# Promise paragraphs with no link and no adoption entry (decision D12). Arm
+# unlisted: the adoption record loses its entry for INV-10. Arm new: a new
+# rule INV-17 with no link.
+title: Promise paragraphs that adoption does not cover
+base: base
+claim: "Tier: 1d — reminder-wording"
+arms:
+  unlisted:
+    steps:
+      - dispositionsDrop: {request: adoption, spec: INV-10}
+  new:
+    steps:
+      - edit:
+          file: specs/invoices.md
+          from: "<!-- INV-12 open"
+          to: |-
+            <!-- INV-17 rule -->
+
+            Invoicer MUST NOT send a reminder for an invoice that is paid.
+
+            <!-- INV-12 open
+      - index: true
+        date: 2026-07-30

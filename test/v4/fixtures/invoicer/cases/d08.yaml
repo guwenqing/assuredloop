@@ -39,7 +39,7 @@ steps:
   - edit:
       file: specs/invoices.md
       from: |-
-        <!-- INV-8 data serves:invoicer-baseline/R1 -->
+        <!-- INV-8 data -->
 
         An invoice has a number, a customer, lines, a total and a paid date.
       to: |-

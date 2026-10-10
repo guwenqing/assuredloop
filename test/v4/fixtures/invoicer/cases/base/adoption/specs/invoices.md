@@ -31,21 +31,6 @@ A paid invoice is one whose full amount has arrived.
 
 An invoice has a number, a customer, lines, a total and a paid date.
 
-<!-- INV-13 rule serves:invoice-numbers/R1 governed-by:ADR-1 -->
-
-Invoice numbers MUST be unique within one business and MUST NOT be used
-again, even after an invoice is cancelled.
-
-<!-- INV-15 rationale explains:INV-13 -->
-
-Tax offices in several countries ask for numbers with no gaps and no
-repeats, so a cancelled number stays used.
-
-<!-- INV-16 example illustrates:INV-13 -->
-
-Business A sends 2026-001 and 2026-002, then cancels 2026-002. Its next
-invoice is 2026-003, not 2026-002.
-
 <!-- INV-9 note -->
 
 ## Sending
@@ -59,6 +44,6 @@ Invoicer MUST send each invoice by email to the customer's billing address.
 Invoicer SHOULD send a reminder 7 days after the due date of an open
 invoice.
 
-<!-- INV-12 open resolved-by:reminder-emails/D1 -->
+<!-- INV-12 open -->
 
 Whether reminders may also go by text message is open.

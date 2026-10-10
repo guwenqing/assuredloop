@@ -53,6 +53,8 @@ Each step is a map with one key.
 | `index: true`, `date` | runs `al-v4 index` |
 | `align: <ID>`, `date` | runs `al-v4 index --align <ID>` |
 | `section: {request, text}` | appends text to the request's `request.md` |
+| `adoption: {doc, ids, text}` | writes the adoption request and record (item 2 below); run `index` first |
+| `dispositionsDrop: {request, spec}` | removes a request's dispositions that name one spec ID |
 | `dispositions: {request, add}` | appends dispositions to the request record; `al-v4 index` fills their hashes |
 | `disposition: {request, source, set}` | changes the latest disposition of one source, and keeps its hashes |
 | `decision: {request, id, set}` | adds fields to a decision of the request record |
@@ -65,7 +67,7 @@ Each step is a map with one key.
 
 | Case | What it is |
 |---|---|
-| `base` | the invoicer world: `specs/invoices.md`, `specs/exports.md`, ADR-1 to ADR-4; the archived requests `invoicer-baseline` and `invoice-numbers`; the open requests `invoice-exports`, `reminder-emails` and `link-expiry-spike` |
+| `base` | the invoicer world: the adoption commit (PR #10) on main, then `specs/invoices.md`, `specs/exports.md`, ADR-1 to ADR-4; the archived requests `adoption` (the adoption record) and `invoice-numbers`; the open requests `invoice-exports`, `reminder-emails` and `link-expiry-spike` |
 | `clean` | the base, and a branch that changes nothing |
 | `typo-pre` | on main: EXP-9, EXP-10, EXP-11 with real typos, from the archived request `export-rules` |
 | `d01` to `d14` | the planted defects, each with the arms `defect` and `control`; `d09` also has `newest` and `unclaimed` (the claim itself) |
@@ -81,19 +83,29 @@ Each step is a map with one key.
 | `cr-revert-m8`, `cr-revert-m9`, `cr-revert` | an incorporation, an unexplained revert on main, then the closing PR |
 | `cr-abandon-m8`, `cr-abandon-m9`, `cr-abandon` | EXP-9 added and removed on main, then the PR that abandons SP-7, SP-10, SP-11, SP-12 |
 | `cr-45` | SP-6 edited from 30 to 45 minutes after its early incorporation, with R2 version 2 signed |
+| `cr-remove` | tax-module removes INV-4 (a limit, signed) and adds INV-19; ready to close |
+| `spike-q2` | the spike's Q1 changes after its sign-off, and nobody signs the new version |
+| `conclude-unsigned` | late-fees incorporates a rule as EXP-9 with a valid disposition, but R1 is not signed |
+| `adoption-gap` | promise paragraphs with no link and no adoption entry: arm `unlisted` (INV-10's entry removed), arm `new` (a new rule INV-17) |
+| `views` | a central test that names EXP-4 and its result, and declared outputs of invoice-exports; arms `fresh` and `changed` (the test changes after the result) |
+
+The main commits of `cr-abandon` and `cr-revert` name their PR in the title,
+for example `(#46)`, so that the views find PRs from git.
 
 ## The conversion to the final design
 
 The fixtures were written before the final design. These are the changes.
 
 1. Markers have no `from:` link. `from` is not a marker link word.
-2. The adopted paragraphs (`from:adoption`) serve `invoicer-baseline/R1`.
-   `invoicer-baseline` is an archived request whose requirement is not
-   signed. Why: a promise or design paragraph with no link gets the hint
-   `no-link`, and `--strict` makes it `not ok`, so the base needs a link on
-   each of them. Adoption is not an owner approval, so the requirement stays
-   unsigned, and a change to such a paragraph still needs a signed request.
-   design.md does not say what link an adopted paragraph has.
+2. The adopted paragraphs (`from:adoption`) have a kind and no link
+   (decision D12). The base first commits the spec as it was at adoption
+   (INV-1 to INV-12) on main. Then the `adoption` step writes, by hand in the
+   T9 format, the archived request `adoption`
+   (`requests/archive/adoption/request.md`) and its record
+   `.assuredloop/records/requests/adoption.yaml`: one disposition per adopted
+   paragraph, `{source: adoption, disposition: incorporated, spec: <ID>,
+   commit: <the adopting commit>, spec_sha256: <the paragraph's text hash>}`.
+   `al-v4 index` writes no hash for adoption (D8), so these fields stay.
 3. A path-1 paragraph uses `serves:<request>/R<n>` (defects-repair.yaml).
 4. A removal is `removes:<ID>`, not `changes:<ID> remove`.
 5. ADRs have the form of decision D4: `specs/adr/NNNN-<slug>.md`, a

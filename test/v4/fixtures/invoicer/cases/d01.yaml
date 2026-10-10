@@ -31,7 +31,7 @@ after:
   - edit:
       file: specs/invoices.md
       from: |-
-        <!-- INV-6 definition serves:invoicer-baseline/R1 -->
+        <!-- INV-6 definition -->
 
         A paid invoice is one whose full amount has arrived.
       to: |-
