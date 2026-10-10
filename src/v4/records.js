@@ -13,7 +13,9 @@ export function openRecord(top, name) {
   const text = read(top, path);
   if (text === null) return null;
   const doc = parseDocument(text);
-  if (doc.errors.length || !isMap(doc.contents)) throw new Fail(`${path} is not a valid record: ${doc.errors[0]?.message.split('\n')[0] ?? 'not a map'}`, `fix ${path} by hand`);
+  if (doc.errors.length || !isMap(doc.contents)) {
+    throw Object.assign(new Fail(`${path} is not a valid record: ${doc.errors[0]?.message.split('\n')[0] ?? 'not a map'}`, `fix ${path} by hand`), { invalid: true });
+  }
   return { doc, path, text, get data() { return doc.toJS() ?? {}; } };
 }
 

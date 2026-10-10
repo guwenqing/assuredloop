@@ -7,8 +7,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  INVOICES, appendSection, commitAll, doc, docRecord, exists, git, index, newRequest, ok, organized, paragraph, project,
-  record, refused, req, tree, write, writeConfig,
+  INVOICES, appendSection, commitAll, doc, docRecord, editRecord, exists, git, index, newRequest, ok, organized,
+  paragraph, project, record, refused, req, tree, write, writeConfig,
 } from './helpers/project.js';
 
 // <scratch>/a/b/project is the project; <scratch>/outside.md is a marked doc.
@@ -100,3 +100,15 @@ for (const root of ['.', './']) {
     assert.ok(!exists(dir, '.assuredloop/records/adr/0001-first.md.yaml'));
   });
 }
+
+test('index refuses a declared output whose file leaves the project: exit 2, nothing written', (t) => {
+  const { scratch, dir } = nested(t);
+  writeConfig(dir);
+  write(scratch, 'a/outside.js', 'export const minutes = 30;\n');
+  newRequest(dir, 'inv');
+  editRecord(dir, 'inv', (rec) => { rec.outputs = [{ file: '../../outside.js', implements: ['INV-41'] }]; });
+  const before = around(scratch);
+  assert.equal(before['a/outside.js'], Buffer.from('export const minutes = 30;\n').toString('base64'), 'the file exists there');
+  refused(dir, ['index']);
+  assert.deepEqual(around(scratch), before, 'the outside file is unchanged');
+});

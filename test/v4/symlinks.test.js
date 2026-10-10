@@ -3,12 +3,12 @@
 // inside the repo or in the symlink's target (#175, review finding).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
-  INVOICES, appendSection, doc, editFile, exists, newRequest, ok, organized, project, read, record, refused, req, tree,
-  write, writeConfig,
+  INVOICES, appendSection, doc, editFile, editRecord, exists, move, newRequest, ok, organized, project, read, record,
+  refused, req, tree, write, writeConfig,
 } from './helpers/project.js';
 
 // A folder outside the project, removed when the test ends.
@@ -18,7 +18,7 @@ function outside(t) {
   return dir;
 }
 
-// Moves the project folder rel out to `external` and puts a symlink in its place.
+// Moves the project folder or file rel out to `external` and puts a symlink in its place.
 function symlinkOut(dir, rel, external) {
   rmSync(external, { recursive: true, force: true });
   renameSync(join(dir, rel), external);
@@ -166,4 +166,83 @@ test('index refuses when requests/ is a symlink to a folder with a request, and 
   assert.deepEqual(Object.keys(before).sort(), ['inv/origin/2026-05-04-owner-words.md', 'inv/request.md', 'inv/spec.md']);
   refused(dir, ['index']);
   assert.deepEqual(tree(external), before);
+});
+
+// --- index and the record commands read no file through a symlink (#175, review finding)
+
+// An open request inv with a draft R1, and specs/invoices.md.
+function draftProject(t) {
+  const dir = project(t);
+  write(dir, 'specs/invoices.md', INVOICES);
+  newRequest(dir, 'inv');
+  appendSection(dir, 'inv', organized([req('R1', 'Monthly CSV', 'A month MUST be one CSV file.')]));
+  return dir;
+}
+
+// Moves the file rel out of the project and puts a symlink in its place; the
+// outside path.
+function fileOut(t, dir, rel) {
+  const external = join(outside(t), rel.split('/').at(-1));
+  symlinkOut(dir, rel, external);
+  return external;
+}
+
+test('index refuses when an open request.md is a symlink to an outside file', (t) => {
+  const dir = draftProject(t);
+  const external = fileOut(t, dir, 'requests/inv/request.md');
+  const text = readFileSync(external, 'utf8');
+  assert.match(text, /### R1 Monthly CSV/);
+  refused(dir, ['index']);
+  assert.deepEqual(record(dir, 'inv').requirements, [], 'no version from the outside file');
+  assert.equal(readFileSync(external, 'utf8'), text);
+});
+
+test('index refuses when an archived request.md is a symlink', (t) => {
+  const dir = draftProject(t);
+  newRequest(dir, 'old');
+  move(dir, 'requests/old', 'requests/archive/old');
+  const external = fileOut(t, dir, 'requests/archive/old/request.md');
+  const text = readFileSync(external, 'utf8');
+  refused(dir, ['index']);
+  assert.equal(readFileSync(external, 'utf8'), text);
+});
+
+test('index refuses when requests/archive is a symlink to an outside folder with a request', (t) => {
+  const dir = draftProject(t);
+  newRequest(dir, 'old');
+  move(dir, 'requests/old', 'requests/archive/old');
+  const external = join(outside(t), 'archive');
+  symlinkOut(dir, 'requests/archive', external);
+  const before = tree(external);
+  assert.ok(Object.keys(before).includes('old/request.md'));
+  refused(dir, ['index']);
+  assert.deepEqual(tree(external), before);
+});
+
+test('index refuses when the request record file is a symlink to an outside file', (t) => {
+  const dir = draftProject(t);
+  const external = fileOut(t, dir, '.assuredloop/records/requests/inv.yaml');
+  const text = readFileSync(external, 'utf8');
+  refused(dir, ['index']);
+  assert.equal(readFileSync(external, 'utf8'), text, 'the outside record is unchanged');
+});
+
+test('record signoff refuses when request.md is a symlink: no snapshot, no record change', (t) => {
+  const dir = draftProject(t);
+  const external = fileOut(t, dir, 'requests/inv/request.md');
+  const text = readFileSync(external, 'utf8');
+  refused(dir, ['record', 'inv', 'signoff', '--source', 'x', '--yes']);
+  assert.ok(!exists(dir, 'requests/inv/origin/2026-05-04-signoff.md'));
+  assert.deepEqual(record(dir, 'inv').signoff, []);
+  assert.equal(readFileSync(external, 'utf8'), text);
+});
+
+test('index refuses when a declared output file is a symlink to an outside file', (t) => {
+  const dir = draftProject(t);
+  write(dir, 'src/x.js', 'export const minutes = 30;\n');
+  editRecord(dir, 'inv', (rec) => { rec.outputs = [{ file: 'src/x.js', implements: ['INV-41'] }]; });
+  const external = fileOut(t, dir, 'src/x.js');
+  refused(dir, ['index']);
+  assert.equal(readFileSync(external, 'utf8'), 'export const minutes = 30;\n');
+  assert.deepEqual(record(dir, 'inv').bindings.filter((b) => b.holder === 'src/x.js'), []);
 });
