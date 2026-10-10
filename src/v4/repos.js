@@ -140,7 +140,8 @@ function applies(repo, res) {
 
 // The result files of an output repo at its commit, in its own results folder.
 function resultsOf(repo) {
-  const dir = String(configAt(repo.dir, repo.sha).results ?? '.assuredloop/results').replace(/\/+$/, '');
+  // As a repo path, the form git gives back: `./ci/results/` is `ci/results`.
+  const dir = posix.normalize(String(configAt(repo.dir, repo.sha).results ?? '.assuredloop/results')).replace(/\/+$/, '');
   const files = (git(repo.dir, ['ls-tree', '-z', '--name-only', repo.sha, '--', `${dir}/`], { allowFail: true }) ?? '')
     .split('\0').filter((f) => f.startsWith(`${dir}/`) && !f.slice(dir.length + 1).includes('/') && f.endsWith('.yaml')).sort();
   return files.map((file) => {
