@@ -27,8 +27,8 @@ function reasons(state, r) {
   }
   const judged = judgeRequest(state, r);
   // A paragraph abandoned with no kept effect needs no sign-off (design.md 6);
-  // one kept by an owner decision is judged with its sign-off in judge().
-  const dropped = new Set(judged.filter((j) => j.status === 'abandoned' && j.valid && !j.d?.decision).map((j) => j.p.id));
+  // one whose effect an owner decision keeps is judged with its sign-off in judge().
+  const dropped = new Set(judged.filter((j) => j.status === 'abandoned' && j.valid && j.kept === false).map((j) => j.p.id));
   const unsigned = [
     ...[...r.paras.values()].filter((p) => isPromise(state, p.kind) && !dropped.has(p.id) && !servesSigned(state, p, r.name)).map((p) => `${r.name}/${p.id}`),
     ...[...state.spec.values()].filter((p) => isPromise(state, p.kind) && p.links.serves.some((s) => qualify(s, null).req === r.name)

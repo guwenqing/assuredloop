@@ -101,13 +101,16 @@ const resultChecks = (state) => new Set(state.rev ? [] : loadResults(state.top).
 function checksOf(id, cites, verifies, named, cross = null) {
   const files = [...(cites.get(id) ?? [])].sort();
   const outside = crossCites(cross, id);
+  // A file that an output repo's result names as its check is a check there too.
+  const outNamed = new Set((cross?.results ?? []).map((res) => `${res.repo}/${res.check}`));
+  const isCheck = (c) => isTest(c.file) || outNamed.has(`${c.repo}/${c.file}`);
   return {
     checks: [
       ...files.filter((f) => isTest(f) || named.has(f)).map((file) => ({ file, how: 'cites it' })),
-      ...outside.filter((c) => isTest(c.file)).map((c) => ({ file: `${c.repo}/${c.file}`, how: `cites it (at ${c.repo}@${c.commit.slice(0, 7)})`, repo: c.repo, path: c.file })),
+      ...outside.filter(isCheck).map((c) => ({ file: `${c.repo}/${c.file}`, how: `cites it (at ${c.repo}@${c.commit.slice(0, 7)})`, repo: c.repo, path: c.file })),
       ...(verifies.get(id) ?? []).map((file) => ({ file, how: 'verifies it (a claim)' })),
     ],
-    other: [...files.filter((f) => !isTest(f) && !named.has(f)), ...outside.filter((c) => !isTest(c.file)).map((c) => `${c.repo}/${c.file}`)],
+    other: [...files.filter((f) => !isTest(f) && !named.has(f)), ...outside.filter((c) => !isCheck(c)).map((c) => `${c.repo}/${c.file}`)],
   };
 }
 
@@ -154,8 +157,11 @@ function coverage(state, rules, perRule) {
 
 // The PRs that name the request, from the commit messages of main (or of the
 // selected commit): "#46 (abc1234)". Exact facts from git.
+// The main branch of this clone: main, else origin/main, else null.
+const mainRef = (top) => ['main', 'origin/main'].find((m) => git(top, ['rev-parse', '--verify', '--quiet', `${m}^{commit}`], { allowFail: true })) ?? null;
+
 function prsFromGit(state, name) {
-  const rev = state.rev ?? (git(state.top, ['rev-parse', '--verify', '--quiet', 'main'], { allowFail: true }) ? 'main' : 'HEAD');
+  const rev = state.rev ?? mainRef(state.top) ?? 'HEAD';
   const out = git(state.top, ['log', '--format=%H%x09%B%x00', rev], { allowFail: true }) ?? '';
   const prs = new Map();
   const word = new RegExp(`(?<![\\w-])${name.replace(/[-]/g, '\\-')}(?![\\w-])`);
@@ -172,7 +178,11 @@ function prsFromGit(state, name) {
 // `#n` in the first-parent history of main (or of the selected commit); an
 // output repo's from crossRepo. Never "not merged": a merge not found is that.
 function taskPrs(state, r) {
-  const rev = state.rev ?? (git(state.top, ['rev-parse', '--verify', '--quiet', 'main'], { allowFail: true }) ? 'main' : 'HEAD');
+  const main = state.rev ? null : mainRef(state.top);
+  const rev = state.rev ?? main ?? 'HEAD';
+  // With no main branch, a merge read from HEAD may be the branch's own commit: say so.
+  const limit = state.rev || main ? '' : ' (read from HEAD: no main branch, so a commit of this branch may show as merged)';
+  const where = state.rev ? state.rev.slice(0, 7) : main ?? 'HEAD';
   const self = new Set(['central', ...(typeof state.config.repo === 'string' ? [state.config.repo] : [])]);
   const cross = crossOf(state);
   const repos = new Map((cross?.repos ?? []).map((x) => [x.name, x]));
@@ -181,7 +191,7 @@ function taskPrs(state, r) {
     if (!m) return '(not a PR reference)';
     if (!m[1] || self.has(m[1])) {
       const merge = mergeOf(state.top, rev, m[2]);
-      return merge ? `merged at ${merge.slice(0, 7)}` : `no merge found in ${rev === 'main' ? 'main' : rev.slice(0, 7)}`;
+      return merge ? `merged at ${merge.slice(0, 7)}${limit}` : `no merge found in ${where}${limit}`;
     }
     if (state.rev) return 'unknown: output repos are read at the working tree only';
     const l = (cross?.links ?? []).find((x) => x.link === 'pr' && x.holder === `${r.name}/${task}` && x.target === pr);

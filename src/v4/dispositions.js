@@ -87,31 +87,22 @@ export function judge(state, r, p, d, opts = {}, seen = new Set()) {
       return v.valid ? yes(`by ${d.by}`) : no(`${d.by}: ${v.reason}`);
     }
     case 'abandoned': {
-      if (d.decision) {
-        const x = decision(d.decision);
-        if (!x) return no(`${d.decision} is not in the record`);
-        if (!/^owner\b/i.test(String(x.source ?? ''))) return no(`${d.decision}'s source is not the owner`);
-        if (isPromise(state, p.kind) && !servesSigned(state, p, r.name)) return no(`${d.decision} keeps a promise, and no signed requirement covers it`);
-        return yes(`kept by ${d.decision}`);
+      // First the facts of no kept effect (D15 rules a-c): then no sign-off is
+      // needed, whatever decision names the drop (design.md 6).
+      const effect = keptEffect(state, r, p, source);
+      if (!effect) {
+        if (d.decision && !decision(d.decision)) return no(`${d.decision} is not in the record`);
+        notes.push(...nearNotes(state, p));
+        return { valid: true, reason: d.decision ? `never applied, or reverted; dropped by ${d.decision}` : null, notes, kept: false };
       }
-      const holder = source;
-      for (const id of p.links.changes) {
-        const b = bindingOf(r.data, holder, 'changes', id);
-        if (!b) return no(`no changes binding to ${id}, so whether it was applied is unknown`);
-        if (spec(id)?.sha256 !== b.target_sha256) return no(`${id} is not the version that ${p.id} bound: applied, or changed since`);
-      }
-      for (const id of p.links.removes) {
-        const b = bindingOf(r.data, holder, 'removes', id);
-        if (!b) return no(`no removes binding to ${id}, so whether it was applied is unknown`);
-        if (spec(id)?.sha256 !== b.target_sha256) return no(`${id} is gone or changed: the removal was applied`);
-      }
-      if (!p.links.changes.length && !p.links.removes.length) {
-        const same = [...state.spec.values()].find((s) => s.sha256 === p.sha256);
-        if (same) return no(`its text is in specs/ as ${same.id}`);
-        const near = [...state.spec.values()].find((s) => s.kind !== 'note' && closeness(s.text, p.text) >= NEAR);
-        if (near) notes.push(`near-match ${near.id}: applied in another form?`);
-      }
-      return yes();
+      // Its effect is still in specs/: only an owner decision can keep it, and
+      // a kept promise needs a signed requirement (D15 rule d, design.md 5).
+      if (!d.decision) return no(effect);
+      const x = decision(d.decision);
+      if (!x) return no(`${d.decision} is not in the record`);
+      if (!/^owner\b/i.test(String(x.source ?? ''))) return no(`${d.decision}'s source is not the owner, and ${effect}`);
+      if (isPromise(state, p.kind) && !servesSigned(state, p, r.name)) return no(`${d.decision} keeps a promise, and no signed requirement covers it`);
+      return { valid: true, reason: `its effect is kept by ${d.decision}`, notes, kept: true };
     }
     default:
       return no(`"${d.disposition}" is not a disposition`);
@@ -122,7 +113,9 @@ export function judge(state, r, p, d, opts = {}, seen = new Set()) {
 // git history (the newest commit that added or removed its marker), or null.
 export function pastKind(state, id) {
   const paths = [state.root, ...state.config.docs.map((d) => String(d.file))];
-  const out = git(state.top, ['log', '--format=%H', '-S', `<!-- ${id} `, state.rev ?? 'HEAD', '--', ...paths], { allowFail: true }) ?? '';
+  // Any marker spacing the parser allows: `<!--`, blanks, the ID, a blank.
+  const marker = `<!--[[:space:]][[:space:]]*${id}[[:space:]]`;
+  const out = git(state.top, ['log', '--format=%H', '-G', marker, state.rev ?? 'HEAD', '--', ...paths], { allowFail: true }) ?? '';
   for (const sha of out.split('\n').filter(Boolean)) {
     for (const rev of [`${sha}^`, sha]) {
       for (const d of docsInScope(state.top, state.config, rev).filter((x) => x.scope === SPEC)) {
@@ -133,6 +126,35 @@ export function pastKind(state, id) {
   }
   return null;
 }
+
+// Why paragraph `p` (<request>/SP-n `source`) still has an effect in specs/,
+// or null when it has none: its changes or removes targets keep the text they
+// were bound to, and a paragraph with neither link has no copy in specs/.
+function keptEffect(state, r, p, source) {
+  const spec = (id) => state.spec.get(id) ?? null;
+  for (const id of p.links.changes) {
+    const b = bindingOf(r.data, source, 'changes', id);
+    if (!b) return `no changes binding to ${id}, so whether it was applied is unknown`;
+    if (spec(id)?.sha256 !== b.target_sha256) return `${id} is not the version that ${p.id} bound: applied, or changed since`;
+  }
+  for (const id of p.links.removes) {
+    const b = bindingOf(r.data, source, 'removes', id);
+    if (!b) return `no removes binding to ${id}, so whether it was applied is unknown`;
+    if (spec(id)?.sha256 !== b.target_sha256) return `${id} is gone or changed: the removal was applied`;
+  }
+  if (!p.links.changes.length && !p.links.removes.length) {
+    const same = [...state.spec.values()].find((s) => s.sha256 === p.sha256);
+    if (same) return `its text is in specs/ as ${same.id}`;
+  }
+  return null;
+}
+
+// A near match in specs/ for a paragraph with no changes or removes link.
+const nearNotes = (state, p) => {
+  if (p.links.changes.length || p.links.removes.length) return [];
+  const near = [...state.spec.values()].find((s) => s.kind !== 'note' && closeness(s.text, p.text) >= NEAR);
+  return near ? [`near-match ${near.id}: applied in another form?`] : [];
+};
 
 // Every change paragraph of request `r` with a baseline effect, with the
 // disposition of its current version and its validity. A spike has none.
