@@ -6,7 +6,7 @@
 // Round b ("Git versions", review of PR #191): the reads use only what git
 // 2.31 has (`cat-file --batch`, one name on each line, no -z or -Z); a name
 // that holds a newline or ends in a carriage return gets its own process.
-import { test, describe } from 'node:test';
+import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, chmodSync, realpathSync } from 'node:fs';
@@ -428,9 +428,11 @@ describe('one git process for any number of paths', () => {
 const SLACK = 3;
 
 // Doc i at the base and on the branch: the branch rewords D<i>-2 and adds D<i>-3.
+// Notes, and a Tier line in the commit, so that the checks of #184 (sign-off
+// coverage, links, the Tier claim) find nothing: the output is the change lines.
 const docName = (i) => (i === 2 ? 'specs/doc 2.md' : i === 3 ? 'specs/données 3.md' : `specs/doc${i}.md`);
-const baseDoc = (i) => `<!-- D${i}-1 note -->\n\n# Doc ${i}\n\n<!-- D${i}-2 rule serves:R1 -->\n\nDoc ${i} MUST work.\n`;
-const branchDoc = (i) => `${baseDoc(i).replace(`Doc ${i} MUST work.`, `Doc ${i} MUST work every day.`)}\n<!-- D${i}-3 rule serves:R1 -->\n\nDoc ${i} MUST log.\n`;
+const baseDoc = (i) => `<!-- D${i}-1 note -->\n\n# Doc ${i}\n\n<!-- D${i}-2 note -->\n\nDoc ${i} works.\n`;
+const branchDoc = (i) => `${baseDoc(i).replace(`Doc ${i} works.`, `Doc ${i} works every day.`)}\n<!-- D${i}-3 note -->\n\nDoc ${i} logs.\n`;
 
 function checkRepo(t, n) {
   const dir = project(t);
@@ -438,7 +440,7 @@ function checkRepo(t, n) {
   commitAll(dir, `${n} docs`);
   pgit(dir, 'checkout', '-q', '-b', 'feature');
   for (let i = 1; i <= n; i++) write(dir, docName(i), branchDoc(i));
-  commitAll(dir, `change ${n} docs`);
+  commitAll(dir, `change ${n} docs\n\nTier: 0 — notes only`);
   return dir;
 }
 
@@ -505,6 +507,76 @@ describe('al-v4 check and al-v4 index start about as many git processes for 60 a
   test('index: a branch with 5 requests and one with 60', (t) => {
     const five = indexRun(t, 5);
     const sixty = indexRun(t, 60);
+    assert.ok(sixty.processes <= five.processes + SLACK,
+      `git processes: ${five.processes} for 5 requests, ${sixty.processes} for 60\n--- 60:\n${sixty.calls.join('\n')}`);
+  });
+});
+
+// The state of the base (#184, src/v4/state.js): each request's request.md and
+// record, and each ADR, at the merge-base. `al-v4 check` and `al-v4 context`
+// read it. A repo with n requests (al-v4 new) and n ADRs on main, then a branch.
+const adrText = (i) => `Status: accepted\n\n<!-- ADR-${i} choice -->\n\n# ADR-${i}: Choice ${i}\n\n<!-- ADR-${i}-1 rationale -->\n\nContext: reason ${i}.\n`;
+const adrFile = (i) => `specs/adr/${String(i).padStart(4, '0')}-choice-${i}.md`;
+
+describe('al-v4 check and al-v4 context read the state of the base with about as many git processes for 60 requests as for 5', () => {
+  const cleanups = [];
+  after(() => cleanups.forEach((f) => f()));
+  const repos = new Map();
+  // Built once for both tests.
+  function stateRepo(n) {
+    if (!repos.has(n)) {
+      const dir = project({ after: (f) => cleanups.push(f) });
+      write(dir, 'README.md', 'fixture\n');
+      commitAll(dir, 'initial');
+      for (let i = 1; i <= n; i++) newRequest(dir, `r${i}`);
+      for (let i = 1; i <= n; i++) write(dir, adrFile(i), adrText(i));
+      commitAll(dir, `${n} requests and ${n} ADRs`);
+      pgit(dir, 'checkout', '-q', '-b', 'feature');
+      repos.set(n, dir);
+    }
+    return repos.get(n);
+  }
+
+  // One run of `al-v4 <args>` with the wrapper: its output, checked by
+  // `assertOut`, the same as without the wrapper; and its git processes.
+  function stateRun(t, n, args, assertOut) {
+    const dir = stateRepo(n);
+    const counter = gitCounter(t);
+    counter.reset();
+    const r = al(dir, args, { env: { PATH: counter.PATH } });
+    const processes = counter.count();
+    const calls = counter.calls();
+    assert.ok(calls.some((l) => l.includes('merge-base')), `the wrapper saw al's git:\n${calls.join('\n')}`);
+    assertOut(r, n);
+    const plain = al(dir, args);
+    assert.equal(plain.code, r.code, show(plain));
+    assert.equal(plain.stdout, r.stdout, 'the same output without the wrapper');
+    return { processes, calls };
+  }
+
+  const assertCheck = (r) => {
+    assert.equal(r.code, 0, show(r));
+    assert.ok(outLines(r).includes('ok: no marker lint'), show(r));
+    assert.deepEqual(outLines(r).filter((l) => /^(not ok|hint) /.test(l)), [], show(r));
+    assert.match(r.stdout, /^Read {6}working tree · base [0-9a-f]+ \(merge-base with main\)$/m, show(r));
+  };
+  const assertContext = (r, n) => {
+    assert.equal(r.code, 0, show(r));
+    const requestLines = outLines(r).filter((l) => l.startsWith('Request '));
+    assert.equal(requestLines.length, n, show(r));
+    for (let i = 1; i <= n; i++) assert.ok(requestLines.some((l) => l.startsWith(`Request   r${i} · `)), `a Request line for r${i}:\n${show(r)}`);
+  };
+
+  test('check: a branch on a main with 5 requests and 5 ADRs, and one with 60 of each', (t) => {
+    const five = stateRun(t, 5, ['check'], assertCheck);
+    const sixty = stateRun(t, 60, ['check'], assertCheck);
+    assert.ok(sixty.processes <= five.processes + SLACK,
+      `git processes: ${five.processes} for 5 requests, ${sixty.processes} for 60\n--- 60:\n${sixty.calls.join('\n')}`);
+  });
+
+  test('context: a branch on a main with 5 requests and 5 ADRs, and one with 60 of each', (t) => {
+    const five = stateRun(t, 5, ['context'], assertContext);
+    const sixty = stateRun(t, 60, ['context'], assertContext);
     assert.ok(sixty.processes <= five.processes + SLACK,
       `git processes: ${five.processes} for 5 requests, ${sixty.processes} for 60\n--- 60:\n${sixty.calls.join('\n')}`);
   });
