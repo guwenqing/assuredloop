@@ -25,7 +25,8 @@ export const LINK_WORDS = {
 
 export const groupOf = (kind, kinds = KINDS) => Object.keys(kinds).find((g) => kinds[g].includes(kind)) ?? null;
 
-export const MARKER = /^<!--[ \t]+([A-Z][A-Z0-9]*-[0-9]+)((?:[ \t]+\S+)*?)[ \t]+-->[ \t]*$/;
+// An ID is PREFIX-n; an ADR's paragraphs below its heading take ADR-n-k (D4).
+export const MARKER = /^<!--[ \t]+(ADR-[0-9]+-[0-9]+|[A-Z][A-Z0-9]*-[0-9]+)((?:[ \t]+\S+)*?)[ \t]+-->[ \t]*$/;
 export const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 export const HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$/;
 
