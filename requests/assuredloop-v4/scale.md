@@ -177,9 +177,9 @@ rebuild was 28 to 44 s, the incremental index 13 to 17 s, and search 0.15 to
   state. Sharing one load could change its output for an archived folder with
   no request.md, so #199 left it.
 - #199 reads the adoption entries, and the request that removed an ID, only
-  from records whose text names `adoption` or that ID. A record that writes
-  these words only through YAML escapes (for example `"\x61doption"`) would be
-  missed. No record that al writes does so.
+  from records whose text names `adoption` or that ID, or holds a backslash
+  (a YAML escape can write those words another way). The records of this
+  world hold no backslash.
 
 ## How to repeat it
 
