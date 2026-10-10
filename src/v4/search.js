@@ -236,11 +236,14 @@ function sectionOf(top, rows, hit, chain) {
   if (['spec', 'adr', 'change', 'spike'].includes(hit.source_type)) {
     const items = sectionAt(top, hit.commit, hit.file, hit.id);
     if (items) {
+      // The place, the heading path and the text are the file's at that
+      // commit; the indexed row gives only the version's identity. Beside a
+      // past hit every row is history, never a current promise.
       return items.map((it) => {
         const known = rows.find((r) => r.id === it.id && r.sha256 === it.sha256 && chain.has(r.valid_from));
-        if (known) return exported(known);
-        const { title, ...row } = it.row;
-        return exported({ repo: hit.repo, doc_or_request: it.doc, id: it.id, version: null, role: hit.role, ...row, source_type: hit.source_type, kind: row.kind ?? hit.source_type, valid_from: null, superseded_by: null, commit: hit.commit, sha256: it.sha256 });
+        const { title, source_type: _, ...row } = it.row;
+        const base = known ?? { repo: hit.repo, doc_or_request: it.doc, id: it.id, version: null, role: hit.role, source_type: hit.source_type, valid_from: null, superseded_by: null };
+        return exported({ ...base, ...row, kind: row.kind ?? base.source_type, commit: hit.commit, sha256: it.sha256, role: hit.role === 'history' ? 'history' : base.role });
       });
     }
   }
