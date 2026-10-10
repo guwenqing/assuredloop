@@ -1,0 +1,16 @@
+# An owner decision to drop csv-bom's rule SP-2, named in an abandoned
+# disposition (review of e89b991, finding 2). On main: abandon-unsigned, arm
+# incorporated: R1 is not signed, and SP-2's text is in specs/ as EXP-9 (the effect is kept).
+title: "CSV byte order mark: dropped"
+base: abandon-unsigned
+baseArm: incorporated
+claim: "Tier: 2 — csv-bom; closes the request"
+steps:
+  - al: [record, csv-bom, decision, --source, owner, --text, Do not deliver the byte order mark. The draft was never applied., --yes]
+    date: 2026-08-04
+  - disposition:
+      request: csv-bom
+      source: csv-bom/SP-2
+      set: {disposition: abandoned, decision: D1}
+  - index: true
+    date: 2026-08-04

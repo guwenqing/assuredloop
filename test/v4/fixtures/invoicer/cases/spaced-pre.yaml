@@ -1,0 +1,12 @@
+# On main: a limit INV-99 whose marker has extra spaces, which the marker
+# grammar allows (review of e89b991, finding 1).
+title: A foreign tax limit
+base: base
+claim: "Tier: 1 — foreign-tax"
+steps:
+  - edit:
+      file: specs/invoices.md
+      from: "Whether reminders may also go by text message is open.\n"
+      to: "Whether reminders may also go by text message is open.\n\n<!--   INV-99   limit   -->\n\nInvoicer does not calculate foreign tax.\n"
+  - index: true
+    date: 2026-08-05
