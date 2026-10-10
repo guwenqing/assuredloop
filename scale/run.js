@@ -78,7 +78,7 @@ export function run(o) {
     commit: git(alDir, ['rev-parse', 'HEAD'], { allowFail: true }) ?? 'unknown',
     dirty: (git(alDir, ['status', '--porcelain'], { allowFail: true }) ?? '') !== '',
   };
-  const report = { al: alInfo, machine: machine(), world, measures: [], removal: { ids: [], goneFromCurrent: false, keptInHistory: false }, ok: true };
+  const report = { al: alInfo, machine: machine(), world, measures: [], removal: { ids: [], goneFromCurrent: false, keptInHistory: false, problems: [] }, ok: true };
   const measure = (name) => {
     const m = { name, criterion: { seconds: CRITERIA[name].seconds, text: CRITERIA[name].text }, runs: [], notes: [] };
     report.measures.push(m);
@@ -95,8 +95,19 @@ export function run(o) {
     const run = { seconds, commit: git(repo.dir, ['rev-parse', 'HEAD']), loadBefore: before, loadAfter: load(), exit: r.status ?? -1, command: `al-v4 ${args.join(' ')}` };
     if (killed) { run.killed = true; m.notes.push(`killed after ${CRITERIA[m.name].limit} s: ${run.command}`); }
     else if (r.status !== 0) m.notes.push(`exit ${r.status}: ${run.command}: ${(r.stderr || r.stdout || '').trim().split('\n')[0]}`);
-    else if (args.includes('--json')) {
-      try { const j = JSON.parse(r.stdout); if (j.index) m.notes.push(`index: ${j.index}`); run.hits = j.hits.length; } catch { /* not JSON */ }
+    // A search counts only when level 1 answered: al falls back by itself (design.md 11).
+    if (args[0] === 'search') {
+      let j = null;
+      try { j = JSON.parse(r.stdout); } catch { j = null; }
+      run.level = j && typeof j === 'object' ? j.level ?? null : null;
+      if (j && j.level !== 1) run.fallback = j.fallback ?? null;
+      if (!killed && r.status === 0) {
+        if (!j) run.problem = 'its output is not JSON';
+        else if (j.level !== 1) run.problem = `level ${j.level} answered, not level 1: ${j.fallback ?? 'no fallback given'}`;
+        if (run.problem) m.notes.push(`does not count: ${run.problem}: ${run.command}`);
+      }
+      if (j?.index) m.notes.push(`index: ${j.index}`);
+      if (Array.isArray(j?.hits)) run.hits = j.hits.length;
     }
     m.runs.push(run);
     return r;
@@ -180,9 +191,18 @@ export function run(o) {
     m4.notes.push(`the pull request removes ${gone.join(', ')} from ${file}`);
     al(m4, ['search', '--level', '1', '--json', ...words]);
     report.removal.ids = gone;
+    // The checks of the removal are not timed, but a failed one makes the run not ok.
     const hits = (args) => {
       const r = spawnSync(process.execPath, [o.al, ...args], { cwd: central.dir, encoding: 'utf8', maxBuffer: 1 << 30, timeout: 600000 });
-      try { return JSON.parse(r.stdout).hits; } catch { return null; }
+      const command = `al-v4 ${args.join(' ')}`;
+      if (r.status !== 0) {
+        report.removal.problems.push(`${command}: ${r.status === null ? 'killed' : `exit ${r.status}`}: ${(r.stderr || r.stdout || '').trim().split('\n')[0]}`);
+        return null;
+      }
+      try { return JSON.parse(r.stdout).hits; } catch {
+        report.removal.problems.push(`${command}: its output is not JSON`);
+        return null;
+      }
     };
     report.removal.goneFromCurrent = gone.length > 0 && gone.every((id) => { const h = hits(['search', '--level', '1', '--json', '--id', id]); return h !== null && !h.some((x) => x.role !== 'history'); });
     report.removal.keptInHistory = gone.length > 0 && gone.every((id) => { const h = hits(['search', '--level', '1', '--json', '--history', '--id', id]); return h !== null && h.some((x) => x.id === id && x.role === 'history'); });
@@ -207,11 +227,14 @@ export function run(o) {
     }
   }
 
+  // A timing miss is not met; a failed or fallen-back command is not ok as well.
   for (const m of report.measures) {
+    const counted = m.runs.every((x) => x.exit === 0 && !x.problem);
     m.seconds = Math.max(...m.runs.map((x) => x.seconds));
-    m.met = m.runs.every((x) => x.exit === 0) && m.seconds <= m.criterion.seconds;
-    if (!m.runs.every((x) => x.exit === 0)) report.ok = false;
+    m.met = counted && m.seconds <= m.criterion.seconds;
+    if (!counted) report.ok = false;
   }
+  if (report.removal.problems.length) report.ok = false;
   return report;
 }
 
@@ -227,7 +250,7 @@ export function markdown(rep) {
     `- al: ${rep.al.path} at ${short(rep.al.commit)}${rep.al.dirty ? ' (with uncommitted changes)' : ''}`,
     `- Machine: ${m.model}; ${m.cpu}; ${m.cores} cores; ${gb(m.memoryBytes)} memory; ${m.os}; Node ${m.node}`,
     `- World: ${w.requests} requests (${w.openRequests.length} open, ${w.concluded.length} concluded), ${w.outputs} output repos, change specs of ${w.paragraphs} paragraphs on average; central main at ${short(w.central.head)}`,
-    `- Result: ${rep.ok ? 'every command exited 0' : 'a command failed or was killed (see the notes)'}`,
+    `- Result: ${rep.ok ? 'every command exited 0, and every search answered at level 1' : 'not ok: a command failed or was killed, a search did not answer at level 1, or a removal check failed (see the notes)'}`,
     '',
     '| Measure | Criterion | Seconds (largest run) | Met |',
     '|---|---|---|---|',
@@ -235,15 +258,16 @@ export function markdown(rep) {
     '',
     '## Each run',
     '',
-    '| Measure | Seconds | Exit | Central commit | Load before (1, 5, 15 min) | Load after | Command |',
-    '|---|---|---|---|---|---|---|',
-    ...rep.measures.flatMap((x) => x.runs.map((r) => `| ${x.name} | ${r.seconds} | ${r.killed ? 'killed' : r.exit} | ${short(r.commit)} | ${r.loadBefore.join(' ')} | ${r.loadAfter.join(' ')} | \`${r.command.replace(/\|/g, '\\|')}\` |`)),
+    '| Measure | Seconds | Exit | Level | Central commit | Load before (1, 5, 15 min) | Load after | Command |',
+    '|---|---|---|---|---|---|---|---|',
+    ...rep.measures.flatMap((x) => x.runs.map((r) => `| ${x.name} | ${r.seconds} | ${r.killed ? 'killed' : r.exit} | ${r.level === undefined ? '-' : r.level ?? 'not JSON'} | ${short(r.commit)} | ${r.loadBefore.join(' ')} | ${r.loadAfter.join(' ')} | \`${r.command.replace(/\|/g, '\\|')}\` |`)),
     '',
     '## Removal',
     '',
     `- Removed: ${rep.removal.ids.join(', ') || 'none'}`,
     `- Gone from the current index: ${rep.removal.goneFromCurrent ? 'yes' : 'no'}`,
     `- Kept in the history index: ${rep.removal.keptInHistory ? 'yes' : 'no'}`,
+    ...rep.removal.problems.map((p) => `- A check failed: ${p}`),
     '',
     '## Notes',
     '',
