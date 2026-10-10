@@ -128,9 +128,11 @@ necessary for that, not proof of it: the tool does not check this task list.
 - **Check:** the plan names each step and who does it; the Node 24 test has
   run.
 - **Read:** design.md 11 (the search levels), 14, 15.
-- **Done:** the plan is design.md 17 (Building v4). The Node 24 test of
-  `node:sqlite` FTS5 runs in T13, which raises the minimum if it fails. T15's
-  criteria are unchanged.
+- **Done:** the plan is design.md 17 (Building v4). The Node 24 test ran on
+  2026-10-10: the official Node 24.21.0 (darwin-arm64, checksum verified
+  against its SHASUMS256.txt) created a `node:sqlite` FTS5 table and matched a
+  query (SQLite 3.53.4). So the minimum stays Node 24; T13 keeps a test of it
+  in CI. T15's criteria are unchanged.
 
 ### T8 Schema and markers
 - **Wanted:** `.assuredloop/` with `config.yaml` and `schema.yaml`; the
@@ -173,8 +175,7 @@ necessary for that, not proof of it: the tool does not check this task list.
   and hashes; typo claims with meaning-sensitive marks; exact equality;
   dispositions and the close rule with versions and chains; overlaps and
   stale bases; requirement words in non-promise kinds; near matches; result
-  applicability ("declared inputs unchanged"); rule-check hints on changed
-  rules only; the ADR checks (a change to an accepted ADR's text is `not ok`;
+  applicability ("declared inputs unchanged"); the ADR checks (a change to an accepted ADR's text is `not ok`;
   a broken supersede link; the hint on a paragraph that an ADR governs);
   opt-in `--strict`.
 - **Boundary:** hints by default; no block outside `al conclude` and opt-in
