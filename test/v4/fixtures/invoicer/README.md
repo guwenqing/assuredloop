@@ -87,6 +87,8 @@ Each step is a map with one key.
 | `spike-q2` | the spike's Q1 changes after its sign-off, and nobody signs the new version |
 | `conclude-unsigned` | late-fees incorporates a rule as EXP-9 with a valid disposition, but R1 is not signed |
 | `adoption-gap` | promise paragraphs with no link and no adoption entry: arm `unlisted` (INV-10's entry removed), arm `new` (a new rule INV-17) |
+| `abandon-changes` | reminder-emails/SP-2 (`changes:INV-11`) abandoned with no decision: arm `kept` (INV-11 unchanged), arm `applied` (INV-11 holds SP-2's text), arm `changed` (INV-11 changed in another way) |
+| `req-words` | a sentence added to EXP-5, a rationale: arm `lower` (may, should, must, shall), arm `upper` (MAY), arm `never`, arm `always` (Always) |
 | `views` | a central test that names EXP-4 and its result, and declared outputs of invoice-exports; arms `fresh` and `changed` (the test changes after the result) |
 
 The main commits of `cr-abandon` and `cr-revert` name their PR in the title,
@@ -98,7 +100,7 @@ The fixtures were written before the final design. These are the changes.
 
 1. Markers have no `from:` link. `from` is not a marker link word.
 2. The adopted paragraphs (`from:adoption`) have a kind and no link
-   (decision D12). The base first commits the spec as it was at adoption
+   (decision D14). The base first commits the spec as it was at adoption
    (INV-1 to INV-12) on main. Then the `adoption` step writes, by hand in the
    T9 format, the archived request `adoption`
    (`requests/archive/adoption/request.md`) and its record
