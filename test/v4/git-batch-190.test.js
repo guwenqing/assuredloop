@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, chmodSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as gitjs from '../../src/v4/git.js';
 import { makeRepo } from './helpers/repo.js';
@@ -646,12 +646,16 @@ describe('on git 2.31: no cat-file -z, -Z or --batch-command', () => {
       ['search', 'export', 'link', '--level', '0', '--json', '--rebuild'],
       ['search', 'export', 'link', '--history', '--level', '1', '--json', '--rebuild'],
     ];
+    // Each run starts with no search index, so both runs start from the same state.
+    const noIndex = () => rmSync(resolve(W.dir, pgit(W.dir, 'rev-parse', '--git-path', 'assuredloop')), { recursive: true, force: true });
     for (const args of runs) {
+      noIndex();
       const now = runSearch(W.dir, args);
       assert.equal(now.code, 0, showSearch(now));
       assert.ok(now.stdout.length > 0, showSearch(now));
       if (args[0] === 'search') assert.ok(JSON.parse(now.stdout).hits.length > 0, `search finds rows:\n${showSearch(now)}`);
       old.reset();
+      noIndex();
       const r = runSearch(W.dir, args, { env: { PATH: old.PATH } });
       assert.ok(old.count() > 0, `the wrapper saw al's git: ${args.join(' ')}`);
       assert.equal(r.code, now.code, showSearch(r));
