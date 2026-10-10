@@ -35,7 +35,7 @@ const TITLED = doc(
   '',
   '# Invoices', //                      3
   '',
-  '<!-- INV-2 purpose serves:R1 -->', // 5
+  '<!-- INV-2 purpose serves:inv/R1 -->', // 5
   '',
   'Invoicer sends invoices.', //        7
   '',
@@ -43,7 +43,7 @@ const TITLED = doc(
   '',
   '## Export',
   '',
-  '<!-- INV-4 rule serves:R2 -->', //  13
+  '<!-- INV-4 rule serves:inv/R2 -->', //  13
   '',
   'The export link MUST expire.',
   '',
@@ -51,7 +51,7 @@ const TITLED = doc(
   '',
   '### Links',
   '',
-  '<!-- INV-6 rule serves:R2 -->', //  21
+  '<!-- INV-6 rule serves:inv/R2 -->', //  21
   '',
   'A link is signed.',
   'It names the invoice.',
@@ -64,7 +64,7 @@ const TITLED = doc(
   '',
   '##   Import  ##',
   '',
-  '<!-- INV-9 scope serves:R3 -->', // 34
+  '<!-- INV-9 scope serves:inv/R3 -->', // 34
   '',
   'Import covers CSV.',
   '',
@@ -72,7 +72,7 @@ const TITLED = doc(
   '',
   '### Links',
   '',
-  '<!-- INV-11 limit serves:R3 -->', // 42
+  '<!-- INV-11 limit serves:inv/R3 -->', // 42
   '',
   'Import does not follow links.',
 );
@@ -118,7 +118,7 @@ describe('paragraph fields', () => {
   test('links of the titled doc are filled from the marker, all twelve keys present', () => {
     const r = parseMarkdown(TITLED, F);
     assert.deepEqual(r.paragraphs[0].links, noLinks());
-    assert.deepEqual(r.paragraphs[1].links, links({ serves: ['R1'] }));
+    assert.deepEqual(r.paragraphs[1].links, links({ serves: ['inv/R1'] }));
     assert.deepEqual(r.paragraphs[6].links, links({ illustrates: ['INV-6'] }));
   });
 
@@ -176,7 +176,7 @@ describe('paragraph fields', () => {
       '',
       '    indented code',
     ].join('\n');
-    const r = parseMarkdown(doc('<!-- A-1 rule serves:R1 -->', '', body, '', '<!-- A-2 note -->', '', 'Next.'), F);
+    const r = parseMarkdown(doc('<!-- A-1 rule serves:inv/R1 -->', '', body, '', '<!-- A-2 note -->', '', 'Next.'), F);
     assert.deepEqual(r.lints, []);
     assert.deepEqual(ids(r), ['A-1', 'A-2']);
     assert.equal(r.paragraphs[0].text, body);
@@ -214,9 +214,9 @@ describe('paragraph fields', () => {
   });
 
   test('the hash changes when the text changes and not when only the marker changes', () => {
-    const a = parseMarkdown('<!-- A-1 rule serves:R1 -->\n\nThe link expires.\n', F).paragraphs[0];
-    const b = parseMarkdown('<!-- A-1 limit serves:R2 builds-on:B-3 -->\n\nThe link expires.\n', F).paragraphs[0];
-    const c = parseMarkdown('<!-- A-1 rule serves:R1 -->\n\nThe link expires soon.\n', F).paragraphs[0];
+    const a = parseMarkdown('<!-- A-1 rule serves:inv/R1 -->\n\nThe link expires.\n', F).paragraphs[0];
+    const b = parseMarkdown('<!-- A-1 limit serves:inv/R2 builds-on:B-3 -->\n\nThe link expires.\n', F).paragraphs[0];
+    const c = parseMarkdown('<!-- A-1 rule serves:inv/R1 -->\n\nThe link expires soon.\n', F).paragraphs[0];
     assert.equal(a.sha256, b.sha256);
     assert.notEqual(a.sha256, c.sha256);
     assert.equal(c.sha256, sha('The link expires soon.'));
@@ -225,31 +225,31 @@ describe('paragraph fields', () => {
 
 describe('the marker grammar', () => {
   test('every link word fills its own links key', () => {
-    const marker = '<!-- A-1 note serves:S builds-on:B changes:C removes:R explains:E illustrates:I '
+    const marker = '<!-- A-1 note serves:inv/R1 builds-on:B changes:C removes:R explains:E illustrates:I '
       + 'resolved-by:RB governed-by:G decides:D for:T supersedes:SU source:SO -->';
     const r = parseMarkdown(`${marker}\n\nBody.\n`, F);
     assert.deepEqual(r.lints, []);
     assert.deepEqual(r.paragraphs[0].links, {
-      serves: ['S'], buildsOn: ['B'], changes: ['C'], removes: ['R'], explains: ['E'], illustrates: ['I'],
+      serves: ['inv/R1'], buildsOn: ['B'], changes: ['C'], removes: ['R'], explains: ['E'], illustrates: ['I'],
       resolvedBy: ['RB'], governedBy: ['G'], decides: ['D'], for: ['T'], supersedes: ['SU'], source: ['SO'],
     });
     assert.equal(r.paragraphs[0].kind, 'note');
   });
 
   test('targets are split on commas and kept as written; a repeated word adds to the same list', () => {
-    const r = parseMarkdown('<!-- INV-41 rule serves:invoice-exports/R2,R3 builds-on:INV-12 serves:R4 -->\n\nX.\n', F);
+    const r = parseMarkdown('<!-- INV-41 rule serves:invoice-exports/R2,inv/R3 builds-on:INV-12 serves:inv/R4 -->\n\nX.\n', F);
     assert.deepEqual(r.lints, []);
     assert.equal(r.paragraphs[0].id, 'INV-41');
     assert.equal(r.paragraphs[0].kind, 'rule');
-    assert.deepEqual(r.paragraphs[0].links, links({ serves: ['invoice-exports/R2', 'R3', 'R4'], buildsOn: ['INV-12'] }));
+    assert.deepEqual(r.paragraphs[0].links, links({ serves: ['invoice-exports/R2', 'inv/R3', 'inv/R4'], buildsOn: ['INV-12'] }));
   });
 
   test('more than one space between tokens and trailing spaces after --> are allowed', () => {
-    const r = parseMarkdown('<!--   A-1   rule   serves:R1   -->   \n\nX.\n', F);
+    const r = parseMarkdown('<!--   A-1   rule   serves:inv/R1   -->   \n\nX.\n', F);
     assert.deepEqual(r.lints, []);
     assert.equal(r.paragraphs[0].id, 'A-1');
     assert.equal(r.paragraphs[0].kind, 'rule');
-    assert.deepEqual(r.paragraphs[0].links, links({ serves: ['R1'] }));
+    assert.deepEqual(r.paragraphs[0].links, links({ serves: ['inv/R1'] }));
   });
 
   test('an ID with digits in the prefix is an ID', () => {
@@ -276,8 +276,8 @@ describe('the marker grammar', () => {
   }
 
   test('a marker inside a ``` fenced block is text, not a marker', () => {
-    const body = ['Example:', '', '```markdown', '<!-- A-9 rule serves:R1 -->', '', 'Inner text.', '```'].join('\n');
-    const r = parseMarkdown(doc('<!-- A-1 example illustrates:A-2 -->', '', body, '', '<!-- A-2 rule serves:R1 -->', '', 'Rule.'), F);
+    const body = ['Example:', '', '```markdown', '<!-- A-9 rule serves:inv/R1 -->', '', 'Inner text.', '```'].join('\n');
+    const r = parseMarkdown(doc('<!-- A-1 example illustrates:A-2 -->', '', body, '', '<!-- A-2 rule serves:inv/R1 -->', '', 'Rule.'), F);
     assert.deepEqual(r.lints, []);
     assert.deepEqual(ids(r), ['A-1', 'A-2']);
     assert.equal(r.paragraphs[0].text, body);
@@ -285,7 +285,7 @@ describe('the marker grammar', () => {
 
   test('a marker inside a ~~~ fenced block is text, not a marker', () => {
     const body = ['Example:', '', '~~~', '<!-- A-1 note -->', '', 'Inner text.', '~~~'].join('\n');
-    const r = parseMarkdown(doc('<!-- A-1 example illustrates:A-2 -->', '', body, '', '<!-- A-2 rule serves:R1 -->', '', 'Rule.'), F);
+    const r = parseMarkdown(doc('<!-- A-1 example illustrates:A-2 -->', '', body, '', '<!-- A-2 rule serves:inv/R1 -->', '', 'Rule.'), F);
     // The A-1 inside the fence would be a duplicate-id if it were read as a marker.
     assert.deepEqual(r.lints, []);
     assert.deepEqual(ids(r), ['A-1', 'A-2']);
@@ -300,9 +300,9 @@ describe('the marker grammar', () => {
   });
 
   test('a marker with links and no kind still gives the hint no-kind', () => {
-    const r = parseMarkdown('<!-- A-1 serves:R1 -->\n\nBody.\n', F);
+    const r = parseMarkdown('<!-- A-1 serves:inv/R1 -->\n\nBody.\n', F);
     assert.equal(r.paragraphs[0].kind, null);
-    assert.deepEqual(r.paragraphs[0].links, links({ serves: ['R1'] }));
+    assert.deepEqual(r.paragraphs[0].links, links({ serves: ['inv/R1'] }));
     assertLint(r.lints, { code: 'no-kind', severity: 'hint', id: 'A-1', line: 1 });
   });
 
@@ -320,7 +320,7 @@ describe('the marker grammar', () => {
   test('control: every kind of the five groups is accepted', () => {
     const all = ['purpose', 'scope', 'rule', 'limit', 'definition', 'rationale', 'example', 'open', 'note',
       'component', 'interface', 'data', 'flow', 'choice', 'approach', 'plan', 'step', 'migration'];
-    const text = all.map((k, i) => `<!-- A-${i + 1} ${k} serves:R1 -->\n\nText ${i + 1}.\n`).join('\n');
+    const text = all.map((k, i) => `<!-- A-${i + 1} ${k} serves:inv/R1 -->\n\nText ${i + 1}.\n`).join('\n');
     const r = parseMarkdown(text, F);
     assert.deepEqual(r.lints, []);
     assert.deepEqual(r.paragraphs.map((p) => p.kind), all);
@@ -416,7 +416,7 @@ describe('the lints of parseMarkdown', () => {
   });
 
   test('control: a promise or design paragraph with any link, and other kinds with none, give no no-link', () => {
-    for (const marker of ['rule serves:R1', 'approach for:T1', 'definition source:owner', 'component governed-by:ADR-1']) {
+    for (const marker of ['rule serves:inv/R1', 'approach for:T1', 'definition source:owner', 'component governed-by:ADR-1']) {
       assert.deepEqual(parseMarkdown(`<!-- A-1 ${marker} -->\n\nBody.\n`, F).lints, [], marker);
     }
     for (const kind of ['note', 'rationale', 'example', 'open', 'plan', 'step', 'migration']) {
