@@ -1,0 +1,174 @@
+// A docs: entry in config.yaml whose file is outside the repository is never
+// read (coordinator, 2026-10-10). Written before the code.
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { docsInScope } from '../../src/v4/scope.js';
+import { loadConfig } from '../../src/v4/config.js';
+import { makeRepo, runV4, lines, show } from './helpers/repo.js';
+
+// A marker problem a read would show: no blank line after the marker, and no kind.
+const OUTSIDE_TEXT = '<!-- OUT-1 -->\nOutside text.\n';
+
+// The repo, and outside.md in the temp folder next to it.
+function setup(t, entry) {
+  const repo = makeRepo(t);
+  const outsidePath = join(dirname(repo.dir), 'outside.md');
+  writeFileSync(outsidePath, OUTSIDE_TEXT);
+  const file = entry === 'ABSOLUTE' ? outsidePath : entry;
+  repo.write('.assuredloop/config.yaml', `docs:\n  - file: ${JSON.stringify(file)}\n    prefix: OUT\n`);
+  repo.commit('config with an outside doc');
+  return { repo, file };
+}
+
+const ENTRIES = [
+  ['an absolute path', 'ABSOLUTE'],
+  ['../outside.md', '../outside.md'],
+  ['specs/../../outside.md', 'specs/../../outside.md'],
+];
+
+describe('a docs: entry outside the repository is not read', () => {
+  for (const [name, entry] of ENTRIES) {
+    test(`spec: ${name} is not listed and gets a not read line`, (t) => {
+      const { repo, file } = setup(t, entry);
+      const r = runV4(repo.dir, ['spec']);
+      assert.equal(r.code, 0, show(r));
+      assert.ok(lines(r.stdout).includes(`not read: ${file}: outside the repository`), show(r));
+      assert.ok(!r.stdout.includes('OUT-1'), show(r));
+      assert.ok(!lines(r.stdout).includes(file), show(r));
+    });
+
+    test(`check: ${name} gives no lint, a not read line, and exit 0 also with --strict`, (t) => {
+      const { repo, file } = setup(t, entry);
+      for (const args of [[], ['--strict']]) {
+        const r = runV4(repo.dir, ['check', ...args]);
+        assert.equal(r.code, 0, show(r));
+        assert.ok(lines(r.stdout).includes(`not read: ${file}: outside the repository`), show(r));
+        assert.ok(!r.stdout.includes('OUT-1'), show(r));
+        assert.deepEqual(lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l)), [], show(r));
+      }
+    });
+
+    test(`docsInScope: ${name} gives no doc`, (t) => {
+      const { repo } = setup(t, entry);
+      const docs = docsInScope(repo.dir, loadConfig(repo.dir));
+      assert.ok(!JSON.stringify(docs).includes('outside.md'), JSON.stringify(docs));
+    });
+  }
+});
+
+// root: design, so specs/a.md is in scope only through the docs: entry.
+describe('control: a docs: entry inside the repository in another form is read', () => {
+  for (const entry of ['./specs/a.md', 'specs/../specs/a.md']) {
+    function inside(t) {
+      const repo = makeRepo(t);
+      repo.write('.assuredloop/config.yaml', `root: design\ndocs:\n  - file: ${entry}\n    prefix: A\n`);
+      repo.write('specs/a.md', '<!-- A-1 note -->\n\n# Alpha\n');
+      repo.commit('config with an inside doc');
+      return repo;
+    }
+
+    test(`spec: ${entry} is listed as specs/a.md, once, with no not read line`, (t) => {
+      const repo = inside(t);
+      const r = runV4(repo.dir, ['spec']);
+      assert.equal(r.code, 0, show(r));
+      assert.equal(lines(r.stdout).filter((l) => l === 'specs/a.md').length, 1, show(r));
+      assert.ok(lines(r.stdout).includes('  A-1 (0, Alpha)  note'), show(r));
+      assert.ok(!r.stdout.includes('not read:'), show(r));
+    });
+
+    test(`check: ${entry} is read (a planted lint in specs/a.md shows)`, (t) => {
+      const repo = inside(t);
+      repo.write('specs/a.md', '<!-- A-1 note -->\n\n# Alpha\n\n<!-- A-2 -->\n\nUntyped.\n');
+      const r = runV4(repo.dir, ['check']);
+      assert.equal(r.code, 0, show(r));
+      assert.ok(lines(r.stdout).some((l) => /^hint no-kind specs\/a\.md:5 A-2 \S/.test(l)), show(r));
+    });
+
+    test(`docsInScope: ${entry} gives specs/a.md`, (t) => {
+      const repo = inside(t);
+      const docs = docsInScope(repo.dir, loadConfig(repo.dir));
+      // The path as a whole JSON string, so "specs/../specs/a.md" does not count.
+      assert.ok(JSON.stringify(docs).includes('"specs/a.md"'), JSON.stringify(docs));
+      assert.ok(!JSON.stringify(docs).includes('specs/../') && !JSON.stringify(docs).includes('./specs'), JSON.stringify(docs));
+    });
+  }
+});
+
+// root: outside the repository is never walked or read (coordinator).
+describe('a root: outside the repository is not walked', () => {
+  function setupRoot(t, entry) {
+    const repo = makeRepo(t);
+    const outsideDir = join(dirname(repo.dir), 'outside-specs');
+    mkdirSync(join(outsideDir, 'sub'), { recursive: true });
+    writeFileSync(join(outsideDir, 'bad.md'), OUTSIDE_TEXT);
+    writeFileSync(join(outsideDir, 'sub', 'deep.md'), '<!-- OUT-2 -->\nDeep text.\n');
+    const root = entry === 'ABSOLUTE' ? outsideDir : entry;
+    repo.write('.assuredloop/config.yaml', `root: ${JSON.stringify(root)}\n`);
+    repo.commit('config with an outside root');
+    return { repo, root };
+  }
+
+  for (const [name, entry] of [['an absolute path', 'ABSOLUTE'], ['../outside-specs', '../outside-specs']]) {
+    test(`spec: root ${name} lists no doc from it and gets a not read line`, (t) => {
+      const { repo, root } = setupRoot(t, entry);
+      const r = runV4(repo.dir, ['spec']);
+      assert.equal(r.code, 0, show(r));
+      assert.ok(lines(r.stdout).includes(`not read: ${root}/: outside the repository`), show(r));
+      assert.ok(!r.stdout.includes('OUT-1') && !r.stdout.includes('OUT-2'), show(r));
+      assert.ok(!r.stdout.includes('bad.md') && !r.stdout.includes('deep.md'), show(r));
+    });
+
+    test(`check: root ${name} gives no lint, a not read line, and exit 0 also with --strict`, (t) => {
+      const { repo, root } = setupRoot(t, entry);
+      for (const args of [[], ['--strict']]) {
+        const r = runV4(repo.dir, ['check', ...args]);
+        assert.equal(r.code, 0, show(r));
+        assert.ok(lines(r.stdout).includes(`not read: ${root}/: outside the repository`), show(r));
+        assert.ok(!r.stdout.includes('OUT-1') && !r.stdout.includes('OUT-2'), show(r));
+        assert.deepEqual(lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l)), [], show(r));
+      }
+    });
+
+    test(`docsInScope: root ${name} gives no doc from it`, (t) => {
+      const { repo } = setupRoot(t, entry);
+      const docs = docsInScope(repo.dir, loadConfig(repo.dir));
+      const json = JSON.stringify(docs);
+      assert.ok(!json.includes('bad.md') && !json.includes('deep.md') && !json.includes('OUT-'), json);
+    });
+  }
+});
+
+describe('control: root: ./design reads design/*.md', () => {
+  function design(t) {
+    const repo = makeRepo(t);
+    repo.write('.assuredloop/config.yaml', 'root: ./design\n');
+    repo.write('design/a.md', '<!-- A-1 note -->\n\n# Alpha\n');
+    repo.commit('config with root ./design');
+    return repo;
+  }
+
+  test('spec lists design/a.md with no not read line', (t) => {
+    const repo = design(t);
+    const r = runV4(repo.dir, ['spec']);
+    assert.equal(r.code, 0, show(r));
+    assert.equal(lines(r.stdout).filter((l) => l === 'design/a.md').length, 1, show(r));
+    assert.ok(lines(r.stdout).includes('  A-1 (0, Alpha)  note'), show(r));
+    assert.ok(!r.stdout.includes('not read:'), show(r));
+  });
+
+  test('check reads design/a.md (a planted lint shows)', (t) => {
+    const repo = design(t);
+    repo.write('design/a.md', '<!-- A-1 note -->\n\n# Alpha\n\n<!-- A-2 -->\n\nUntyped.\n');
+    const r = runV4(repo.dir, ['check']);
+    assert.equal(r.code, 0, show(r));
+    assert.ok(lines(r.stdout).some((l) => /^hint no-kind design\/a\.md:5 A-2 \S/.test(l)), show(r));
+  });
+
+  test('docsInScope gives design/a.md', (t) => {
+    const repo = design(t);
+    const json = JSON.stringify(docsInScope(repo.dir, loadConfig(repo.dir)));
+    assert.ok(json.includes('"design/a.md"') && !json.includes('./design'), json);
+  });
+});

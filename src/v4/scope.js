@@ -5,14 +5,23 @@
 // its own. Two scopes never share IDs.
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { git, fileAt } from './git.js';
 import { parseMarkdown } from './markers.js';
 
 export const SPEC = 'spec';
 const REQUEST = /^requests\/(?:archive\/)?([^/]+)\/spec\.md$/;
 
-const clean = (p) => p.replace(/^\.\//, '').replace(/\/+$/, '');
+const clean = (p) => posix.normalize(String(p)).replace(/^\.\//, '').replace(/\/+$/, '');
+const outside = (p) => posix.isAbsolute(String(p)) || /^\.\.(\/|$)/.test(clean(p));
+
+// The root and the docs entries of config that are outside the repository,
+// as written (the root with a trailing slash): never walked or read.
+export const outsideDocs = (config) => [
+  ...(outside(config.root) ? [`${String(config.root).replace(/\/+$/, '')}/`] : []),
+  ...config.docs.map((d) => String(d.file)).filter(outside),
+];
+const insideDocs = (config) => config.docs.filter((d) => !outside(d.file));
 
 // The scope of a repo path, or null when it holds no markers.
 export function scopeOf(path, config) {
@@ -20,7 +29,7 @@ export function scopeOf(path, config) {
   const r = REQUEST.exec(path);
   if (r) return `request:${r[1]}`;
   if (path.startsWith(`${root}/adr/`)) return null;
-  if (config.docs.some((d) => clean(String(d.file)) === path)) return SPEC;
+  if (insideDocs(config).some((d) => clean(d.file) === path)) return SPEC;
   if (path.startsWith(`${root}/`) && path.endsWith('.md')) return SPEC;
   return null;
 }
@@ -28,7 +37,7 @@ export function scopeOf(path, config) {
 // The prefix of a doc: SP in a request spec, else the one config lists, or null.
 export function prefixOf(path, config) {
   if (REQUEST.test(path)) return 'SP';
-  return config.docs.find((d) => clean(String(d.file)) === path)?.prefix ?? null;
+  return insideDocs(config).find((d) => clean(d.file) === path)?.prefix ?? null;
 }
 
 // Every file of the working tree under `dir`, symlinks not followed.
@@ -49,7 +58,7 @@ export function docsInScope(top, config, rev = null) {
   const root = clean(config.root);
   let paths;
   if (rev === null) {
-    paths = [...walk(top, root), ...walk(top, 'requests'), ...config.docs.map((d) => clean(String(d.file)))];
+    paths = [...(outside(config.root) ? [] : walk(top, root)), ...walk(top, 'requests'), ...insideDocs(config).map((d) => clean(d.file))];
   } else {
     paths = (git(top, ['ls-tree', '-r', '-z', '--name-only', rev], { allowFail: true }) ?? '').split('\0').filter(Boolean);
   }
@@ -86,7 +95,7 @@ export function parseScopes(docs, kinds) {
 export function idsEverUsed(top, config, rev) {
   if (!rev) return null;
   const used = new Map();
-  const specs = ['*.md', ...config.docs.map((d) => clean(String(d.file)))];
+  const specs = ['*.md', ...insideDocs(config).map((d) => clean(d.file))];
   const out = git(top, ['log', '--raw', '-z', '--no-abbrev', '--no-renames', '--format=', rev, '--', ...specs], { allowFail: true });
   if (!out) return used;
   // Each changed file is ":<mode> <mode> <old blob> <new blob> <status>" NUL "<path>" NUL.

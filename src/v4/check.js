@@ -6,7 +6,7 @@
 import { loadConfig, loadSchema } from './config.js';
 import { mergeBase } from './git.js';
 import { diffParagraphs, idLints } from './ids.js';
-import { docsInScope, idsEverUsed, isShallow, parseScopes, SPEC } from './scope.js';
+import { docsInScope, idsEverUsed, isShallow, outsideDocs, parseScopes, SPEC } from './scope.js';
 
 export function check({ top, opts }) {
   const config = loadConfig(top);
@@ -32,7 +32,8 @@ export function check({ top, opts }) {
   }
 
   const severity = (l) => (opts.strict ? 'not ok' : l.severity);
-  const body = lints.map((l) => `${severity(l)} ${l.code} ${l.file}:${l.line} ${l.id ?? '-'} ${l.message}`);
+  const body = outsideDocs(config).map((f) => `not read: ${f}: outside the repository`);
+  body.push(...lints.map((l) => `${severity(l)} ${l.code} ${l.file}:${l.line} ${l.id ?? '-'} ${l.message}`));
   if (base) body.push(...changes.map((c) => `${c.file} ${c.id} ${c.changes.join('+')}`));
   if (!lints.length) body.push('ok: no marker lint');
   const notKnown = ['IDs used on branches that were never fetched here', 'whether links resolve, and the checks that read records (T10)'];
