@@ -206,6 +206,18 @@ describe('commitsOf: the full hash of each rev, as commitOf gives it', () => {
     assertLikeCommitOf(w.dir, list, commitsOf(w.dir, list));
   });
 
+  // Review of PR #204: git reads a rev on a line of its own up to a NUL
+  // byte; commitOf cannot pass a NUL to git, and gives null.
+  test('a rev that holds a NUL byte gives null, as commitOf does', (t) => {
+    const commitsOf = fn('commitsOf');
+    const w = commitsRepo(t);
+    const list = ['HEAD\0', `${w.c1}\0`, `${w.c2}\0x`, 'main\0side', 'v1\0', '\0', 'main'];
+    const got = commitsOf(w.dir, list);
+    assertLikeCommitOf(w.dir, list, got);
+    for (const r of list.slice(0, -1)) assert.equal(got.get(r), null, JSON.stringify(r));
+    assert.equal(got.get('main'), w.c2);
+  });
+
   test('a rev given twice is one key', (t) => {
     const commitsOf = fn('commitsOf');
     const w = commitsRepo(t);
@@ -440,13 +452,14 @@ function crossWorld(t) {
 // archived (so EXP-4 was removed by an archived request, and the dispositions
 // of invoice-exports are superseded by archived changes); the branch pr2 cut
 // from there, with one commit that `change` makes.
-function archivedChain(t, change) {
+function archivedChain(t, change, onMain = () => {}) {
   const dir = invoicer(t, 'cr-chain');
   git(dir, 'checkout', '-q', 'main');
   git(dir, 'merge', '-q', '--ff-only', 'pr');
   mkdirSync(join(dir, 'requests/archive'), { recursive: true });
   move(dir, 'requests/portal-downloads', 'requests/archive/portal-downloads');
   move(dir, 'requests/link-refresh', 'requests/archive/link-refresh');
+  onMain(dir);
   commitAll(dir, 'Archive portal-downloads and link-refresh');
   git(dir, 'checkout', '-q', '-b', 'pr2');
   change(dir);
@@ -464,10 +477,62 @@ const notesOnly = (dir) => {
   commitAll(dir, 'Notes\n\nTier: 0 — notes only');
 };
 
+// The clean state merged on main, with `onMain` run before a commit there
+// (no commit when it changes nothing);
+// then the branch pr2 with one commit that `change` makes.
+function cleanOnMain(t, onMain, change = notesOnly) {
+  const dir = invoicer(t, 'clean');
+  git(dir, 'checkout', '-q', 'main');
+  git(dir, 'merge', '-q', '--ff-only', 'pr');
+  onMain(dir);
+  if (git(dir, 'status', '--porcelain')) commitAll(dir, 'Escape the record');
+  git(dir, 'checkout', '-q', '-b', 'pr2');
+  change(dir);
+  return dir;
+}
+
+// Writes each value `word` of a record file through a YAML escape (review of
+// PR #204: a record may write its words so; the YAML means the same): each
+// line that ends in ": <word>" or "- <word>" gets "<escape><the rest of word>",
+// where the escape stands for the first letter of the word.
+function escapeIn(dir, rel, word, escape) {
+  const text = read(dir, rel);
+  const re = new RegExp(`(: |- )${word}$`, 'gm');
+  assert.match(text, re, `${rel} has ${word} as a value`);
+  write(dir, rel, text.replace(re, (_, lead) => `${lead}"${escape}${word.slice(1)}"`));
+}
+const ADOPTION = '.assuredloop/records/requests/adoption.yaml';
+const PORTAL = '.assuredloop/records/requests/portal-downloads.yaml';
+const adoptionEscaped = (escape) => (dir) => escapeIn(dir, ADOPTION, 'adoption', escape);
+// The removals of portal-downloads known from its record only: its spec.md
+// markers lose their removes: links, so its removed dispositions name the
+// removed IDs; with `escape`, written through YAML escapes.
+const removedByRecord = (escape) => (dir) => {
+  const spec = 'requests/archive/portal-downloads/spec.md';
+  for (const id of ['EXP-4', 'EXP-5', 'EXP-6']) {
+    editText(dir, spec, ` removes:${id} -->`, ' -->');
+    if (escape) escapeIn(dir, PORTAL, id, escape);
+  }
+};
+
+// The cross-repo world with one more result in invoicer-worker, at the commit
+// "HEAD\0" (a YAML \0 escape), with a declared input: commitOf gives null
+// for it, so the commit decides its applicability.
+function crossNul(t) {
+  const w = world(t);
+  const inputs = [{ file: 'src/zip-export.js', sha256: blobSha(w.worker, w.shas.worker.K5, 'src/zip-export.js') }];
+  writeYaml(w.worker, '.assuredloop/results/p-nul.yaml', { check: 'test/zip-export.test.js', outcome: 'pass', commit: 'HEAD\0', inputs });
+  assert.match(read(w.worker, '.assuredloop/results/p-nul.yaml'), /commit: "HEAD\\0"/);
+  const K6 = commit(w.worker, 'Record a result at HEAD\\0');
+  centralConfig(w.central, worldOutputs(K6));
+  commit(w.central, 'Select K6');
+  return { dir: w.central, repos: { central: w.central, web: w.web, worker: w.worker }, extra: { [w.root]: '<root>' } };
+}
+
 // Each case: how to build its world ({ dir, repos, extra }, see named()),
 // and the commands run in it.
 const onBranch = (name, arm) => (t) => ({ dir: invoicer(t, name, arm) });
-const chain = (change) => (t) => ({ dir: archivedChain(t, change) });
+const chain = (change, onMain) => (t) => ({ dir: archivedChain(t, change, onMain) });
 const CASES = {
   cross: { build: crossWorld, runs: [['check'], ['context', 'invoice-exports'], ['context', 'invoice-exports/SP-10']] },
   clean: { build: onBranch('clean'), runs: [['check'], ['check', '--strict']] },
@@ -494,6 +559,27 @@ const CASES = {
     }),
     runs: [['check'], ['context', 'invoice-exports']],
   },
+  'adoption record with \\x escapes': {
+    build: (t) => ({ dir: cleanOnMain(t, adoptionEscaped('\\x61')) }),
+    runs: [['check'], ['check', '--strict']],
+  },
+  'adoption record with \\u escapes': {
+    build: (t) => ({ dir: cleanOnMain(t, adoptionEscaped('\\u0061')) }),
+    runs: [['check'], ['check', '--strict']],
+  },
+  'adoption record with \\x escapes, changed on the branch': {
+    build: (t) => ({
+      dir: cleanOnMain(t, () => {}, (dir) => {
+        adoptionEscaped('\\x61')(dir);
+        commitAll(dir, 'Escape the adoption record\n\nTier: 0 — notes only');
+      }),
+    }),
+    runs: [['check'], ['check', '--strict']],
+  },
+  'removed IDs in the record only': { build: chain(notesOnly, removedByRecord(null)), runs: [['check'], ['check', '--strict']] },
+  'removed IDs in the record only, with \\x escapes': { build: chain(notesOnly, removedByRecord('\\x45')), runs: [['check'], ['check', '--strict']] },
+  'removed IDs in the record only, with \\u escapes': { build: chain(notesOnly, removedByRecord('\\u0045')), runs: [['check'], ['check', '--strict']] },
+  'cross, a result at HEAD\\0': { build: crossNul, runs: [['check']] },
   'archived chain, archived folder edited': {
     build: chain((dir) => {
       editText(dir, 'requests/archive/portal-downloads/spec.md', 'One PR: the portal download page;', 'One PR: the portal download page, with its tests;');
@@ -819,6 +905,172 @@ const PINNED = {
       'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
     ],
   },
+  'adoption record with \\x escapes: check': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Escape the record:7} (merge-base with main)',
+      'Next      al-v4 context',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'adoption record with \\x escapes: check --strict': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Escape the record:7} (merge-base with main)',
+      'Next      al-v4 context',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'adoption record with \\u escapes: check': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Escape the record:7} (merge-base with main)',
+      'Next      al-v4 context',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'adoption record with \\u escapes: check --strict': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Escape the record:7} (merge-base with main)',
+      'Next      al-v4 context',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'adoption record with \\x escapes, changed on the branch: check': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Nothing changes:7} (merge-base with main)',
+      'Next      al-v4 context',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'adoption record with \\x escapes, changed on the branch: check --strict': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Nothing changes:7} (merge-base with main)',
+      'Next      al-v4 context',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'removed IDs in the record only: check': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link',
+      'hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)',
+      'Next      deal with each hint, or say in the PR why it stays',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'removed IDs in the record only: check --strict': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link',
+      'hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)',
+      'Next      deal with each hint, or say in the PR why it stays',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'removed IDs in the record only, with \\x escapes: check': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link',
+      'hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)',
+      'Next      deal with each hint, or say in the PR why it stays',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'removed IDs in the record only, with \\x escapes: check --strict': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link',
+      'hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)',
+      'Next      deal with each hint, or say in the PR why it stays',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'removed IDs in the record only, with \\u escapes: check': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link',
+      'hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)',
+      'Next      deal with each hint, or say in the PR why it stays',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'removed IDs in the record only, with \\u escapes: check --strict': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link',
+      'hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)',
+      'Next      deal with each hint, or say in the PR why it stays',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
+  'cross, a result at HEAD\\0: check': {
+    code: 0,
+    lines: [
+      'ok: no marker lint',
+      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
+      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
+      'info output-repo invoicer-mobile - unknown: no clone at ../invoicer-mobile',
+      'info result invoicer-web/.assuredloop/results/export-link-test.yaml test/export-link.test.js pass at invoicer-web@{web:Move the link time into config/link.json (W3):7}: declared inputs unchanged since invoicer-web@{web:Move the link time into config/link.json (W3):7}',
+      'info result invoicer-worker/.assuredloop/results/a-no-inputs.yaml test/zip-export.test.js not run at invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}: applicability unknown: no declared inputs',
+      'info result invoicer-worker/.assuredloop/results/b-unknown-no-inputs.yaml test/zip-export.test.js pass at invoicer-worker@unknown: applicability unknown: no declared inputs',
+      'info result invoicer-worker/.assuredloop/results/c-unknown.yaml test/zip-export.test.js pass at invoicer-worker@unknown: applicability unknown: the commit is unknown',
+      'info result invoicer-worker/.assuredloop/results/d-k7.yaml test/zip-export.test.js pass at invoicer-worker@deadbee: applicability unknown: commit deadbeefdeadbeefdeadbeefdeadbeefdeadbeef is not in the invoicer-worker clone',
+      'info result invoicer-worker/.assuredloop/results/e-gone.yaml test/zip-export.test.js fail at invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}: applicability unknown: the declared input src/old-zip.js is not there',
+      'info result invoicer-worker/.assuredloop/results/f-changed.yaml test/zip-export.test.js pass at invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}: does not apply to the current text: src/zip-export.js changed',
+      'info result invoicer-worker/.assuredloop/results/g-unchanged.yaml test/zip-export.test.js pass at invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}: declared inputs unchanged since invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}',
+      'info result invoicer-worker/.assuredloop/results/h-short.yaml test/zip-export.test.js pass at invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}: declared inputs unchanged since invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}',
+      'info result invoicer-worker/.assuredloop/results/p-nul.yaml test/zip-export.test.js pass at invoicer-worker@HEAD\\x00: applicability unknown: commit HEAD\\x00 is not in the invoicer-worker clone',
+      'Read      working tree · base {central:The invoicer world:7} (merge-base with main)',
+      'Next      al-v4 context',
+      'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
+    ],
+  },
 };
 
 describe('al-v4 check and al-v4 context print what main prints', () => {
@@ -833,6 +1085,45 @@ describe('al-v4 check and al-v4 context print what main prints', () => {
       }
     });
   }
+});
+
+// --- The single load, as seen from outside (review of PR #204): the cites
+// and named-by links of output repos (git grep, git log there) belong to
+// crossRepo, which check no longer runs; context still runs them.
+
+describe('al-v4 check reads no links of the output repos; al-v4 context still does', () => {
+  // The git calls of one run in the central repo that ran in an output repo,
+  // as { dir, cmd }, and the run.
+  function outputCalls(t, w, args) {
+    const counter = gitCounter(t);
+    counter.reset();
+    const r = al(w.central, args, { env: { PATH: counter.PATH } });
+    assert.equal(r.code, 0, show(r));
+    const calls = counter.calls().map((l) => /^GITCALL -C (\S+) (\S+)/.exec(l)).filter(Boolean).map(([, dir, cmd]) => ({ dir, cmd }));
+    assert.ok(calls.some((c) => c.dir === w.central), `the wrapper saw al's git:\n${counter.calls().join('\n')}`);
+    return { r, calls: calls.filter((c) => c.dir === w.web || c.dir === w.worker) };
+  }
+  const listed = (calls) => calls.map((c) => `${c.dir} ${c.cmd}`).join('\n');
+
+  test('check starts no git grep and no git log in invoicer-web or invoicer-worker', (t) => {
+    const w = world(t);
+    const { r, calls } = outputCalls(t, w, ['check']);
+    assert.ok(calls.some((c) => c.dir === w.worker), `check reads the worker's results:\n${listed(calls)}`);
+    assert.deepEqual(calls.filter((c) => c.cmd === 'grep' || c.cmd === 'log'), [], `no git grep or git log in an output repo:\n${listed(calls)}`);
+    const plain = al(w.central, ['check']);
+    assert.equal(plain.stdout, r.stdout, 'the same output without the wrapper');
+  });
+
+  test('context invoice-exports starts git grep and git log in the output repos', (t) => {
+    const w = world(t);
+    const { r, calls } = outputCalls(t, w, ['context', 'invoice-exports']);
+    for (const cmd of ['grep', 'log']) {
+      assert.ok(calls.some((c) => c.cmd === cmd && c.dir === w.worker), `git ${cmd} in invoicer-worker:\n${listed(calls)}`);
+      assert.ok(calls.some((c) => c.cmd === cmd && c.dir === w.web), `git ${cmd} in invoicer-web:\n${listed(calls)}`);
+    }
+    const plain = al(w.central, ['context', 'invoice-exports']);
+    assert.equal(plain.stdout, r.stdout, 'the same output without the wrapper');
+  });
 });
 
 // --- 4. git processes: the count does not grow with the results or the PR references
