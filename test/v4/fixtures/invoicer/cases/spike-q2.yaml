@@ -1,0 +1,16 @@
+# The spike's question changes after its sign-off: Q1 has a new version that
+# the owner has not signed. al-v4 conclude must refuse the spike.
+title: "Link expiry spike: a wider question"
+base: base
+claim: "Tier: S — link-expiry-spike"
+steps:
+  - edit:
+      file: requests/link-expiry-spike/request.md
+      from: |-
+        Can the export link expire sooner than 30 minutes without more support
+        calls about links that no longer work?
+      to: |-
+        Can the export link expire sooner than 30 minutes, or be used once only,
+        without more support calls about links that no longer work?
+  - index: true
+    date: 2026-06-20

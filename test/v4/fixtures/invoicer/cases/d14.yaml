@@ -1,0 +1,64 @@
+# D14: a code example whose trailing spaces change (t2 defects-repair.yaml
+# D14). SP-2 goes into specs/exports.md as EXP-9 in the same PR. In the defect
+# only, EXP-9's header line ends with two spaces.
+title: Pin the CSV header
+base: base
+claim: "Tier: 2 — csv-header"
+steps:
+  - al: [new, csv-header, --from, '-', --title, CSV header, --tier, '2']
+    date: 2026-07-20
+    input: |
+      the accountants' import breaks when the header changes. pin the header
+      in the spec.
+  - section:
+      request: csv-header
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 One fixed header
+        Every monthly CSV file starts with the same header line.
+  - al: [record, csv-header, signoff, --source, the project chat, --words, 'R1 ok, sign', --yes]
+    date: 2026-07-21
+  - write:
+      file: requests/csv-header/spec.md
+      text: |
+        <!-- SP-1 note -->
+
+        # CSV header: the change
+
+        <!-- SP-2 rule serves:R1 builds-on:EXP-2 -->
+
+        The first line of every monthly CSV file MUST be exactly this header:
+
+        ```csv
+        number,customer,total,paid_date
+        ```
+
+        <!-- SP-3 plan -->
+
+        SP-2 goes into `specs/exports.md` in this PR. The monthly export already
+        writes this header (EXP-7), so no code changes.
+  - index: true
+    date: 2026-07-21
+arms:
+  defect:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: "<!-- EXP-8 note -->"
+          to: "<!-- EXP-9 rule serves:csv-header/R1 -->\n\nThe first line of every monthly CSV file MUST be exactly this header:\n\n```csv\nnumber,customer,total,paid_date  \n```\n\n<!-- EXP-8 note -->"
+  control:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: "<!-- EXP-8 note -->"
+          to: "<!-- EXP-9 rule serves:csv-header/R1 -->\n\nThe first line of every monthly CSV file MUST be exactly this header:\n\n```csv\nnumber,customer,total,paid_date\n```\n\n<!-- EXP-8 note -->"
+after:
+  - dispositions:
+      request: csv-header
+      add:
+        - {source: csv-header/SP-2, disposition: incorporated, spec: EXP-9}
+  - index: true
+    date: 2026-07-21

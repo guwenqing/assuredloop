@@ -1,0 +1,63 @@
+# Supersede an early consolidated part (A to B). invoice-exports/SP-6 was
+# incorporated early as EXP-4 (A). link-refresh changes EXP-4 (B): its
+# `changes` binding is made while EXP-4 still holds A's text, then EXP-4 is
+# replaced and invoice-exports records SP-6 as superseded by link-refresh/SP-2.
+title: Expired links offer a new link
+base: base
+claim: "Tier: 2 — link-refresh"
+steps:
+  - al: [new, link-refresh, --from, '-', --title, Link refresh, --tier, '2']
+    date: 2026-07-01
+    input: |
+      keep the 30 minutes, but when the link is dead the page should let them
+      ask for a new one. that was candidate B of the spike, right? do that.
+  - section:
+      request: link-refresh
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 A new link from the expired page
+        The export link MUST still expire 30 minutes after the email is sent, and
+        the expired page MUST offer to send a new link.
+  - al: [record, link-refresh, signoff, --source, the project chat, --words, yes sign R1, --yes]
+    date: 2026-07-01
+  - write:
+      file: requests/link-refresh/spec.md
+      text: |
+        <!-- SP-1 note -->
+
+        # Link refresh: the change
+
+        <!-- SP-2 rule serves:R1 changes:EXP-4 -->
+
+        The export link MUST expire 30 minutes after the email is sent, and the
+        expired page MUST offer to send a new link.
+
+        <!-- SP-3 plan -->
+
+        One PR: the expired page in invoicer-web, and EXP-4 replaced.
+  - index: true
+    date: 2026-07-01
+  - edit:
+      file: specs/exports.md
+      from: |-
+        <!-- EXP-4 rule serves:invoice-exports/R2 governed-by:ADR-4 -->
+
+        The export link MUST expire 30 minutes after the email is sent.
+      to: |-
+        <!-- EXP-4 rule serves:link-refresh/R1 governed-by:ADR-4 -->
+
+        The export link MUST expire 30 minutes after the email is sent, and the
+        expired page MUST offer to send a new link.
+  - dispositions:
+      request: link-refresh
+      add:
+        - {source: link-refresh/SP-2, disposition: incorporated, spec: EXP-4}
+  - disposition:
+      request: invoice-exports
+      source: invoice-exports/SP-6
+      set: {disposition: superseded, by: link-refresh/SP-2}
+  - index: true
+    date: 2026-07-02

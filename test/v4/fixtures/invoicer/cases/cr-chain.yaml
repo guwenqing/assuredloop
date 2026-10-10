@@ -1,0 +1,104 @@
+# A→B→C supersession that ends in a removal. On main: cr-supersede (A:
+# invoice-exports/SP-6 as EXP-4; B: link-refresh/SP-2 changes EXP-4). C:
+# portal-downloads removes EXP-4, EXP-5 and EXP-6 and adds EXP-9; its removes
+# bindings are made before the removal. ADR-5 supersedes ADR-4, which keeps
+# its decides links to the removed EXP-4 and EXP-6 as history.
+title: Downloads after login; email links removed
+base: cr-supersede
+claim: "Tier: 2 — portal-downloads"
+steps:
+  - al: [new, portal-downloads, --from, '-', --title, Portal downloads, --tier, '2']
+    date: 2026-08-03
+    input: |
+      forget the email links. accountants get their own login on the portal and
+      download from there. the links cause more support than they save.
+  - section:
+      request: portal-downloads
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 Downloads after login
+        An accountant MUST log in to the portal to download an export. Exports are
+        no longer sent as email links.
+  - al: [record, portal-downloads, signoff, --source, the project chat, --words, 'signed, R1', --yes]
+    date: 2026-08-04
+  - al: [record, portal-downloads, decision, --source, owner, --text, 'The email links go; ADR-5 replaces ADR-4.', --clarifies, R1, --yes]
+    date: 2026-08-04
+  - write:
+      file: requests/portal-downloads/spec.md
+      text: |
+        <!-- SP-1 note -->
+
+        # Portal downloads: the change
+
+        <!-- SP-2 rule serves:R1 removes:EXP-4 -->
+
+        Remove EXP-4. There are no email links, so no link expires.
+
+        <!-- SP-3 component serves:R1 removes:EXP-6 -->
+
+        Remove EXP-6. The link service and its tokens go.
+
+        <!-- SP-6 rationale removes:EXP-5 -->
+
+        Remove EXP-5. It explained the link time of EXP-4, which goes.
+
+        <!-- SP-4 rule serves:R1 -->
+
+        An accountant MUST log in to the portal before downloading an export.
+
+        <!-- SP-5 plan -->
+
+        One PR: the portal download page; the link service removed from
+        invoicer-web; EXP-4, EXP-5 and EXP-6 removed; EXP-9 added; ADR-5.
+  - index: true
+    date: 2026-08-04
+  - edit:
+      file: specs/exports.md
+      from: |-
+        ## Export links
+
+        <!-- EXP-4 rule serves:link-refresh/R1 governed-by:ADR-4 -->
+
+        The export link MUST expire 30 minutes after the email is sent, and the
+        expired page MUST offer to send a new link.
+
+        <!-- EXP-5 rationale explains:EXP-4 -->
+
+        Thirty minutes is long enough to open the email, and short enough that a
+        forwarded link soon stops working.
+
+        <!-- EXP-6 component serves:invoice-exports/R2 governed-by:ADR-4 -->
+
+        The link service issues a one-time token for each export and stores the
+        time at which the token expires.
+      to: |-
+        ## Downloads
+
+        <!-- EXP-9 rule serves:portal-downloads/R1 governed-by:ADR-5 -->
+
+        An accountant MUST log in to the portal before downloading an export.
+  - edit:
+      file: specs/adr/0004-one-time-tokens.md
+      from: "Status: accepted\n"
+      to: "Status: superseded\n"
+  - write: {file: specs/adr/0005-portal-login.md, text: {file: 0005-portal-login.md}}
+  - dispositions:
+      request: portal-downloads
+      add:
+        - {source: portal-downloads/SP-2, disposition: removed, spec: EXP-4}
+        - {source: portal-downloads/SP-3, disposition: removed, spec: EXP-6}
+        - {source: portal-downloads/SP-6, disposition: removed, spec: EXP-5}
+        - {source: portal-downloads/SP-4, disposition: incorporated, spec: EXP-9}
+  - disposition:
+      request: link-refresh
+      source: link-refresh/SP-2
+      set: {disposition: superseded, by: portal-downloads/SP-2}
+  - disposition:
+      request: invoice-exports
+      source: invoice-exports/SP-9
+      set: {disposition: superseded, by: portal-downloads/SP-3}
+  - index: true
+    date: 2026-08-04

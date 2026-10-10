@@ -1,0 +1,24 @@
+# schema.md 5: a new ADR supersedes an old one. Arm ok: ADR-5 supersedes
+# ADR-2, whose status becomes superseded. Arm missing: ADR-5 supersedes ADR-9,
+# which does not exist. Arm accepted: ADR-5 supersedes ADR-2, which stays
+# accepted.
+title: ADR-5 supersedes ADR-2
+base: base
+claim: "Tier: 2 — invoice-exports"
+arms:
+  ok:
+    steps:
+      - write: {file: specs/adr/0005-csv-bom.md, text: {file: 0005-ok.md}}
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n"
+          to: "Status: superseded\n"
+  missing:
+    steps:
+      - write: {file: specs/adr/0005-csv-bom.md, text: {file: 0005-missing.md}}
+  accepted:
+    steps:
+      - write: {file: specs/adr/0005-csv-bom.md, text: {file: 0005-ok.md}}
+after:
+  - index: true
+    date: 2026-07-25

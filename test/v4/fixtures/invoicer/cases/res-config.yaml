@@ -1,0 +1,11 @@
+# results: W4 changes config/link.json (30 to 60 minutes), which the code
+# reads and the W3 result does not declare. The result still shows "declared
+# inputs unchanged", never "applies". The base of D03.
+title: Longer link time in config
+base: web-base
+claim: "Tier: 0 — config"
+steps:
+  - write:
+      file: config/link.json
+      text: |
+        { "ttlMinutes": 60 }

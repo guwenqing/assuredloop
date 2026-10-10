@@ -1,0 +1,57 @@
+# D04: two replacements of one ID with missing `changes` links (t2
+# defects-repair.yaml D04). One state holds both open proposals, link-refresh
+# (#72) and link-45 (#73). Only the `changes:EXP-4` on both SP-2 markers
+# differs between the arms (the spec files in d04/defect and d04/control).
+title: "Link refresh, and link time 45 minutes: requests and change specs"
+base: base
+claim: "Tier: 2 — link-45, proposal"
+steps:
+  - al: [new, link-refresh, --from, '-', --title, Link refresh, --tier, '2']
+    date: 2026-07-01
+    input: |
+      when the export link is dead, the page should let them ask for a new one,
+      sent to the same address.
+  - section:
+      request: link-refresh
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 A new link from the expired page
+        When the export link has expired, the page MUST offer to send a new link
+        to the same email address.
+  - al: [record, link-refresh, signoff, --source, the project chat, --words, yes sign R1, --yes]
+    date: 2026-07-01
+  - al: [new, link-45, --from, '-', --title, Link time 45 minutes, --tier, '2']
+    date: 2026-07-02
+    input: |
+      the accountants say 30 minutes is too short, they open the mail after a
+      meeting. make it 45, and keep the new link from the expired page that is
+      already on its way. the spike can go on; if it finds that a shorter time
+      works, we change it again.
+  - section:
+      request: link-45
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 A 45-minute link
+        The download link sent by email MUST stop working 45 minutes after the email
+        is sent. The offer of a new link from the expired page (link-refresh R1)
+        stays.
+  - al: [record, link-45, signoff, --source, the project chat, --words, R1 ok, --yes]
+    date: 2026-07-02
+  - al: [record, link-45, decision, --source, owner, --text, '45 minutes replaces the 30 minutes of invoice-exports D1. The open spike link-expiry-spike goes on; its answer may change the time again.', --clarifies, R1, --yes]
+    date: 2026-07-02
+arms:
+  defect:
+    steps:
+      - files: defect
+  control:
+    steps:
+      - files: control
+after:
+  - index: true
+    date: 2026-07-02

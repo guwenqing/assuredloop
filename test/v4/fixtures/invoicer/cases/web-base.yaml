@@ -1,0 +1,16 @@
+# invoicer-web, an output repo of its own (design.md 12): the export-link code
+# and its test, and a result that passed at the commit W3 with two declared
+# inputs. config/link.json is read by the code but is not a declared input.
+title: Record the W3 result of the export-link test
+steps:
+  - files: {from: src, to: src}
+  - files: {from: test, to: test}
+  - files: {from: config, to: config}
+  - commit: "Move the link time into config/link.json (W3)\n\nTier: 0 — restores central:EXP-4"
+  - result:
+      file: export-link-test.yaml
+      check: test/export-link.test.js
+      outcome: pass
+      commit: HEAD
+      inputs: [src/export-link.js, test/export-link.test.js]
+claim: "Tier: 0 — restores central:EXP-4"

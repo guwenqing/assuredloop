@@ -1,0 +1,64 @@
+# Remove a spec paragraph. tax-module removes INV-4 (a limit, so a signed
+# requirement covers the removal) and adds INV-19. Its removes binding is made
+# before INV-4 goes. The request is ready to close on the branch.
+title: "Tax module: VAT may be calculated; INV-4 removed"
+base: base
+claim: "Tier: 2 — tax-module; closes the request"
+steps:
+  - al: [new, tax-module, --from, '-', --title, Tax module, --tier, '2']
+    date: 2026-07-15
+    input: |
+      we licensed the tax module. take out the line that says we don't do tax,
+      and say we can do VAT when a business switches the module on.
+  - section:
+      request: tax-module
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 VAT with the tax module
+        Invoicer MAY calculate VAT for an invoice when the business has turned on
+        the tax module. The spec MUST no longer say that Invoicer does not
+        calculate tax.
+  - al: [record, tax-module, signoff, --source, the project chat, --words, R1 signed, --yes]
+    date: 2026-07-16
+  - write:
+      file: requests/tax-module/spec.md
+      text: |
+        <!-- SP-1 note -->
+
+        # Tax module: the change
+
+        <!-- SP-2 limit serves:R1 removes:INV-4 -->
+
+        Remove INV-4. Invoicer can now calculate VAT.
+
+        <!-- SP-3 rule serves:R1 -->
+
+        Invoicer MAY calculate VAT for an invoice when the business has turned on
+        the tax module.
+
+        <!-- SP-4 plan -->
+
+        One PR: the module switch in invoicer-web, INV-4 removed, INV-19 added.
+  - index: true
+    date: 2026-07-16
+  - edit:
+      file: specs/invoices.md
+      from: |-
+        <!-- INV-4 limit -->
+
+        Invoicer does not calculate tax.
+      to: |-
+        <!-- INV-19 rule serves:tax-module/R1 -->
+
+        Invoicer MAY calculate VAT for an invoice when the business has turned on
+        the tax module.
+  - dispositions:
+      request: tax-module
+      add:
+        - {source: tax-module/SP-2, disposition: removed, spec: INV-4}
+        - {source: tax-module/SP-3, disposition: incorporated, spec: INV-19}
+  - index: true
+    date: 2026-07-16

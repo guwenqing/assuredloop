@@ -1,0 +1,13 @@
+# An unexplained revert after incorporation: PR #50 asks to close
+# reminder-emails, whose SP-2 disposition names a text that INV-11 no longer
+# holds.
+title: "Reminder emails: close"
+base: cr-revert-m9
+claim: "Tier: 2 — reminder-emails; closes the request"
+steps:
+  - section:
+      request: reminder-emails
+      text: |
+        ## Outcome
+
+        Not concluded. PR #50 asks to close it.

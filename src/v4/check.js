@@ -8,6 +8,7 @@ import { mergeBase } from './git.js';
 import { diffParagraphs, idLints } from './ids.js';
 import { docsInScope, idsEverUsed, isShallow, notRead, parseScopes, rootProblem, SPEC } from './scope.js';
 import { Fail } from './spec.js';
+import { centralLookup } from './repos.js';
 
 export function check({ top, opts }) {
   const config = loadConfig(top);
@@ -39,7 +40,11 @@ export function check({ top, opts }) {
   body.push(...lints.map((l) => `${severity(l)} ${l.code} ${l.file}:${l.line} ${l.id ?? '-'} ${l.message}`));
   if (base) body.push(...changes.map((c) => `${c.file} ${c.id} ${c.changes.join('+')}`));
   if (!lints.length) body.push('ok: no marker lint');
+  // In an output repo: the central IDs that the branch's changed files cite (T12).
+  const central = centralLookup(top);
+  body.push(...central.body);
   const notKnown = ['IDs used on branches that were never fetched here', 'whether links resolve, and the checks that read records (T10)'];
+  notKnown.push(...central.notKnown);
   if (!base) notKnown.unshift('no base (no main branch, or no commit): lost and used-again IDs are not checked');
   else if (isShallow(top)) notKnown.unshift('IDs used before the shallow history begins');
   return {
