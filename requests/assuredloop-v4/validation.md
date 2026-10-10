@@ -517,10 +517,16 @@ the commit named in the PR. They are not in this repository.
   The questions were answerable from OpenSpec's own records and the diffs.
   The v4 records added no right answer on this real history; they added
   paragraph IDs (recall 0.64 in the full arm, 0.72 in the lighter arm).
-- The v4 tool showed six real problems in the replayed history that the
-  OpenSpec CLI did not show (section B6). The full arm showed all six; the
-  lighter arm missed the overlap hint and the stale-base hint, as in
-  validation A.
+- The replay met seven real problems (section B6). The OpenSpec CLI 1.14.1
+  (today's release, not the version that the project used then) reported
+  three of them as errors: two MODIFIED blocks that drop scenarios (one of
+  them a stale base) and a spec with duplicate requirement names. The v4
+  model showed six, and four of them only the v4 model showed: a parallel
+  edit that was lost, a consolidated text with the opposite meaning, four
+  direct promise edits, and no sign-off at all. The v4 model did not see the
+  duplicate names. The lighter arm missed the overlap hint and the
+  stale-base hint, as in validation A, and flagged declared removals of
+  headings as lost IDs.
 - Converting one real change cost 166k to 294k tokens and 5 to 13 minutes of
   agent time, in two runs (open and close). Most of it is a fixed cost: the
   changes of 340 to 450 words cost 166k to 184k, the largest (2,221 words)
@@ -676,17 +682,31 @@ judged on each request's closing state.
 
 ## B6. What each arm's tool showed on the real problems
 
-The replay met six real problems. The OpenSpec CLI ran on the states before
-and after the last step of each episode, and gave no error on any of them.
+The replay met seven real problems. The OpenSpec CLI ran on the states
+before and after the last step of each episode; the model ran on every
+state. The CLI is today's release: the project archived these changes with
+older versions, which let the problems through.
 
 | Real problem (episode) | OpenSpec CLI 1.14.1 | Lighter (model) | Full (model) |
 |---|---|---|---|
-| A MODIFIED requirement silently dropped two scenarios (sort-active) | passed | `not ok`: 4 IDs lost | `not ok`: 4 IDs lost |
-| Two open changes MODIFIED one requirement; one text was lost at the archive (the pair) | passed | no overlap hint; `al conclude` refuses the lost paragraph | overlap hint while both were open; `al conclude` refuses the lost paragraph |
-| The consolidated requirement says the opposite of the change (config: unknown keys rejected, not allowed) | passed | `al conclude` refuses 2 rules | the same |
-| A spec text changed under an open change (the chain: a rename, then a tool replaced) | passed | nothing while open; `al conclude` refuses at the close | stale-binding hint while open; `al conclude` refuses at the close |
-| Four commits changed promise text with no change | passed | `not ok`: no signed requirement | `not ok`: no signed requirement |
+| A MODIFIED block omits scenarios that the spec still has, so the archive drops them (sort-active; adopt-delta) | error before the archive: "MODIFIED ... omits scenario(s)" (both) | sort-active: `not ok`, 4 IDs lost; adopt-delta: `not ok`, 7 heading IDs lost, but these include the headings of a requirement that the change did remove: with no marker links, the lighter arm cannot see a declared removal of a heading | sort-active: `not ok`, 4 IDs lost; adopt-delta: none, because its converter wrote the omissions as declared removals |
+| A spec holds 7 requirement names twice (openspec-conventions, adopt-delta) | error: duplicate requirement names | no finding | no finding |
+| Two open changes MODIFIED one requirement; one text was lost at the archive (the pair) | no finding | no overlap hint; `al conclude` refuses the lost paragraph | overlap hint while both were open; `al conclude` refuses the lost paragraph |
+| The consolidated requirement says the opposite of the change (config: unknown keys rejected, not allowed) | no finding | `al conclude` refuses 2 rules | the same |
+| A spec text changed under an open change (the chain: a rename, then a tool replaced) | error before the archive: the MODIFIED block omits the scenarios added since | nothing while open; `al conclude` refuses at the close | stale-binding hint while open; `al conclude` refuses at the close |
+| Four commits changed promise text with no change | not a concept (no change to validate) | `not ok`: no signed requirement | `not ok`: no signed requirement |
 | No change has a sign-off | not a concept | `al conclude` refuses all 9 | the same |
+
+- The CLI found the stale base of the chain by structure: the old MODIFIED
+  block no longer holds the scenarios that later commits added. The v4
+  binding found it by hash, while the change was open.
+- The two converters of a dropped-scenario case chose differently. One kept
+  the delta as written, so the v4 ID lint flagged the lost IDs. The other
+  wrote each omitted scenario as a declared removal, so the full arm saw a
+  declared removal and no loss. The v4 finding depends on that choice.
+- In the lighter arm, a removal of a heading or other note is declared only
+  by a marker link, which that arm drops. So its ID lint flags every removed
+  heading, declared or not.
 
 The answerers of all three arms still answered the questions on these
 problems right, from the diffs and the history. No defect review was run in
@@ -729,10 +749,12 @@ wrong (90 of 90).
    change that wrote it, though the text no longer matches. The sign-off
    check then names that old requirement. The design does not say what a
    direct edit does with the old link.
-4. Silent loss in a whole-block replace. OpenSpec's archive replaces a whole
-   requirement block with the MODIFIED text, so scenarios that the delta
-   left out vanish. The v4 ID lint catches this (`not ok`). This supports
-   the ID lint.
+4. Silent loss in a whole-block replace. OpenSpec's archive replaced a
+   whole requirement block with the MODIFIED text, so scenarios that the
+   delta left out vanished. Today's OpenSpec CLI refuses such a delta. The
+   v4 ID lint catches the loss only when nobody declares it as a removal;
+   the design does not say when a change may declare a removal that its
+   source did not ask for.
 5. Markup-only differences (code-fence info strings, letter case) need a
    wording decision or a typo claim under exact equality. This is 6 of 2,866
    paragraphs. The data does not support more normalization.
@@ -799,6 +821,10 @@ Findings:
   so the questions did not separate the arms; harder questions might.
 - The T4 questions were written from the replay. They test what the real
   history asks; they are not planted defects. T4 ran no defect review.
+- The converters made different choices in similar cases (B6), and their
+  choices change what the v4 tool shows.
+- The OpenSpec CLI is today's release, run on old states. It shows what the
+  best-known tool of this kind says now, not what the project saw then.
 - The replay keeps only the followed requirements of each spec, and opens
   two changes on the date of their folder names. The real history held more
   text and other changes.
