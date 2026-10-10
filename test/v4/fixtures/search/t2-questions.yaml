@@ -1,0 +1,282 @@
+# T2 (issue #170): the visible golden questions.
+# Written by the T2 author, apart from the fixture author (T1) and the
+# simulation (T3). Each answer was checked against the fixture files under
+# validation/v4/fixtures/full/ (composed with model/compose.mjs) on 2026-10-09.
+# The held-out questions are in held-out/questions.yaml. Record writers in the
+# simulation may see this file; they must never see held-out/.
+#
+# ID forms: a central spec ID as it is (EXP-4); a request-local ID as
+# <request>/<ID> (invoice-exports/SP-6); a file in a repo as <repo>:<path>;
+# a PR as "#33" (central) or "invoicer-web#57".
+# A script checks each answer with no judgment: choice -> one letter;
+# yesno -> yes or no; ids -> the exact set, order ignored.
+
+- id: Q01
+  state: cr-45
+  case: "search: a 30-minute baseline, a 45-minute open proposal and a 10-minute spike candidate (the default query returns only the baseline)"
+  ask: "How long does an export link work today, in the current system?"
+  expected_ids: [EXP-4]
+  answer:
+    type: choice
+    options:
+      a: "10 minutes"
+      b: "30 minutes"
+      c: "45 minutes"
+      d: "60 minutes"
+    correct: b
+  why: "specs/exports.md EXP-4 still says 30 minutes in cr-45: PR #44 edits only invoice-exports/SP-6 (45, an open proposal), and link-expiry-spike/SP-2 (10) is a spike candidate. The current system is the baseline (design.md 11, Roles and Queries)."
+
+- id: Q02
+  state: cr-45
+  case: "search: the change-context query adds live proposal and spike text"
+  ask: "Which change-spec paragraphs propose a link time that differs from the current one?"
+  expected_ids: [EXP-4, invoice-exports/SP-6, link-expiry-spike/SP-2]
+  answer:
+    type: ids
+    correct: [invoice-exports/SP-6, link-expiry-spike/SP-2]
+  why: "In cr-45, invoice-exports/SP-6 says 45 minutes (proposal) and link-expiry-spike/SP-2 says 10 minutes (spike). link-expiry-spike/SP-3 keeps 30 minutes. EXP-4 says 30 (design.md 11, Roles)."
+
+- id: Q03
+  state: base
+  case: "general review: sign-off and owner questions"
+  ask: "Which signed requirement covers EXP-4, and who chose the 30 minutes?"
+  expected_ids: [EXP-4, invoice-exports/R2, invoice-exports/S1, invoice-exports/D1]
+  answer:
+    type: choice
+    options:
+      a: "invoice-exports R2 version 1, signed in S1; the owner chose 30 minutes in decision D1"
+      b: "invoice-exports R2, which itself says 30 minutes, signed in S1"
+      c: "link-expiry-spike Q1, signed in the spike's S1"
+      d: "No signed requirement; the agent chose 30 minutes"
+    correct: a
+  why: "EXP-4's marker says serves:invoice-exports/R2. R2 version 1 says only 'after a short time' and S1 covers R1-R4 version 1. D1 (source: owner, O2 'half an hour for the link is fine') clarifies R2 as 30 minutes (design.md 6)."
+
+- id: Q04
+  state: base
+  case: "path: an epic with early consolidation"
+  ask: "Which change paragraphs of invoice-exports still need a disposition before the epic can close?"
+  expected_ids: [invoice-exports/SP-7, invoice-exports/SP-10, invoice-exports/SP-11]
+  answer:
+    type: ids
+    correct: [invoice-exports/SP-7, invoice-exports/SP-10, invoice-exports/SP-11]
+  why: "The record has incorporated dispositions for SP-4, SP-5, SP-6 and SP-9 only. SP-7 (rule), SP-10 (data) and SP-11 (interface) have a baseline effect. SP-12 (rationale), the notes and the plans need none (design.md 5, the close rule)."
+
+- id: Q05
+  state: cr-wording
+  case: "close rule: record a wording change"
+  ask: "PR #45 asks to close invoice-exports. EXP-10 does not match SP-10 word for word. Can the request close?"
+  expected_ids: [invoice-exports/SP-10, EXP-10, invoice-exports/D3]
+  answer:
+    type: choice
+    options:
+      a: "Yes: decision D3 records the wording, with the source version and the accepted target version"
+      b: "No: EXP-10 is not equal to SP-10, so its disposition is not valid"
+      c: "No: R3 has no sign-off"
+      d: "Yes: the check ignores commas and word order"
+    correct: a
+  why: "In cr-wording, SP-7, SP-10 and SP-11 are incorporated as EXP-9, EXP-10 and EXP-11. The SP-10 disposition names wording D3, and D3 has source_version 9854e6ef886e6285 and accepted_target 9df322ea61014a33, which is EXP-10's hash. S1 covers R1-R4 (design.md 5, Equality)."
+
+- id: Q06
+  state: cr-45
+  case: "close rule: a source edited from 30 to 45 minutes after early incorporation needs its own disposition"
+  ask: "After PR #44, could invoice-exports close if nothing else changed?"
+  expected_ids: [invoice-exports/SP-6, EXP-4, invoice-exports/R2]
+  answer:
+    type: choice
+    options:
+      a: "Yes: SP-6 already has an incorporated disposition"
+      b: "Yes: S2 signs R2 version 2, so SP-6 is covered"
+      c: "No: R2 version 2 is not signed"
+      d: "No: the new version of SP-6 (45 minutes) has no disposition and EXP-4 still says 30; SP-7, SP-10 and SP-11 also have none"
+    correct: d
+  why: "The SP-6 disposition names source_sha256 f426664deb962408 (30 minutes); SP-6 is now 5b8749f699a7a9d5. A disposition closes one source version, not an ID (design.md 5, Dispositions). S2 does sign R2 version 2."
+
+- id: Q07
+  state: cr-45
+  case: "sign-off: a changed requirement is a new version, signed again"
+  ask: "Did the owner sign the 45-minute link time?"
+  expected_ids: [invoice-exports/R2, invoice-exports/S2]
+  answer:
+    type: yesno
+    correct: "yes"
+  why: "The cr-45 record has R2 version 2 (from O3 'make it 45') and S2 with covers [R2] and versions {R2: 2}, snapshot origin/2026-06-21-signoff.md 'R2 v2 ok, sign' (design.md 6)."
+
+- id: Q08
+  state: cr-supersede
+  case: "close rule: supersede an early consolidated part"
+  ask: "Whose text is EXP-4 now, and what is the state of invoice-exports/SP-6?"
+  expected_ids: [EXP-4, link-refresh/SP-2, invoice-exports/SP-6]
+  answer:
+    type: choice
+    options:
+      a: "invoice-exports/SP-6; SP-6 is still incorporated"
+      b: "link-expiry-spike/SP-3; SP-6 is abandoned"
+      c: "link-refresh/SP-2; SP-6 is superseded by link-refresh/SP-2"
+      d: "link-refresh/SP-2; SP-6 is still incorporated"
+    correct: c
+  why: "EXP-4 now equals link-refresh/SP-2 (df34fa4ec8f255ad), with an incorporated disposition. The invoice-exports record marks SP-6 version f426664deb962408 as superseded by link-refresh/SP-2 (design.md 5, superseded)."
+
+- id: Q09
+  state: cr-chain
+  case: "path: an epic with A->B->C supersession; close rule: a chain ends in a valid removal"
+  ask: "Trace EXP-4 from its first text to now. Which change paragraphs made each step?"
+  expected_ids: [invoice-exports/SP-6, link-refresh/SP-2, portal-downloads/SP-2, EXP-4]
+  answer:
+    type: choice
+    options:
+      a: "invoice-exports/SP-6, then link-refresh/SP-2, then portal-downloads/SP-2 removed it"
+      b: "invoice-exports/SP-6, then link-expiry-spike/SP-3, then portal-downloads/SP-2 removed it"
+      c: "invoice-exports/SP-6, then portal-downloads/SP-2 removed it"
+      d: "invoice-exports/SP-6, then link-refresh/SP-2, which is still current"
+    correct: a
+  why: "invoice-exports/SP-6 is superseded by link-refresh/SP-2; link-refresh/SP-2 is superseded by portal-downloads/SP-2, whose disposition is removed (EXP-4 is absent from specs/exports.md). The spike's candidates only build on EXP-4."
+
+- id: Q10
+  state: cr-remove
+  case: "close rule: remove a paragraph"
+  ask: "What does PR #51 do to INV-4, and which sign-off covers it?"
+  expected_ids: [INV-4, INV-19, tax-module/SP-2, tax-module/SP-3, tax-module/S1]
+  answer:
+    type: choice
+    options:
+      a: "It rewords INV-4 to allow VAT; no sign-off is needed for a rewording"
+      b: "It marks INV-4 as superseded by INV-19; the owner did not sign"
+      c: "It removes INV-4; a limit is not a promise, so no sign-off is needed"
+      d: "It removes INV-4 and adds INV-19; tax-module R1, signed in S1, covers both"
+    correct: d
+  why: "tax-module/SP-2 (limit, changes:INV-4 remove) has a removed disposition and INV-4 is absent; SP-3 is incorporated as INV-19. R1 says the spec MUST no longer say Invoicer does not calculate tax; S1 covers R1. A limit is a promise kind (design.md 3)."
+
+- id: Q11
+  state: cr-squash
+  case: "close rule: repeat after a squash merge"
+  ask: "PR #51 was squash-merged as M8. The records still name branch commits b1 and b2, which are not on main. Does tax-module now fail the close rule on M8?"
+  expected_ids: [tax-module/SP-2, tax-module/SP-3, INV-19]
+  answer:
+    type: yesno
+    correct: "no"
+  why: "The dispositions name text versions, not commits: on M8 INV-4 is absent and INV-19 equals SP-3 (04eb4dc2449fd231). The check runs on the closing state, and 'consolidated on main' is read from main (design.md 5, the close rule)."
+
+- id: Q12
+  state: cr-abandon
+  case: "close rule: abandon an applied part"
+  ask: "Is the yearly ZIP in the spec, and who decided?"
+  expected_ids: [invoice-exports/SP-7, invoice-exports/SP-10, invoice-exports/SP-11, invoice-exports/D3]
+  answer:
+    type: choice
+    options:
+      a: "Yes, as EXP-9; nobody decided against it"
+      b: "No: the agent dropped it for lack of time"
+      c: "No: EXP-9 was added in PR #46 and reverted in PR #47; the owner dropped the ZIP (D3); SP-7 is abandoned as reverted, SP-10 and SP-11 as never applied"
+      d: "No: it was never consolidated, and it is still pending"
+    correct: c
+  why: "The cr-abandon record has D3 (source: owner, O3 'forget the zip') and abandoned dispositions: SP-7 reason reverted (applied at M8 PR #46, reverted at M9 PR #47), SP-10 and SP-11 reason never applied (design.md 5, abandoned)."
+
+- id: Q13
+  state: res-c3
+  case: "results: C3 changes the report (the old result does not apply)"
+  ask: "Does the citation review still apply to the report?"
+  expected_ids: [RPT-4, RPT-5]
+  answer:
+    type: choice
+    options:
+      a: "Yes: the review passed at C1"
+      b: "No: C3 changed a price figure, so the result from C1 does not apply to the current text"
+      c: "Yes: C2 only added the result file"
+      d: "Unknown: the review declares no inputs"
+    correct: b
+  why: "results/citation-review.yaml declares report/market-q3.md with sha256 68c617f720b9f372. In res-c3 the report says 12 euros, not 11, and its hash is c973e5bc44ea7f1b (design.md 9)."
+
+- id: Q14
+  state: base
+  case: "results: a report whose review passed at C1; C2 adds only the result file (the result still applies)"
+  ask: "main is at C2. Does the citation review that passed at C1 still apply to the report?"
+  expected_ids: [RPT-4, RPT-5]
+  answer:
+    type: yesno
+    correct: "yes"
+  why: "C2 added only .assuredloop/results/citation-review.yaml (market-report/history.yaml). The report's hash is still 68c617f720b9f372, the declared input. For a report review, the report's bytes are the whole checked object (design.md 9)."
+
+- id: Q15
+  state: base
+  case: "cross-repo: an absent clone"
+  ask: "Does the mobile app's export link code follow EXP-4?"
+  expected_ids: [EXP-4]
+  answer:
+    type: choice
+    options:
+      a: "Yes: it implements EXP-4"
+      b: "Yes: its test result passed"
+      c: "No: it cites no central ID"
+      d: "Unknown: the invoicer-mobile clone is absent; the implements link is only a declared claim"
+    correct: d
+  why: "The invoice-exports record declares invoicer-mobile app/src/ExportLink.kt implements central:EXP-4. config.yaml lists invoicer-mobile at ../invoicer-mobile, and the folder is absent. A repo that is not present gives 'unknown' (design.md 12)."
+
+- id: Q16
+  state: base
+  case: "search: identical local IDs and file names in two output repos"
+  ask: "Which central ID does invoicer-worker's test/export-link.test.js cite?"
+  expected_ids: [invoice-exports/SP-10]
+  answer:
+    type: choice
+    options:
+      a: "EXP-4"
+      b: "invoice-exports/SP-10"
+      c: "EXP-6"
+      d: "It cites no central ID"
+    correct: b
+  why: "The worker test's first line names central:invoice-exports/SP-10, and it checks twelve monthly ZIP file names. The web test with the same path names central:EXP-4."
+
+- id: Q17
+  state: base
+  case: "search: exact IDs, with identical local IDs in several requests"
+  ask: "What does reminder-emails/SP-2 change, and how many reminders does it promise?"
+  expected_ids: [reminder-emails/SP-2, INV-11]
+  answer:
+    type: choice
+    options:
+      a: "It changes INV-11: up to three reminders, 7, 14 and 21 days after the due date"
+      b: "It is a note with no promise"
+      c: "It is the 10-minute link candidate"
+      d: "It changes INV-13: numbers are never used again"
+    correct: a
+  why: "SP-2 exists in five requests of the base state (four central, one in market-report). reminder-emails/SP-2 has the marker 'rule serves:R1 changes:INV-11' and promises up to three reminders. IDs resolve by request name, never through search (design.md 4 and 11)."
+
+- id: Q18
+  state: base
+  case: "cross-repo: PR references"
+  ask: "Which PRs name task T1 of invoice-exports?"
+  expected_ids: [invoice-exports/T1]
+  answer:
+    type: ids
+    correct: ["#33", "#38", "invoicer-web#57"]
+  why: "invoicer/history.yaml: M3 (#33) and M5 (#38) name invoice-exports/T1; invoicer-web/history.yaml: W2 (invoicer-web#57) names central:invoice-exports/T1. The record agrees. tasks.md lists only #33 and invoicer-web#57; git is the exact source (design.md 8)."
+
+- id: Q19
+  state: base
+  case: "path: a spike"
+  ask: "Has the link-expiry spike answered its question?"
+  expected_ids: [link-expiry-spike/Q1, link-expiry-spike/S1, link-expiry-spike/SP-2, link-expiry-spike/SP-3]
+  answer:
+    type: choice
+    options:
+      a: "Yes: candidate A (10 minutes) won"
+      b: "Yes: link-refresh carried out candidate B"
+      c: "No: Q1 is not signed yet"
+      d: "No: Q1 is signed (S1) and two candidates are written, but there are no findings yet"
+    correct: d
+  why: "link-expiry-spike/request.md says 'Not concluded. No findings yet.'; the record has S1 covering Q1 version 1 and 'findings: none yet'. link-refresh does not exist in the base state (design.md 6, the spike)."
+
+- id: Q20
+  state: base
+  case: "sign-off: a design-only paragraph needs no sign-off"
+  ask: "Does reminder-emails/SP-4, the daily job, need the owner's sign-off on its own?"
+  expected_ids: [reminder-emails/SP-2, reminder-emails/SP-3, reminder-emails/SP-4, reminder-emails/S1]
+  answer:
+    type: choice
+    options:
+      a: "Yes: every change paragraph needs a sign-off"
+      b: "Yes: it builds on INV-10, a rule"
+      c: "No: SP-4 is a flow, a design kind; only the promise kinds SP-2 (rule) and SP-3 (definition) need a signed requirement, and S1 covers R1"
+      d: "No: only plans are free of sign-off, and SP-4 is a plan"
+    correct: c
+  why: "SP-4's marker is 'flow serves:R1 builds-on:INV-10'. Design kinds need review, promise kinds need a signed requirement (design.md 3, Kinds; design.md 6). S1 covers reminder-emails R1 version 1."
