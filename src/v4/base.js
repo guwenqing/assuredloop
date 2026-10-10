@@ -1,7 +1,7 @@
 // What every v4 command shares: the failure that refuses, the clock, hashes,
 // request names and the record paths.
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 // A refusal: exit 2, `al: <message>`, and nothing written.
@@ -30,9 +30,25 @@ export const read = (top, path) => {
 };
 export const exists = (top, path) => existsSync(join(top, path));
 
+// Refuses, before anything is written, when a part of any of `paths` (paths
+// under `top`) that exists is a symlink: records are written only through
+// real folders, so nothing lands outside the repo.
+export function guard(top, paths) {
+  for (const path of paths) {
+    let at = top;
+    for (const part of path.split('/')) {
+      at = join(at, part);
+      let st;
+      try { st = lstatSync(at); } catch { break; }
+      if (st.isSymbolicLink()) throw new Fail(`${path} is reached through the symlink ${at.slice(top.length + 1)}; records are written only through real folders, and nothing was written`, `make ${at.slice(top.length + 1)} a real folder in this repo`);
+    }
+  }
+}
+
 // Writes `text` to `path` under `top`, making its folders; a file whose text
 // is already that is left alone, so indexing twice changes no byte.
 export function write(top, path, text) {
+  guard(top, [path]);
   if (read(top, path) === text) return false;
   mkdirSync(dirname(join(top, path)), { recursive: true });
   writeFileSync(join(top, path), text);

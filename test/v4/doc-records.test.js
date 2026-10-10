@@ -3,11 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parse } from 'yaml';
 import {
-  HEX64, commitAll, doc, docRecord, docRecordPath, editFile, exists, git, index, move, newRequest, paragraph, project,
-  read, tree, write, writeConfig, writeYaml,
+  ADR3, HEX64, INVOICES, binding, commitAll, doc, docRecord, docRecordPath, editFile, exists, git, hashOf, index,
+  move, newRequest, paragraph, project, read, record, tree, write, writeConfig, writeYaml,
 } from './helpers/project.js';
 
 const SPEC = 'specs/invoices.md';
+const ADR3_FILE = 'specs/adr/0003-signed-links.md';
 const BASE_DOC = `An intro with no ID.\n\n${doc([
   ['INV-1 note', '# Invoices'],
   ['INV-2 rule', 'An invoice MUST have a number.'],
@@ -200,4 +201,55 @@ test('a second index leaves every per-doc record byte for byte the same', (t) =>
   const before = tree(dir);
   index(dir);
   assert.deepEqual(tree(dir), before);
+});
+
+test('with no config, every *.md under specs/ is a spec doc, nested folders included, and its IDs are bound', (t) => {
+  const dir = project(t);
+  write(dir, SPEC, INVOICES);
+  write(dir, 'specs/sub/more.md', doc([['SUB-1 rule', 'A sub rule MUST hold.']]));
+  write(dir, ADR3_FILE, ADR3);
+  commitAll(dir, 'base, no config');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  newRequest(dir, 'inv');
+  write(dir, 'requests/inv/spec.md', doc([['SP-1 rule builds-on:INV-41', 'The link MUST expire after 20 minutes.']]));
+  assert.ok(!exists(dir, '.assuredloop/config.yaml'));
+  index(dir);
+  assert.equal(paragraph(dir, SPEC, 'INV-41').kind, 'rule');
+  assert.equal(paragraph(dir, 'specs/sub/more.md', 'SUB-1').kind, 'rule');
+  assert.equal(docRecord(dir, ADR3_FILE).status, 'accepted');
+  assert.deepEqual(binding(record(dir, 'inv'), 'inv/SP-1', 'builds-on', 'INV-41'), {
+    holder: 'inv/SP-1', link: 'builds-on', target: 'INV-41',
+    holder_sha256: hashOf(dir, 'requests/inv/spec.md', 'SP-1'), target_sha256: hashOf(dir, SPEC, 'INV-41'),
+  });
+});
+
+test('config root: names the spec root; its *.md and <root>/adr/ are indexed, and specs/ is not', (t) => {
+  const dir = project(t);
+  writeConfig(dir, [], { root: 'docs-spec' });
+  write(dir, 'docs-spec/a.md', doc([['A-1 rule', 'An A rule MUST hold.']]));
+  write(dir, 'docs-spec/deep/b.md', doc([['B-1 rule', 'A B rule MUST hold.']]));
+  write(dir, 'docs-spec/adr/0001-first.md', `Status: proposed\n\n${doc([['ADR-1 choice', '# ADR-1: First']])}`);
+  write(dir, 'specs/c.md', doc([['C-1 rule', 'A C rule MUST hold.']]));
+  index(dir);
+  assert.equal(paragraph(dir, 'docs-spec/a.md', 'A-1').kind, 'rule');
+  assert.equal(paragraph(dir, 'docs-spec/deep/b.md', 'B-1').kind, 'rule');
+  assert.equal(docRecord(dir, 'docs-spec/adr/0001-first.md').status, 'proposed');
+  assert.ok(!exists(dir, docRecordPath('specs/c.md')), 'specs/ is not the root here');
+});
+
+test('IDs of a change spec are local to its request: SP-1 of a and SP-1 of b each get their own change kind', (t) => {
+  const dir = project(t);
+  newRequest(dir, 'a');
+  newRequest(dir, 'b');
+  write(dir, 'requests/a/spec.md', doc([['SP-1 rule', 'Request a MUST export CSV.']]));
+  write(dir, 'requests/b/spec.md', doc([['SP-1 rule', 'Request b MUST export ZIP.']]));
+  commitAll(dir, 'two requests on main');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  index(dir);
+  assert.equal(paragraph(dir, 'requests/a/spec.md', 'SP-1').change, undefined);
+  assert.equal(paragraph(dir, 'requests/b/spec.md', 'SP-1').change, undefined);
+  editFile(dir, 'requests/b/spec.md', 'MUST export ZIP', 'MUST export one ZIP');
+  index(dir);
+  assert.equal(paragraph(dir, 'requests/a/spec.md', 'SP-1').change, undefined);
+  assert.deepEqual(paragraph(dir, 'requests/b/spec.md', 'SP-1').change, ['Changed']);
 });
