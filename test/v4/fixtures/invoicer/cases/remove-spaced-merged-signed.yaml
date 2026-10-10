@@ -1,0 +1,6 @@
+# The removal of remove-spaced (arm signed) merged on main in an earlier commit:
+# INV-99 is absent at the merge-base, so its kind must come from history.
+title: "Drop the foreign tax limit: close"
+base: remove-spaced
+baseArm: signed
+claim: "Tier: 2 — drop-spaced; closes the request"

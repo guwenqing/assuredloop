@@ -12,13 +12,12 @@ import { parse } from 'yaml';
 import { Fail, isName } from './base.js';
 import { git } from './git.js';
 import { createHash } from 'node:crypto';
-import { exportRows, exported, firstParents, newHistory, resolveCommit, sectionAt } from './export.js';
+import { exportRows, exported, firstParents, newHistory, resolveCommit, sectionAt, selectedRepos } from './export.js';
 
 // The chunk rule and the tokenizer: a change to either rebuilds the index.
 const MANIFEST = { schema: 'assuredloop-search/1', chunk: 'one paragraph version; header: file title, heading path, kind, ID', tokenizer: 'porter unicode61' };
 const RRF_K = 60;
 const DEEP = 100;
-const NOT_KNOWN = 'the output repos: only this repo is indexed until the cross-repo config (#180)';
 const STOP = new Set(['a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'can', 'did', 'do', 'does', 'for', 'from', 'has', 'have', 'how', 'in', 'is', 'it', 'its', 'of', 'on', 'or', 'that', 'the', 'this', 'to', 'was', 'what', 'when', 'which', 'who', 'why', 'with']);
 
 const terms = (words) => [...new Set((words.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter((w) => !STOP.has(w)))];
@@ -64,22 +63,38 @@ function indexDir(top) {
   return isAbsolute(p) ? p : join(top, p);
 }
 
-// The requests a row is evidence for: a declared output of theirs, or a
-// result whose declared inputs hold one of their outputs or a file of their folder.
-function evidenceFor(row, outputs, names) {
-  if (row.source_type === 'output') return [...(outputs.get(row.file) ?? [])].sort();
-  if (row.source_type !== 'result') return [];
-  let r;
-  try { r = parse(row.text, { schema: 'failsafe' }); } catch { return []; }
-  const inputs = (Array.isArray(r?.inputs) ? r.inputs : []).map((x) => String(x?.file ?? '')).filter(Boolean);
-  const out = new Set();
-  for (const f of inputs) {
-    for (const n of outputs.get(f) ?? []) out.add(n);
-    const m = /^requests\/(?:archive\/)?([^/]+)\//.exec(f);
-    if (m && names.has(m[1])) out.add(m[1]);
+// The requests each evidence row is evidence for, set as `for` (D17): an
+// output row's declaring records and the requests whose IDs it cites; a
+// result's, through its declared inputs: an output of the same repo, a
+// declared output of the central repo, or a file of a request's folder.
+function setFor(rows, outputs, names, central) {
+  const reqOf = (cite) => /^([a-z0-9][a-z0-9-]*)\//.exec(cite.replace(/^central:/, ''))?.[1];
+  const outFor = new Map();
+  for (const r of rows) {
+    if (r.source_type !== 'output') continue;
+    r.for = [...new Set([...(r.declared ?? []).map((d) => d.request), ...(r.cites ?? []).map(reqOf).filter((n) => n && names.has(n))])].sort();
+    if (r.superseded_by === null) outFor.set(`${r.repo}\t${r.file}`, r.for);
   }
-  return [...out].sort();
+  for (const r of rows) {
+    if (r.source_type === 'output') continue;
+    if (r.source_type !== 'result') { r.for = []; continue; }
+    let res;
+    try { res = parse(r.text, { schema: 'failsafe' }); } catch { r.for = []; continue; }
+    const out = new Set();
+    for (const f of (Array.isArray(res?.inputs) ? res.inputs : []).map((x) => String(x?.file ?? '')).filter(Boolean)) {
+      for (const n of outFor.get(`${r.repo}\t${f}`) ?? []) out.add(n);
+      if (r.repo !== central) continue;
+      for (const n of outputs.get(f) ?? []) out.add(n);
+      const m = /^requests\/(?:archive\/)?([^/]+)\//.exec(f);
+      if (m && names.has(m[1])) out.add(m[1]);
+    }
+    r.for = [...out].sort();
+  }
 }
+
+// A version is on the first-parent history of its repo's selected commit;
+// a repo with no chain (unknown now) is not checked.
+const onChain = (q, r) => q.chains.get(r.repo)?.has(r.valid_from) ?? true;
 
 // Which current roles a query takes, and whether it adds history.
 function inScope(row, q) {
@@ -121,23 +136,32 @@ const getMeta = (db, k) => db.prepare('SELECT v FROM meta WHERE k = ?').get(k)?.
 const setMeta = (db, k, v) => db.prepare('INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)').run(k, v);
 
 // The walk state as stored: versions and the items of each path.
-const saveHistory = (h) => JSON.stringify({ last: h.last, spec: h.spec, atPath: [...h.atPath], versions: [...h.versions].map(([k, vs]) => [k, [...vs]]) });
+const saveHistory = (h) => JSON.stringify({ last: h.last, spec: h.spec, files: h.files ?? [], atPath: [...h.atPath], versions: [...h.versions].map(([k, vs]) => [k, [...vs]]) });
 function loadHistory(text) {
   if (!text) return newHistory();
   const s = JSON.parse(text);
-  return { last: s.last, spec: s.spec, atPath: new Map(s.atPath), versions: new Map(s.versions.map(([k, vs]) => [k, new Map(vs)])) };
+  return { last: s.last, spec: s.spec, files: s.files ?? [], atPath: new Map(s.atPath), versions: new Map(s.versions.map(([k, vs]) => [k, new Map(vs)])) };
 }
 
 // Brings the index to `commit`: the current index to that commit's rows
 // (rows missing from its listing are removed), the history index added to and
 // never removed from. Returns what it did.
-function refresh(db, top, commit) {
-  if (getMeta(db, 'commit') === commit) return { line: `up to date at ${short(commit)}`, changed: false };
+function refresh(db, top, commit, repos) {
+  // The index is up to date only when no repo moved (D17).
+  const stamp = repos.map((r) => `${r.name}@${r.commit ?? 'unknown'}`).join(' ');
+  const before = getMeta(db, 'commit');
+  if (before === stamp) return { line: `up to date at ${short(commit)}`, changed: false };
+  // The repos that moved since the last refresh: only their new commits are walked.
+  const prev = new Set((before ?? '').split(' '));
+  const moved = repos.filter((r) => !prev.has(`${r.name}@${r.commit ?? 'unknown'}`)).map((r) => (r.commit ? `${r.name}@${short(r.commit)}` : `${r.name} (unknown)`));
   const h = loadHistory(getMeta(db, 'walk'));
-  const { rows, outputs, records } = exportRows(top, commit, h);
+  const hs = new Map(JSON.parse(getMeta(db, 'walks') ?? '[]').map(([k, v]) => [k, loadHistory(JSON.stringify(v))]));
+  const { rows, outputs, records, config } = exportRows(top, commit, h, hs);
   const names = new Set(records.keys());
-  const live = rows.filter((r) => r.commit === commit && r.superseded_by === null);
-  const now = new Map(live.map((r) => [keyOf(r), { ...r, for: evidenceFor(r, outputs, names) }]));
+  setFor(rows, outputs, names, config.repo);
+  const at = new Map(repos.map((r) => [r.name, r.commit]));
+  const live = rows.filter((r) => r.commit === at.get(r.repo) && r.superseded_by === null);
+  const now = new Map(live.map((r) => [keyOf(r), r]));
   const had = new Map(db.prepare('SELECT key, row FROM current').all().map((x) => [x.key, x.row]));
   db.exec('BEGIN');
   let added = 0;
@@ -165,10 +189,11 @@ function refresh(db, top, commit) {
     if (!known) { putHistoryText.run(k, chunk(r)); kept += 1; } else if (chunk(JSON.parse(known.row)) !== chunk(r)) { delHistoryText.run(k); putHistoryText.run(k, chunk(r)); }
   }
   setMeta(db, 'walk', saveHistory(h));
-  setMeta(db, 'commit', commit);
+  setMeta(db, 'walks', JSON.stringify([...hs].map(([k, v]) => [k, JSON.parse(saveHistory(v))])));
+  setMeta(db, 'commit', stamp);
   setMeta(db, 'requests', JSON.stringify([...names].sort()));
   db.exec('COMMIT');
-  return { line: `brought to ${short(commit)}: current +${added} -${removed}; history +${kept}, nothing removed`, changed: true };
+  return { line: `brought to ${short(commit)}: current +${added} -${removed}; history +${kept}, nothing removed${repos.length > 1 ? `; walked ${moved.join(', ')}` : ''}`, changed: true };
 }
 
 // The FTS5 query of the words: each term quoted, any term may match.
@@ -203,7 +228,7 @@ function shownRow(curText, histText, q) {
   }
   if (!histText || !q.history) return null;
   const r = JSON.parse(histText);
-  return q.chain.has(r.valid_from) ? { ...r, role: 'history' } : null;
+  return onChain(q, r) ? { ...r, role: 'history' } : null;
 }
 
 function exactHits(db, q, ids) {
@@ -215,7 +240,7 @@ function exactHits(db, q, ids) {
       const live = new Set(rows.map(keyOf));
       for (const x of db.prepare('SELECT key, row FROM history WHERE id = ? ORDER BY key').all(id)) {
         const r = JSON.parse(x.row);
-        if (!live.has(x.key) && q.chain.has(r.valid_from) && !db.prepare('SELECT 1 FROM current WHERE key = ?').get(x.key)) rows.push({ ...r, role: 'history' });
+        if (!live.has(x.key) && onChain(q, r) && !db.prepare('SELECT 1 FROM current WHERE key = ?').get(x.key)) rows.push({ ...r, role: 'history' });
       }
     }
     out.push(...rows);
@@ -248,7 +273,7 @@ function sectionOf(top, rows, hit, chain) {
     }
   }
   const path = JSON.stringify(hit.heading_path ?? []);
-  return rows.filter((r) => r.file === hit.file && r.commit === hit.commit && JSON.stringify(r.heading_path ?? []) === path)
+  return rows.filter((r) => r.repo === hit.repo && r.file === hit.file && r.commit === hit.commit && JSON.stringify(r.heading_path ?? []) === path)
     .sort((a, b) => (a.line ?? 0) - (b.line ?? 0)).map(exported);
 }
 
@@ -312,7 +337,12 @@ export async function search({ top, args, opts }) {
   const commit = resolveCommit(top, opts.at);
   const want = opts.level === undefined ? 2 : Number(opts.level);
   const chain = firstParents(top, commit);
-  const q = { words, id: opts.id ?? null, change: opts.change ?? null, history: Boolean(opts.history), chain };
+  // Each repo at its selected commit (D17): the central repo first, then the output repos.
+  const repos = selectedRepos(top, commit);
+  const chains = new Map(repos.filter((r) => r.commit).map((r) => [r.name, r.dir === top ? chain : firstParents(r.dir, r.commit)]));
+  const q = { words, id: opts.id ?? null, change: opts.change ?? null, history: Boolean(opts.history), chain, chains };
+  const central = repos[0].name;
+  const notKnown = repos.filter((r) => r.unknown).map((r) => `the output repo ${r.name}: ${r.unknown}; none of its rows is shown`);
   const ws = terms(words);
 
   // The level that answers: the strongest one installed, up to --level.
@@ -336,8 +366,7 @@ export async function search({ top, args, opts }) {
   if (level === 0) {
     const { rows, outputs, records } = exportRows(top, commit);
     if (q.change && !records.has(q.change)) throw new Fail(`no request named ${q.change}`, 'al search --change <request> <words>');
-    const names = new Set(records.keys());
-    for (const r of rows) r.for = evidenceFor(r, outputs, names);
+    setFor(rows, outputs, new Set(records.keys()), central);
     const known = new Set(rows.map((r) => r.id));
     const ids = [...(q.id ? [q.id] : []), ...idsAmong(words, (t) => known.has(t))];
     // An ID resolves in every non-history row, whatever the query; history rows with --history.
@@ -348,7 +377,7 @@ export async function search({ top, args, opts }) {
     const dir = indexDir(top);
     const { db, fresh } = openIndex(lite.DatabaseSync, dir, Boolean(opts.rebuild));
     try {
-      const done = refresh(db, top, commit);
+      const done = refresh(db, top, commit, repos);
       indexLine = fresh ? `${fresh}; ${done.line}` : done.line;
       if (q.change && !JSON.parse(getMeta(db, 'requests') ?? '[]').includes(q.change)) throw new Fail(`no request named ${q.change}`, 'al search --change <request> <words>');
       const known = (t) => Boolean(db.prepare('SELECT 1 FROM current WHERE id = ? UNION SELECT 1 FROM history WHERE id = ?').get(t, t));
@@ -397,17 +426,18 @@ export async function search({ top, args, opts }) {
   });
   const scope = `${q.change ? `change ${q.change}` : 'current system'}${q.history ? ' + history' : ''}`;
   if (opts.json) {
-    return { raw: `${JSON.stringify({ level, fallback, commit, query: { words: q.words, id: q.id, change: q.change, history: q.history }, not_known: NOT_KNOWN, ...(indexLine ? { index: indexLine } : {}), hits: out })}\n` };
+    return { raw: `${JSON.stringify({ level, fallback, commit, repos: repos.map(({ name, commit: c, unknown }) => ({ name, commit: c, unknown })), query: { words: q.words, id: q.id, change: q.change, history: q.history }, not_known: notKnown, ...(indexLine ? { index: indexLine } : {}), hits: out })}\n` };
   }
   const body = [`Level     ${levelText}`];
   if (fallback) body.push(`Fallback  ${fallback}`);
   body.push(`Query     ${scope} at ${short(commit)}`);
+  if (repos.length > 1) body.push(`Repos     ${repos.map((r) => (r.commit ? `${r.name}@${short(r.commit)}` : `${r.name} unknown`)).join(' ')}`);
   if (indexLine) body.push(`Index     ${indexLine}`);
   if (!out.length) body.push('No hits');
   for (const h of out) {
-    body.push(`${h.rank}. ${h.id} ${h.role}${h.exact ? ' exact' : ''} ${h.kind} ${h.file} v${h.version} @${short(h.commit)}${h.heading_path?.length ? ` (${h.heading_path.join(' > ')})` : ''}`);
+    body.push(`${h.rank}. ${h.id} ${h.role}${h.exact ? ' exact' : ''} ${h.kind} ${h.repo === central ? '' : `${h.repo}:`}${h.file} v${h.version} @${short(h.commit)}${h.heading_path?.length ? ` (${h.heading_path.join(' > ')})` : ''}`);
     for (const l of String(h.text).split('\n')) body.push(`   ${l}`);
     for (const s of h.section ?? []) if (s.id !== h.id) body.push(`   | ${s.id}: ${String(s.text).split('\n')[0]}`);
   }
-  return { body, notKnown: [NOT_KNOWN], next: out.length ? `al search --id <ID> for one row; --history adds removed and replaced text` : 'try other words, --change <request>, or --history' };
+  return { body, notKnown, next: out.length ? `al search --id <ID> for one row; --history adds removed and replaced text` : 'try other words, --change <request>, or --history' };
 }

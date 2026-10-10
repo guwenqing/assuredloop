@@ -1,0 +1,50 @@
+# A request removes the adopted limit INV-4 (review of 9680c1a, finding 1).
+# Its change paragraph is a note that serves R1 and declares removes:INV-4,
+# with a removed disposition; INV-4 is gone from specs/. A signed requirement
+# covers the removal when the paragraph serves it and its current text is
+# signed. design.md 5: "For a promise
+# paragraph, a removal is allowed only where a signed requirement covers it."
+# Arm unsigned: R1 is not signed. Arm signed: R1 is signed.
+title: Drop the tax limit
+base: base
+claim: "Tier: 2 — drop-tax"
+steps:
+  - al: [new, drop-tax, --from, '-', --title, Drop the tax limit, --tier, '2']
+    date: 2026-08-01
+    input: |
+      we do tax now, take out the line that says we don't.
+  - section:
+      request: drop-tax
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 No tax limit
+        The spec no longer says that Invoicer does not calculate tax.
+arms:
+  unsigned:
+    steps: []
+  signed:
+    steps:
+      - al: [record, drop-tax, signoff, --source, the project chat, --words, R1 ok, --yes]
+        date: 2026-08-02
+after:
+  - write:
+      file: requests/drop-tax/spec.md
+      text: |
+        <!-- SP-1 note serves:R1 removes:INV-4 -->
+
+        Remove INV-4. Invoicer calculates tax now.
+  - index: true
+    date: 2026-08-02
+  - edit:
+      file: specs/invoices.md
+      from: "<!-- INV-4 limit -->\n\nInvoicer does not calculate tax.\n\n"
+      to: ""
+  - dispositions:
+      request: drop-tax
+      add:
+        - {source: drop-tax/SP-1, disposition: removed, spec: INV-4}
+  - index: true
+    date: 2026-08-02

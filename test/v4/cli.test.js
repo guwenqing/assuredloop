@@ -4,7 +4,16 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMarkdown } from '../../src/v4/markers.js';
 import { loadConfig } from '../../src/v4/config.js';
-import { makeRepo, runV4, lines, assertFrame, show } from './helpers/repo.js';
+import { makeRepo as makeBareRepo, addRequest, runV4, lines, assertFrame, show } from './helpers/repo.js';
+
+// Spec docs here use serves:inv/R<n> (design.md 3: in specs/, a link names
+// the request), so each repo holds requests/inv/request.md.
+function makeRepo(t, opts) {
+  const repo = makeBareRepo(t, opts);
+  addRequest(repo);
+  repo.commit('request inv');
+  return repo;
+}
 
 const doc = (...ls) => ls.join('\n') + '\n';
 
@@ -12,10 +21,10 @@ const doc = (...ls) => ls.join('\n') + '\n';
 // Markers on lines 1, 5, 9, 13, 17; the file has 19 lines.
 const CLEAN = doc(
   '<!-- INV-1 note -->', '', '# Invoices', '',
-  '<!-- INV-2 purpose serves:R1 -->', '', 'Invoicer sends invoices.', '',
+  '<!-- INV-2 purpose serves:inv/R1 -->', '', 'Invoicer sends invoices.', '',
   '<!-- INV-3 note -->', '', '## Export', '',
-  '<!-- INV-4 rule serves:R2 -->', '', 'The export link MUST expire.', '',
-  '<!-- INV-5 rule serves:R2 -->', '', 'A link is signed.',
+  '<!-- INV-4 rule serves:inv/R2 -->', '', 'The export link MUST expire.', '',
+  '<!-- INV-5 rule serves:inv/R2 -->', '', 'A link is signed.',
 );
 
 const has = (r, line) => lines(r.stdout).includes(line);
@@ -200,12 +209,12 @@ describe('al spec --add-ids', () => {
 
   test('keeps existing markers and numbers new blocks above the highest in the file', (t) => {
     const repo = makeRepo(t);
-    repo.write('specs/inv.md', doc('# Invoices', '', '<!-- INV-7 rule serves:R1 builds-on:INV-2 -->', '', 'Kept rule.', '', '## Export', '', 'New text.'));
+    repo.write('specs/inv.md', doc('# Invoices', '', '<!-- INV-7 rule serves:inv/R1 builds-on:INV-2 -->', '', 'Kept rule.', '', '## Export', '', 'New text.'));
     const r = addIds(repo, 'specs/inv.md', '--prefix', 'INV', '--yes');
     assert.equal(r.code, 0, show(r));
     assertLine(r, 'Marked 3 paragraph(s) in specs/inv.md');
     const after = repo.read('specs/inv.md');
-    assert.ok(after.includes('<!-- INV-7 rule serves:R1 builds-on:INV-2 -->\n\nKept rule.\n'), after);
+    assert.ok(after.includes('<!-- INV-7 rule serves:inv/R1 builds-on:INV-2 -->\n\nKept rule.\n'), after);
     const ps = parseMarkdown(after, 'specs/inv.md').paragraphs;
     assert.deepEqual(ps.map((p) => p.id), ['INV-8', 'INV-7', 'INV-9', 'INV-10']);
     assert.deepEqual(ps.map((p) => p.text), ['# Invoices', 'Kept rule.', '## Export', 'New text.']);
@@ -352,7 +361,7 @@ describe('al check', () => {
     const repo = featureRepo(t);
     repo.write('specs/inv.md', CLEAN.replace('The export link MUST expire.', 'The export link MUST expire in 30 minutes.'));
     repo.commit('reword INV-4');
-    repo.write('specs/inv.md', repo.read('specs/inv.md') + doc('', '<!-- INV-6 rule serves:R3 -->', '', 'A link is used once.'));
+    repo.write('specs/inv.md', repo.read('specs/inv.md') + doc('', '<!-- INV-6 rule serves:inv/R3 -->', '', 'A link is used once.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assertLine(r, 'specs/inv.md INV-4 Changed');
@@ -365,10 +374,10 @@ describe('al check', () => {
     const repo = featureRepo(t);
     const moved = doc(
       '<!-- INV-1 note -->', '', '# Invoices', '',
-      '<!-- INV-2 purpose serves:R1 -->', '', 'Invoicer sends invoices.', '',
-      '<!-- INV-5 rule serves:R2 -->', '', 'A link is signed with a key.', '',
+      '<!-- INV-2 purpose serves:inv/R1 -->', '', 'Invoicer sends invoices.', '',
+      '<!-- INV-5 rule serves:inv/R2 -->', '', 'A link is signed with a key.', '',
       '<!-- INV-3 note -->', '', '## Export', '',
-      '<!-- INV-4 rule serves:R2 -->', '', 'The export link MUST expire.',
+      '<!-- INV-4 rule serves:inv/R2 -->', '', 'The export link MUST expire.',
     );
     repo.write('specs/inv.md', moved);
     const r = check(repo);
@@ -384,7 +393,7 @@ describe('al check', () => {
   test('each lint prints as <severity> <code> <file>:<line> <id or -> <message>', (t) => {
     const bad = doc(
       '<!-- INV-1 note -->', '', '# Invoices', '',
-      '<!-- INV-2 purpose serves:R1 -->', 'Invoicer sends invoices.', '',
+      '<!-- INV-2 purpose serves:inv/R1 -->', 'Invoicer sends invoices.', '',
       'Stray paragraph.', '',
       '<!-- INV-3 -->', '', 'Untyped.',
     );
@@ -434,7 +443,7 @@ describe('al check', () => {
 
   test('lost-id: an ID of the base that is gone at head, with a Removed change line', (t) => {
     const repo = featureRepo(t);
-    repo.write('specs/inv.md', CLEAN.replace(doc('', '<!-- INV-5 rule serves:R2 -->', '', 'A link is signed.'), '\n'));
+    repo.write('specs/inv.md', CLEAN.replace(doc('', '<!-- INV-5 rule serves:inv/R2 -->', '', 'A link is signed.'), '\n'));
     repo.commit('drop INV-5');
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
@@ -446,7 +455,7 @@ describe('al check', () => {
 
   test('a removal declared by removes: in a change spec at head is not lost-id', (t) => {
     const repo = featureRepo(t);
-    repo.write('specs/inv.md', CLEAN.replace(doc('', '<!-- INV-5 rule serves:R2 -->', '', 'A link is signed.'), '\n'));
+    repo.write('specs/inv.md', CLEAN.replace(doc('', '<!-- INV-5 rule serves:inv/R2 -->', '', 'A link is signed.'), '\n'));
     repo.write('requests/unsign/spec.md', '<!-- SP-1 plan removes:INV-5 -->\n\nDrop the signed-link rule.\n');
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
@@ -457,8 +466,8 @@ describe('al check', () => {
 
   test('an ID moved to another doc of the same scope is not lost-id', (t) => {
     const repo = featureRepo(t);
-    repo.write('specs/inv.md', CLEAN.replace(doc('', '<!-- INV-5 rule serves:R2 -->', '', 'A link is signed.'), '\n'));
-    repo.write('specs/links.md', '<!-- INV-5 rule serves:R2 -->\n\nA link is signed.\n');
+    repo.write('specs/inv.md', CLEAN.replace(doc('', '<!-- INV-5 rule serves:inv/R2 -->', '', 'A link is signed.'), '\n'));
+    repo.write('specs/links.md', '<!-- INV-5 rule serves:inv/R2 -->\n\nA link is signed.\n');
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assert.ok(!r.stdout.includes('lost-id'), show(r));
@@ -468,12 +477,12 @@ describe('al check', () => {
 
   test('used-again: an ID removed on main before the base, added back on the branch', (t) => {
     const repo = makeRepo(t);
-    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:R2 -->', '', 'An old rule.'));
+    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'An old rule.'));
     repo.commit('INV-6 added');
     repo.write('specs/inv.md', CLEAN);
     repo.commit('INV-6 removed');
     repo.git(['checkout', '-q', '-b', 'feature']);
-    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:R2 -->', '', 'A new rule.', '', '<!-- INV-7 rule serves:R2 -->', '', 'A fresh rule.'));
+    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'A new rule.', '', '<!-- INV-7 rule serves:inv/R2 -->', '', 'A fresh rule.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assertStarts(r, 'not ok used-again ', 1);
@@ -521,7 +530,7 @@ describe('al check', () => {
     const repo = makeRepo(t, { branch: 'trunk' });
     repo.write('specs/inv.md', CLEAN);
     repo.commit('spec');
-    repo.write('specs/inv.md', CLEAN.replace(doc('', '<!-- INV-5 rule serves:R2 -->', '', 'A link is signed.'), '\n') + doc('', '<!-- INV-6 -->', '', 'Untyped.'));
+    repo.write('specs/inv.md', CLEAN.replace(doc('', '<!-- INV-5 rule serves:inv/R2 -->', '', 'A link is signed.'), '\n') + doc('', '<!-- INV-6 -->', '', 'Untyped.'));
     repo.commit('drop INV-5, add INV-6');
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
@@ -585,12 +594,12 @@ describe('al check: used-again from history', () => {
   // "++ x" shows as "+++ x", which look like file headers.
   test('lines that start with "-- " or "++ " near the marker do not hide a used ID', (t) => {
     const repo = makeRepo(t);
-    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:R2 -->', '', 'An old rule.', '-- note', '++ x'));
+    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'An old rule.', '-- note', '++ x'));
     repo.commit('INV-6 added with -- and ++ lines');
     repo.write('specs/inv.md', CLEAN);
     repo.commit('INV-6 removed with its lines');
     repo.git(['checkout', '-q', '-b', 'feature']);
-    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:R2 -->', '', 'A new rule.'));
+    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'A new rule.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assertStarts(r, 'not ok used-again ', 1);
@@ -605,12 +614,12 @@ describe('al check: used-again from history', () => {
     const upToInv4 = CLEAN.split('\n').slice(0, 15).join('\n') + '\n';
     repo.write('specs/inv.md', CLEAN);
     repo.commit('INV-1..5');
-    repo.write('specs/inv.md', CLEAN + doc('++ x', '-- note', '', '<!-- INV-6 rule serves:R2 -->', '', 'Six.'));
+    repo.write('specs/inv.md', CLEAN + doc('++ x', '-- note', '', '<!-- INV-6 rule serves:inv/R2 -->', '', 'Six.'));
     repo.commit('INV-5 gets ++ and -- lines, INV-6 added right after');
     repo.write('specs/inv.md', upToInv4);
     repo.commit('INV-5 and INV-6 removed in one run');
     repo.git(['checkout', '-q', '-b', 'feature']);
-    repo.write('specs/inv.md', upToInv4 + doc('', '<!-- INV-6 rule serves:R2 -->', '', 'Six again.'));
+    repo.write('specs/inv.md', upToInv4 + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'Six again.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assertStarts(r, 'not ok used-again ', 1);
@@ -625,7 +634,7 @@ describe('al check: used-again from history', () => {
     repo.remove('docs/guide.md');
     repo.commit('guide removed');
     repo.git(['checkout', '-q', '-b', 'feature']);
-    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:R2 -->', '', 'A new rule.'));
+    repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'A new rule.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assert.ok(!r.stdout.includes('used-again'), show(r));

@@ -4,7 +4,7 @@
 // indexing never advances a binding; only --align does (design.md 4, 10).
 import { readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
-import { parse, stringify } from 'yaml';
+import { isMap, parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
 import { diffParagraphs } from './ids.js';
 import { git, mergeBase, fileAt, filesAt } from './git.js';
@@ -293,6 +293,18 @@ export function index({ top, opts }) {
       if (it.get('disposition') === 'incorporated' && spec && !it.has('spec_sha256')) {
         const t = targetOf(qualify(String(spec), null, new Set(), isCentral(config)), now);
         if (t) { it.set('spec_sha256', t.sha); rec.changed = true; } else body.push(`disposition: ${spec} not found, so its spec hash is not filled`);
+      }
+    }
+    // A wording decision names its pair, {source, spec}; its hashes are filled
+    // once, as a disposition's are (the architect, #179, D15).
+    for (const it of seq(rec, 'decisions').items) {
+      const w = it?.get?.('wording');
+      if (!isMap(w)) continue;
+      for (const [name, key, request] of [['source', 'source_sha256', n], ['spec', 'target_sha256', null]]) {
+        const ref = w.get(name);
+        if (!ref || w.has(key)) continue;
+        const t = targetOf(qualify(String(ref), request, request ? own : new Set()), now);
+        if (t) { w.set(key, t.sha); rec.changed = true; } else body.push(`decision ${it.get('id')}: ${ref} not found, so its wording hash is not filled`);
       }
     }
   }
