@@ -155,8 +155,9 @@ What the account leaves out, or cannot isolate:
   had the same form.
 - **A separate records agent.** As in validation, the records agent is not
   the work agent, so it pays its own fixed cost of reading the skill and
-  the records. For one agent that does both, the ratio is an upper bound;
-  the marginal cost of the records was not measured.
+  the records. One agent that does both may read less twice; that is a
+  hypothesis. The marginal cost of the records for such an agent was not
+  measured.
 - **The adoption case** had no work agent, so it has no ratio.
 - **The skill's own effect cannot be separated** from the change of tool and
   fixture: the v4 product with its skill replaced a written model with
