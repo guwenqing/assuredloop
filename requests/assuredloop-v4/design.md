@@ -192,7 +192,8 @@ semantic coverage as "not checked".
 
 **What the script checks** (no AI):
 - A paragraph with no ID: `not ok`. A promise or design paragraph with no kind
-  or no link: a hint; under opt-in `--strict`, `not ok`.
+  or no link: a hint; under opt-in `--strict`, `not ok`. An adopted paragraph
+  (section 5) gets no link hint while its text equals the captured text.
 - A link to an ID that does not exist: `not ok`. When another change removed
   the target, the link gets the hint "target removed" instead, and the open
   change aligns.
@@ -202,7 +203,10 @@ semantic coverage as "not checked".
   (validation.md B6).
 - Per PR, the ID lint: IDs lost since the base, IDs used twice, and IDs used
   again after removal. Agents can remove comments near the lines they edit
-  (claude-code issue #22530), so a lost ID must be caught.
+  (claude-code issue #22530), so a lost ID must be caught. A lost ID is at the
+  base, absent at the head in every doc of its scope, and named by no
+  `removes:`. An ID used again is absent at the base but was used in an
+  earlier commit.
 - A per-paragraph hash list, from which the script derives each paragraph's
   change in the PR: Changed, Moved, New or Removed.
 - A non-promise kind whose text holds requirement words (MUST, SHALL, MUST
@@ -212,9 +216,16 @@ semantic coverage as "not checked".
   such word.
 - A change paragraph whose text is close to an existing spec paragraph, with
   no `changes` or `builds on` link to it: the hint "does this change
-  INV-12?".
+  INV-12?". Close means a word-set similarity (Dice) of 0.6 or more, one
+  named constant.
 - A change of kind from a promise kind to any other kind counts as a promise
   change.
+- The exit code is 0 by default, even when `not ok` lines print. Under
+  `--strict`, the exit is 1 when any `not ok` prints. `--strict` raises only
+  the findings that need no judgment: no kind, no link, an invalid
+  disposition, and the marker lints. The hints that need judgment stay hints
+  under `--strict`: near match, "promise kind?", the typo mark, overlap,
+  stale base, a stale AI hint, an ADR that governs, and a removed target.
 
 **Who sets the kind.** The developer's agent proposes it in the PR, and the
 review checks it. The review view shows each changed paragraph's text beside
@@ -295,8 +306,11 @@ never advances it.
 |---|---|---|
 | `incorporated` | the text is in `specs/` | the bound source version is the source's current version, and its text equals the bound spec version (rule below) |
 | `removed` | the change removes a spec paragraph | the ID is absent from `specs/` in the closing state; the ID is never used again |
-| `superseded` | a later change replaced the incorporated text | the later change has a valid `incorporated` or `removed` disposition whose `changes` binding names this incorporated version; a pending `changes` link alone proves nothing. A chain A→B→C resolves to the closing baseline, a valid removal included |
-| `abandoned` | the paragraph is not delivered | it was never applied; or the applied text was reverted; or a decision Dn whose source is the owner keeps its effect, with a signed requirement where a promise kind is kept |
+| `superseded` | a later change replaced the incorporated text | the later change has a valid `incorporated` or `removed` disposition whose `changes` or `removes` binding names this incorporated version; a pending link alone proves nothing. A chain A→B→C resolves to the closing baseline, a valid removal included. An archived later change counts as recorded |
+| `abandoned` | the paragraph is not delivered | judged through the bindings: the target of its `changes` or `removes` link still has its bound text (it was never applied, or it was reverted); for a new paragraph, its text is not in `specs/`, and a near match there gets the hint "applied in another form?"; or a decision Dn whose source is the owner keeps its effect, with a signed requirement where a promise kind is kept |
+
+Why the bindings judge `abandoned`: with exact text alone, a change could apply
+a slightly different text and then claim that it abandoned the paragraph.
 
 An owner decision to keep an effect is only for the owner's call on the
 requirement or the scope. A design paragraph can stay `incorporated` while
@@ -310,7 +324,8 @@ change's `incorporated` disposition invalid, because the spec text no longer
 equals the incorporated version. Both sides are told: the 1d PR gets a hint
 that names the open change, and the open change's check shows the invalid
 disposition. The open change aligns by a wording decision that names the new
-text's hash, or by changing the text again.
+text's hash, or by changing the text again. A typo fix (path 0) to such text
+has the same effect, and its PR gets the same information hint.
 
 **Removals.** A change declares a removal with `removes:<ID>`. For a promise
 paragraph, a removal is allowed only where a signed requirement covers it. An
@@ -325,9 +340,13 @@ and its blank line) is removed. Spaces, hard breaks, list, table and code
 content all count: two trailing spaces in a code example can change its
 output. A difference passes in two cases only, and each names the source
 version and the accepted target version:
-- a recorded wording decision Dn;
+- a recorded wording decision Dn. The decision names its pair, the source
+  paragraph and the spec paragraph (`wording: {source, spec}`). `al index`
+  fills both hashes once, as it does for a disposition. The disposition names
+  the decision (`decision: Dn`). Nobody writes a hash by hand.
 - a typo-fix claim (section 6), shown with its changed words and never as
-  proven.
+  proven. A typo claim excuses a difference only on its own branch. After it
+  merges, an open change aligns by a wording decision.
 
 An unexplained revert does not pass: the spec text must equal the bound
 version, a valid successor's version, or a decided final text. Why no more
@@ -359,6 +378,12 @@ source proves where the text came from, not that it equals the requirement;
 `source: adoption` is not an owner approval, and it does not excuse later
 changes that nobody asked for. The word `from` is kept only for the link from
 a requirement to the owner's words.
+
+An adopted paragraph is a spec paragraph that a request's record names with
+`source: adoption`, the captured commit and its text hash. It has no
+requirement to serve, so it gets no link hint while its text equals the
+captured text. After an edit, it follows its path: a typo fix keeps it as it
+is, and a path-1 edit adds `serves:<request>/R<n>`.
 
 ## 6. Sign-off
 
@@ -440,17 +465,24 @@ or spike" (input 114), with the user free to pick (R7, input 126).
   also inform work that is already open.
 - Work that grows changes its path: a small change that needs a design adds a
   change spec and becomes path 2.
-- Every PR states its path and its claim. The script checks the claim against
-  the declared kinds and the paragraph hash list: "path 0, but the PR changes
-  a `rule` paragraph with no typo claim" is `not ok`. A typo claim with a
-  meaning-sensitive mark goes to the review. This checks the labels, not
-  their meaning; a code-only change claimed as a fix still needs the review.
+- Every PR states its path and its claim in a `Tier:` line of a commit
+  message, for example `Tier: 0 — typo in INV-41`. `al check` reads the newest
+  one in the branch's commits; it works offline, so it does not read the PR's
+  text. With no `Tier:` line, a hint says so, and the path checks do not run.
+- The script checks the claim against the declared kinds and the paragraph
+  hash list: "path 0, but the PR changes a `rule` paragraph with no typo
+  claim" is `not ok`. On path 0, a change of kind into a promise kind is a
+  promise change too. A non-promise spec paragraph that path 0 changes, adds
+  or removes with no typo claim gets the hint "path 1d or 2?". A typo claim
+  with a meaning-sensitive mark goes to the review. This checks the labels,
+  not their meaning; a code-only change claimed as a fix still needs the
+  review.
 - **Small design corrections.** "Small" means, for the reviewer: it changes
   only names or wording of design-kind paragraphs; it adds or removes no
   component, interface, data or flow; and it touches no promise kind. The
-  script shows the changed words, and flags a 1d claim that touches a promise
-  kind or adds or removes a design paragraph. The review judges the rest.
-  Larger design changes stay on path 2.
+  script shows the changed words. A 1d claim that touches a promise kind, or
+  adds or removes a design paragraph, is `not ok`. The review judges the
+  rest. Larger design changes stay on path 2.
 
 ## 8. Tasks
 
@@ -587,6 +619,14 @@ superseded_by, commit, sha256, text`, and the AI hints (`summary, tags`) in
 fields marked as hints. The version key is repo + document or request +
 paragraph ID + version. Local RAG tools do not read HTML-comment markers, so
 levels above 0 need this export.
+- History comes from git. The export walks the first-parent history to the
+  selected commit, through only the commits that touched the docs in scope,
+  and reads only the files that changed. Every paragraph or requirement
+  version that is not at the selected commit is a `history` row.
+- `valid_from` and `superseded_by` are commits. The edges and the
+  dispositions name the change that replaced a version.
+- Output files and results add `evidence` rows, in the central repo and in
+  the output repos (section 12).
 
 **Roles.** "Latest version" does not mean "the current system": a baseline
 paragraph, an open proposal for it and a spike candidate can each be their
@@ -608,8 +648,8 @@ closed spike, or a replaced requirement version).
 - The default query is the current system: `baseline` rows at the selected
   central commit.
 - A change-context query, for one selected change, adds its live `proposal`
-  and `spike` text, its `source` rows and its `evidence` rows, plus the related
-  `baseline` text.
+  and `spike` text, its `source` rows and its `evidence` rows to the default
+  query, so all `baseline` rows stay in.
 - A history query adds `history` rows, never shown as current promises.
 - Each hit shows its role and its commit. All roles stay in the level 1
   full-text index, so they can be found by their words even where level 2
@@ -621,7 +661,12 @@ closed spike, or a replaced requirement version).
 - A rebuild compares paragraph hashes with an index manifest (model, chunk
   rule), embeds only new or changed rows, and rebuilds everything when the
   manifest changes. It removes from the current index every row missing from
-  the commit's full listing; the history index keeps every version.
+  the commit's full listing; the history index keeps every version. An
+  incremental index walks only each repo's commits after the last one in the
+  manifest.
+- The index is one SQLite file in the repo's git folder
+  (`$(git rev-parse --git-path assuredloop)/search.sqlite`), never committed.
+  One index serves the central repo and its output repos.
 - No `llms.txt`: it has no measured benefit.
 
 **The search levels** (input 130):
@@ -638,12 +683,17 @@ closed spike, or a replaced requirement version).
   exact-ID lookup, the roles, the commit identity and the history scope; only
   the strength changes.
 - Level 1 needs no new dependency: Node's built-in `node:sqlite` has FTS5
-  (checked on Node 26.11.1 with SQLite 3.53.4). It lives in `al` itself, as
-  `al search`, and stays deterministic and offline. The package declares Node
-  24 or newer, so level 1 must be tested on Node 24; if Node 24 lacks FTS5,
-  the minimum version goes up.
-- Level 2 adds an embedding model, so it lives in a separate optional package
-  (for example `@assuredloop/search`); `al` itself keeps no AI and no network.
+  (checked on Node 24.21.0 and 26.11.1, with SQLite 3.53.4). It lives in `al`
+  itself, as `al search`, and stays deterministic and offline. The package
+  declares Node 24 or newer, and CI tests level 1 on Node 24.
+- Level 2 adds an embedding model, so it lives in a separate optional package,
+  `@assuredloop/search` in `packages/search/`, private until the release. `al`
+  finds it by normal Node resolution: the project first, then beside `al`.
+  The package holds the model, the vectors and the scan; `al` only fuses the
+  ranked lists, and itself keeps no AI and no network.
+- The fusion is reciprocal rank fusion over the rows that have vectors. A row
+  with no vector keeps its level 1 place, because the vector list gives it no
+  vote and must not push it down.
   Candidate models: bge-small-en-v1.5 (MIT) or EmbeddingGemma-300M; a
   multilingual one (Qwen3-Embedding-0.6B) for specs not in English. At this
   size a plain scan of the stored vectors is fast enough, so no vector
@@ -663,6 +713,11 @@ closed spike, or a replaced requirement version).
   small fixed test embedder for exact results, plus one smoke test with a real
   model. Validation compares level 1 with level 2 on the golden questions, so
   the default is checked, not assumed.
+- The first check (T14): on 8 held-out questions over the small invoicer
+  fixture, level 2 equalled level 1, with recall of 29% in the top 5 and 58%
+  in the top 10. So level 2 showed no measured gain at that size. It stays
+  the default (input 130), and it is measured again on a larger real corpus
+  before the release.
 
 **Scale** (input 132): up to 1,000 change specs in one repo, and one search
 across up to 20 repos. These are estimates, at about 100 tokens a paragraph:
@@ -700,6 +755,35 @@ repos are a must.
 - `al` in the central repo derives the cross-repo links (cites, rough links
   from git, results) from local clones of the output repos at known commits. A
   repo that is not present gives "unknown", never a guess.
+- The central `config.yaml` lists `outputs:`, each with `name`, `path`, and an
+  optional `url` and `commit`. With no `commit`, `al` uses the clone's HEAD and
+  shows that commit. An output repo's config names `central: {path, commit}`.
+  A repo is the central repo, so that `central:X` means its own X, only when
+  its config lists outputs.
+- `al` reads another repo only through git at the resolved commit, never its
+  working tree, and it never fetches. A repo with no path, no clone or a
+  commit that does not resolve is "unknown", with the reason.
+- The links from an output repo are those of schema.md 6. A commit message
+  that names a central task (`central:<request>/T1`) is a `named by` link.
+  Other IDs in commit messages make no link.
+- Git maps a PR reference such as `invoicer-web#57` to its merge: "Merge pull
+  request #57", or a subject that ends in "(#57)", in the first-parent
+  history at the selected commit. It shows "merged at <sha>", or "no merge
+  found" as unknown, never "not merged". One function does this for the
+  central repo and the output repos.
+- In an output repo, `al check` looks up the central IDs that the branch's
+  changed files cite.
+
+**Output rows.** An output file is a file that a record declares, or a file
+that names a known ID: `central:<ID>` in any repo, or a bare ID of the
+central export in the central repo. The spec's own files are not outputs:
+the spec docs in scope, `specs/adr/`, `requests/`, `.assuredloop/` and the
+results folder. An output row in the export holds the repo, the commit, the
+path, the IDs that it cites, the records that declare it, and each line that
+names an ID, with its line number. It never holds the whole file: `al` is a
+trace tool, not a code search engine, and agents search code well with grep.
+A cited file shows `how: exact`, which proves only that the ID is named; a
+declared one shows `how: declared`. One cite finder serves every repo.
 - The index tags each row with its repo and commit. A result that combines
   repos shows the selected central and output commits. A pinned output commit
   proves that snapshot only, not that the repo has no newer work.
@@ -718,10 +802,10 @@ repos are a must.
 | `al context` | a change's dispositions (for example "120 paragraphs, 40 with a baseline effect: 30 incorporated, 6 pending, 2 removed, 2 abandoned"), coverage per section, the hints, the open changes on an ID, and what is not checked |
 | `al context --diff ... --for review` | the review view: each changed paragraph's text beside its kind, its requirement and the baseline paragraphs it touches |
 | `al check` | the checks in sections 3-9 |
-| `al conclude` | the close rule; writes the outcome |
+| `al conclude` | the close rule. It refuses with exit 1 and a `refused:` line for each reason. Without `--yes` it shows what it would do. With `--yes` it writes the Outcome, which shows the evidence and what is unknown, and moves the request to `requests/archive/` |
 | `al index` | writes derived facts and new bindings; `--align <ID>` advances a binding on purpose; lists the hints that the agent must refresh |
-| `al export` | the export: one JSONL row per paragraph version, with its role, version, commit and edges; not committed |
-| `al search` | search at levels 0-2, with the current-system, change-context and history queries |
+| `al export` | the export: one JSONL row per paragraph version, output file or result, with its repo, role, version, commit and edges; not committed |
+| `al search` | search at levels 0-2 across the central repo and its output repos, with the current-system, change-context and history queries; it shows each hit's repo and commit |
 
 ## 14. Migration and adoption
 
@@ -736,7 +820,9 @@ Why: "no need to take care of nbackward copatibility" (input 98).
   binds its whole text by SHA-256 needs a new approval after conversion.
   Validation uses a scratch copy, never an adopter's live record.
 - Adoption: `al spec --add-ids` marks every paragraph, and the baseline is
-  captured as `source: adoption` with its commit and hash (section 5).
+  captured as `source: adoption` with its commit and hash (section 5). The
+  command writes that adoption record itself, because every adopter needs it
+  (T17 builds it).
 
 ## 15. Validation, before the build
 
