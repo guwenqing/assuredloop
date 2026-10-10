@@ -139,3 +139,19 @@ test("an uncommitted change to the output repo's results: setting is not read", 
   assert.equal(files.length, 8);
   assert.ok(files.every((f) => f.startsWith(`${DIR}/`)), files.join(', '));
 });
+
+// The results: setting of an output repo, written as ci/results, ./ci/results or
+// ci/results/, names one folder (review of PR #185).
+for (const setting of ['ci/results', './ci/results', 'ci/results/']) {
+  test(`results: ${setting} in the output repo's committed config gives its ci/results/review.yaml`, async (t) => {
+    const w = world(t);
+    write(w.worker, '.assuredloop/config.yaml', `repo: invoicer-worker\ncentral: {path: ../invoicer}\nresults: ${setting}\n`);
+    writeYaml(w.worker, 'ci/results/review.yaml', { check: 'test/zip-export.test.js', outcome: 'pass', commit: w.shas.worker.K5 });
+    const K6 = commit(w.worker, 'Keep the results in ci/results');
+    centralConfig(w.central, worldOutputs(K6));
+    const { results } = await crossRepo(w.central);
+    const found = results.filter((r) => r.repo === 'invoicer-worker');
+    assert.deepEqual(found.map((r) => r.file), ['ci/results/review.yaml']);
+    assert.deepEqual([found[0].check, found[0].outcome, found[0].commit], ['test/zip-export.test.js', 'pass', w.shas.worker.K5]);
+  });
+}
