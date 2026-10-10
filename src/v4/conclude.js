@@ -59,7 +59,10 @@ function outcome(state, r, judged, top) {
     lines.push(`- ${q.id} ${q.title}, ${v}, ${signState(state, r, q)}:`);
     const mine = judged.filter((j) => j.p.links.serves.some((s) => qualify(s, r.name).key === `${r.name}/${q.id}`));
     for (const j of mine) { lines.push(shown(j)); placed.add(j.id); }
-    if (!mine.length) lines.push('  - no change paragraph serves it');
+    // A path-1 promise is served by the spec paragraph itself (design.md 5).
+    const inSpec = [...state.spec.values()].filter((p) => p.links.serves.some((s) => qualify(s, null).key === `${r.name}/${q.id}`));
+    for (const p of inSpec) lines.push(`  - ${p.id} ${p.kind ?? '-'}: in ${p.file}, serves it`);
+    if (!mine.length && !inSpec.length) lines.push('  - no change paragraph and no spec paragraph serves it');
   }
   const rest = judged.filter((j) => !placed.has(j.id));
   if (rest.length) lines.push('- Other paragraphs with a baseline effect:', ...rest.map(shown));
