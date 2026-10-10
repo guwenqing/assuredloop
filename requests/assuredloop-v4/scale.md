@@ -98,7 +98,7 @@ shows where the time goes:
 | `commitOf` (git.js) | 7.4 s | one `git rev-parse` for each result's commit, about 1,000 |
 | YAML parsing | 15.7 s | the 1,001 request records (56.0 MB), parsed three times: by `state.js` `loadState` for the working tree and for the merge-base (checks.js lines 67-68; 11.4 s together), and by `indexer.js` `loadState` inside `crossRepo` (5.7 s) |
 
-- The parts overlap: `crossRepo` holds `mergeOf`, `commitOf` and one of the two
+- The parts overlap: `crossRepo` holds `mergeOf`, `commitOf` and one of the three
   YAML parses.
 - design.md 11 says that `al check` "reads archived records only through their
   stored hashes". Today it parses every archived record three times.
