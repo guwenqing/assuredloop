@@ -30,6 +30,40 @@ const PROVES = {
 const short = (sha) => sha.slice(0, 7);
 const ids = (text) => [...text.matchAll(QID)].map((m) => m[1]);
 
+// An ID in text, qualified (`central:EXP-4`) or bare (`EXP-4`, `invoice-exports/R3`).
+const ANY_ID = /(?<![A-Za-z0-9_\/-])(central:)?((?:[a-z0-9][a-z0-9-]*\/)?(?:[A-Z][A-Z0-9]*-\d+(?:-\d+)?|[RQDST]\d+))(?![A-Za-z0-9_])/g;
+
+// The IDs that a line names, as written: with `qualified`, only `central:<ID>`;
+// else also a bare ID, and only those whose ID is in `known`.
+export function namedIds(text, { qualified = true, known = null } = {}) {
+  const out = [];
+  for (const m of text.matchAll(ANY_ID)) {
+    if (qualified ? !m[1] : known && !known.has(m[2])) continue;
+    if (!out.includes(m[0])) out.push(m[0]);
+  }
+  return out;
+}
+
+// The one cite finder (design.md 3, 12; D17): each line of the repo at `dir`
+// that names an ID, at commit `rev`, or in the working tree (tracked, and
+// untracked not ignored) when `rev` is null. Text files only; nothing under
+// the `exclude` paths. Options as namedIds. Returns [{ file, line, text, ids }].
+export function findCites(dir, rev, { qualified = true, known = null, exclude = [] } = {}) {
+  const pattern = qualified ? 'central:' : '[A-Z][A-Z0-9]*-?[0-9]';
+  const args = ['grep', '-I', '-n', '-z', ...(rev ? [] : ['--untracked']), '-E', '-e', pattern, ...(rev ? [rev] : []),
+    '--', '.', ...exclude.map((p) => `:(exclude)${p}`)];
+  const out = git(dir, args, { allowFail: true }) ?? '';
+  const found = [];
+  for (const l of out.split('\n')) {
+    if (!l) continue;
+    const [where, n, ...rest] = l.split('\0');
+    const text = rest.join('\0');
+    const named = namedIds(text, { qualified, known });
+    if (named.length) found.push({ file: rev ? where.slice(rev.length + 1) : where, line: Number(n), text, ids: named });
+  }
+  return found;
+}
+
 // A repo named in config, made readable: { dir, sha } or { unknown }.
 function open(top, { name, path, url, commit }) {
   if (typeof path !== 'string' || !path) return { unknown: url ? `no path in config; al does not fetch ${url}` : 'no path in config' };
@@ -86,7 +120,7 @@ export function findCentral(state, ref) {
 const stateConfig = (c) => ({ ...c, root: posix.normalize(String(c.root ?? 'specs')).replace(/\/+$/, ''), docs: Array.isArray(c.docs) ? c.docs : [] });
 
 // The repo's own config at `sha`, or {} when it has none or it does not parse.
-function configAt(dir, sha) {
+export function repoConfigAt(dir, sha) {
   try {
     const c = parse(fileAt(dir, sha, '.assuredloop/config.yaml') ?? '') ?? {};
     return typeof c === 'object' && !Array.isArray(c) ? c : {};
@@ -96,14 +130,8 @@ function configAt(dir, sha) {
 }
 
 // Each line of `dir`'s tree at `sha` that names a central ID: [{ file, line, ids }].
-// Text files only; nothing under .assuredloop/.
-function citingLines(dir, sha) {
-  const out = git(dir, ['grep', '-I', '-n', '-z', '-E', 'central:', sha, '--', '.', ':(exclude).assuredloop'], { allowFail: true }) ?? '';
-  return out.split('\n').filter(Boolean).map((l) => {
-    const [where, n, ...rest] = l.split('\0');
-    return { file: where.slice(sha.length + 1), line: Number(n), ids: ids(rest.join('\0')) };
-  }).filter((x) => x.ids.length);
-}
+const citingLines = (dir, sha) => findCites(dir, sha, { exclude: ['.assuredloop'] })
+  .map(({ file, line, ids: named }) => ({ file, line, ids: named.map((x) => x.slice('central:'.length)) }));
 
 // The first line of each (file, ID) in `lines`, in file and line order.
 function firsts(lines) {
@@ -142,7 +170,7 @@ function applies(repo, res) {
 function resultsOf(repo) {
   // As a repo path, the form git gives back: `./ci/results/` is `ci/results`;
   // `.` and `./` are the repo's top, whose files git gives with no prefix.
-  const dir = posix.normalize(String(configAt(repo.dir, repo.sha).results ?? '.assuredloop/results')).replace(/\/+$/, '');
+  const dir = posix.normalize(String(repoConfigAt(repo.dir, repo.sha).results ?? '.assuredloop/results')).replace(/\/+$/, '');
   const prefix = dir === '.' ? '' : `${dir}/`;
   const files = (git(repo.dir, ['ls-tree', '-z', '--name-only', repo.sha, ...(prefix ? ['--', prefix] : [])], { allowFail: true }) ?? '')
     .split('\0').filter((f) => f.startsWith(prefix) && !f.slice(prefix.length).includes('/') && f.endsWith('.yaml')).sort();
@@ -264,7 +292,7 @@ export function centralLookup(top) {
     if (text === null || text.includes('\0')) continue;
     text.split('\n').forEach((l, i) => { const found = ids(l); if (found.length) lines.push({ file, line: i + 1, ids: found }); });
   }
-  const state = loadState(r.dir, r.sha, stateConfig(configAt(r.dir, r.sha)), requestNames(r.dir, r.sha));
+  const state = loadState(r.dir, r.sha, stateConfig(repoConfigAt(r.dir, r.sha)), requestNames(r.dir, r.sha));
   const body = [`central repo ${c.path} at ${r.sha}`];
   for (const { file, line, id } of firsts(lines)) {
     const found = findCentral(state, id);
