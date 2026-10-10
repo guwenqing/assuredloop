@@ -3,7 +3,7 @@
 import { existsSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { loadConfig, loadSchema, writeSetup } from './config.js';
-import { FENCE, HEADING, MARKER, continues, lf, parseMarkdown } from './markers.js';
+import { HEADING, blocksOf, lf, parseMarkdown } from './markers.js';
 import { docsInScope, idsEverUsed, isShallow, prefixOf, scopeOf } from './scope.js';
 
 export class Fail extends Error {
@@ -36,53 +36,15 @@ export function spec({ top, cwd, args, opts }) {
   return { body, next: 'al-v4 check', notKnown: ['whether each kind is right (the review judges that)'] };
 }
 
-// The blocks of a doc, each { first, marked }: `first` is the index of its
-// first line, `marked` whether a marker comes before it; and the indexes of
-// the marker lines (outside fenced code). A heading line is a
-// block of its own; a list, a table, a quote, an indented line or a fence
-// belongs to the block before it, also after a blank line (the rules that
-// parseMarkdown lints).
-function blocks(lines) {
-  const out = [];
-  const markers = new Set();
-  let fence = null;
-  let blank = true;
-  let open = false; // a block is open, so a continuing line joins it
-  let afterHeading = false;
-  let marked = false;
-  lines.forEach((l, i) => {
-    if (fence) {
-      const f = FENCE.exec(l);
-      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.trim() === f[1]) fence = null;
-      return;
-    }
-    if (MARKER.test(l)) {
-      markers.add(i);
-      marked = true;
-      open = false;
-      afterHeading = false;
-      blank = true;
-      return;
-    }
-    if (l.trim() === '') { blank = true; return; }
-    const heading = HEADING.test(l);
-    if (!open || heading || afterHeading || (blank && !continues(l))) {
-      out.push({ first: i, marked });
-      marked = false;
-      open = true;
-    }
-    const f = FENCE.exec(l);
-    if (f) fence = f[1];
-    afterHeading = heading;
-    blank = false;
-  });
-  return { blocks: out, markers };
-}
-
 function addIds({ top, cwd, opts }) {
   const path = relative(top, resolve(cwd, opts['add-ids']));
   const config = loadConfig(top);
   if (!path.endsWith('.md') || path.startsWith('..')) throw new Fail(`${opts['add-ids']}: give a .md file in this repo`, USAGE);
+  // --add-ids writes the doc and the two settings files: never through a symlink.
+  for (const p of [path, '.assuredloop/config.yaml', '.assuredloop/schema.yaml']) {
+    const link = symlinkOn(top, p);
+    if (link) throw new Fail(`${link} is a symlink; --add-ids writes no file through a symlink`, USAGE);
+  }
   if (!existsSync(join(top, path)) || !lstatSync(join(top, path)).isFile()) throw new Fail(`${path}: no such file`, USAGE);
   if (path.startsWith(`${config.root.replace(/\/+$/, '')}/adr/`)) throw new Fail(`${path}: ADRs are not marked by --add-ids`, USAGE);
   const listed = prefixOf(path, config);
@@ -99,13 +61,13 @@ function addIds({ top, cwd, opts }) {
   // The highest number ever used for the prefix: in the history of the scope,
   // and in the docs of the scope now (this file included).
   const used = new Set(idsEverUsed(top, config, '--all')?.get(scope) ?? []);
-  for (const d of docsInScope(top, config)) if (d.scope === scope) for (const m of d.text.matchAll(/^<!--[ \t]+([A-Z][A-Z0-9]*-[0-9]+)/gm)) used.add(m[1]);
   const text = lf(readFileSync(join(top, path), 'utf8'));
-  for (const m of text.matchAll(/^<!--[ \t]+([A-Z][A-Z0-9]*-[0-9]+)/gm)) used.add(m[1]);
+  const docs = [...docsInScope(top, config).filter((d) => d.scope === scope), { path, text }];
+  for (const d of docs) for (const p of parseMarkdown(d.text, d.path).paragraphs) used.add(p.id);
   let next = Math.max(0, ...[...used].filter((id) => id.slice(0, id.lastIndexOf('-')) === prefix).map((id) => Number(id.slice(id.lastIndexOf('-') + 1)))) + 1;
 
   const lines = text.split('\n');
-  const { blocks: all, markers } = blocks(lines);
+  const { blocks: all, markers } = blocksOf(lines);
   const todo = all.filter((b) => !b.marked);
   const out = [];
   let k = 0;
@@ -137,4 +99,20 @@ function addIds({ top, cwd, opts }) {
     next: opts.yes ? `set the kind of each new marker, review the diff of ${path} and commit it` : 'run the same command with --yes to write it',
     notKnown,
   };
+}
+
+// The first part of `path` (from the repo top) that is a symlink, or null.
+function symlinkOn(top, path) {
+  let at = top;
+  for (const part of path.split('/')) {
+    at = join(at, part);
+    let stat;
+    try {
+      stat = lstatSync(at);
+    } catch {
+      return null;
+    }
+    if (stat.isSymbolicLink()) return relative(top, at);
+  }
+  return null;
 }

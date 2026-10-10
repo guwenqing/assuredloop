@@ -3,10 +3,11 @@
 // folder plus the files config's docs list names; and one scope per request,
 // its requests/<name>/spec.md (or the archived one), with prefix SP and IDs of
 // its own. Two scopes never share IDs.
+import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { git, fileAt } from './git.js';
-import { MARKER, parseMarkdown } from './markers.js';
+import { parseMarkdown } from './markers.js';
 
 export const SPEC = 'spec';
 const REQUEST = /^requests\/(?:archive\/)?([^/]+)\/spec\.md$/;
@@ -79,30 +80,56 @@ export function parseScopes(docs, kinds) {
 }
 
 // Every ID that a marker held in any commit up to `rev` (a commit, or --all
-// for every ref), by scope: the added and removed marker lines of `git log -p`.
-// Null when `rev` is null.
+// for every ref), by scope: each version of each doc in history, from
+// `git log --raw -z` (exact paths), read with `git cat-file --batch` and
+// parsed, so a marker inside fenced code is no ID. Null when `rev` is null.
 export function idsEverUsed(top, config, rev) {
   if (!rev) return null;
-  const out = git(top, ['-c', 'core.quotePath=false', 'log', '-p', '--no-renames', '--no-color', '--no-ext-diff', '--format=', rev, '--', '*.md'], { allowFail: true });
   const used = new Map();
-  if (out === null) return used;
-  let scope = null;
-  let header = false;
-  for (const l of out.split('\n')) {
-    if (l.startsWith('diff --git ')) { scope = null; header = true; continue; }
-    if (l.startsWith('@@')) { header = false; continue; }
-    if (header && (l.startsWith('+++ ') || l.startsWith('--- '))) {
-      const p = l.slice(4);
-      if (p !== '/dev/null') scope = scopeOf(p.replace(/^[ab]\//, ''), config);
-      continue;
+  const specs = ['*.md', ...config.docs.map((d) => clean(String(d.file)))];
+  const out = git(top, ['log', '--raw', '-z', '--no-abbrev', '--no-renames', '--format=', rev, '--', ...specs], { allowFail: true });
+  if (!out) return used;
+  // Each changed file is ":<mode> <mode> <old blob> <new blob> <status>" NUL "<path>" NUL.
+  const scopes = new Map();
+  const fields = out.split('\0');
+  for (let i = 0; i < fields.length - 1; i++) {
+    const meta = fields[i].replace(/^\n+/, '');
+    if (!meta.startsWith(':')) continue;
+    const scope = scopeOf(fields[++i], config);
+    if (!scope) continue;
+    for (const blob of meta.split(' ').slice(2, 4)) {
+      if (/^0+$/.test(blob)) continue;
+      if (!scopes.has(blob)) scopes.set(blob, new Set());
+      scopes.get(blob).add(scope);
     }
-    if (!scope || (l[0] !== '+' && l[0] !== '-')) continue;
-    const m = MARKER.exec(l.slice(1).replace(/\r$/, ''));
-    if (!m) continue;
-    if (!used.has(scope)) used.set(scope, new Set());
-    used.get(scope).add(m[1]);
+  }
+  for (const [blob, text] of readBlobs(top, [...scopes.keys()])) {
+    for (const p of parseMarkdown(text, '').paragraphs) {
+      for (const scope of scopes.get(blob)) {
+        if (!used.has(scope)) used.set(scope, new Set());
+        used.get(scope).add(p.id);
+      }
+    }
   }
   return used;
+}
+
+// The text of each blob, by `git cat-file --batch`: "<sha> blob <size>" LF,
+// the bytes, LF; or "<sha> missing" LF.
+function readBlobs(top, blobs) {
+  const texts = new Map();
+  if (!blobs.length) return texts;
+  const buf = execFileSync('git', ['-C', top, 'cat-file', '--batch'], { input: blobs.join('\n') + '\n', maxBuffer: 1 << 30, stdio: ['pipe', 'pipe', 'ignore'] });
+  let at = 0;
+  while (at < buf.length) {
+    const eol = buf.indexOf(10, at);
+    const [sha, type, size] = buf.subarray(at, eol).toString('utf8').split(' ');
+    at = eol + 1;
+    if (type === 'missing') continue;
+    texts.set(sha, buf.subarray(at, at + Number(size)).toString('utf8'));
+    at += Number(size) + 1;
+  }
+  return texts;
 }
 
 export const isShallow = (top) => git(top, ['rev-parse', '--is-shallow-repository'], { allowFail: true }) === 'true';

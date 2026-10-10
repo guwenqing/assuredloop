@@ -36,9 +36,62 @@ export const sha256 = (text) => createHash('sha256').update(lf(text)).digest('he
 // A heading's text: no `#` marks, trimmed, a closing run of `#` removed.
 const headingText = (raw) => (raw ?? '').replace(/(^|[ \t]+)#+$/, '').trim();
 
+// A GFM table's delimiter row, such as `--- | ---` or `|:--|--:|`.
+const DELIMITER = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+
 // A line that belongs to the paragraph before it, also after a blank line:
-// a list item, a table row, a block quote, an indented line or a fence.
-export const continues = (l) => /^\s*([-*+]|\d+[.)])(\s|$)/.test(l) || /^\s*\|/.test(l) || /^\s*>/.test(l) || /^\s+\S/.test(l) || FENCE.test(l);
+// a list item, a table row (a leading `|`, or a row with `|` followed by a
+// delimiter row), a block quote, an indented line or a fence.
+export const continues = (l, next = '') => /^\s*([-*+]|\d+[.)])(\s|$)/.test(l) || /^\s*\|/.test(l)
+  || (l.includes('|') && next.includes('|') && DELIMITER.test(next))
+  || /^\s*>/.test(l) || /^\s+\S/.test(l) || FENCE.test(l);
+
+// The blocks of a doc, each { first, marked, after }: `first` is the index of
+// its first line, `marked` whether a marker comes right before it, `after`
+// the ID of the last marker before it. Also the indexes of the marker lines.
+// A heading line is a block of its own, and so is whatever follows it. A
+// list, a table, a quote, an indented line or a fence belongs to the block
+// before it, also after a blank line. Fenced code is not read for markers.
+// parseMarkdown lints by these blocks and `al spec --add-ids` marks them.
+export function blocksOf(lines) {
+  const blocks = [];
+  const markers = new Set();
+  let fence = null;
+  let blank = true;
+  let open = false;
+  let afterHeading = false;
+  let marked = false;
+  let after = null;
+  lines.forEach((l, i) => {
+    if (fence) {
+      const f = FENCE.exec(l);
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.trim() === f[1]) fence = null;
+      return;
+    }
+    const m = MARKER.exec(l);
+    if (m) {
+      markers.add(i);
+      marked = true;
+      after = m[1];
+      open = false;
+      afterHeading = false;
+      blank = true;
+      return;
+    }
+    if (l.trim() === '') { blank = true; return; }
+    const heading = HEADING.test(l);
+    if (!open || heading || afterHeading || (blank && !continues(l, lines[i + 1]))) {
+      blocks.push({ first: i, marked, after });
+      marked = false;
+      open = true;
+    }
+    const f = FENCE.exec(l);
+    if (f) fence = f[1];
+    afterHeading = heading;
+    blank = false;
+  });
+  return { blocks, markers };
+}
 
 const emptyLinks = () => Object.fromEntries(Object.values(LINK_WORDS).map((k) => [k, []]));
 
@@ -72,9 +125,10 @@ export function parseMarkdown(text, file, options = {}) {
   }
   blocks.push(cur);
 
-  const [pre, ...marked] = blocks;
-  const firstText = pre.lines.find((l) => l.text.trim() !== '');
-  if (firstText) lint('no-id', 'not ok', null, firstText.n, 'a paragraph with no ID marker before it');
+  const [, ...marked] = blocks;
+  for (const b of blocksOf(lines).blocks) {
+    if (!b.marked) lint('no-id', 'not ok', null, b.first + 1, `a paragraph with no ID marker${b.after ? `, after ${b.after}` : ' before it'}`);
+  }
 
   const seen = new Set();
   for (const b of marked) {
@@ -110,7 +164,6 @@ export function parseMarkdown(text, file, options = {}) {
     while (body.length && body.at(-1).text.trim() === '') body.pop();
     const ptext = body.map((l) => l.text).join('\n');
     const h = body.length ? HEADING.exec(body[0].text) : null;
-    unmarked(body, Boolean(h), id, lint);
     paragraphs.push({
       id, kind, links, text: ptext, sha256: sha256(ptext), line: n,
       level: h ? h[1].length : 0, heading: h ? headingText(h[2]) : null, file,
@@ -129,25 +182,6 @@ export function parseMarkdown(text, file, options = {}) {
     delete p.heading;
   }
   return { paragraphs, lints };
-}
-
-// A heading line, or a new prose paragraph after a blank line, inside a
-// marked block has no ID of its own. Fenced code is skipped.
-function unmarked(body, isHeading, id, lint) {
-  let fence = null;
-  let blank = false;
-  body.forEach((l, i) => {
-    const f = FENCE.exec(l.text);
-    if (fence) {
-      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.text.trim() === f[1]) fence = null;
-      return;
-    }
-    if (f) { fence = f[1]; blank = false; return; }
-    if (l.text.trim() === '') { blank = true; return; }
-    const after = i > 0 && (isHeading && i === 1 || HEADING.test(l.text) || (blank && !continues(l.text)));
-    if (after) lint('no-id', 'not ok', null, l.n, `a paragraph with no ID marker, after ${id}`);
-    blank = false;
-  });
 }
 
 // Display numbers and heading paths (design.md 3): a single leading H1 is the
