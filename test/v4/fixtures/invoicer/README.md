@@ -96,6 +96,7 @@ Each step is a map with one key.
 | `abandon-decided-dropped`, `abandon-decided-kept` | an owner decision D1 to drop csv-bom's rule SP-2, named in an abandoned disposition, on top of `abandon-unsigned` arm `abandoned` (no kept effect) or arm `incorporated` (EXP-9 kept) |
 | `root-moved-unsigned`, `root-moved-signed` | on top of `remove-merged-*`: the closing PR moves specs/ to current-specs/, with root and docs paths updated, and indexes |
 | `kind-pre`, `remove-kind` | on main, INV-99 committed as a note, then made a limit; drop-latest's note serves R1 and declares `removes:INV-99` (arms `unsigned`, `signed`); the test removes INV-99 itself |
+| `scope-pre`, `remove-scoped` | on main, policies/tax.md (the limit INV-99) committed outside scope, then added to config docs; drop-configured's note serves R1 and declares `removes:INV-99` (arms `unsigned`, `signed`); the test removes INV-99 itself |
 | `views` | a central test that names EXP-4 and its result, and declared outputs of invoice-exports; arms `fresh` and `changed` (the test changes after the result) |
 
 The main commits of `cr-abandon` and `cr-revert` name their PR in the title,
