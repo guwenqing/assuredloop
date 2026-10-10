@@ -1,6 +1,7 @@
 // scale/run.js (#188, T15; interface.md "scale/run.js"): the refusals, the
 // report of the five measures on a small generated world, the removal check,
-// the repos put back as they were, a second run, and a failed al command.
+// the repos put back as they were, a second run, a failed al command, a search
+// that falls back from level 1, removal checks that fail, and a timing miss.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -12,6 +13,29 @@ import {
 const OPTS = { requests: 6, outputs: 2, paragraphs: 6, open: 2 };
 const CRITERIA = { check: 10, 'full-index': 900, 'incremental-index': 120, removal: 120, search: 2 };
 const NAMES = Object.keys(CRITERIA);
+// The measures that time `al search`.
+const SEARCHES = ['full-index', 'incremental-index', 'removal', 'search'];
+const byName = (rep) => Object.fromEntries(rep.measures.map((m) => [m.name, m]));
+
+// An al for the harness, in its own git repo: al.js runs `pre` (CommonJS, with
+// `args` the al arguments), then hands the command to the real bin/al-v4.js
+// with `nodeArgs`.
+function wrapper(top, name, pre, nodeArgs = []) {
+  const d = join(top, name);
+  mkdirSync(d);
+  writeFileSync(join(d, 'al.js'), [
+    "const { spawnSync } = require('node:child_process');",
+    'const args = process.argv.slice(2);',
+    pre,
+    `const r = spawnSync(process.execPath, [...${JSON.stringify(nodeArgs)}, ${JSON.stringify(AL4)}, ...args], { stdio: 'inherit' });`,
+    'process.exit(r.status === null ? 1 : r.status);',
+    '',
+  ].join('\n'));
+  git(d, 'init', '-q', '-b', 'main');
+  git(d, 'add', 'al.js');
+  git(d, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-q', '-m', name);
+  return join(d, 'al.js');
+}
 const isLoad = (l) => Array.isArray(l) && l.length === 3 && l.every((x) => typeof x === 'number' && Number.isFinite(x) && x >= 0);
 
 // Exit 2 and a `run: ` line on stderr.
@@ -134,7 +158,8 @@ describe('run.js', () => {
           assert.ok(typeof run.command === 'string' && run.command.length > 0, `${m.name}: command`);
         }
         assert.equal(m.seconds, Math.max(...m.runs.map((x) => x.seconds)), `${m.name}: seconds is the largest run`);
-        assert.equal(m.met, m.runs.every((x) => x.exit === 0) && m.seconds <= m.criterion.seconds, `${m.name}: met`);
+        const atLevel1 = !SEARCHES.includes(m.name) || m.runs.every((x) => x.level === 1);
+        assert.equal(m.met, m.runs.every((x) => x.exit === 0) && atLevel1 && m.seconds <= m.criterion.seconds, `${m.name}: met`);
       }
       const by = Object.fromEntries(rep.measures.map((m) => [m.name, m]));
       assert.equal(by.check.runs.length, 1, '--repeat 1: one run of al check');
@@ -195,6 +220,17 @@ describe('run.js', () => {
       assert.ok(md.includes(rep.al.commit.slice(0, 7)), "report.md has al's commit");
     });
 
+    test('every timed search runs with --json and answered at level 1; removal.problems is empty', () => {
+      const by = byName(rep);
+      for (const n of SEARCHES) {
+        for (const x of by[n].runs) {
+          assert.match(x.command, /--json\b/, `${n}: ${x.command}`);
+          assert.equal(x.level, 1, `${n}: level`);
+        }
+      }
+      assert.deepEqual(rep.removal.problems, []);
+    });
+
     test('every repo is back: main at its old commit, a clean tree, no extra branch', () => assertRestored('after the run'));
   });
 
@@ -249,5 +285,120 @@ describe('run.js', () => {
     });
 
     test('every repo is back', () => assertRestored('after the failed run'));
+  });
+
+  // --- a search that falls back from level 1: node:sqlite is turned off for al
+
+  describe('a search that falls back from level 1', () => {
+    let r;
+    before(() => {
+      clearReport();
+      const fake = wrapper(top, 'al-no-sqlite', '', ['--no-experimental-sqlite']);
+      r = runHarness(['--world', dir, '--al', fake, '--repeat', '1', '--queries', '1']);
+    });
+
+    test('it exits 1; each search run records the level it got and the fallback; no search measure is met; ok is false', () => {
+      assert.equal(r.code, 1, show(r));
+      const { md, json } = readReport();
+      assert.equal(json.ok, false);
+      const by = byName(json);
+      for (const n of SEARCHES) {
+        assert.ok(by[n].runs.length >= 1, `${n} has runs`);
+        for (const x of by[n].runs) {
+          assert.equal(x.exit, 0, `${n}: al exits 0 at the lower level`);
+          assert.ok(Number.isInteger(x.level) && x.level !== 1, `${n}: level ${x.level}`);
+          assert.ok(typeof x.fallback === 'string' && x.fallback.length > 0, `${n}: fallback ${JSON.stringify(x.fallback)}`);
+        }
+        assert.equal(by[n].met, false, `${n} is not met`);
+      }
+      assert.match(md, /fall|level/i, 'report.md says why');
+    });
+
+    test('every repo is back', () => assertRestored('after the fallback run'));
+  });
+
+  // --- the reviewer's case: al exits 1 only for the --id checks
+
+  describe('removal checks that fail', () => {
+    let r;
+    before(() => {
+      clearReport();
+      const fake = wrapper(top, 'al-id-fails', [
+        "if (args.includes('--id') && args.includes('--history')) { process.stdout.write('this is not JSON\\n'); process.exit(0); }",
+        "if (args.includes('--id')) { process.stderr.write('fake al: --id fails\\n'); process.exit(1); }",
+      ].join('\n'));
+      r = runHarness(['--world', dir, '--al', fake, '--repeat', '1', '--queries', '1']);
+    });
+
+    test('it exits 1; removal.problems names each failed check; ok is false; the timed runs still count', () => {
+      assert.equal(r.code, 1, show(r));
+      const { md, json } = readReport();
+      assert.equal(json.ok, false);
+      const problems = json.removal.problems;
+      assert.ok(Array.isArray(problems) && problems.every((p) => typeof p === 'string'), JSON.stringify(json.removal));
+      assert.ok(problems.some((p) => p.includes('--id') && !p.includes('--history')), `the --id check that exits 1: ${JSON.stringify(problems)}`);
+      assert.ok(problems.some((p) => p.includes('--id') && p.includes('--history')), `the --history check that is not JSON: ${JSON.stringify(problems)}`);
+      for (const m of json.measures) {
+        for (const x of m.runs) {
+          assert.equal(x.exit, 0, `${m.name}: exit`);
+          if (SEARCHES.includes(m.name)) assert.equal(x.level, 1, `${m.name}: level`);
+        }
+      }
+      assert.ok(md.includes('--id'), 'report.md names the failed check');
+    });
+
+    test('every repo is back', () => assertRestored('after the failed removal checks'));
+  });
+
+  // --- every search answers with text that is not JSON, and exits 0
+
+  describe('a search whose output is not JSON', () => {
+    let r;
+    before(() => {
+      clearReport();
+      const fake = wrapper(top, 'al-not-json', "if (args[0] === 'search') { process.stdout.write('this is not JSON\\n'); process.exit(0); }");
+      r = runHarness(['--world', dir, '--al', fake, '--repeat', '1', '--queries', '1']);
+    });
+
+    test('it exits 1; each search run has level null and its measure is not met; removal.problems is not empty', () => {
+      assert.equal(r.code, 1, show(r));
+      const { json } = readReport();
+      assert.equal(json.ok, false);
+      const by = byName(json);
+      for (const n of SEARCHES) {
+        assert.ok(by[n].runs.length >= 1, `${n} has runs`);
+        for (const x of by[n].runs) assert.equal(x.level, null, `${n}: level`);
+        assert.equal(by[n].met, false, `${n} is not met`);
+      }
+      assert.ok(Array.isArray(json.removal.problems) && json.removal.problems.length >= 1, JSON.stringify(json.removal));
+    });
+
+    test('every repo is back', () => assertRestored('after the run with output that is not JSON'));
+  });
+
+  // --- a timing miss is a finding, not a failure
+
+  describe('a search that misses its criterion', () => {
+    let r;
+    before(() => {
+      clearReport();
+      // Each timed search but the full rebuild waits 2.3 s, past the 2 s of `search`.
+      const fake = wrapper(top, 'al-slow-search',
+        "if (args[0] === 'search' && !args.includes('--id') && !args.includes('--rebuild')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2300);");
+      r = runHarness(['--world', dir, '--al', fake, '--repeat', '1', '--queries', '1']);
+    });
+
+    test('it exits 0 with ok true; the search measure is not met', () => {
+      assert.equal(r.code, 0, show(r));
+      const { json } = readReport();
+      assert.equal(json.ok, true);
+      const s = byName(json).search;
+      assert.ok(s.seconds > 2, `search took ${s.seconds} s`);
+      assert.ok(s.runs.every((x) => x.exit === 0 && x.level === 1), JSON.stringify(s.runs));
+      assert.equal(s.met, false);
+      assert.deepEqual(json.removal.problems, []);
+    });
+
+    test('every repo is back', () => assertRestored('after the slow run'));
   });
 });
