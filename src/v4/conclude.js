@@ -25,13 +25,16 @@ function reasons(state, r) {
     if (unsigned.length) out.push(`the spike's current question is not signed: ${unsigned.map((q) => `${r.name}/${q.id} (${signState(state, r, q)})`).join(', ')}`);
     return { out, judged: [] };
   }
+  const judged = judgeRequest(state, r);
+  // A paragraph abandoned with no kept effect needs no sign-off (design.md 6);
+  // one kept by an owner decision is judged with its sign-off in judge().
+  const dropped = new Set(judged.filter((j) => j.status === 'abandoned' && j.valid && !j.d?.decision).map((j) => j.p.id));
   const unsigned = [
-    ...[...r.paras.values()].filter((p) => isPromise(state, p.kind) && !servesSigned(state, p, r.name)).map((p) => `${r.name}/${p.id}`),
+    ...[...r.paras.values()].filter((p) => isPromise(state, p.kind) && !dropped.has(p.id) && !servesSigned(state, p, r.name)).map((p) => `${r.name}/${p.id}`),
     ...[...state.spec.values()].filter((p) => isPromise(state, p.kind) && p.links.serves.some((s) => qualify(s, null).req === r.name)
       && !servesSigned(state, p, null)).map((p) => p.id),
   ];
   if (unsigned.length) out.push(`a promise change with no signed requirement that covers it: ${unsigned.join(', ')}`);
-  const judged = judgeRequest(state, r);
   const open = judged.filter((j) => j.status === 'pending' || !j.valid);
   if (open.length) {
     out.push(`no valid disposition for the current version of ${open.map((j) => `${j.id} (${j.status === 'pending' ? 'none' : `${j.status}, not valid: ${j.reason}`})`).join(', ')}`);

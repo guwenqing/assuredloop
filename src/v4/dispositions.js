@@ -2,6 +2,9 @@
 // #179, decision D15): for each change paragraph with a baseline effect, the
 // disposition of its current version, and whether that disposition is valid
 // in the given state. Read by al check, al context and al conclude.
+import { git } from './git.js';
+import { parseMarkdown } from './markers.js';
+import { SPEC, docsInScope } from './scope.js';
 import { closeness, NEAR } from './words.js';
 import { hasBaselineEffect, isPromise, qualify, servesSigned } from './state.js';
 
@@ -53,8 +56,8 @@ export function judge(state, r, p, d, opts = {}, seen = new Set()) {
       if (!id) return no('it names no spec paragraph');
       if (!p.links.removes.includes(id)) return no(`${p.id} does not declare removes:${id}`);
       if (spec(id)) return no(`${id} is still in specs/`);
-      const was = opts.baseSpec?.get(id);
-      if ((isPromise(state, p.kind) || (was && isPromise(state, was.kind))) && !servesSigned(state, p, r.name)) {
+      const wasKind = opts.baseSpec?.get(id)?.kind ?? pastKind(state, id);
+      if ((isPromise(state, p.kind) || isPromise(state, wasKind)) && !servesSigned(state, p, r.name)) {
         return no(`${id} is a promise, and no signed requirement covers its removal`);
       }
       return yes();
@@ -115,6 +118,22 @@ export function judge(state, r, p, d, opts = {}, seen = new Set()) {
   }
 }
 
+// The kind that spec paragraph `id` had in the last commit that held it, from
+// git history (the newest commit that added or removed its marker), or null.
+export function pastKind(state, id) {
+  const paths = [state.root, ...state.config.docs.map((d) => String(d.file))];
+  const out = git(state.top, ['log', '--format=%H', '-S', `<!-- ${id} `, state.rev ?? 'HEAD', '--', ...paths], { allowFail: true }) ?? '';
+  for (const sha of out.split('\n').filter(Boolean)) {
+    for (const rev of [`${sha}^`, sha]) {
+      for (const d of docsInScope(state.top, state.config, rev).filter((x) => x.scope === SPEC)) {
+        const p = parseMarkdown(d.text, d.path, { kinds: state.kinds }).paragraphs.find((x) => x.id === id);
+        if (p) return p.kind;
+      }
+    }
+  }
+  return null;
+}
+
 // Every change paragraph of request `r` with a baseline effect, with the
 // disposition of its current version and its validity. A spike has none.
 export function judgeRequest(state, r, opts = {}) {
@@ -126,6 +145,11 @@ export function judgeRequest(state, r, opts = {}) {
     const d = dispositionOf(r.data, id, p.sha256);
     if (!d) {
       out.push({ id, p, d: null, status: 'pending', valid: false, reason: 'no disposition for its current version', notes: [] });
+      continue;
+    }
+    // An archived request is never checked again against today's spec (design.md 5).
+    if (!r.open) {
+      out.push({ id, p, d, status: String(d.disposition), valid: true, reason: 'as recorded at the close; not checked again', notes: [] });
       continue;
     }
     const v = judge(state, r, p, d, opts);
