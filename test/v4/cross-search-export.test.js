@@ -5,14 +5,14 @@
 // short hash) and invoicer-mobile (no clone). See helpers/cross-search.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { K7, ZIP_V1, ZIP_V2 } from './helpers/cross-repo.js';
 import {
   CLAIM, ENCODING, GUIDE, LINK_CHECK, NAMED, TOKEN, addedAt, blob, crossRepo, hide, listOf, namedLines, pin, rowOf,
   searchWorld, setOutputs, sha256,
 } from './helpers/cross-search.js';
-import { commitAll, git, write } from './helpers/project.js';
+import { commitAll, git, readYaml, write, writeYaml } from './helpers/project.js';
 import { FULL, ROW_FIELDS, exportRows, key, runOk } from './helpers/search.js';
 
 const OUTPUT_REPOS = ['invoicer-web', 'invoicer-worker'];
@@ -398,4 +398,56 @@ test('export: the same commits give the same bytes', () => {
   const { w, stdout } = get();
   assert.equal(runOk(w.central, ['export']).stdout, stdout);
   assert.equal(addedAt(w.web, 'docs/link.md'), w.shas.web.A, 'fixture check: docs/link.md came in at A');
+});
+
+// --- review of PR #192, findings 2 and 3.
+
+const RECORD = '.assuredloop/records/requests/invoice-exports.yaml';
+const declare = (w, entries) => {
+  const rec = readYaml(w.central, RECORD);
+  rec.outputs = [...rec.outputs, ...entries];
+  writeYaml(w.central, RECORD, rec);
+};
+
+test('review 192 #2: a declared file among the spec\'s own files gets no output row; its paragraph rows stay as they are', (t) => {
+  const w = searchWorld(t);
+  const spec = (rows) => rows.filter((r) => r.file === 'specs/exports.md')
+    .map((r) => [r.id, r.version, r.role, r.source_type, r.text, r.sha256, r.valid_from, r.superseded_by]);
+  const before = exportRows(w.central).rows;
+  declare(w, [
+    { file: 'specs/exports.md', documents: ['EXP-4'] },
+    { repo: 'invoicer', file: 'requests/invoice-exports/tasks.md', documents: ['EXP-4'] },
+  ]);
+  commitAll(w.central, 'Declare a spec doc and a request file as outputs');
+  const after = exportRows(w.central).rows;
+  const outs = after.filter((r) => r.repo === 'invoicer' && r.source_type === 'output').map((r) => r.file);
+  assert.ok(!outs.includes('specs/exports.md'), `no output row for specs/exports.md: ${outs.join(', ')}`);
+  assert.ok(!outs.includes('requests/invoice-exports/tasks.md'), `no output row for requests/invoice-exports/tasks.md: ${outs.join(', ')}`);
+  assert.ok(outs.includes('docs/exports.md'), 'the other declared output is still a row');
+  assert.ok(spec(before).length > 0);
+  assert.deepEqual(spec(after), spec(before), 'the paragraph rows of specs/exports.md do not change');
+});
+
+test('review 192 #3: the sha256 of an output row is the sha256 of the file\'s bytes, for a binary file too', (t) => {
+  const w = searchWorld(t);
+  const BYTES = Buffer.from([0xff, 0x00, 0xfe, 0x0a]);
+  const want = sha256(BYTES);
+  assert.ok(want.startsWith('4dcbcbb8'), `fixture check: ${want}`);
+  mkdirSync(join(w.web, 'assets'));
+  writeFileSync(join(w.web, 'assets/logo.bin'), BYTES);
+  commitAll(w.web, 'Add a binary logo');
+  mkdirSync(join(w.central, 'assets'));
+  writeFileSync(join(w.central, 'assets/logo.bin'), BYTES);
+  declare(w, [
+    { file: 'assets/logo.bin', documents: ['EXP-4'] },
+    { repo: 'invoicer-web', file: 'assets/logo.bin', documents: ['central:EXP-4'] },
+  ]);
+  commitAll(w.central, 'Add and declare a binary logo');
+  assert.deepEqual(blob(w.central, 'HEAD', 'assets/logo.bin'), BYTES, 'fixture check: the bytes are committed as they are');
+  const { rows } = exportRows(w.central);
+  for (const repo of ['invoicer', 'invoicer-web']) {
+    const r = rowOf(rows, repo, 'assets/logo.bin');
+    assert.equal(r.source_type, 'output', `${repo}`);
+    assert.equal(r.sha256, want, `${repo}:assets/logo.bin: the sha256 of the 4 bytes ff 00 fe 0a`);
+  }
 });

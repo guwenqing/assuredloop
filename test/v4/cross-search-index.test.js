@@ -4,9 +4,11 @@
 // `index` is the text of the Index line. The world: helpers/cross-search.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { asRow, exportRows, key, search } from './helpers/search.js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { asRow, exportRows, key, run, search, show } from './helpers/search.js';
 import { commit, hide, pin, rev, searchWorld } from './helpers/cross-search.js';
-import { write } from './helpers/project.js';
+import { read, write } from './helpers/project.js';
 
 const L1 = { level: 1 };
 const UP_TO_DATE = /^up to date\b/;
@@ -89,4 +91,79 @@ test('level 1: an output repo that becomes absent leaves the current index; its 
   assert.deepEqual(hist.hits.map((h) => [h.repo, h.id, h.role]), [['invoicer-web', 'src/export-link.js', 'history']],
     'the history index keeps it, shown as history');
   assert.equal(rev(w.central), w.shas.ext.X1, 'fixture check: the central repo did not move');
+});
+
+// --- review of PR #192, finding 1: the refresh walks only the new commits.
+
+// `al search --json` at level 1 with GIT_TRACE: the answer, and each `git log`
+// it ran, as { revs, paths } (paths without their `:(literal)` magic).
+function traced(w, args) {
+  const file = join(w.root, `trace-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`);
+  const r = run(w.central, ['search', ...args, '--level', '1', '--json'], { env: { GIT_TRACE: file } });
+  assert.equal(r.code, 0, show(r));
+  const logs = readFileSync(file, 'utf8').split('\n').filter((l) => /trace: built-in: git log\b/.test(l)).map((l) => {
+    const argv = [...l.replace(/^.*trace: built-in: git log/, '').matchAll(/'([^']*)'|(\S+)/g)].map((m) => m[1] ?? m[2]);
+    const dd = argv.indexOf('--');
+    const before = dd < 0 ? argv : argv.slice(0, dd);
+    return {
+      line: l.replace(/^.*trace: built-in: /, ''),
+      revs: before.filter((a) => !a.startsWith('-') || a === '--not'),
+      paths: dd < 0 ? [] : argv.slice(dd + 1).map((p) => p.replace(/^:\([^)]*\)/, '')),
+    };
+  });
+  return { out: JSON.parse(r.stdout), logs };
+}
+
+// No `git log` that reaches <head> walks from the repo's first commit (no
+// range), except one restricted to the paths in `fresh` (files new to the index).
+function walksOnlyNew(logs, head, fresh) {
+  const mine = logs.filter((g) => g.revs.some((x) => x.includes(head)));
+  assert.ok(mine.length > 0, `some git log reaches ${head.slice(0, 12)}:\n${logs.map((g) => g.line).join('\n')}`);
+  for (const g of mine) {
+    const ranged = g.revs.some((x) => x.includes('..') || x.startsWith('^') || x === '--not');
+    if (ranged) continue;
+    assert.ok(g.paths.length > 0 && g.paths.every((p) => fresh.includes(p)),
+      `a git log with no range walks the whole history; only one restricted to ${fresh.join(', ')} may:\n${g.line}`);
+  }
+}
+
+// The hits of --id <file> --history are the export rows of that file in <repo>.
+function historyAsExport(w, repo, file) {
+  const rows = exportRows(w.central).rows.filter((r) => r.repo === repo && r.id === file);
+  const hits = search(w.central, ['--id', file, '--history'], L1).hits.filter((h) => h.repo === repo);
+  const order = (a, b) => a.version - b.version;
+  assert.deepEqual(hits.map(asRow).sort(order), rows.sort(order), `${repo}:${file}: --history gives the export's versions`);
+  return rows;
+}
+
+test('review 192 #1, level 1: new commits in an output repo with new citing files: the refresh walks only the new commits, and the new files\' history', (t) => {
+  const w = searchWorld(t);
+  search(w.central, ALL, L1); // the index at web C2
+  write(w.web, 'docs/tidy.md', 'Tidy, as central:EXP-4 says.\n'); // in the tree since B, now it cites
+  write(w.web, 'src/csv-link.js', '// The CSV link of central:invoice-exports/R1, a zebra.\nexport const csv = true;\n');
+  write(w.web, 'docs/link.md', `${read(w.web, 'docs/link.md')}A new line on central:EXP-7.\n`); // a file already indexed
+  commit(w.web, 'W4: two files cite, one more line');
+  write(w.web, 'src/csv-link.js', '// The CSV link of central:invoice-exports/R1, a zebra, version 2.\nexport const csv = true;\n');
+  const W5 = commit(w.web, 'W5: the CSV link again');
+  const { out, logs } = traced(w, ['zebra', '--change', 'invoice-exports']);
+  assert.doesNotMatch(out.index, UP_TO_DATE);
+  walksOnlyNew(logs, W5, ['docs/tidy.md', 'src/csv-link.js']);
+  sameAsRebuild(w.central);
+  assert.equal(historyAsExport(w, 'invoicer-web', 'src/csv-link.js').length, 2, 'src/csv-link.js v1 (W4) and v2 (W5)');
+  assert.ok(historyAsExport(w, 'invoicer-web', 'docs/tidy.md').length >= 2, 'docs/tidy.md: its version of B and its version of W4');
+  assert.equal(historyAsExport(w, 'invoicer-web', 'docs/link.md').length, 2, 'docs/link.md v1 (A) and v2 (W4)');
+});
+
+test('review 192 #1, level 1: a new spec paragraph in the central repo does not walk the history of the central output files again', (t) => {
+  const w = searchWorld(t);
+  search(w.central, ALL, L1); // the index at X1
+  write(w.central, 'specs/exports.md', `${read(w.central, 'specs/exports.md')}\n<!-- EXP-50 rule -->\n\nA quokka export MUST be rare.\n`);
+  write(w.central, 'src/quokka.js', '// The quokka rule, EXP-50.\nexport const q = 1;\n'); // new: names the new ID
+  const X2 = commit(w.central, 'X2: EXP-50, and a file that names it');
+  const { out, logs } = traced(w, ['quokka']);
+  assert.ok(out.hits.some((h) => h.id === 'EXP-50'), 'the new paragraph is found');
+  walksOnlyNew(logs, X2, ['src/quokka.js']);
+  sameAsRebuild(w.central);
+  assert.equal(historyAsExport(w, 'invoicer', 'src/quokka.js').length, 1);
+  assert.equal(historyAsExport(w, 'invoicer', 'docs/guide.md').length, 1);
 });
