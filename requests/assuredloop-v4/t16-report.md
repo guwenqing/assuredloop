@@ -23,7 +23,8 @@ counts. It decides nothing; the architect decides what follows from it.
 - With one agent doing the work and the records (#197, section 9), the
   records cost 0.29 of the work on small changes and 0.80 on a big change,
   by the context at the end of the run, and 0.87 and 2.36 by all the input
-  the agent read. The target of about 0.2 is still not met.
+  the agent read (the runs without the helpers they started). The target
+  of about 0.2 is still not met.
 - No agent lost a marker. In 20 edits of marked text, made by two agents
   that were not told about markers in their prompt, every marker stayed as
   it was, with its blank lines. In the six path runs, no marker was lost.
@@ -253,29 +254,46 @@ records together, as in use, for the owner's decision on R12.
 
 ### What a token count measures
 
-- The harness reports one count per agent run. Checked against the agent's
-  transcript, that count is the size of the context at the end of the run:
-  for one T16 run, the last API call read 34,828 tokens, and the harness
-  reported 34,918.
+- The harness reports one count each time a run stops. In the 38 stops of
+  the #197 runs, that count was the size of the context of the run's last
+  API call in that segment, plus 51 to 593 tokens (about the size of the
+  last output). This is what was observed; how the harness computes the
+  count is not documented, and this report does not know it.
 - So a resumed run reports its earlier context again. Section 4 adds the
-  segments of a resumed agent, so it counts that context twice, in the work
-  and in the records alike. Validation added them the same way.
-- The transcripts hold every API call. This section counts three measures
-  from them:
+  segments of a resumed agent, so it counts that context more than once, in
+  the work and in the records alike. Validation added them the same way.
+- The count of a run does not include the subagents that the run started
+  (its helpers; see below). They have their own transcripts.
+- This section counts three measures from the transcripts, call by call:
   - **context at the end:** once per agent, the measure nearest to the
     harness's count;
   - **new input:** the input that was not read from the cache;
   - **all input read:** every call's whole input, the cache reads included.
     An agent rereads its whole context on each call, so more calls cost more.
-- Output is small beside the input, and the transcripts do not record it
-  reliably, so it is left out.
+- Output is left out: the transcripts record only start-of-stream output
+  counts, and the output is small beside the input.
 - Which measure follows the money depends on the price of cached input, and
   this report does not set that.
 
+### Helpers
+
+Nine developer runs started their own subagents: a test author and a
+reviewer, as the session's working rules ask. The agents ran in a session
+whose rules say that a different author writes the tests and a fresh agent
+reviews the change. Neither the skill nor the prompts asked for them.
+- T16: the work agents of DC04 and DC05, two helpers each (911k and 721k of
+  input read). The harness counts of section 4 do not include them, and the
+  recount below leaves them out too.
+- #197: both arms of DC04 in both runs, and the work-only arm of DC02 run 1,
+  two helpers each. So the arms did not start helpers evenly.
+- Below, "the run alone" leaves the helpers out, and "with helpers" adds
+  them. The run alone is the main measure, because the helpers come from
+  the session's rules and not from the arm.
+
 ### T16 recounted
 
-The T16 runs of section 4, counted from the transcripts. Section 4's
-grouping is kept.
+The T16 runs of section 4, the runs alone, counted from the transcripts.
+Section 4's grouping is kept.
 
 | Group | Records / work, context at the end | Records / work, new input | Records / work, all input read | (Records + corrections) / work, all input read |
 |---|---|---|---|---|
@@ -284,8 +302,8 @@ grouping is kept.
 | epic part: DC05 | 0.88 | 0.76 | 0.57 | 0.90 |
 
 - The context-at-the-end ratios stay near section 4's ratios (1.20, 1.20,
-  0.78). Counting a resumed agent twice raised the work and the records
-  alike.
+  0.78). Counting a resumed agent more than once raised the work and the
+  records alike.
 - By all input read, the records cost more than section 4 shows on small
   changes: their agents make more calls than the work agents.
 
@@ -299,8 +317,8 @@ grouping is kept.
   The two prompts differ in that one paragraph only. Both arms commit on a
   branch and write the PR text.
 - **Cases:** DC01, DC02 and DC03 (small) and DC04 (big), two runs of each arm:
-  16 developer runs. They ask the owner when they need to, as in T16, and
-  the owner agents are counted apart (16 owner runs).
+  16 developer runs. They ask the owner when they need to, as in T16. The
+  owner agents are counted apart: 11 owner runs, 4 for DC02 and 7 for DC04.
 - **The tool:** al v4 at main ac9e534 (T16 used 3178c93).
 - **Checks of the result:**
   - Each skill run claimed the expected path (0, 1, 1d, 2), and `al check`
@@ -311,49 +329,75 @@ grouping is kept.
 
 The marginal cost is (skill - work only) / work only.
 
-| Case | Run | Skill, all input read | Work only, all input read | Marginal, all input read | Marginal, new input | Marginal, context at the end | Marginal, time |
-|---|---|---|---|---|---|---|---|
-| DC01 | 1 | 254k | 134k | 0.90 | 0.32 | 0.25 | 0.62 |
-| DC01 | 2 | 253k | 132k | 0.92 | 0.36 | 0.28 | 0.85 |
-| DC02 | 1 | 1066k | 892k | 0.19 | -0.01 | 0.02 | -0.08 |
-| DC02 | 2 | 672k | 432k | 0.56 | 0.22 | 0.19 | 1.40 |
-| DC03 | 1 | 666k | 181k | 2.67 | 0.51 | 0.42 | 2.62 |
-| DC03 | 2 | 774k | 197k | 2.93 | 0.98 | 0.79 | 2.52 |
-| DC04 | 1 | 3901k | 1271k | 2.07 | 0.74 | 0.68 | 1.37 |
-| DC04 | 2 | 4289k | 1164k | 2.68 | 1.04 | 0.93 | 0.71 |
+The runs alone:
 
-| Group, both runs | Marginal, all input read | Marginal, new input | Marginal, context at the end | Marginal, time | Range of the runs, all input read |
-|---|---|---|---|---|---|
-| small: DC01, DC02, DC03 | 0.87 | 0.35 | 0.29 | 0.59 | 0.19 to 2.93 |
-| big: DC04 | 2.36 | 0.88 | 0.80 | 0.98 | 2.07 to 2.68 |
+| Case | Run | Skill, all input read | Work only, all input read | Marginal, all input read | Marginal, new input | Marginal, context at the end |
+|---|---|---|---|---|---|---|
+| DC01 | 1 | 254k | 134k | 0.90 | 0.32 | 0.25 |
+| DC01 | 2 | 253k | 132k | 0.92 | 0.36 | 0.28 |
+| DC02 | 1 | 1066k | 892k | 0.19 | -0.01 | 0.02 |
+| DC02 | 2 | 672k | 432k | 0.56 | 0.22 | 0.19 |
+| DC03 | 1 | 666k | 181k | 2.67 | 0.51 | 0.42 |
+| DC03 | 2 | 774k | 197k | 2.93 | 0.98 | 0.79 |
+| DC04 | 1 | 3901k | 1271k | 2.07 | 0.74 | 0.68 |
+| DC04 | 2 | 4289k | 1164k | 2.68 | 1.04 | 0.93 |
 
-- **Beside the separate agent:** by the context at the end, one agent's
-  records cost 0.29 of the work on small changes and 0.80 on the big change.
-  The separate records agent of T16 cost 1.22 and 1.14 by the same measure.
-  So most of the separate agent's cost was its own reading.
+| Group, both runs | Marginal, all input read | Marginal, new input | Marginal, context at the end | Range of the runs, all input read |
+|---|---|---|---|---|
+| small: DC01, DC02, DC03, the runs alone | 0.87 | 0.35 | 0.29 | 0.19 to 2.93 |
+| big: DC04, the runs alone | 2.36 | 0.88 | 0.80 | 2.07 to 2.68 |
+| small, with helpers | 0.60 | 0.04 | 0.00 | -0.13 to 2.93 |
+| big, with helpers | 1.68 | 0.52 | 0.46 | 1.31 to 2.13 |
+
+- **Beside the separate agent:** by the context at the end, the runs alone,
+  one agent's records cost 0.29 of the work on small changes and 0.80 on the
+  big change. The separate records agent of T16 cost 1.22 and 1.14 by the
+  same measure. These ratios differ, but the comparison does not show why:
+  the tool version, the work and the big group (DC04 and DC06 in T16, DC04
+  alone here) differ too. That the separate agent paid mostly for its own
+  reading is a hypothesis, not a measurement.
 - **By all input read** the cost is higher: 0.87 on small changes and 2.36 on
-  the big change. The records add calls (`al` commands, record files), and
-  each call reads the whole context again.
+  the big change. The skill runs make more calls (`al` commands, record
+  files), and each call reads the whole context again.
+- **With helpers** the small-change cost falls to about zero by the context
+  at the end, because only the work-only arm of DC02 run 1 started helpers.
+  That is the session's rules at work, not the records.
 - **Against R12** (about 0.2, flexible): the target is not met on any
-  measure. The nearest is the context at the end on small changes, 0.29.
+  measure of the runs alone. The nearest is the context at the end on small
+  changes, 0.29.
 - **The spread is large.** DC02 run 1 cost almost nothing more (0.02 by the
   context at the end): its work-only agent also asked the owner, and made
-  22 calls against the skill agent's 25. DC03 cost the most of the small cases: a one-word rename
-  became a path-1d request with its own records.
+  22 calls against the skill agent's 25. DC03 cost the most of the small
+  cases: a one-word rename became a path-1d request with its own records.
 
 ### Limits
 
 - Two runs for each case and arm, one model family, a small invented fixture.
+- Every agent ran with the session's own working rules in its context. They
+  made some runs start helpers, unevenly between the arms, and they add the
+  same fixed context to both arms.
 - The work-only arm worked in a repo that still has the markers and the
   records, so it could read them. A repo with no AssuredLoop at all was not
   measured.
 - The work itself can differ between the arms. For example, the work-only
   agents of DC02 also asked the owner to agree a requirement.
-- Times are wall times of runs that ran eight at a time on a shared machine.
+- Times are wall times of runs that ran eight at a time on a shared machine,
+  so they are not compared here.
 - The al version differs from T16's. Both arms of #197 used the same one.
 
-The data: `validation/v4/t16/marginal/` (prompts, `prep.mjs`, `score.py`,
-`runs/usage.jsonl`, `runs/agents.txt`, `runs/calls.json`, `runs/raw/`) and
-`validation/v4/t16/recount.py` with `runs/recount.json`, in the same bots
-repository as section 8. The per-call counts are kept; the transcripts are
-not, because they hold session text that is not part of this work.
+### The data
+
+In the same bots repository as section 8:
+- `validation/v4/t16/extract.py` and `usage_from_transcript.py` read the
+  transcripts.
+- They write one row of numbers for each API call: `runs/calls-rows.jsonl`
+  for T16 and `marginal/runs/calls-rows.jsonl` for #197. A row holds the
+  run, the agent, whether the agent is a helper, the segment, the message
+  ID, the new input and the cache reads.
+- `recount.py` and `marginal/score.py` print the tables above from those
+  rows.
+- The prompts, the owner chats, the PR texts, the diffs and the harness's
+  own counts are in `marginal/runs/` (`raw/`, `usage.jsonl`, `agents.txt`).
+- The transcripts are not kept, because they hold session text that is not
+  part of this work. So the extraction itself cannot be checked again from
+  the repository; the rows can.
