@@ -1,4 +1,3 @@
-// STUB until issue #174 merges: a copy of src/v4/scope.js of PR #177 (origin/v4-markers-174 at 9256410), which replaces this file.
 // The docs whose paragraphs carry markers, in two kinds of scope (architect,
 // 2026-10-10): the spec scope, every *.md under the spec root except its adr/
 // folder plus the files config's docs list names; and one scope per request,
@@ -45,6 +44,11 @@ const linked = (top, config) => [
   ...(!outside(config.root) && symlinkOn(top, clean(config.root)) ? [`${String(config.root).replace(/\/+$/, '')}/`] : []),
   ...insideDocs(config).map((d) => String(d.file)).filter((f) => symlinkOn(top, clean(f))),
 ];
+
+// Why config's root cannot be used, or null: the repository top is no spec root.
+export const rootProblem = (config) => (!outside(config.root) && ['.', ''].includes(clean(config.root))
+  ? `.assuredloop/config.yaml: root: ${JSON.stringify(String(config.root))} is the repository top; give the spec folder, for example specs`
+  : null);
 
 // One line for each root or docs entry that is not read, and why.
 export const notRead = (top, config) => [
