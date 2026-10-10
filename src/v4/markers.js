@@ -40,11 +40,18 @@ const headingText = (raw) => (raw ?? '').replace(/(^|[ \t]+)#+$/, '').trim();
 // A GFM table's delimiter row, such as `--- | ---` or `|:--|--:|`.
 const DELIMITER = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
 
+// The cells of a table row: one leading and one trailing pipe do not count,
+// and an escaped pipe does not split a cell.
+const cells = (row) => row.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '').split(/(?<!\\)\|/).length;
+
+// A table starts where a row is followed by a delimiter row with as many
+// cells (GFM's tables extension).
+const tableStart = (l, next) => l.includes('|') && next.includes('|') && DELIMITER.test(next) && cells(l) === cells(next);
+
 // A line that belongs to the paragraph before it, also after a blank line:
-// a list item, a table row (a leading `|`, or a row with `|` followed by a
-// delimiter row), a block quote, an indented line or a fence.
-export const continues = (l, next = '') => /^\s*([-*+]|\d+[.)])(\s|$)/.test(l) || /^\s*\|/.test(l)
-  || (l.includes('|') && next.includes('|') && DELIMITER.test(next))
+// a list item, the start of a table, a block quote, an indented line or a
+// fence.
+export const continues = (l, next = '') => /^\s*([-*+]|\d+[.)])(\s|$)/.test(l) || tableStart(l, next)
   || /^\s*>/.test(l) || /^\s+\S/.test(l) || FENCE.test(l);
 
 // The blocks of a doc, each { first, marked, after }: `first` is the index of
