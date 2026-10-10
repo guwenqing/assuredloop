@@ -328,3 +328,24 @@ describe('al check reads the adoption record on the branch', () => {
     assertClean(r, ['INV-1', 'INV-2', 'INV-3', 'INV-5']);
   });
 });
+
+describe('the adoption record is only for spec paragraphs', () => {
+  test('--add-ids on a change spec (requests/<name>/spec.md) marks it with SP IDs and writes no adoption record; on a specs/ file of the same repo it does', (t) => {
+    const dir = project(t);
+    const CHANGE = 'requests/totals/spec.md';
+    write(dir, CHANGE, '# Totals\n\nAdd a total line.\n\nThe total MUST equal the sum of the lines.\n');
+    write(dir, SPEC, UNMARKED);
+    commitAll(dir, 'a change spec and a spec, both unmarked');
+    const r = ok(dir, ['spec', '--add-ids', CHANGE, '--yes']);
+    const marked = read(dir, CHANGE);
+    for (const id of ['SP-1', 'SP-2', 'SP-3']) assert.match(marked, new RegExp(`^<!-- ${id}( [^ ]+)* -->$`, 'm'), show(r));
+    assert.ok(!exists(dir, ADOPTION), `no adoption record for a change spec:\n${show(r)}`);
+    assert.ok(!exists(dir, ADOPTION_MD), `no adoption request.md for a change spec:\n${show(r)}`);
+    assert.ok(!outLines(r).some((l) => /adopt/i.test(l) && /\bSP-\d+\b/.test(l)), `no line names an adoption entry:\n${show(r)}`);
+
+    // Control: the same run on the specs/ file writes the record, with INV entries only.
+    const s = adopt(dir);
+    assert.ok(exists(dir, ADOPTION), show(s));
+    assert.deepEqual(dispositions(dir).map((d) => d.spec), ALL, show(s));
+  });
+});
