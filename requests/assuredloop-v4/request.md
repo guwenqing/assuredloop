@@ -39,6 +39,7 @@ Tier: 3 · Status: open
 
 ## Organized requirement
 
+<!-- R1 from:2026-10-10-owner-words.md -->
 ### R1 One current spec, and the change's own spec
 The project MUST keep one consolidated spec on main: the current promises,
 the lasting design, and the decisions (ADRs) in the spec folder. Each change
@@ -47,6 +48,7 @@ its promises, its design and its plan. A reader, human or AI, MUST be able to
 tell the current system without reading past changes, and to find why any
 part is as it is.
 
+<!-- R2 from:2026-10-10-owner-words.md -->
 ### R2 Every paragraph traced
 Every paragraph of the spec and of a change spec MUST carry a stable ID that
 the rendered page does not show, and a kind (for example a rule, a limit, a
@@ -54,6 +56,7 @@ definition, a design part, a plan, a note). Promise and design paragraphs
 MUST link to what they serve, and to the spec paragraphs they build on or
 change. No design text may live in a free, untraced document.
 
+<!-- R3 from:2026-10-10-owner-words.md -->
 ### R3 The owner's words, and the organized requirement
 Work that changes a promise MUST have a request record. It keeps the owner's
 words as given, with every link or chat snapshotted with its SHA-256 and its
@@ -62,6 +65,7 @@ point at the owner's words it comes from. Both MAY change while the owner
 explores: each change is kept as a new version, and old versions stay
 readable.
 
+<!-- R4 from:2026-10-10-owner-words.md -->
 ### R4 The owner signs off promise changes
 When a change touches a promise, its organized requirement (for a spike, the
 organized question) MUST be signed off by the owner. Work MAY be drafted
@@ -70,6 +74,7 @@ change MUST need a new sign-off. Changes that touch no promise, such as typo
 fixes, small design corrections and design-only changes, need no sign-off;
 the review reads them.
 
+<!-- R5 from:2026-10-10-owner-words.md -->
 ### R5 Consolidation by hand, and closing
 The agent MUST bring each piece of a change into the consolidated spec by
 plain paragraph replacement, with no tool command, at any time before the
@@ -80,11 +85,13 @@ MUST require every change paragraph that affects the spec to be incorporated,
 removed, replaced by a later change, or abandoned with a reason. Nothing
 applied may be dropped silently.
 
+<!-- R6 from:2026-10-10-owner-words.md -->
 ### R6 Parallel work aligns
 Changes to the same paragraph MUST align: build on each other, or correct the
 earlier one. The tool MUST show overlaps, and a base that changed underneath
 a change, and MUST never silently overwrite.
 
+<!-- R7 from:2026-10-10-owner-words.md -->
 ### R7 Paths for each kind of work
 There MUST be paths for:
 - a fix with no record, typo fixes included;
@@ -97,6 +104,7 @@ There MUST be paths for:
 The user picks the path. Every PR MUST state its path and its claim. The tool
 MUST show the evidence, and flag the contradictions it can see.
 
+<!-- R8 from:2026-10-10-owner-words.md -->
 ### R8 From input to output, across repos
 The tool MUST trace the chain from the owner's words, through the
 requirement, the decisions, the ADRs, the spec paragraphs, the tasks and the
@@ -109,11 +117,13 @@ a `tasks.md` in the request) or in any tracker, and several tasks MAY share
 one issue; the chain keeps only their references, and the tool enforces no
 way of dividing the work.
 
+<!-- R9 from:2026-10-10-owner-words.md -->
 ### R9 Bringing the AI back, and full audit
 One command MUST show, briefly, where a request stands and what to do next.
 On request it MUST return the full trace, including as of any past commit made
 under v4. History from before v4 MAY be read with the pinned 0.1.0.
 
+<!-- R10 from:2026-10-10-owner-words.md -->
 ### R10 Search at the user's chosen strength
 The tool MUST offer search over the spec, the changes and the outputs at
 several levels: none (the agent reads the files), local full text, and local
@@ -124,12 +134,14 @@ evidence and history only when asked, each hit marked with its role. The
 records MUST be committed, so that any index can be rebuilt from them. A
 hosted level, preferably on Google Cloud, is later work.
 
+<!-- R11 from:2026-10-10-owner-words.md -->
 ### R11 Hints, not a lifecycle
 The tool MUST give hints. It MUST NOT block commits or merges: only its own
 conclude refuses, and a strict mode is opt-in. It MUST NOT impose phases,
 stages, roles, approvals beyond the sign-off, task states, or one way of
 working. How to develop, test and review belongs to the project.
 
+<!-- R12 from:2026-10-10-owner-words.md -->
 ### R12 Light enough to pay for itself
 Its formality SHOULD cost no more than about a fifth of the change, as a
 flexible target. A rule that helps no reviewer answer a real question SHOULD
@@ -137,10 +149,12 @@ be dropped after validation. The core checks MUST run offline and
 deterministically, with no AI calls. AI fills hints in the PR, and the review
 reads them.
 
+<!-- R13 from:2026-10-10-owner-words.md -->
 ### R13 Scale
 It MUST stay usable with up to 1,000 change specs in a repo, and across 20
 repos.
 
+<!-- R14 from:2026-10-10-owner-words.md -->
 ### R14 Beyond code
 The same records SHOULD work for non-code projects, such as documents and
 research.

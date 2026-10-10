@@ -1,0 +1,765 @@
+schema: assuredloop/1
+request: assuredloop-v4
+tier: "3"
+status: open
+sources:
+  - file: 2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14-2.md
+    kind: owner-words
+    sha256: 189cb8afc4ea052f9379fd0f5297b4fd3e3196dcfb8f770c9399dc7281838113
+    taken: 2026-10-10T13:56Z
+  - file: 2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14.md
+    kind: owner-words
+    sha256: 777595b9281e0d173d5e195f7b52d04957cef68125eb39f7c304057842281a46
+    taken: 2026-10-10T02:55Z
+  - file: 2026-10-10-owner-words.md
+    kind: owner-words
+    sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b
+    taken: 2026-10-10T02:55Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b
+    title: One current spec, and the change's own spec
+  - id: R2
+    version: 1
+    sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3
+    title: Every paragraph traced
+  - id: R3
+    version: 1
+    sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210
+    title: The owner's words, and the organized requirement
+  - id: R4
+    version: 1
+    sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a
+    title: The owner signs off promise changes
+  - id: R5
+    version: 1
+    sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb
+    title: Consolidation by hand, and closing
+  - id: R6
+    version: 1
+    sha256: 3cb0fd2926871cde6807a61ef5bdff70e66be34f8668240a4bf2acfeac687e6e
+    title: Parallel work aligns
+  - id: R7
+    version: 1
+    sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2
+    title: Paths for each kind of work
+  - id: R8
+    version: 1
+    sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf
+    title: From input to output, across repos
+  - id: R9
+    version: 1
+    sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf
+    title: Bringing the AI back, and full audit
+  - id: R10
+    version: 1
+    sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9
+    title: Search at the user's chosen strength
+  - id: R11
+    version: 1
+    sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2
+    title: Hints, not a lifecycle
+  - id: R12
+    version: 1
+    sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c
+    title: Light enough to pay for itself
+  - id: R13
+    version: 1
+    sha256: e06efd90162413499b8abef3c132b7327d6d69d694c8f0da20fa9a8ab59679bd
+    title: Scale
+  - id: R14
+    version: 1
+    sha256: 9658eef2d3042cc9aa437dbaba6ca53bb92b48b79eaf7909d61d4285344457a0
+    title: Beyond code
+signoff:
+  - id: S1
+    file: 2026-10-10-signoff.md
+    sha256: 08a9ee85795898b4a07ca60880926a72d3e1f7b0ce584ba004ae426022ad14f4
+    signed: 2026-10-10T02:55Z
+    source: owner
+    words: i sign off / yes go ahead
+    note: "converted from the 0.1.0 sign-off (D19): no new snapshot and no new Signed off line"
+    covers:
+      - id: R1
+        version: 1
+        sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b
+      - id: R2
+        version: 1
+        sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3
+      - id: R3
+        version: 1
+        sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210
+      - id: R4
+        version: 1
+        sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a
+      - id: R5
+        version: 1
+        sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb
+      - id: R6
+        version: 1
+        sha256: 3cb0fd2926871cde6807a61ef5bdff70e66be34f8668240a4bf2acfeac687e6e
+      - id: R7
+        version: 1
+        sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2
+      - id: R8
+        version: 1
+        sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf
+      - id: R9
+        version: 1
+        sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf
+      - id: R10
+        version: 1
+        sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9
+      - id: R11
+        version: 1
+        sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2
+      - id: R12
+        version: 1
+        sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c
+      - id: R13
+        version: 1
+        sha256: e06efd90162413499b8abef3c132b7327d6d69d694c8f0da20fa9a8ab59679bd
+      - id: R14
+        version: 1
+        sha256: 9658eef2d3042cc9aa437dbaba6ca53bb92b48b79eaf7909d61d4285344457a0
+decisions: []
+tasks: []
+bindings:
+  - { holder: assuredloop-v4/SP-4, link: explains, target: assuredloop-v4/SP-5, holder_sha256: be3c2ffacaaf0bfb964705cf4ec9b3d4825d00b9d8c10966481c3408238991b4, target_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25 }
+  - { holder: assuredloop-v4/SP-5, link: serves, target: assuredloop-v4/R11, holder_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-5, link: serves, target: assuredloop-v4/R7, holder_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-6, link: explains, target: assuredloop-v4/SP-5, holder_sha256: 37211bbdfdea2af256cbb2ec74a59b02515a8f11238c88d111bfa2f8f3adcd57, target_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25 }
+  - { holder: assuredloop-v4/SP-8, link: explains, target: assuredloop-v4/SP-116, holder_sha256: 141a5b9ca63cd5d3de32d9e219ce8215f779cba680e82e7ef9d206d5f3658384, target_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38 }
+  - { holder: assuredloop-v4/SP-8, link: explains, target: assuredloop-v4/SP-117, holder_sha256: 141a5b9ca63cd5d3de32d9e219ce8215f779cba680e82e7ef9d206d5f3658384, target_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c }
+  - { holder: assuredloop-v4/SP-116, link: serves, target: assuredloop-v4/R1, holder_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38, target_sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b, target_version: 1 }
+  - { holder: assuredloop-v4/SP-117, link: serves, target: assuredloop-v4/R1, holder_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c, target_sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b, target_version: 1 }
+  - { holder: assuredloop-v4/SP-117, link: serves, target: assuredloop-v4/R2, holder_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-10, link: explains, target: assuredloop-v4/SP-11, holder_sha256: 136b5dfce10a672df026b1c057e2fdfec164a08b79bc09fa5153dcf237dbdf8b, target_sha256: 1c533a555c55adcae6a3e51e8fe1607d896578d3fafd0d445b75f742d23ac379 }
+  - { holder: assuredloop-v4/SP-11, link: serves, target: assuredloop-v4/R2, holder_sha256: 1c533a555c55adcae6a3e51e8fe1607d896578d3fafd0d445b75f742d23ac379, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-12, link: explains, target: assuredloop-v4/SP-11, holder_sha256: 0ed9b1ae003e745fcea30d39eeaa5629d9ca97b10e0f40b91300de15752b5a8b, target_sha256: 1c533a555c55adcae6a3e51e8fe1607d896578d3fafd0d445b75f742d23ac379 }
+  - { holder: assuredloop-v4/SP-13, link: serves, target: assuredloop-v4/R2, holder_sha256: 76988b79b9970b757bdacae7091a4b0ced5a2f398ece987eeeabbaa5de806db4, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-14, link: serves, target: assuredloop-v4/R2, holder_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-14, link: serves, target: assuredloop-v4/R8, holder_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-15, link: serves, target: assuredloop-v4/R2, holder_sha256: 25d8369cce416cbcf9982de1e954b1d8cee32750413be0fe76cc25817a461f81, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-16, link: serves, target: assuredloop-v4/R2, holder_sha256: ede0838fc5267b302ab5516bd326b4829b016823f1e37fd4881a9d1387a53b79, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-17, link: serves, target: assuredloop-v4/R2, holder_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-17, link: serves, target: assuredloop-v4/R8, holder_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-18, link: explains, target: assuredloop-v4/SP-17, holder_sha256: 70fcfcd1cb964affe05662faf2bfccb5dccc5fab47cfb0cc758d0a4a35b6a712, target_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced }
+  - { holder: assuredloop-v4/SP-19, link: serves, target: assuredloop-v4/R2, holder_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-19, link: serves, target: assuredloop-v4/R8, holder_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-20, link: serves, target: assuredloop-v4/R2, holder_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-20, link: serves, target: assuredloop-v4/R11, holder_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-21, link: serves, target: assuredloop-v4/R2, holder_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-23, link: explains, target: assuredloop-v4/SP-118, holder_sha256: 094b2c5ed8ee215e5acd03a0787df17967d279332b81274634a3617a121daff1, target_sha256: c06513fef2ae793a469b7862116301c93f5a2cfc8be3caa8c66b95484389de31 }
+  - { holder: assuredloop-v4/SP-118, link: serves, target: assuredloop-v4/R6, holder_sha256: c06513fef2ae793a469b7862116301c93f5a2cfc8be3caa8c66b95484389de31, target_sha256: 3cb0fd2926871cde6807a61ef5bdff70e66be34f8668240a4bf2acfeac687e6e, target_version: 1 }
+  - { holder: assuredloop-v4/SP-25, link: explains, target: assuredloop-v4/SP-26, holder_sha256: 2c27f16f0ad6bf9d73caf7ba5b4122ca4d49c9a0ceb94aee82e52af7091c8108, target_sha256: 21efefe0b4b2f1c52b3a97b2260cda27575e05afc139532c3d026cb52e9a6231 }
+  - { holder: assuredloop-v4/SP-26, link: serves, target: assuredloop-v4/R5, holder_sha256: 21efefe0b4b2f1c52b3a97b2260cda27575e05afc139532c3d026cb52e9a6231, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-27, link: serves, target: assuredloop-v4/R5, holder_sha256: 86a9c1689bceae97af15e3db997f01b90b3a809fcc72c785e91165e7ececa33d, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-28, link: explains, target: assuredloop-v4/SP-27, holder_sha256: 49f37b456b6c8c0f60d07fe2485c6506b8923258622a234a59daf935fcc1656a, target_sha256: 86a9c1689bceae97af15e3db997f01b90b3a809fcc72c785e91165e7ececa33d }
+  - { holder: assuredloop-v4/SP-29, link: serves, target: assuredloop-v4/R5, holder_sha256: cf0bbdc59bfa38997b100471d75583b0049047c9a4a2430fff7bef644b9ded81, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-30, link: serves, target: assuredloop-v4/R5, holder_sha256: c41381bb6e55fbbc0604fabf6f09fd0467bdfe03756c37c222566282ba91cc9a, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-30, link: serves, target: assuredloop-v4/R6, holder_sha256: c41381bb6e55fbbc0604fabf6f09fd0467bdfe03756c37c222566282ba91cc9a, target_sha256: 3cb0fd2926871cde6807a61ef5bdff70e66be34f8668240a4bf2acfeac687e6e, target_version: 1 }
+  - { holder: assuredloop-v4/SP-31, link: serves, target: assuredloop-v4/R5, holder_sha256: 7446fa85534ebd532af2061e47df539061f8d2ee99c73ec6151fea0963ed9fc7, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-32, link: serves, target: assuredloop-v4/R5, holder_sha256: 90ff02924de97259f7304b9870f5b234fc2e9c35df911978485b6b16cb10a2a5, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-33, link: serves, target: assuredloop-v4/R5, holder_sha256: 43546d9d4d6a1712e67dc6cf505ebfd13138d0094e54f8214dfad22c2dfeddb2, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-34, link: serves, target: assuredloop-v4/R4, holder_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: assuredloop-v4/SP-34, link: serves, target: assuredloop-v4/R5, holder_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-35, link: serves, target: assuredloop-v4/R5, holder_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-35, link: serves, target: assuredloop-v4/R7, holder_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-36, link: serves, target: assuredloop-v4/R5, holder_sha256: 87ec37b75cdfa688ec3882315992ccb13ad1d08ee06c0aa873ddbdad5b11ca55, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-38, link: explains, target: assuredloop-v4/SP-119, holder_sha256: 0a9bf438a1bba72a3b251e050f3a18d41a54939d05ce4afc5f3bcb2fec67e157, target_sha256: de1e808646d7c3a421f4f01195fed7cdea02fa49e89560863ccdb46577f60558 }
+  - { holder: assuredloop-v4/SP-119, link: serves, target: assuredloop-v4/R4, holder_sha256: de1e808646d7c3a421f4f01195fed7cdea02fa49e89560863ccdb46577f60558, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: assuredloop-v4/SP-39, link: serves, target: assuredloop-v4/R4, holder_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: assuredloop-v4/SP-39, link: serves, target: assuredloop-v4/R7, holder_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-40, link: serves, target: assuredloop-v4/R4, holder_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: assuredloop-v4/SP-40, link: serves, target: assuredloop-v4/R7, holder_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-41, link: serves, target: assuredloop-v4/R3, holder_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0, target_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_version: 1 }
+  - { holder: assuredloop-v4/SP-41, link: serves, target: assuredloop-v4/R4, holder_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: assuredloop-v4/SP-43, link: explains, target: assuredloop-v4/SP-120, holder_sha256: ea701c4c297e0ad589e991d3f896c493a7669460997bcdbd2d9b80bd441b217d, target_sha256: 2ef9134694372e285f3a3dcae57ca517fc3d760dd1e98655ddeaa43adc7b1ba5 }
+  - { holder: assuredloop-v4/SP-43, link: explains, target: assuredloop-v4/SP-121, holder_sha256: ea701c4c297e0ad589e991d3f896c493a7669460997bcdbd2d9b80bd441b217d, target_sha256: e1e0adf6cded6c8a3d809bcf96ecd59d0d2630d09223033e8ca9489c133b7d04 }
+  - { holder: assuredloop-v4/SP-120, link: serves, target: assuredloop-v4/R7, holder_sha256: 2ef9134694372e285f3a3dcae57ca517fc3d760dd1e98655ddeaa43adc7b1ba5, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-121, link: serves, target: assuredloop-v4/R7, holder_sha256: e1e0adf6cded6c8a3d809bcf96ecd59d0d2630d09223033e8ca9489c133b7d04, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-45, link: explains, target: assuredloop-v4/SP-122, holder_sha256: ce9139ee1a0c26cca02e300a774c52ddee07d82a16232520a756a77186d2372f, target_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033 }
+  - { holder: assuredloop-v4/SP-122, link: serves, target: assuredloop-v4/R8, holder_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-122, link: serves, target: assuredloop-v4/R11, holder_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-47, link: explains, target: assuredloop-v4/SP-123, holder_sha256: abf7847c67b4b885c35e200d64cc9b7fd2a9bb6e987b8a669a390aca806974cf, target_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce }
+  - { holder: assuredloop-v4/SP-123, link: serves, target: assuredloop-v4/R8, holder_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-123, link: serves, target: assuredloop-v4/R11, holder_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-49, link: explains, target: assuredloop-v4/SP-124, holder_sha256: bdb142472f1f6e64cce15542b0c0a5c4e5f56a5878383854ab10db812b4faa82, target_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032 }
+  - { holder: assuredloop-v4/SP-124, link: serves, target: assuredloop-v4/R10, holder_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: assuredloop-v4/SP-124, link: serves, target: assuredloop-v4/R12, holder_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032, target_sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c, target_version: 1 }
+  - { holder: assuredloop-v4/SP-51, link: explains, target: assuredloop-v4/SP-52, holder_sha256: a8143235a128fb5b56ccc1c1a16a6475b0358d37356376aa17907fdf882aaefb, target_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df }
+  - { holder: assuredloop-v4/SP-51, link: explains, target: assuredloop-v4/SP-53, holder_sha256: a8143235a128fb5b56ccc1c1a16a6475b0358d37356376aa17907fdf882aaefb, target_sha256: de3f1d9ec2439ff5df6392079ddd63a7de32fe3f0422c135ca63b5dd8b4a1f91 }
+  - { holder: assuredloop-v4/SP-52, link: serves, target: assuredloop-v4/R10, holder_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: assuredloop-v4/SP-53, link: serves, target: assuredloop-v4/R10, holder_sha256: de3f1d9ec2439ff5df6392079ddd63a7de32fe3f0422c135ca63b5dd8b4a1f91, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: assuredloop-v4/SP-54, link: serves, target: assuredloop-v4/R10, holder_sha256: 8172772664da028db32f2b7ce58ab201c19c676a12b6c5f5e461365f3294053d, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: assuredloop-v4/SP-55, link: serves, target: assuredloop-v4/R10, holder_sha256: 0c4c971a8428766530df37eec892756ad6ada78e026110ccbb032ae787bab1e6, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: assuredloop-v4/SP-56, link: serves, target: assuredloop-v4/R10, holder_sha256: 641606d5e4a88fe4ed0abacd88a963cb4d2a4391c284f1f9288a580251eb0fca, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: assuredloop-v4/SP-57, link: serves, target: assuredloop-v4/R13, holder_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6, target_sha256: e06efd90162413499b8abef3c132b7327d6d69d694c8f0da20fa9a8ab59679bd, target_version: 1 }
+  - { holder: assuredloop-v4/SP-59, link: explains, target: assuredloop-v4/SP-125, holder_sha256: 2a792ffe2426acecba40f3314697d54986c4598d41b7d76ab6a22a8999b71033, target_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4 }
+  - { holder: assuredloop-v4/SP-125, link: serves, target: assuredloop-v4/R8, holder_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-125, link: serves, target: assuredloop-v4/R13, holder_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4, target_sha256: e06efd90162413499b8abef3c132b7327d6d69d694c8f0da20fa9a8ab59679bd, target_version: 1 }
+  - { holder: assuredloop-v4/SP-60, link: serves, target: assuredloop-v4/R8, holder_sha256: 325504116b28a012ca83932be838bc0f3ee033b55b3b23cfd18ec39635ea2183, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-62, link: serves, target: assuredloop-v4/R9, holder_sha256: 112810b3b6bd3c5a5cec7be952daa3728fa408f8b90e5b7d45e964a7a9523bc9, target_sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-64, link: explains, target: assuredloop-v4/SP-126, holder_sha256: 560f942a665086bd17d4722e77d287a00d44b58c4e43355299375cceef09c120, target_sha256: bbc667396b67cf1fcf43b1366493a3351d370a0dd5ea21200073b8a909597131 }
+  - { holder: assuredloop-v4/SP-126, link: serves, target: assuredloop-v4/R9, holder_sha256: bbc667396b67cf1fcf43b1366493a3351d370a0dd5ea21200073b8a909597131, target_sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-127, link: serves, target: assuredloop-v4/R12, holder_sha256: 6cf3c8162d8e55e9439c702978952af19e4e212d8ff7be34579d167c2c723237, target_sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c, target_version: 1 }
+  - { holder: assuredloop-v4/SP-79, link: serves, target: assuredloop-v4/R2, holder_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-79, link: serves, target: assuredloop-v4/R3, holder_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669, target_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_version: 1 }
+  - { holder: assuredloop-v4/SP-82, link: explains, target: assuredloop-v4/SP-84, holder_sha256: 7c7aedfc62de7e08ec74def03ed221de1a671127903ca4a8fd71d594768413fe, target_sha256: 829c20cae445860f0a2d439bda7a26dfa7821f236a4fc471a94a244784d399d9 }
+  - { holder: assuredloop-v4/SP-84, link: serves, target: assuredloop-v4/R8, holder_sha256: 829c20cae445860f0a2d439bda7a26dfa7821f236a4fc471a94a244784d399d9, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-86, link: serves, target: assuredloop-v4/R3, holder_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2, target_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_version: 1 }
+  - { holder: assuredloop-v4/SP-86, link: serves, target: assuredloop-v4/R8, holder_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-87, link: serves, target: assuredloop-v4/R4, holder_sha256: 3d3c7699c3a6d0d45504b2c443fc7cf7732cdf9e572b47f36304f4a8f080db44, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: assuredloop-v4/SP-89, link: serves, target: assuredloop-v4/R2, holder_sha256: c1ffbb36e0fc9869bba817577ec965ada2ec3b972b4921b08a56499e16247303, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-91, link: serves, target: assuredloop-v4/R2, holder_sha256: 93e7657001dd7919b1514b9691ebffa0dc3d170cad1142e06d627b713c0159d4, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-92, link: serves, target: assuredloop-v4/R2, holder_sha256: c0ae997e82a2d66e9fb32f7a0bfce4bf5c9c75b0f48f8f57bf847ec72430264f, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-92, link: serves, target: assuredloop-v4/R4, holder_sha256: c0ae997e82a2d66e9fb32f7a0bfce4bf5c9c75b0f48f8f57bf847ec72430264f, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: assuredloop-v4/SP-93, link: serves, target: assuredloop-v4/R2, holder_sha256: b9b58f6fbd1bb37091bd090e773b25ad223d044a2d87b36995b6301e4f5c52a2, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-94, link: serves, target: assuredloop-v4/R5, holder_sha256: 995ea9ecf34f15873cec5f920aaf18842ed685f05c52499d93aac116cd75f5ba, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: assuredloop-v4/SP-95, link: serves, target: assuredloop-v4/R2, holder_sha256: acdecbc5175a779ebde3ab0cbbbc545809b60660728be349febf67ba26cd38fd, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-96, link: serves, target: assuredloop-v4/R2, holder_sha256: 52cd575fb7cce75f375dc43fabf2cb06d1be3c4d480d6db00737ce2e6dfdfba7, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-97, link: serves, target: assuredloop-v4/R2, holder_sha256: 7245a463b1b74bbcd686c49b5f24a6788057c67d315106edf05d647838508769, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-98, link: serves, target: assuredloop-v4/R2, holder_sha256: dab7994fe22b4ed54d3e0573aed474bd72609932844888a6bc15944f8cc0da94, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: assuredloop-v4/SP-99, link: serves, target: assuredloop-v4/R11, holder_sha256: 420459468af7e401bd9c7b0e36f48e397469abee8d404eb9345ec9b3d43f221d, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: assuredloop-v4/SP-101, link: serves, target: assuredloop-v4/R1, holder_sha256: f1af7191ac519eb21a6feaba089af474369ce5801dde1b2edc179108603c8357, target_sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b, target_version: 1 }
+  - { holder: assuredloop-v4/SP-103, link: serves, target: assuredloop-v4/R8, holder_sha256: 996fa12cceeca080ca058261c891d4b0bf32a16b4ff2a301e074ab0adb78327c, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-104, link: serves, target: assuredloop-v4/R8, holder_sha256: 948551a0901d0cd42149130f58d8b4b1333eecf4ee50fcaec35ef1e4d9e51dba, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-105, link: serves, target: assuredloop-v4/R8, holder_sha256: 57b555007e7895c9fba253d89dcdaf40ede19eefafb6f0b40da95b37edbfc9dc, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/SP-107, link: serves, target: assuredloop-v4/R3, holder_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197, target_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_version: 1 }
+  - { holder: assuredloop-v4/SP-107, link: serves, target: assuredloop-v4/R10, holder_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: assuredloop-v4/SP-109, link: illustrates, target: assuredloop-v4/SP-107, holder_sha256: 336c0f4db5bb13884c2b8e2f1100bd9de60f9756b00ed19a6998ef8dc7622dd3, target_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197 }
+  - { holder: assuredloop-v4/SP-110, link: illustrates, target: assuredloop-v4/SP-107, holder_sha256: d78ca860fdfa26bfa0a1bd25a0b2b5a780aa7df9a77b96257c0322591730688f, target_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197 }
+  - { holder: assuredloop-v4/SP-111, link: illustrates, target: assuredloop-v4/SP-107, holder_sha256: 6ab63f0323fb6f27cedd312e47a22c369878293ed81f4b3667f89b92eb617f46, target_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197 }
+  - { holder: assuredloop-v4/SP-112, link: illustrates, target: assuredloop-v4/SP-107, holder_sha256: fbcf115333eff21b9e19d1a763eed856db8dde324d6c24640a9aadb9ecedbaba, target_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197 }
+  - { holder: assuredloop-v4/SP-114, link: illustrates, target: assuredloop-v4/SP-104, holder_sha256: 59f5b645dc51eb06e44695da266f438c77a79af9be9433e0f6cae6c8068c2d93, target_sha256: 948551a0901d0cd42149130f58d8b4b1333eecf4ee50fcaec35ef1e4d9e51dba }
+  - { holder: assuredloop-v4/SP-115, link: serves, target: assuredloop-v4/R8, holder_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-5, link: serves, target: assuredloop-v4/R11, holder_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: DES-5, link: serves, target: assuredloop-v4/R7, holder_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: DES-9, link: serves, target: assuredloop-v4/R1, holder_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38, target_sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b, target_version: 1 }
+  - { holder: DES-10, link: serves, target: assuredloop-v4/R1, holder_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c, target_sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b, target_version: 1 }
+  - { holder: DES-10, link: serves, target: assuredloop-v4/R2, holder_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-13, link: serves, target: assuredloop-v4/R2, holder_sha256: 1c533a555c55adcae6a3e51e8fe1607d896578d3fafd0d445b75f742d23ac379, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-15, link: serves, target: assuredloop-v4/R2, holder_sha256: 76988b79b9970b757bdacae7091a4b0ced5a2f398ece987eeeabbaa5de806db4, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-16, link: serves, target: assuredloop-v4/R2, holder_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-16, link: serves, target: assuredloop-v4/R8, holder_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-17, link: serves, target: assuredloop-v4/R2, holder_sha256: 25d8369cce416cbcf9982de1e954b1d8cee32750413be0fe76cc25817a461f81, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-18, link: serves, target: assuredloop-v4/R2, holder_sha256: ede0838fc5267b302ab5516bd326b4829b016823f1e37fd4881a9d1387a53b79, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-19, link: serves, target: assuredloop-v4/R2, holder_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-19, link: serves, target: assuredloop-v4/R8, holder_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-21, link: serves, target: assuredloop-v4/R2, holder_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-21, link: serves, target: assuredloop-v4/R8, holder_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-22, link: serves, target: assuredloop-v4/R2, holder_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-22, link: serves, target: assuredloop-v4/R11, holder_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: DES-23, link: serves, target: assuredloop-v4/R2, holder_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-26, link: serves, target: assuredloop-v4/R6, holder_sha256: c06513fef2ae793a469b7862116301c93f5a2cfc8be3caa8c66b95484389de31, target_sha256: 3cb0fd2926871cde6807a61ef5bdff70e66be34f8668240a4bf2acfeac687e6e, target_version: 1 }
+  - { holder: DES-29, link: serves, target: assuredloop-v4/R5, holder_sha256: 21efefe0b4b2f1c52b3a97b2260cda27575e05afc139532c3d026cb52e9a6231, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-30, link: serves, target: assuredloop-v4/R5, holder_sha256: 86a9c1689bceae97af15e3db997f01b90b3a809fcc72c785e91165e7ececa33d, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-32, link: serves, target: assuredloop-v4/R5, holder_sha256: cf0bbdc59bfa38997b100471d75583b0049047c9a4a2430fff7bef644b9ded81, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-33, link: serves, target: assuredloop-v4/R5, holder_sha256: c41381bb6e55fbbc0604fabf6f09fd0467bdfe03756c37c222566282ba91cc9a, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-33, link: serves, target: assuredloop-v4/R6, holder_sha256: c41381bb6e55fbbc0604fabf6f09fd0467bdfe03756c37c222566282ba91cc9a, target_sha256: 3cb0fd2926871cde6807a61ef5bdff70e66be34f8668240a4bf2acfeac687e6e, target_version: 1 }
+  - { holder: DES-34, link: serves, target: assuredloop-v4/R5, holder_sha256: 7446fa85534ebd532af2061e47df539061f8d2ee99c73ec6151fea0963ed9fc7, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-35, link: serves, target: assuredloop-v4/R5, holder_sha256: 90ff02924de97259f7304b9870f5b234fc2e9c35df911978485b6b16cb10a2a5, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-36, link: serves, target: assuredloop-v4/R5, holder_sha256: 43546d9d4d6a1712e67dc6cf505ebfd13138d0094e54f8214dfad22c2dfeddb2, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-37, link: serves, target: assuredloop-v4/R4, holder_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: DES-37, link: serves, target: assuredloop-v4/R5, holder_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-38, link: serves, target: assuredloop-v4/R5, holder_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-38, link: serves, target: assuredloop-v4/R7, holder_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: DES-39, link: serves, target: assuredloop-v4/R5, holder_sha256: 87ec37b75cdfa688ec3882315992ccb13ad1d08ee06c0aa873ddbdad5b11ca55, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: DES-42, link: serves, target: assuredloop-v4/R4, holder_sha256: de1e808646d7c3a421f4f01195fed7cdea02fa49e89560863ccdb46577f60558, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: DES-43, link: serves, target: assuredloop-v4/R4, holder_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: DES-43, link: serves, target: assuredloop-v4/R7, holder_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: DES-44, link: serves, target: assuredloop-v4/R4, holder_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: DES-44, link: serves, target: assuredloop-v4/R7, holder_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: DES-45, link: serves, target: assuredloop-v4/R3, holder_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0, target_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_version: 1 }
+  - { holder: DES-45, link: serves, target: assuredloop-v4/R4, holder_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: DES-48, link: serves, target: assuredloop-v4/R7, holder_sha256: 2ef9134694372e285f3a3dcae57ca517fc3d760dd1e98655ddeaa43adc7b1ba5, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: DES-49, link: serves, target: assuredloop-v4/R7, holder_sha256: e1e0adf6cded6c8a3d809bcf96ecd59d0d2630d09223033e8ca9489c133b7d04, target_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_version: 1 }
+  - { holder: DES-52, link: serves, target: assuredloop-v4/R8, holder_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-52, link: serves, target: assuredloop-v4/R11, holder_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: DES-55, link: serves, target: assuredloop-v4/R8, holder_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-55, link: serves, target: assuredloop-v4/R11, holder_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: DES-58, link: serves, target: assuredloop-v4/R10, holder_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: DES-58, link: serves, target: assuredloop-v4/R12, holder_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032, target_sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c, target_version: 1 }
+  - { holder: DES-61, link: serves, target: assuredloop-v4/R10, holder_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: DES-62, link: serves, target: assuredloop-v4/R10, holder_sha256: de3f1d9ec2439ff5df6392079ddd63a7de32fe3f0422c135ca63b5dd8b4a1f91, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: DES-63, link: serves, target: assuredloop-v4/R10, holder_sha256: 8172772664da028db32f2b7ce58ab201c19c676a12b6c5f5e461365f3294053d, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: DES-64, link: serves, target: assuredloop-v4/R10, holder_sha256: 0c4c971a8428766530df37eec892756ad6ada78e026110ccbb032ae787bab1e6, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: DES-65, link: serves, target: assuredloop-v4/R10, holder_sha256: 641606d5e4a88fe4ed0abacd88a963cb4d2a4391c284f1f9288a580251eb0fca, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: DES-66, link: serves, target: assuredloop-v4/R13, holder_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6, target_sha256: e06efd90162413499b8abef3c132b7327d6d69d694c8f0da20fa9a8ab59679bd, target_version: 1 }
+  - { holder: DES-69, link: serves, target: assuredloop-v4/R8, holder_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-69, link: serves, target: assuredloop-v4/R13, holder_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4, target_sha256: e06efd90162413499b8abef3c132b7327d6d69d694c8f0da20fa9a8ab59679bd, target_version: 1 }
+  - { holder: DES-70, link: serves, target: assuredloop-v4/R8, holder_sha256: 325504116b28a012ca83932be838bc0f3ee033b55b3b23cfd18ec39635ea2183, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-72, link: serves, target: assuredloop-v4/R9, holder_sha256: 112810b3b6bd3c5a5cec7be952daa3728fa408f8b90e5b7d45e964a7a9523bc9, target_sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf, target_version: 1 }
+  - { holder: DES-75, link: serves, target: assuredloop-v4/R9, holder_sha256: bbc667396b67cf1fcf43b1366493a3351d370a0dd5ea21200073b8a909597131, target_sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf, target_version: 1 }
+  - { holder: DES-77, link: serves, target: assuredloop-v4/R12, holder_sha256: 6cf3c8162d8e55e9439c702978952af19e4e212d8ff7be34579d167c2c723237, target_sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c, target_version: 1 }
+  - { holder: DES-78, link: serves, target: assuredloop-v4/R2, holder_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-78, link: serves, target: assuredloop-v4/R3, holder_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669, target_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_version: 1 }
+  - { holder: SCH-5, link: serves, target: assuredloop-v4/R8, holder_sha256: 829c20cae445860f0a2d439bda7a26dfa7821f236a4fc471a94a244784d399d9, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: SCH-7, link: serves, target: assuredloop-v4/R3, holder_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2, target_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_version: 1 }
+  - { holder: SCH-7, link: serves, target: assuredloop-v4/R8, holder_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: SCH-8, link: serves, target: assuredloop-v4/R4, holder_sha256: 3d3c7699c3a6d0d45504b2c443fc7cf7732cdf9e572b47f36304f4a8f080db44, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: SCH-10, link: serves, target: assuredloop-v4/R2, holder_sha256: c1ffbb36e0fc9869bba817577ec965ada2ec3b972b4921b08a56499e16247303, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: SCH-12, link: serves, target: assuredloop-v4/R2, holder_sha256: 93e7657001dd7919b1514b9691ebffa0dc3d170cad1142e06d627b713c0159d4, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: SCH-13, link: serves, target: assuredloop-v4/R2, holder_sha256: c0ae997e82a2d66e9fb32f7a0bfce4bf5c9c75b0f48f8f57bf847ec72430264f, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: SCH-13, link: serves, target: assuredloop-v4/R4, holder_sha256: c0ae997e82a2d66e9fb32f7a0bfce4bf5c9c75b0f48f8f57bf847ec72430264f, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
+  - { holder: SCH-14, link: serves, target: assuredloop-v4/R2, holder_sha256: b9b58f6fbd1bb37091bd090e773b25ad223d044a2d87b36995b6301e4f5c52a2, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: SCH-15, link: serves, target: assuredloop-v4/R5, holder_sha256: 995ea9ecf34f15873cec5f920aaf18842ed685f05c52499d93aac116cd75f5ba, target_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_version: 1 }
+  - { holder: SCH-16, link: serves, target: assuredloop-v4/R2, holder_sha256: acdecbc5175a779ebde3ab0cbbbc545809b60660728be349febf67ba26cd38fd, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: SCH-17, link: serves, target: assuredloop-v4/R2, holder_sha256: 52cd575fb7cce75f375dc43fabf2cb06d1be3c4d480d6db00737ce2e6dfdfba7, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: SCH-18, link: serves, target: assuredloop-v4/R2, holder_sha256: 7245a463b1b74bbcd686c49b5f24a6788057c67d315106edf05d647838508769, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: SCH-19, link: serves, target: assuredloop-v4/R2, holder_sha256: dab7994fe22b4ed54d3e0573aed474bd72609932844888a6bc15944f8cc0da94, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: SCH-20, link: serves, target: assuredloop-v4/R11, holder_sha256: 420459468af7e401bd9c7b0e36f48e397469abee8d404eb9345ec9b3d43f221d, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: SCH-22, link: serves, target: assuredloop-v4/R1, holder_sha256: f1af7191ac519eb21a6feaba089af474369ce5801dde1b2edc179108603c8357, target_sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b, target_version: 1 }
+  - { holder: SCH-24, link: serves, target: assuredloop-v4/R8, holder_sha256: 996fa12cceeca080ca058261c891d4b0bf32a16b4ff2a301e074ab0adb78327c, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: SCH-25, link: serves, target: assuredloop-v4/R8, holder_sha256: 948551a0901d0cd42149130f58d8b4b1333eecf4ee50fcaec35ef1e4d9e51dba, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: SCH-26, link: serves, target: assuredloop-v4/R8, holder_sha256: 57b555007e7895c9fba253d89dcdaf40ede19eefafb6f0b40da95b37edbfc9dc, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: SCH-28, link: serves, target: assuredloop-v4/R3, holder_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197, target_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_version: 1 }
+  - { holder: SCH-28, link: serves, target: assuredloop-v4/R10, holder_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: SCH-36, link: serves, target: assuredloop-v4/R8, holder_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: assuredloop-v4/R1, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R2, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R3, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 8038573354454b2e1d27b428772e3256236286dd3e7dde62adcc910acedb2210, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R4, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R5, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: e3388441d8d38377b3ad1f0909e2ed96ce448343dd1590bec15a673711abb3fb, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R6, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 3cb0fd2926871cde6807a61ef5bdff70e66be34f8668240a4bf2acfeac687e6e, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R7, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 0c41bac86cfbbbd48ded4e97794fefc9d84c6928364d9fe6f930ca5de68c53e2, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R8, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R9, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R10, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R11, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R12, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R13, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: e06efd90162413499b8abef3c132b7327d6d69d694c8f0da20fa9a8ab59679bd, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/R14, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 9658eef2d3042cc9aa437dbaba6ca53bb92b48b79eaf7909d61d4285344457a0, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+dispositions:
+  - source: assuredloop-v4/SP-4
+    disposition: incorporated
+    spec: DES-4
+    source_sha256: be3c2ffacaaf0bfb964705cf4ec9b3d4825d00b9d8c10966481c3408238991b4
+    spec_sha256: be3c2ffacaaf0bfb964705cf4ec9b3d4825d00b9d8c10966481c3408238991b4
+  - source: assuredloop-v4/SP-5
+    disposition: incorporated
+    spec: DES-5
+    source_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25
+    spec_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25
+  - source: assuredloop-v4/SP-6
+    disposition: incorporated
+    spec: DES-6
+    source_sha256: 37211bbdfdea2af256cbb2ec74a59b02515a8f11238c88d111bfa2f8f3adcd57
+    spec_sha256: 37211bbdfdea2af256cbb2ec74a59b02515a8f11238c88d111bfa2f8f3adcd57
+  - source: assuredloop-v4/SP-8
+    disposition: incorporated
+    spec: DES-8
+    source_sha256: 141a5b9ca63cd5d3de32d9e219ce8215f779cba680e82e7ef9d206d5f3658384
+    spec_sha256: 141a5b9ca63cd5d3de32d9e219ce8215f779cba680e82e7ef9d206d5f3658384
+  - source: assuredloop-v4/SP-116
+    disposition: incorporated
+    spec: DES-9
+    source_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38
+    spec_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38
+  - source: assuredloop-v4/SP-117
+    disposition: incorporated
+    spec: DES-10
+    source_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c
+    spec_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c
+  - source: assuredloop-v4/SP-10
+    disposition: incorporated
+    spec: DES-12
+    source_sha256: 136b5dfce10a672df026b1c057e2fdfec164a08b79bc09fa5153dcf237dbdf8b
+    spec_sha256: 136b5dfce10a672df026b1c057e2fdfec164a08b79bc09fa5153dcf237dbdf8b
+  - source: assuredloop-v4/SP-11
+    disposition: incorporated
+    spec: DES-13
+    source_sha256: 1c533a555c55adcae6a3e51e8fe1607d896578d3fafd0d445b75f742d23ac379
+    spec_sha256: 1c533a555c55adcae6a3e51e8fe1607d896578d3fafd0d445b75f742d23ac379
+  - source: assuredloop-v4/SP-12
+    disposition: incorporated
+    spec: DES-14
+    source_sha256: 0ed9b1ae003e745fcea30d39eeaa5629d9ca97b10e0f40b91300de15752b5a8b
+    spec_sha256: 0ed9b1ae003e745fcea30d39eeaa5629d9ca97b10e0f40b91300de15752b5a8b
+  - source: assuredloop-v4/SP-13
+    disposition: incorporated
+    spec: DES-15
+    source_sha256: 76988b79b9970b757bdacae7091a4b0ced5a2f398ece987eeeabbaa5de806db4
+    spec_sha256: 76988b79b9970b757bdacae7091a4b0ced5a2f398ece987eeeabbaa5de806db4
+  - source: assuredloop-v4/SP-14
+    disposition: incorporated
+    spec: DES-16
+    source_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104
+    spec_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104
+  - source: assuredloop-v4/SP-15
+    disposition: incorporated
+    spec: DES-17
+    source_sha256: 25d8369cce416cbcf9982de1e954b1d8cee32750413be0fe76cc25817a461f81
+    spec_sha256: 25d8369cce416cbcf9982de1e954b1d8cee32750413be0fe76cc25817a461f81
+  - source: assuredloop-v4/SP-16
+    disposition: incorporated
+    spec: DES-18
+    source_sha256: ede0838fc5267b302ab5516bd326b4829b016823f1e37fd4881a9d1387a53b79
+    spec_sha256: ede0838fc5267b302ab5516bd326b4829b016823f1e37fd4881a9d1387a53b79
+  - source: assuredloop-v4/SP-17
+    disposition: incorporated
+    spec: DES-19
+    source_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced
+    spec_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced
+  - source: assuredloop-v4/SP-18
+    disposition: incorporated
+    spec: DES-20
+    source_sha256: 70fcfcd1cb964affe05662faf2bfccb5dccc5fab47cfb0cc758d0a4a35b6a712
+    spec_sha256: 70fcfcd1cb964affe05662faf2bfccb5dccc5fab47cfb0cc758d0a4a35b6a712
+  - source: assuredloop-v4/SP-19
+    disposition: incorporated
+    spec: DES-21
+    source_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f
+    spec_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f
+  - source: assuredloop-v4/SP-20
+    disposition: incorporated
+    spec: DES-22
+    source_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd
+    spec_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd
+  - source: assuredloop-v4/SP-21
+    disposition: incorporated
+    spec: DES-23
+    source_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c
+    spec_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c
+  - source: assuredloop-v4/SP-23
+    disposition: incorporated
+    spec: DES-25
+    source_sha256: 094b2c5ed8ee215e5acd03a0787df17967d279332b81274634a3617a121daff1
+    spec_sha256: 094b2c5ed8ee215e5acd03a0787df17967d279332b81274634a3617a121daff1
+  - source: assuredloop-v4/SP-118
+    disposition: incorporated
+    spec: DES-26
+    source_sha256: c06513fef2ae793a469b7862116301c93f5a2cfc8be3caa8c66b95484389de31
+    spec_sha256: c06513fef2ae793a469b7862116301c93f5a2cfc8be3caa8c66b95484389de31
+  - source: assuredloop-v4/SP-25
+    disposition: incorporated
+    spec: DES-28
+    source_sha256: 2c27f16f0ad6bf9d73caf7ba5b4122ca4d49c9a0ceb94aee82e52af7091c8108
+    spec_sha256: 2c27f16f0ad6bf9d73caf7ba5b4122ca4d49c9a0ceb94aee82e52af7091c8108
+  - source: assuredloop-v4/SP-26
+    disposition: incorporated
+    spec: DES-29
+    source_sha256: 21efefe0b4b2f1c52b3a97b2260cda27575e05afc139532c3d026cb52e9a6231
+    spec_sha256: 21efefe0b4b2f1c52b3a97b2260cda27575e05afc139532c3d026cb52e9a6231
+  - source: assuredloop-v4/SP-27
+    disposition: incorporated
+    spec: DES-30
+    source_sha256: 86a9c1689bceae97af15e3db997f01b90b3a809fcc72c785e91165e7ececa33d
+    spec_sha256: 86a9c1689bceae97af15e3db997f01b90b3a809fcc72c785e91165e7ececa33d
+  - source: assuredloop-v4/SP-28
+    disposition: incorporated
+    spec: DES-31
+    source_sha256: 49f37b456b6c8c0f60d07fe2485c6506b8923258622a234a59daf935fcc1656a
+    spec_sha256: 49f37b456b6c8c0f60d07fe2485c6506b8923258622a234a59daf935fcc1656a
+  - source: assuredloop-v4/SP-29
+    disposition: incorporated
+    spec: DES-32
+    source_sha256: cf0bbdc59bfa38997b100471d75583b0049047c9a4a2430fff7bef644b9ded81
+    spec_sha256: cf0bbdc59bfa38997b100471d75583b0049047c9a4a2430fff7bef644b9ded81
+  - source: assuredloop-v4/SP-30
+    disposition: incorporated
+    spec: DES-33
+    source_sha256: c41381bb6e55fbbc0604fabf6f09fd0467bdfe03756c37c222566282ba91cc9a
+    spec_sha256: c41381bb6e55fbbc0604fabf6f09fd0467bdfe03756c37c222566282ba91cc9a
+  - source: assuredloop-v4/SP-31
+    disposition: incorporated
+    spec: DES-34
+    source_sha256: 7446fa85534ebd532af2061e47df539061f8d2ee99c73ec6151fea0963ed9fc7
+    spec_sha256: 7446fa85534ebd532af2061e47df539061f8d2ee99c73ec6151fea0963ed9fc7
+  - source: assuredloop-v4/SP-32
+    disposition: incorporated
+    spec: DES-35
+    source_sha256: 90ff02924de97259f7304b9870f5b234fc2e9c35df911978485b6b16cb10a2a5
+    spec_sha256: 90ff02924de97259f7304b9870f5b234fc2e9c35df911978485b6b16cb10a2a5
+  - source: assuredloop-v4/SP-33
+    disposition: incorporated
+    spec: DES-36
+    source_sha256: 43546d9d4d6a1712e67dc6cf505ebfd13138d0094e54f8214dfad22c2dfeddb2
+    spec_sha256: 43546d9d4d6a1712e67dc6cf505ebfd13138d0094e54f8214dfad22c2dfeddb2
+  - source: assuredloop-v4/SP-34
+    disposition: incorporated
+    spec: DES-37
+    source_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f
+    spec_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f
+  - source: assuredloop-v4/SP-35
+    disposition: incorporated
+    spec: DES-38
+    source_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb
+    spec_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb
+  - source: assuredloop-v4/SP-36
+    disposition: incorporated
+    spec: DES-39
+    source_sha256: 87ec37b75cdfa688ec3882315992ccb13ad1d08ee06c0aa873ddbdad5b11ca55
+    spec_sha256: 87ec37b75cdfa688ec3882315992ccb13ad1d08ee06c0aa873ddbdad5b11ca55
+  - source: assuredloop-v4/SP-38
+    disposition: incorporated
+    spec: DES-41
+    source_sha256: 0a9bf438a1bba72a3b251e050f3a18d41a54939d05ce4afc5f3bcb2fec67e157
+    spec_sha256: 0a9bf438a1bba72a3b251e050f3a18d41a54939d05ce4afc5f3bcb2fec67e157
+  - source: assuredloop-v4/SP-119
+    disposition: incorporated
+    spec: DES-42
+    source_sha256: de1e808646d7c3a421f4f01195fed7cdea02fa49e89560863ccdb46577f60558
+    spec_sha256: de1e808646d7c3a421f4f01195fed7cdea02fa49e89560863ccdb46577f60558
+  - source: assuredloop-v4/SP-39
+    disposition: incorporated
+    spec: DES-43
+    source_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22
+    spec_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22
+  - source: assuredloop-v4/SP-40
+    disposition: incorporated
+    spec: DES-44
+    source_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec
+    spec_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec
+  - source: assuredloop-v4/SP-41
+    disposition: incorporated
+    spec: DES-45
+    source_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0
+    spec_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0
+  - source: assuredloop-v4/SP-43
+    disposition: incorporated
+    spec: DES-47
+    source_sha256: ea701c4c297e0ad589e991d3f896c493a7669460997bcdbd2d9b80bd441b217d
+    spec_sha256: ea701c4c297e0ad589e991d3f896c493a7669460997bcdbd2d9b80bd441b217d
+  - source: assuredloop-v4/SP-120
+    disposition: incorporated
+    spec: DES-48
+    source_sha256: 2ef9134694372e285f3a3dcae57ca517fc3d760dd1e98655ddeaa43adc7b1ba5
+    spec_sha256: 2ef9134694372e285f3a3dcae57ca517fc3d760dd1e98655ddeaa43adc7b1ba5
+  - source: assuredloop-v4/SP-121
+    disposition: incorporated
+    spec: DES-49
+    source_sha256: e1e0adf6cded6c8a3d809bcf96ecd59d0d2630d09223033e8ca9489c133b7d04
+    spec_sha256: e1e0adf6cded6c8a3d809bcf96ecd59d0d2630d09223033e8ca9489c133b7d04
+  - source: assuredloop-v4/SP-45
+    disposition: incorporated
+    spec: DES-51
+    source_sha256: ce9139ee1a0c26cca02e300a774c52ddee07d82a16232520a756a77186d2372f
+    spec_sha256: ce9139ee1a0c26cca02e300a774c52ddee07d82a16232520a756a77186d2372f
+  - source: assuredloop-v4/SP-122
+    disposition: incorporated
+    spec: DES-52
+    source_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033
+    spec_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033
+  - source: assuredloop-v4/SP-47
+    disposition: incorporated
+    spec: DES-54
+    source_sha256: abf7847c67b4b885c35e200d64cc9b7fd2a9bb6e987b8a669a390aca806974cf
+    spec_sha256: abf7847c67b4b885c35e200d64cc9b7fd2a9bb6e987b8a669a390aca806974cf
+  - source: assuredloop-v4/SP-123
+    disposition: incorporated
+    spec: DES-55
+    source_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce
+    spec_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce
+  - source: assuredloop-v4/SP-49
+    disposition: incorporated
+    spec: DES-57
+    source_sha256: bdb142472f1f6e64cce15542b0c0a5c4e5f56a5878383854ab10db812b4faa82
+    spec_sha256: bdb142472f1f6e64cce15542b0c0a5c4e5f56a5878383854ab10db812b4faa82
+  - source: assuredloop-v4/SP-124
+    disposition: incorporated
+    spec: DES-58
+    source_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032
+    spec_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032
+  - source: assuredloop-v4/SP-51
+    disposition: incorporated
+    spec: DES-60
+    source_sha256: a8143235a128fb5b56ccc1c1a16a6475b0358d37356376aa17907fdf882aaefb
+    spec_sha256: a8143235a128fb5b56ccc1c1a16a6475b0358d37356376aa17907fdf882aaefb
+  - source: assuredloop-v4/SP-52
+    disposition: incorporated
+    spec: DES-61
+    source_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df
+    spec_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df
+  - source: assuredloop-v4/SP-53
+    disposition: incorporated
+    spec: DES-62
+    source_sha256: de3f1d9ec2439ff5df6392079ddd63a7de32fe3f0422c135ca63b5dd8b4a1f91
+    spec_sha256: de3f1d9ec2439ff5df6392079ddd63a7de32fe3f0422c135ca63b5dd8b4a1f91
+  - source: assuredloop-v4/SP-54
+    disposition: incorporated
+    spec: DES-63
+    source_sha256: 8172772664da028db32f2b7ce58ab201c19c676a12b6c5f5e461365f3294053d
+    spec_sha256: 8172772664da028db32f2b7ce58ab201c19c676a12b6c5f5e461365f3294053d
+  - source: assuredloop-v4/SP-55
+    disposition: incorporated
+    spec: DES-64
+    source_sha256: 0c4c971a8428766530df37eec892756ad6ada78e026110ccbb032ae787bab1e6
+    spec_sha256: 0c4c971a8428766530df37eec892756ad6ada78e026110ccbb032ae787bab1e6
+  - source: assuredloop-v4/SP-56
+    disposition: incorporated
+    spec: DES-65
+    source_sha256: 641606d5e4a88fe4ed0abacd88a963cb4d2a4391c284f1f9288a580251eb0fca
+    spec_sha256: 641606d5e4a88fe4ed0abacd88a963cb4d2a4391c284f1f9288a580251eb0fca
+  - source: assuredloop-v4/SP-57
+    disposition: incorporated
+    spec: DES-66
+    source_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6
+    spec_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6
+  - source: assuredloop-v4/SP-59
+    disposition: incorporated
+    spec: DES-68
+    source_sha256: 2a792ffe2426acecba40f3314697d54986c4598d41b7d76ab6a22a8999b71033
+    spec_sha256: 2a792ffe2426acecba40f3314697d54986c4598d41b7d76ab6a22a8999b71033
+  - source: assuredloop-v4/SP-125
+    disposition: incorporated
+    spec: DES-69
+    source_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4
+    spec_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4
+  - source: assuredloop-v4/SP-60
+    disposition: incorporated
+    spec: DES-70
+    source_sha256: 325504116b28a012ca83932be838bc0f3ee033b55b3b23cfd18ec39635ea2183
+    spec_sha256: 325504116b28a012ca83932be838bc0f3ee033b55b3b23cfd18ec39635ea2183
+  - source: assuredloop-v4/SP-62
+    disposition: incorporated
+    spec: DES-72
+    source_sha256: 112810b3b6bd3c5a5cec7be952daa3728fa408f8b90e5b7d45e964a7a9523bc9
+    spec_sha256: 112810b3b6bd3c5a5cec7be952daa3728fa408f8b90e5b7d45e964a7a9523bc9
+  - source: assuredloop-v4/SP-64
+    disposition: incorporated
+    spec: DES-74
+    source_sha256: 560f942a665086bd17d4722e77d287a00d44b58c4e43355299375cceef09c120
+    spec_sha256: 560f942a665086bd17d4722e77d287a00d44b58c4e43355299375cceef09c120
+  - source: assuredloop-v4/SP-126
+    disposition: incorporated
+    spec: DES-75
+    source_sha256: bbc667396b67cf1fcf43b1366493a3351d370a0dd5ea21200073b8a909597131
+    spec_sha256: bbc667396b67cf1fcf43b1366493a3351d370a0dd5ea21200073b8a909597131
+  - source: assuredloop-v4/SP-127
+    disposition: incorporated
+    spec: DES-77
+    source_sha256: 6cf3c8162d8e55e9439c702978952af19e4e212d8ff7be34579d167c2c723237
+    spec_sha256: 6cf3c8162d8e55e9439c702978952af19e4e212d8ff7be34579d167c2c723237
+  - source: assuredloop-v4/SP-79
+    disposition: incorporated
+    spec: DES-78
+    source_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669
+    spec_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669
+  - source: assuredloop-v4/SP-82
+    disposition: incorporated
+    spec: SCH-3
+    source_sha256: 7c7aedfc62de7e08ec74def03ed221de1a671127903ca4a8fd71d594768413fe
+    spec_sha256: 7c7aedfc62de7e08ec74def03ed221de1a671127903ca4a8fd71d594768413fe
+  - source: assuredloop-v4/SP-84
+    disposition: incorporated
+    spec: SCH-5
+    source_sha256: 829c20cae445860f0a2d439bda7a26dfa7821f236a4fc471a94a244784d399d9
+    spec_sha256: 829c20cae445860f0a2d439bda7a26dfa7821f236a4fc471a94a244784d399d9
+  - source: assuredloop-v4/SP-86
+    disposition: incorporated
+    spec: SCH-7
+    source_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2
+    spec_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2
+  - source: assuredloop-v4/SP-87
+    disposition: incorporated
+    spec: SCH-8
+    source_sha256: 3d3c7699c3a6d0d45504b2c443fc7cf7732cdf9e572b47f36304f4a8f080db44
+    spec_sha256: 3d3c7699c3a6d0d45504b2c443fc7cf7732cdf9e572b47f36304f4a8f080db44
+  - source: assuredloop-v4/SP-89
+    disposition: incorporated
+    spec: SCH-10
+    source_sha256: c1ffbb36e0fc9869bba817577ec965ada2ec3b972b4921b08a56499e16247303
+    spec_sha256: c1ffbb36e0fc9869bba817577ec965ada2ec3b972b4921b08a56499e16247303
+  - source: assuredloop-v4/SP-91
+    disposition: incorporated
+    spec: SCH-12
+    source_sha256: 93e7657001dd7919b1514b9691ebffa0dc3d170cad1142e06d627b713c0159d4
+    spec_sha256: 93e7657001dd7919b1514b9691ebffa0dc3d170cad1142e06d627b713c0159d4
+  - source: assuredloop-v4/SP-92
+    disposition: incorporated
+    spec: SCH-13
+    source_sha256: c0ae997e82a2d66e9fb32f7a0bfce4bf5c9c75b0f48f8f57bf847ec72430264f
+    spec_sha256: c0ae997e82a2d66e9fb32f7a0bfce4bf5c9c75b0f48f8f57bf847ec72430264f
+  - source: assuredloop-v4/SP-93
+    disposition: incorporated
+    spec: SCH-14
+    source_sha256: b9b58f6fbd1bb37091bd090e773b25ad223d044a2d87b36995b6301e4f5c52a2
+    spec_sha256: b9b58f6fbd1bb37091bd090e773b25ad223d044a2d87b36995b6301e4f5c52a2
+  - source: assuredloop-v4/SP-94
+    disposition: incorporated
+    spec: SCH-15
+    source_sha256: 995ea9ecf34f15873cec5f920aaf18842ed685f05c52499d93aac116cd75f5ba
+    spec_sha256: 995ea9ecf34f15873cec5f920aaf18842ed685f05c52499d93aac116cd75f5ba
+  - source: assuredloop-v4/SP-95
+    disposition: incorporated
+    spec: SCH-16
+    source_sha256: acdecbc5175a779ebde3ab0cbbbc545809b60660728be349febf67ba26cd38fd
+    spec_sha256: acdecbc5175a779ebde3ab0cbbbc545809b60660728be349febf67ba26cd38fd
+  - source: assuredloop-v4/SP-96
+    disposition: incorporated
+    spec: SCH-17
+    source_sha256: 52cd575fb7cce75f375dc43fabf2cb06d1be3c4d480d6db00737ce2e6dfdfba7
+    spec_sha256: 52cd575fb7cce75f375dc43fabf2cb06d1be3c4d480d6db00737ce2e6dfdfba7
+  - source: assuredloop-v4/SP-97
+    disposition: incorporated
+    spec: SCH-18
+    source_sha256: 7245a463b1b74bbcd686c49b5f24a6788057c67d315106edf05d647838508769
+    spec_sha256: 7245a463b1b74bbcd686c49b5f24a6788057c67d315106edf05d647838508769
+  - source: assuredloop-v4/SP-98
+    disposition: incorporated
+    spec: SCH-19
+    source_sha256: dab7994fe22b4ed54d3e0573aed474bd72609932844888a6bc15944f8cc0da94
+    spec_sha256: dab7994fe22b4ed54d3e0573aed474bd72609932844888a6bc15944f8cc0da94
+  - source: assuredloop-v4/SP-99
+    disposition: incorporated
+    spec: SCH-20
+    source_sha256: 420459468af7e401bd9c7b0e36f48e397469abee8d404eb9345ec9b3d43f221d
+    spec_sha256: 420459468af7e401bd9c7b0e36f48e397469abee8d404eb9345ec9b3d43f221d
+  - source: assuredloop-v4/SP-101
+    disposition: incorporated
+    spec: SCH-22
+    source_sha256: f1af7191ac519eb21a6feaba089af474369ce5801dde1b2edc179108603c8357
+    spec_sha256: f1af7191ac519eb21a6feaba089af474369ce5801dde1b2edc179108603c8357
+  - source: assuredloop-v4/SP-103
+    disposition: incorporated
+    spec: SCH-24
+    source_sha256: 996fa12cceeca080ca058261c891d4b0bf32a16b4ff2a301e074ab0adb78327c
+    spec_sha256: 996fa12cceeca080ca058261c891d4b0bf32a16b4ff2a301e074ab0adb78327c
+  - source: assuredloop-v4/SP-104
+    disposition: incorporated
+    spec: SCH-25
+    source_sha256: 948551a0901d0cd42149130f58d8b4b1333eecf4ee50fcaec35ef1e4d9e51dba
+    spec_sha256: 948551a0901d0cd42149130f58d8b4b1333eecf4ee50fcaec35ef1e4d9e51dba
+  - source: assuredloop-v4/SP-105
+    disposition: incorporated
+    spec: SCH-26
+    source_sha256: 57b555007e7895c9fba253d89dcdaf40ede19eefafb6f0b40da95b37edbfc9dc
+    spec_sha256: 57b555007e7895c9fba253d89dcdaf40ede19eefafb6f0b40da95b37edbfc9dc
+  - source: assuredloop-v4/SP-107
+    disposition: incorporated
+    spec: SCH-28
+    source_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197
+    spec_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197
+  - source: assuredloop-v4/SP-109
+    disposition: incorporated
+    spec: SCH-30
+    source_sha256: 336c0f4db5bb13884c2b8e2f1100bd9de60f9756b00ed19a6998ef8dc7622dd3
+    spec_sha256: 336c0f4db5bb13884c2b8e2f1100bd9de60f9756b00ed19a6998ef8dc7622dd3
+  - source: assuredloop-v4/SP-110
+    disposition: incorporated
+    spec: SCH-31
+    source_sha256: d78ca860fdfa26bfa0a1bd25a0b2b5a780aa7df9a77b96257c0322591730688f
+    spec_sha256: d78ca860fdfa26bfa0a1bd25a0b2b5a780aa7df9a77b96257c0322591730688f
+  - source: assuredloop-v4/SP-111
+    disposition: incorporated
+    spec: SCH-32
+    source_sha256: 6ab63f0323fb6f27cedd312e47a22c369878293ed81f4b3667f89b92eb617f46
+    spec_sha256: 6ab63f0323fb6f27cedd312e47a22c369878293ed81f4b3667f89b92eb617f46
+  - source: assuredloop-v4/SP-112
+    disposition: incorporated
+    spec: SCH-33
+    source_sha256: fbcf115333eff21b9e19d1a763eed856db8dde324d6c24640a9aadb9ecedbaba
+    spec_sha256: fbcf115333eff21b9e19d1a763eed856db8dde324d6c24640a9aadb9ecedbaba
+  - source: assuredloop-v4/SP-114
+    disposition: incorporated
+    spec: SCH-35
+    source_sha256: 59f5b645dc51eb06e44695da266f438c77a79af9be9433e0f6cae6c8068c2d93
+    spec_sha256: 59f5b645dc51eb06e44695da266f438c77a79af9be9433e0f6cae6c8068c2d93
+  - source: assuredloop-v4/SP-115
+    disposition: incorporated
+    spec: SCH-36
+    source_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809
+    spec_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809

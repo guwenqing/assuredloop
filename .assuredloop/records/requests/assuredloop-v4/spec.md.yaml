@@ -1,0 +1,771 @@
+schema: assuredloop/1
+file: requests/assuredloop-v4/spec.md
+paragraphs:
+  - id: SP-1
+    kind: note
+    text_sha256: 2a6162d476a03ca14a4ac9b171b9a82c41139f3a5d707a0e038c1fcdea9d8a70
+    display: "SP-1 (0, AssuredLoop v4: the design)"
+    change:
+      - New
+  - id: SP-2
+    kind: note
+    text_sha256: 9189e23dc065473bb9454a30b301c237747807ff3c92b55e55461f086f3220b4
+    display: "SP-2 (0:1, in AssuredLoop v4: the design)"
+    change:
+      - New
+  - id: SP-3
+    kind: note
+    text_sha256: f19b53e4ae8bf5e96207d05fd8ba1530c3ce6bbad726290b1d91800f4f95897a
+    display: SP-3 (1, 1. Intent)
+    change:
+      - New
+  - id: SP-4
+    kind: rationale
+    text_sha256: be3c2ffacaaf0bfb964705cf4ec9b3d4825d00b9d8c10966481c3408238991b4
+    display: SP-4 (1:1, in 1. Intent)
+    change:
+      - New
+  - id: SP-5
+    kind: limit
+    text_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25
+    display: SP-5 (1:2, in 1. Intent)
+    change:
+      - New
+  - id: SP-6
+    kind: rationale
+    text_sha256: 37211bbdfdea2af256cbb2ec74a59b02515a8f11238c88d111bfa2f8f3adcd57
+    display: SP-6 (1:3, in 1. Intent)
+    change:
+      - New
+  - id: SP-7
+    kind: note
+    text_sha256: 92170fb39007c7f95570f51192b1bdd08e08b2c052745b3179d0c87c99dc00e4
+    display: SP-7 (2, 2. One change, and the consolidated spec)
+    change:
+      - New
+  - id: SP-8
+    kind: rationale
+    text_sha256: 141a5b9ca63cd5d3de32d9e219ce8215f779cba680e82e7ef9d206d5f3658384
+    display: SP-8 (2:1, in 2. One change, and the consolidated spec)
+    change:
+      - New
+  - id: SP-116
+    kind: data
+    text_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38
+    display: SP-116 (2:2, in 2. One change, and the consolidated spec)
+    change:
+      - New
+  - id: SP-117
+    kind: rule
+    text_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c
+    display: SP-117 (2:3, in 2. One change, and the consolidated spec)
+    change:
+      - New
+  - id: SP-9
+    kind: note
+    text_sha256: 5d7311a56f259f483f88b41cb8122bfa3549273bf8c3518587d3fc5bb12ae952
+    display: SP-9 (3, 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-10
+    kind: rationale
+    text_sha256: 136b5dfce10a672df026b1c057e2fdfec164a08b79bc09fa5153dcf237dbdf8b
+    display: SP-10 (3:1, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-11
+    kind: rule
+    text_sha256: 1c533a555c55adcae6a3e51e8fe1607d896578d3fafd0d445b75f742d23ac379
+    display: SP-11 (3:2, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-12
+    kind: rationale
+    text_sha256: 0ed9b1ae003e745fcea30d39eeaa5629d9ca97b10e0f40b91300de15752b5a8b
+    display: SP-12 (3:3, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-13
+    kind: definition
+    text_sha256: 76988b79b9970b757bdacae7091a4b0ced5a2f398ece987eeeabbaa5de806db4
+    display: SP-13 (3:4, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-14
+    kind: definition
+    text_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104
+    display: SP-14 (3:5, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-15
+    kind: rule
+    text_sha256: 25d8369cce416cbcf9982de1e954b1d8cee32750413be0fe76cc25817a461f81
+    display: SP-15 (3:6, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-16
+    kind: definition
+    text_sha256: ede0838fc5267b302ab5516bd326b4829b016823f1e37fd4881a9d1387a53b79
+    display: SP-16 (3:7, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-17
+    kind: rule
+    text_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced
+    display: SP-17 (3:8, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-18
+    kind: rationale
+    text_sha256: 70fcfcd1cb964affe05662faf2bfccb5dccc5fab47cfb0cc758d0a4a35b6a712
+    display: SP-18 (3:9, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-19
+    kind: rule
+    text_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f
+    display: SP-19 (3:10, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-20
+    kind: rule
+    text_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd
+    display: SP-20 (3:11, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-21
+    kind: flow
+    text_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c
+    display: SP-21 (3:12, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: SP-22
+    kind: note
+    text_sha256: 84947cd9438f30253fda7b8034c11f1e3ebad3c254452c836d9ade5f0e99b28e
+    display: SP-22 (4, 4. The change spec honors the consolidated spec)
+    change:
+      - New
+  - id: SP-23
+    kind: rationale
+    text_sha256: 094b2c5ed8ee215e5acd03a0787df17967d279332b81274634a3617a121daff1
+    display: SP-23 (4:1, in 4. The change spec honors the consolidated spec)
+    change:
+      - New
+  - id: SP-118
+    kind: rule
+    text_sha256: c06513fef2ae793a469b7862116301c93f5a2cfc8be3caa8c66b95484389de31
+    display: SP-118 (4:2, in 4. The change spec honors the consolidated spec)
+    change:
+      - New
+  - id: SP-24
+    kind: note
+    text_sha256: 61a0cdd6b1fc81e1cf0a5d54f9243251dab9caea4069d048361ddb88cb954acf
+    display: SP-24 (5, 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-25
+    kind: rationale
+    text_sha256: 2c27f16f0ad6bf9d73caf7ba5b4122ca4d49c9a0ceb94aee82e52af7091c8108
+    display: SP-25 (5:1, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-26
+    kind: rule
+    text_sha256: 21efefe0b4b2f1c52b3a97b2260cda27575e05afc139532c3d026cb52e9a6231
+    display: SP-26 (5:2, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-27
+    kind: rule
+    text_sha256: 86a9c1689bceae97af15e3db997f01b90b3a809fcc72c785e91165e7ececa33d
+    display: SP-27 (5:3, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-28
+    kind: rationale
+    text_sha256: 49f37b456b6c8c0f60d07fe2485c6506b8923258622a234a59daf935fcc1656a
+    display: SP-28 (5:4, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-29
+    kind: rule
+    text_sha256: cf0bbdc59bfa38997b100471d75583b0049047c9a4a2430fff7bef644b9ded81
+    display: SP-29 (5:5, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-30
+    kind: rule
+    text_sha256: c41381bb6e55fbbc0604fabf6f09fd0467bdfe03756c37c222566282ba91cc9a
+    display: SP-30 (5:6, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-31
+    kind: rule
+    text_sha256: 7446fa85534ebd532af2061e47df539061f8d2ee99c73ec6151fea0963ed9fc7
+    display: SP-31 (5:7, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-32
+    kind: rule
+    text_sha256: 90ff02924de97259f7304b9870f5b234fc2e9c35df911978485b6b16cb10a2a5
+    display: SP-32 (5:8, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-33
+    kind: rule
+    text_sha256: 43546d9d4d6a1712e67dc6cf505ebfd13138d0094e54f8214dfad22c2dfeddb2
+    display: SP-33 (5:9, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-34
+    kind: rule
+    text_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f
+    display: SP-34 (5:10, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-35
+    kind: rule
+    text_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb
+    display: SP-35 (5:11, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-36
+    kind: definition
+    text_sha256: 87ec37b75cdfa688ec3882315992ccb13ad1d08ee06c0aa873ddbdad5b11ca55
+    display: SP-36 (5:12, in 5. Consolidation and the close rule)
+    change:
+      - New
+  - id: SP-37
+    kind: note
+    text_sha256: 16ca39d39c790d6fb8a2dd04d45c4acc820fa7c81ba2c15df50016791e229e85
+    display: SP-37 (6, 6. Sign-off)
+    change:
+      - New
+  - id: SP-38
+    kind: rationale
+    text_sha256: 0a9bf438a1bba72a3b251e050f3a18d41a54939d05ce4afc5f3bcb2fec67e157
+    display: SP-38 (6:1, in 6. Sign-off)
+    change:
+      - New
+  - id: SP-119
+    kind: rule
+    text_sha256: de1e808646d7c3a421f4f01195fed7cdea02fa49e89560863ccdb46577f60558
+    display: SP-119 (6:2, in 6. Sign-off)
+    change:
+      - New
+  - id: SP-39
+    kind: rule
+    text_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22
+    display: SP-39 (6:3, in 6. Sign-off)
+    change:
+      - New
+  - id: SP-40
+    kind: rule
+    text_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec
+    display: SP-40 (6:4, in 6. Sign-off)
+    change:
+      - New
+  - id: SP-41
+    kind: rule
+    text_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0
+    display: SP-41 (6:5, in 6. Sign-off)
+    change:
+      - New
+  - id: SP-42
+    kind: note
+    text_sha256: 9c19096853dffb1f44888c94dd08da0b2aa9a5972f3c276dbd5f219b36d27e6a
+    display: SP-42 (7, 7. Paths for each kind of work)
+    change:
+      - New
+  - id: SP-43
+    kind: rationale
+    text_sha256: ea701c4c297e0ad589e991d3f896c493a7669460997bcdbd2d9b80bd441b217d
+    display: SP-43 (7:1, in 7. Paths for each kind of work)
+    change:
+      - New
+  - id: SP-120
+    kind: definition
+    text_sha256: 2ef9134694372e285f3a3dcae57ca517fc3d760dd1e98655ddeaa43adc7b1ba5
+    display: SP-120 (7:2, in 7. Paths for each kind of work)
+    change:
+      - New
+  - id: SP-121
+    kind: rule
+    text_sha256: e1e0adf6cded6c8a3d809bcf96ecd59d0d2630d09223033e8ca9489c133b7d04
+    display: SP-121 (7:3, in 7. Paths for each kind of work)
+    change:
+      - New
+  - id: SP-44
+    kind: note
+    text_sha256: 95d1691f0b3b65f28cebf110aceb5e809fe85afcc83954b6b61f91c3ecdb8309
+    display: SP-44 (8, 8. Tasks)
+    change:
+      - New
+  - id: SP-45
+    kind: rationale
+    text_sha256: ce9139ee1a0c26cca02e300a774c52ddee07d82a16232520a756a77186d2372f
+    display: SP-45 (8:1, in 8. Tasks)
+    change:
+      - New
+  - id: SP-122
+    kind: rule
+    text_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033
+    display: SP-122 (8:2, in 8. Tasks)
+    change:
+      - New
+  - id: SP-46
+    kind: note
+    text_sha256: f91d2aec151dce2d5789fc73f56fe070d54c599c3c2faf0da191926554c8c9ab
+    display: SP-46 (9, 9. Checks of rules, and results)
+    change:
+      - New
+  - id: SP-47
+    kind: rationale
+    text_sha256: abf7847c67b4b885c35e200d64cc9b7fd2a9bb6e987b8a669a390aca806974cf
+    display: SP-47 (9:1, in 9. Checks of rules, and results)
+    change:
+      - New
+  - id: SP-123
+    kind: rule
+    text_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce
+    display: SP-123 (9:2, in 9. Checks of rules, and results)
+    change:
+      - New
+  - id: SP-48
+    kind: note
+    text_sha256: 7ca5e5e42ef25e7b60ad43f47756e67e6acd7cc6144025e53e5f4bbc90abde51
+    display: SP-48 (10, 10. Records)
+    change:
+      - New
+  - id: SP-49
+    kind: rationale
+    text_sha256: bdb142472f1f6e64cce15542b0c0a5c4e5f56a5878383854ab10db812b4faa82
+    display: SP-49 (10:1, in 10. Records)
+    change:
+      - New
+  - id: SP-124
+    kind: rule
+    text_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032
+    display: SP-124 (10:2, in 10. Records)
+    change:
+      - New
+  - id: SP-50
+    kind: note
+    text_sha256: fb6cb2f9da61f2a205bf4268e615b635321548ed21aa30707bdf27677db3cd72
+    display: SP-50 (11, 11. Search and the export)
+    change:
+      - New
+  - id: SP-51
+    kind: rationale
+    text_sha256: a8143235a128fb5b56ccc1c1a16a6475b0358d37356376aa17907fdf882aaefb
+    display: SP-51 (11:1, in 11. Search and the export)
+    change:
+      - New
+  - id: SP-52
+    kind: interface
+    text_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df
+    display: SP-52 (11:2, in 11. Search and the export)
+    change:
+      - New
+  - id: SP-53
+    kind: definition
+    text_sha256: de3f1d9ec2439ff5df6392079ddd63a7de32fe3f0422c135ca63b5dd8b4a1f91
+    display: SP-53 (11:3, in 11. Search and the export)
+    change:
+      - New
+  - id: SP-54
+    kind: rule
+    text_sha256: 8172772664da028db32f2b7ce58ab201c19c676a12b6c5f5e461365f3294053d
+    display: SP-54 (11:4, in 11. Search and the export)
+    change:
+      - New
+  - id: SP-55
+    kind: rule
+    text_sha256: 0c4c971a8428766530df37eec892756ad6ada78e026110ccbb032ae787bab1e6
+    display: SP-55 (11:5, in 11. Search and the export)
+    change:
+      - New
+  - id: SP-56
+    kind: rule
+    text_sha256: 641606d5e4a88fe4ed0abacd88a963cb4d2a4391c284f1f9288a580251eb0fca
+    display: SP-56 (11:6, in 11. Search and the export)
+    change:
+      - New
+  - id: SP-57
+    kind: rule
+    text_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6
+    display: SP-57 (11:7, in 11. Search and the export)
+    change:
+      - New
+  - id: SP-58
+    kind: note
+    text_sha256: f1361c0156d995db0f73407077a8ae6182ec0b2bfe88e5c42a6e5541e4a5e882
+    display: SP-58 (12, 12. One central spec repo, and output repos)
+    change:
+      - New
+  - id: SP-59
+    kind: rationale
+    text_sha256: 2a792ffe2426acecba40f3314697d54986c4598d41b7d76ab6a22a8999b71033
+    display: SP-59 (12:1, in 12. One central spec repo, and output repos)
+    change:
+      - New
+  - id: SP-125
+    kind: rule
+    text_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4
+    display: SP-125 (12:2, in 12. One central spec repo, and output repos)
+    change:
+      - New
+  - id: SP-60
+    kind: data
+    text_sha256: 325504116b28a012ca83932be838bc0f3ee033b55b3b23cfd18ec39635ea2183
+    display: SP-60 (12:3, in 12. One central spec repo, and output repos)
+    change:
+      - New
+  - id: SP-61
+    kind: note
+    text_sha256: ce296d0bdabab1c6a0245126a50ca429bcba5a21be20af119a087b07330918f7
+    display: SP-61 (13, 13. Commands)
+    change:
+      - New
+  - id: SP-62
+    kind: interface
+    text_sha256: 112810b3b6bd3c5a5cec7be952daa3728fa408f8b90e5b7d45e964a7a9523bc9
+    display: SP-62 (13:1, in 13. Commands)
+    change:
+      - New
+  - id: SP-63
+    kind: note
+    text_sha256: cff5efe0ec75b164e730f7c30d0ad386e7dc235828ba4911d9eaad32213f41ad
+    display: SP-63 (14, 14. Migration and adoption)
+    change:
+      - New
+  - id: SP-64
+    kind: rationale
+    text_sha256: 560f942a665086bd17d4722e77d287a00d44b58c4e43355299375cceef09c120
+    display: SP-64 (14:1, in 14. Migration and adoption)
+    change:
+      - New
+  - id: SP-126
+    kind: rule
+    text_sha256: bbc667396b67cf1fcf43b1366493a3351d370a0dd5ea21200073b8a909597131
+    display: SP-126 (14:2, in 14. Migration and adoption)
+    change:
+      - New
+  - id: SP-65
+    kind: note
+    text_sha256: 2c9c428b4cd7fdc034cb0ba442f16d8d5212fa801513314fd224448c01b21819
+    display: SP-65 (15, 15. Validation, before the build)
+    change:
+      - New
+  - id: SP-66
+    kind: note
+    text_sha256: 50c52cafc24060d26e42a83417ec489e5c621e921b5dfce7f426a03bacb5fab9
+    display: SP-66 (15:1, in 15. Validation, before the build)
+    change:
+      - New
+  - id: SP-67
+    kind: plan
+    text_sha256: 49a308c2896266b646a36bfd13087c25311bc050589a4c7594bfcfec44e51099
+    display: SP-67 (15:2, in 15. Validation, before the build)
+    change:
+      - New
+  - id: SP-68
+    kind: plan
+    text_sha256: 5e25cd5b96350b45c226da8d29f5a9a89e09ae5576cdcf1adfd8901750ac227d
+    display: SP-68 (15:3, in 15. Validation, before the build)
+    change:
+      - New
+  - id: SP-69
+    kind: plan
+    text_sha256: 64630c31f69975b56cf05436fd9ccf6337e3ae7215d9ac5121663d7f41187537
+    display: SP-69 (15:4, in 15. Validation, before the build)
+    change:
+      - New
+  - id: SP-70
+    kind: plan
+    text_sha256: 0f6890cc73a3e65317535e50ae52479d424b9240408b198d108fb0d506aa5f41
+    display: SP-70 (15:5, in 15. Validation, before the build)
+    change:
+      - New
+  - id: SP-71
+    kind: plan
+    text_sha256: 4532fddefbbbbda89088f7bf3ad4d7fd50b07c4c7bc8b9fd6973d5249c53aa6a
+    display: SP-71 (15:6, in 15. Validation, before the build)
+    change:
+      - New
+  - id: SP-72
+    kind: plan
+    text_sha256: 32b66fd83f54c793752320db33f220bd465609aa1341da2aa4537f2a082fdea0
+    display: SP-72 (15:7, in 15. Validation, before the build)
+    change:
+      - New
+  - id: SP-73
+    kind: note
+    text_sha256: 955f957b8694d6bcd182f6294eb05852e094863d1df6dad38fcfbe61a277a4da
+    display: SP-73 (16, 16. Cost, and the checks left for the build)
+    change:
+      - New
+  - id: SP-74
+    kind: note
+    text_sha256: 985fd35176bb5c9f220a3c6f6a40eff92348022b562468d341db561411f0457b
+    display: SP-74 (16:1, in 16. Cost, and the checks left for the build)
+    change:
+      - New
+  - id: SP-75
+    kind: note
+    text_sha256: 9aed23008f6fd9c66f47925940fe35d185d42537202961f210940c990e962055
+    display: SP-75 (16:2, in 16. Cost, and the checks left for the build)
+    change:
+      - New
+  - id: SP-76
+    kind: plan
+    text_sha256: b9f987e789fd84630ef14a2efb71f5b2b2932336456887e6d798a779538b0697
+    display: SP-76 (16:3, in 16. Cost, and the checks left for the build)
+    change:
+      - New
+  - id: SP-77
+    kind: note
+    text_sha256: 8b1e0eb2525a35669e71695ff65de98bc6699e18376cd3e0cd455485597a271b
+    display: SP-77 (17, 17. Building v4)
+    change:
+      - New
+  - id: SP-78
+    kind: plan
+    text_sha256: 8a4cdc12b7553bd085132299b241cff15bd3054ef1eebb425c0ffac4dfb559d2
+    display: SP-78 (17:1, in 17. Building v4)
+    change:
+      - New
+  - id: SP-127
+    kind: limit
+    text_sha256: 6cf3c8162d8e55e9439c702978952af19e4e212d8ff7be34579d167c2c723237
+    display: SP-127 (17:2, in 17. Building v4)
+    change:
+      - New
+  - id: SP-128
+    kind: plan
+    text_sha256: 5017ca5380df68bc77748599f8b4fd5eebfbad65c84275d6026bf0f2674fa7a8
+    display: SP-128 (17:3, in 17. Building v4)
+    change:
+      - New
+  - id: SP-79
+    kind: rule
+    text_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669
+    display: SP-79 (17:4, in 17. Building v4)
+    change:
+      - New
+  - id: SP-80
+    kind: note
+    text_sha256: e9ab31652bdd82ff44c2f9b4836ba58983bea9b05b404eac8468cbaa2550095f
+    display: "SP-80 (18, AssuredLoop v4: the model from input to output)"
+    change:
+      - New
+  - id: SP-81
+    kind: note
+    text_sha256: b9403d0cf0d8406f6392c007923e8f2aafed8f42eb1b851e04fc7f8b86192af3
+    display: "SP-81 (18:1, in AssuredLoop v4: the model from input to output)"
+    change:
+      - New
+  - id: SP-82
+    kind: rationale
+    text_sha256: 7c7aedfc62de7e08ec74def03ed221de1a671127903ca4a8fd71d594768413fe
+    display: "SP-82 (18:2, in AssuredLoop v4: the model from input to output)"
+    change:
+      - New
+  - id: SP-83
+    kind: note
+    text_sha256: de9fc09de0f823c4bdaf2c149df09fd0163d63e44556ab0e5b599b527c5eec60
+    display: SP-83 (18.1, 1. The picture)
+    change:
+      - New
+  - id: SP-84
+    kind: flow
+    text_sha256: 829c20cae445860f0a2d439bda7a26dfa7821f236a4fc471a94a244784d399d9
+    display: SP-84 (18.1:1, in 1. The picture)
+    change:
+      - New
+  - id: SP-85
+    kind: note
+    text_sha256: 06075e3a1ca31ec392c49f8eb95e8cb112188e12aa4feaf1fb9bbaa75b843dd1
+    display: SP-85 (18.2, 2. The kinds of item)
+    change:
+      - New
+  - id: SP-86
+    kind: data
+    text_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2
+    display: SP-86 (18.2:1, in 2. The kinds of item)
+    change:
+      - New
+  - id: SP-87
+    kind: rule
+    text_sha256: 3d3c7699c3a6d0d45504b2c443fc7cf7732cdf9e572b47f36304f4a8f080db44
+    display: SP-87 (18.2:2, in 2. The kinds of item)
+    change:
+      - New
+  - id: SP-88
+    kind: note
+    text_sha256: fb725d9a384c92360cb71cfa599ab2b6f03b2ce54b765ef8a9549b8ea66f4a9e
+    display: SP-88 (18.3, 3. IDs in the text)
+    change:
+      - New
+  - id: SP-89
+    kind: rule
+    text_sha256: c1ffbb36e0fc9869bba817577ec965ada2ec3b972b4921b08a56499e16247303
+    display: SP-89 (18.3:1, in 3. IDs in the text)
+    change:
+      - New
+  - id: SP-90
+    kind: note
+    text_sha256: 3a55687316f304515783e3aa3ff3d1f57d0015da790ef5213124bc50c4f465ad
+    display: SP-90 (18.4, 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-91
+    kind: definition
+    text_sha256: 93e7657001dd7919b1514b9691ebffa0dc3d170cad1142e06d627b713c0159d4
+    display: SP-91 (18.4:1, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-92
+    kind: definition
+    text_sha256: c0ae997e82a2d66e9fb32f7a0bfce4bf5c9c75b0f48f8f57bf847ec72430264f
+    display: SP-92 (18.4:2, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-93
+    kind: definition
+    text_sha256: b9b58f6fbd1bb37091bd090e773b25ad223d044a2d87b36995b6301e4f5c52a2
+    display: SP-93 (18.4:3, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-94
+    kind: rule
+    text_sha256: 995ea9ecf34f15873cec5f920aaf18842ed685f05c52499d93aac116cd75f5ba
+    display: SP-94 (18.4:4, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-95
+    kind: definition
+    text_sha256: acdecbc5175a779ebde3ab0cbbbc545809b60660728be349febf67ba26cd38fd
+    display: SP-95 (18.4:5, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-96
+    kind: definition
+    text_sha256: 52cd575fb7cce75f375dc43fabf2cb06d1be3c4d480d6db00737ce2e6dfdfba7
+    display: SP-96 (18.4:6, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-97
+    kind: definition
+    text_sha256: 7245a463b1b74bbcd686c49b5f24a6788057c67d315106edf05d647838508769
+    display: SP-97 (18.4:7, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-98
+    kind: definition
+    text_sha256: dab7994fe22b4ed54d3e0573aed474bd72609932844888a6bc15944f8cc0da94
+    display: SP-98 (18.4:8, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-99
+    kind: rule
+    text_sha256: 420459468af7e401bd9c7b0e36f48e397469abee8d404eb9345ec9b3d43f221d
+    display: SP-99 (18.4:9, in 4. The kinds of paragraph)
+    change:
+      - New
+  - id: SP-100
+    kind: note
+    text_sha256: c20ecb6edb27a66236149db9f90e7d2f2ca3547d8c42aa9d426849a785100369
+    display: SP-100 (18.5, 5. ADRs)
+    change:
+      - New
+  - id: SP-101
+    kind: rule
+    text_sha256: f1af7191ac519eb21a6feaba089af474369ce5801dde1b2edc179108603c8357
+    display: SP-101 (18.5:1, in 5. ADRs)
+    change:
+      - New
+  - id: SP-102
+    kind: note
+    text_sha256: 7cc1d3e8b91d3972c4bb102a5a71d7cf7ca8e4adf4a2b8b8b56416feeb24d196
+    display: SP-102 (18.6, 6. The links)
+    change:
+      - New
+  - id: SP-103
+    kind: definition
+    text_sha256: 996fa12cceeca080ca058261c891d4b0bf32a16b4ff2a301e074ab0adb78327c
+    display: SP-103 (18.6:1, in 6. The links)
+    change:
+      - New
+  - id: SP-104
+    kind: definition
+    text_sha256: 948551a0901d0cd42149130f58d8b4b1333eecf4ee50fcaec35ef1e4d9e51dba
+    display: SP-104 (18.6:2, in 6. The links)
+    change:
+      - New
+  - id: SP-105
+    kind: definition
+    text_sha256: 57b555007e7895c9fba253d89dcdaf40ede19eefafb6f0b40da95b37edbfc9dc
+    display: SP-105 (18.6:3, in 6. The links)
+    change:
+      - New
+  - id: SP-106
+    kind: note
+    text_sha256: 19425586e3f41730f3e9ce7c2def2d7ebdb88e006d4391ff0a273c85d2351be0
+    display: SP-106 (18.7, 7. Where the model lives)
+    change:
+      - New
+  - id: SP-107
+    kind: data
+    text_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197
+    display: SP-107 (18.7:1, in 7. Where the model lives)
+    change:
+      - New
+  - id: SP-108
+    kind: note
+    text_sha256: 2e62c74444648fa0394e30c7f5af595839460ab7a72a327a106bf8f05700d10d
+    display: SP-108 (18.8, 8. A worked example as records)
+    change:
+      - New
+  - id: SP-109
+    kind: example
+    text_sha256: 336c0f4db5bb13884c2b8e2f1100bd9de60f9756b00ed19a6998ef8dc7622dd3
+    display: SP-109 (18.8:1, in 8. A worked example as records)
+    change:
+      - New
+  - id: SP-110
+    kind: example
+    text_sha256: d78ca860fdfa26bfa0a1bd25a0b2b5a780aa7df9a77b96257c0322591730688f
+    display: SP-110 (18.8:2, in 8. A worked example as records)
+    change:
+      - New
+  - id: SP-111
+    kind: example
+    text_sha256: 6ab63f0323fb6f27cedd312e47a22c369878293ed81f4b3667f89b92eb617f46
+    display: SP-111 (18.8:3, in 8. A worked example as records)
+    change:
+      - New
+  - id: SP-112
+    kind: example
+    text_sha256: fbcf115333eff21b9e19d1a763eed856db8dde324d6c24640a9aadb9ecedbaba
+    display: SP-112 (18.8:4, in 8. A worked example as records)
+    change:
+      - New
+  - id: SP-113
+    kind: note
+    text_sha256: 5dcded7a923edc136cee5124250d0de8cd782f31edd6bb983d27766168f4cfdf
+    display: SP-113 (18.9, 9. What the graph lets the tool say)
+    change:
+      - New
+  - id: SP-114
+    kind: example
+    text_sha256: 59f5b645dc51eb06e44695da266f438c77a79af9be9433e0f6cae6c8068c2d93
+    display: SP-114 (18.9:1, in 9. What the graph lets the tool say)
+    change:
+      - New
+  - id: SP-115
+    kind: limit
+    text_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809
+    display: SP-115 (18.9:2, in 9. What the graph lets the tool say)
+    change:
+      - New
