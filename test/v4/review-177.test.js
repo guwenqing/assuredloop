@@ -259,3 +259,66 @@ describe('5. a GFM table without leading pipes belongs to the paragraph before i
     assert.ok(lines(r.stdout).includes('Marked 2 paragraph(s) in specs/a.md'), show(r));
   });
 });
+
+// GFM: the header row and the delimiter row of a table have the same number
+// of cells. One leading and one trailing pipe do not count; an escaped pipe
+// \| does not split a cell (coordinator, from the reviewer of PR #177).
+describe('6. a table needs as many delimiter cells as header cells', () => {
+  const withTable = (header, delimiter) => `<!-- A-1 note -->\n\nIntroduction.\n\n${header}\n${delimiter}\n1 | 2\n`;
+  const lintsAt = (text) => parseMarkdown(text, 'specs/a.md').lints.map((l) => [l.code, l.line]);
+
+  test('2 header cells and 3 delimiter cells: prose, so no-id at line 5', () => {
+    assert.deepEqual(lintsAt(withTable('A | B', '--- | --- | ---')), [['no-id', 5]]);
+  });
+
+  test('check --strict exits 1 with that no-id', (t) => {
+    const repo = makeRepo(t);
+    repo.write('specs/a.md', withTable('A | B', '--- | --- | ---'));
+    const r = check(repo, '--strict');
+    assert.equal(r.code, 1, show(r));
+    assert.deepEqual(lintLines(r).map((l) => l.replace(/^(not ok no-id specs\/a\.md:5 -) .*/, '$1')), ['not ok no-id specs/a.md:5 -'], show(r));
+  });
+
+  test('spec --add-ids --yes marks it as A-2', (t) => {
+    const repo = makeRepo(t);
+    repo.write('specs/a.md', withTable('A | B', '--- | --- | ---'));
+    const r = addIds(repo, 'specs/a.md', '--prefix', 'A', '--yes');
+    assert.equal(r.code, 0, show(r));
+    assert.ok(lines(r.stdout).includes('Marked 1 paragraph(s) in specs/a.md'), show(r));
+    const ps = parseMarkdown(repo.read('specs/a.md'), 'specs/a.md').paragraphs;
+    assert.deepEqual(ps.map((p) => [p.id, p.text]), [['A-1', 'Introduction.'], ['A-2', 'A | B\n--- | --- | ---\n1 | 2']]);
+  });
+
+  test('a header with leading and trailing pipes has 2 cells: 3 delimiter cells is still prose', () => {
+    assert.deepEqual(lintsAt(withTable('| A | B |', '--- | --- | ---')), [['no-id', 5]]);
+  });
+
+  test('an escaped pipe does not split a cell: "a \\| b | c" with 3 delimiter cells is prose', () => {
+    assert.deepEqual(lintsAt(withTable('a \\| b | c', '--- | --- | ---')), [['no-id', 5]]);
+  });
+
+  test('control: 2 header cells and --- | --- is a table that stays with A-1', () => {
+    const text = withTable('A | B', '--- | ---');
+    const r = parseMarkdown(text, 'specs/a.md');
+    assert.deepEqual(r.lints, []);
+    assert.equal(r.paragraphs[0].text, 'Introduction.\n\nA | B\n--- | ---\n1 | 2');
+  });
+
+  test('control: --add-ids marks 0 when the table matches', (t) => {
+    const repo = makeRepo(t);
+    const text = withTable('A | B', '--- | ---');
+    repo.write('specs/a.md', text);
+    const r = addIds(repo, 'specs/a.md', '--prefix', 'A', '--yes');
+    assert.equal(r.code, 0, show(r));
+    assert.ok(lines(r.stdout).includes('Marked 0 paragraph(s) in specs/a.md'), show(r));
+    assert.equal(repo.read('specs/a.md'), text);
+  });
+
+  test('control: the delimiter |:--|--:| counts 2 cells', () => {
+    assert.deepEqual(lintsAt(withTable('A | B', '|:--|--:|')), []);
+  });
+
+  test('control: "a \\| b | c" has 2 cells, so --- | --- matches it', () => {
+    assert.deepEqual(lintsAt(withTable('a \\| b | c', '--- | ---')), []);
+  });
+});
