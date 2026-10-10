@@ -13,7 +13,8 @@ import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { writeSetup } from '../src/v4/config.js';
-import { EFFECT, HOUR, Repo, START, Words, closeRequest, docRecord, docRecordPath, entriesOf, git, openRequest, pad, render } from './world.js';
+import { groupOf } from '../src/v4/markers.js';
+import { EFFECT, HOUR, Repo, SCHEMA, START, Words, closeRequest, docRecord, docRecordPath, entriesOf, git, openRequest, pad, recordPath, recordText, render } from './world.js';
 
 const SECTIONS = 4;
 const PER_SECTION = 8;
@@ -115,7 +116,20 @@ export function generate(o) {
     for (const e of entriesOf(central.read(file), file)) spec.set(e.id, { file, kind: e.kind, sha256: e.sha256 });
   };
   files.forEach(refresh);
-  central.commit(ms(), 'Adopt the spec: al spec --add-ids on every spec file');
+  const adopted = central.commit(ms(), 'Adopt the spec: al spec --add-ids on every spec file');
+
+  // The adoption (design.md 5 and 14): the archived request `adoption`, whose
+  // record captures each adopted promise or design paragraph with the
+  // adopting commit and its text hash.
+  const dispositions = files.flatMap((file) => entriesOf(central.read(file), file)
+    .filter((e) => ['promise', 'design'].includes(groupOf(e.kind)))
+    .map((e) => ({ source: 'adoption', disposition: 'incorporated', spec: e.id, commit: adopted, spec_sha256: e.sha256 })));
+  central.write('requests/archive/adoption/request.md', `# Adoption of the spec\nStatus: concluded\n\n## Outcome\n\nThe spec in specs/ was adopted at ${adopted}: al spec --add-ids marked every paragraph.\n`);
+  central.write(recordPath('adoption'), recordText({
+    schema: SCHEMA, request: 'adoption', status: 'concluded',
+    sources: [], requirements: [], signoff: [], decisions: [], tasks: [], bindings: [], dispositions,
+  }));
+  central.commit(ms(), 'Record the adoption of the spec');
 
   const nextId = (prefix) => { next.set(prefix, next.get(prefix) + 1); return `${prefix}-${next.get(prefix)}`; };
   const reserved = new Set(); // IDs an open request changes, builds on or removes
