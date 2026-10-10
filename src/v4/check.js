@@ -61,7 +61,8 @@ export function check({ top, opts }) {
   return {
     body,
     read: base ? `working tree · base ${base.slice(0, 7)} (merge-base with main)` : 'working tree · no base',
-    next: nextStep([...lints.map(severity), ...t10.findings.map((f) => f.severity)], lints.some((l) => l.code === 'no-id')),
+    next: nextStep([...lints.map(severity), ...t10.findings.map((f) => f.severity),
+      ...central.body.map((l) => (/^not ok /.test(l) ? 'not ok' : /^hint /.test(l) ? 'hint' : 'info'))], lints.some((l) => l.code === 'no-id')),
     notKnown,
     exit: opts.strict && notOk ? 1 : 0,
   };
