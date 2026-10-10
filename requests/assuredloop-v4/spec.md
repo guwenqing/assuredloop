@@ -1,11 +1,19 @@
+<!-- SP-1 note -->
+
 # AssuredLoop v4: the design
+
+<!-- SP-2 note -->
 
 This is the consolidated design for the request `assuredloop-v4`. It serves
 the signed organized requirement R1-R14 in `request.md`. `schema.md` holds
 the model and a worked example. "Input N" means owner input N, whose words are
 in `origin/`. Where this design and an older text differ, this design holds.
 
+<!-- SP-3 note -->
+
 ## 1. Intent
+
+<!-- SP-4 rationale explains:SP-5 -->
 
 What the owner wants, and why, in the owner's words:
 
@@ -29,6 +37,8 @@ What the owner wants, and why, in the owner's words:
   sort of price we must pay, we can pay" (input 127).
 - "I allow ai to do typo fixing at least" (input 128).
 
+<!-- SP-5 limit serves:R11,R7 -->
+
 **What v4 is not.** "I do not want a fullscacle lifecycle tool, to demand
 user must follow an exact heavy wow to do everything in one way. anti
 pattern, AWS's ai software development lifecycle framework" (input 126). AWS
@@ -49,6 +59,8 @@ must pass these limits:
   and of which version a link read, are facts, not work phases, task
   dependencies, review receipts or approvals.
 
+<!-- SP-6 rationale explains:SP-5 -->
+
 The risk to watch: an ID on every paragraph, and a kind and links on promise
 and design paragraphs, come close to an element-level trace chain. The
 difference must hold: the links live in the doc and in git, most checks are
@@ -56,11 +68,17 @@ hints, and the records cost a small share of the work (a flexible 20%
 target, input 123). Validation measures each rule against that cost
 (section 15).
 
+<!-- SP-7 note -->
+
 ## 2. One change, and the consolidated spec
+
+<!-- SP-8 rationale explains:SP-116,SP-117 -->
 
 Why: the owner keeps both a change's own documents and one current set
 (inputs 92, 104-108), and wants no design text outside the trace (input 109).
 A reader must find the current system without reading past changes (R1).
+
+<!-- SP-116 data serves:R1 -->
 
 | Set | Where | Holds | Changes how |
 |---|---|---|---|
@@ -71,6 +89,8 @@ A reader must find the current system without reading past changes (R1).
 | | `specs/adr/` | the decisions; an ADR is superseded, never edited | a new ADR file |
 | Outputs | code, tests, `docs/` | the product and its user documents | normal PRs; traced from the change's record (input 112) |
 | Tool data | `.assuredloop/` | `config.yaml`, `schema.yaml`, `records/` | the developer's agent and `al` |
+
+<!-- SP-117 rule serves:R1,R2 -->
 
 - There is no free design document anywhere. Design lives only in a change
   spec or in `specs/` (inputs 108, 109).
@@ -88,7 +108,11 @@ A reader must find the current system without reading past changes (R1).
   is built is written as `approach`.
 - A change closes and its folder moves to `requests/archive/<name>/`.
 
+<!-- SP-9 note -->
+
 ## 3. IDs, kinds and links
+
+<!-- SP-10 rationale explains:SP-11 -->
 
 Why: "I assume every paragraph will have an "id", so you can freely link
 them" (input 100), and "there are different kind of texts" (input 100). Only
@@ -97,6 +121,8 @@ file name, StrictDoc keeps a machine ID apart from the other fields, and the
 Ferrocene Language Specification keeps a stable ID apart from its shown
 paragraph number. IDs built from a hash or from a heading change when the
 text changes.
+
+<!-- SP-11 rule serves:R2 -->
 
 **IDs:**
 - Every paragraph has an ID. The key is one flat number per file, for example
@@ -112,10 +138,14 @@ text changes.
   markers too. GitHub does not show HTML comments, so a reader sees no ID.
 - A list or a table belongs to the paragraph that introduces it.
 
+<!-- SP-12 rationale explains:SP-11 -->
+
 Why the blank line: a marker on the line next to the text can join two
 paragraphs in some Markdown renderers (tested with pandoc); a blank line
 keeps them apart. Prettier and mdformat keep such markers and their blank
 lines. The check flags a marker with no blank line after it.
+
+<!-- SP-13 definition serves:R2 -->
 
 **Kinds**, one per paragraph:
 
@@ -138,6 +168,8 @@ lines. The check flags a marker with no blank line after it.
   interface, data, flow, choice) is consolidated. Why: the OpenSpec replay
   found delivered design that belongs to its change only (validation.md B8).
 
+<!-- SP-14 definition serves:R2,R8 -->
+
 **Links:**
 - `serves R<n>`: a promise or design paragraph, to the requirement;
 - `builds on <ID>` or `changes <ID>`: to a consolidated paragraph;
@@ -145,6 +177,8 @@ lines. The check flags a marker with no blank line after it.
   section 5 for promise kinds);
 - `for <task>`: optional, for a project that uses tasks;
 - `explains`, `illustrates`, `resolved by`, `governed by <ADR>`.
+
+<!-- SP-15 rule serves:R2 -->
 
 **Where the kind and the links are written** (input 123): in the paragraph's
 hidden marker, so they move with the paragraph and cannot drift from it:
@@ -155,10 +189,14 @@ hidden marker, so they move with the paragraph and cannot drift from it:
 The export link MUST expire 30 minutes after the email is sent.
 ```
 
+<!-- SP-16 definition serves:R2 -->
+
 Inside a request's own change spec, `serves:R2` means that request's R2. In
 `specs/`, a link names the request. The marker holds IDs only. The hashes and
 versions at the time of each link are bindings that the script keeps in the
 request's record (section 4).
+
+<!-- SP-17 rule serves:R2,R8 -->
 
 **Who writes what:**
 - People and agents write the markers (ID, kind, links), and, where a
@@ -170,8 +208,12 @@ request's record (section 4).
   recomputed: they are frozen when first indexed (section 4).
 - A declared link is never shown as proven.
 
+<!-- SP-18 rationale explains:SP-17 -->
+
 Why: derived facts that anyone can type in cannot be trusted, and a claim
 shown as a fact misleads the review (the rules of the TraceLayer tool).
+
+<!-- SP-19 rule serves:R2,R8 -->
 
 **What "checked" means.** The script checks that declarations are well formed
 and that references resolve. It does not check that a kind is right, that a
@@ -190,6 +232,8 @@ semantic coverage as "not checked".
   author chose. Studies of trace links find that declared links are often
   incomplete (only about 60% of commits named an issue, Rath et al., ICSE
   2018).
+
+<!-- SP-20 rule serves:R2,R11 -->
 
 **What the script checks** (no AI):
 - A paragraph with no ID: `not ok`. A promise or design paragraph with no kind
@@ -228,18 +272,26 @@ semantic coverage as "not checked".
   under `--strict`: near match, "promise kind?", the typo mark, overlap,
   stale base, a stale AI hint, an ADR that governs, and a removed target.
 
+<!-- SP-21 flow serves:R2 -->
+
 **Who sets the kind.** The developer's agent proposes it in the PR, and the
 review checks it. The review view shows each changed paragraph's text beside
 its kind and its requirement, with the baseline paragraphs it touches. Text
 that changes a promise gets the promise treatment, whatever its kind. The
 review may ask for a split where that makes the text clearer.
 
+<!-- SP-22 note -->
+
 ## 4. The change spec honors the consolidated spec
+
+<!-- SP-23 rationale explains:SP-118 -->
 
 Why: the change's design must honor "the existing consolidated design"
 (input 107), and parallel work must align, never overwrite in silence (R6,
 input 25). A link is only useful if it remembers what the target said when
 the link was made.
+
+<!-- SP-118 rule serves:R6 -->
 
 - A change paragraph that relies on a spec paragraph says `builds on <ID>`.
   One that replaces it says `changes <ID>`. It holds no copy of the old text.
@@ -276,11 +328,17 @@ the link was made.
   PRs that edit one spec paragraph surface through git's merge conflict and
   the second PR's stale binding, not through an overlap hint.
 
+<!-- SP-24 note -->
+
 ## 5. Consolidation and the close rule
+
+<!-- SP-25 rationale explains:SP-26 -->
 
 Why: the owner wants no tool that consolidates (input 95), consolidation
 before an epic closes (input 105), and nothing applied dropped in silence
 (R5).
+
+<!-- SP-26 rule serves:R5 -->
 
 **Consolidation:**
 1. The agent replaces the paragraph in `specs/` by hand. No command writes the
@@ -293,6 +351,8 @@ before an epic closes (input 105), and nothing applied dropped in silence
    stay with the change as its history.
 4. A promise-kind paragraph consolidated before its requirement is signed:
    `not ok`.
+
+<!-- SP-27 rule serves:R5 -->
 
 **Dispositions.** Each change paragraph with a baseline effect (any paragraph
 of a kind that goes into `specs/`, by item 3 above, and every declared
@@ -310,13 +370,19 @@ never advances it.
 | `superseded` | a later change replaced the incorporated text | the later change has a valid `incorporated` or `removed` disposition whose `changes` or `removes` binding names this incorporated version; a pending link alone proves nothing. A chain A→B→C resolves to the closing baseline, a valid removal included. An archived later change counts as recorded |
 | `abandoned` | the paragraph is not delivered | judged through the bindings: the target of its `changes` or `removes` link still has its bound text (it was never applied, or it was reverted); for a new paragraph, its text is not in `specs/`, and a near match there gets the hint "applied in another form?"; or a decision Dn whose source is the owner keeps its effect, with a signed requirement where a promise kind is kept |
 
+<!-- SP-28 rationale explains:SP-27 -->
+
 Why the bindings judge `abandoned`: with exact text alone, a change could apply
 a slightly different text and then claim that it abandoned the paragraph.
+
+<!-- SP-29 rule serves:R5 -->
 
 An owner decision to keep an effect is only for the owner's call on the
 requirement or the scope. A design paragraph can stay `incorporated` while
 another paragraph of the same change is `abandoned`; that needs no owner
 decision.
+
+<!-- SP-30 rule serves:R5,R6 -->
 
 **Invalid dispositions.** `al check` shows an invalid disposition as a hint,
 and as `not ok` under `--strict`; `al conclude` refuses. A small design
@@ -328,12 +394,16 @@ disposition. The open change aligns by a wording decision that names the new
 text's hash, or by changing the text again. A typo fix (path 0) to such text
 has the same effect, and its PR gets the same information hint.
 
+<!-- SP-31 rule serves:R5 -->
+
 **Removals.** A change declares a removal with `removes:<ID>`. For a promise
 paragraph, a removal is allowed only where a signed requirement covers it. An
 informative paragraph needs only the declaration and its `removed`
 disposition, with no sign-off. A loss
 that nobody declared stays a lost-ID lint. Why: a whole-block replace in real
 OpenSpec history dropped scenarios with no notice (validation.md B6).
+
+<!-- SP-32 rule serves:R5 -->
 
 **Equality.** Two texts are equal when they match exactly after only two
 steps: line endings are normalized, and the marker framing (the marker line
@@ -349,11 +419,15 @@ version and the accepted target version:
   proven. A typo claim excuses a difference only on its own branch. After it
   merges, an open change aligns by a wording decision.
 
+<!-- SP-33 rule serves:R5 -->
+
 An unexplained revert does not pass: the spec text must equal the bound
 version, a valid successor's version, or a decided final text. Why no more
 normalization: over 2,866 real OpenSpec paragraphs, none differed in
 whitespace only, and 6 differed in markup only (validation.md B4); those few
 take a wording decision or a typo claim.
+
+<!-- SP-34 rule serves:R4,R5 -->
 
 **The close rule.** `al conclude` refuses until each change paragraph with a
 baseline effect has a valid disposition for its current version, every
@@ -366,6 +440,8 @@ fate, explanations included.
 - The local tree and main stay apart: "consolidated on main" is read from
   main's history, not from the working tree.
 - Code or tests that still cite a removed or abandoned ID get a hint.
+
+<!-- SP-35 rule serves:R5,R7 -->
 
 **Path 1 and adoption.** A promise paragraph edited directly on path 1
 names its requirement in its marker, `serves:<request>/R<n>`, with a binding.
@@ -380,17 +456,25 @@ source proves where the text came from, not that it equals the requirement;
 changes that nobody asked for. The word `from` is kept only for the link from
 a requirement to the owner's words.
 
+<!-- SP-36 definition serves:R5 -->
+
 An adopted paragraph is a spec paragraph that a request's record names with
 `source: adoption`, the captured commit and its text hash. It has no
 requirement to serve, so it gets no link hint while its text equals the
 captured text. After an edit, it follows its path: a typo fix keeps it as it
 is, and a path-1 edit adds `serves:<request>/R<n>`.
 
+<!-- SP-37 note -->
+
 ## 6. Sign-off
+
+<!-- SP-38 rationale explains:SP-119 -->
 
 Why: "Requirements are still the same need the signoff" (input 100); the
 owner signs the organized requirement, never a paragraph (R4). The owner and
 the requirement may change while the owner explores (input 122).
+
+<!-- SP-119 rule serves:R4 -->
 
 - A sign-off is needed when a change touches a promise kind, and for every
   spike's question. A request that touches no promise kind and is not a spike
@@ -403,6 +487,8 @@ the requirement may change while the owner explores (input 122).
 - A later change to a signed requirement needs a new sign-off.
 - A request with no kept effect may be abandoned without a sign-off. The owner
   never has to sign work that the owner chose not to pursue.
+
+<!-- SP-39 rule serves:R4,R7 -->
 
 **Typo fixes** (input 128). An AI may claim a typo fix in any paragraph of a
 change spec or of `specs/`, promise kinds included, with no request and no
@@ -425,6 +511,8 @@ and changes the promise. So:
   `origin/` are never edited; a corrected reading is a note in the dialog, and
   the snapshot stays.
 
+<!-- SP-40 rule serves:R4,R7 -->
+
 **The spike:**
 - The spike's current organized question needs the owner's sign-off.
 - Its conclusion names the question version that it answers.
@@ -432,6 +520,8 @@ and changes the promise. So:
   the spike as history. It needs no consolidation and no disposition, and it
   never becomes current design.
 - An unsigned spike that the owner drops may be abandoned unsigned.
+
+<!-- SP-41 rule serves:R3,R4 -->
 
 **The owner's words and the requirement change too** (input 122):
 - Before the sign-off, the requirement is a draft. It changes freely, and work
@@ -447,10 +537,16 @@ and changes the promise. So:
   serves R2."
 - A spike's organized question can change the same way.
 
+<!-- SP-42 note -->
+
 ## 7. Paths for each kind of work
+
+<!-- SP-43 rationale explains:SP-120,SP-121 -->
 
 Why: "we need to support a regular wow, in various cases, big or small, clear
 or spike" (input 114), with the user free to pick (R7, input 126).
+
+<!-- SP-120 definition serves:R7 -->
 
 | Path | When | Records | Sign-off | Consolidation | Closes when |
 |---|---|---|---|---|---|
@@ -460,6 +556,8 @@ or spike" (input 114), with the user free to pick (R7, input 126).
 | 2. Big change | a real design; one or a few PRs | request, change spec | if a promise kind changes | in the PRs | the close rule holds |
 | 3. Epic | big, in parts over time | as 2, with optional task references | as 2 | part by part, before the epic closes | the close rule holds |
 | S. Spike | not yet clear what to build | request with an organized question; the change spec holds the candidates and the experiment; findings open with the answer | yes, on the question | none | the answer names the question version |
+
+<!-- SP-121 rule serves:R7 -->
 
 - A spike may end with no follow-up. A new request is needed only for
   separately authorized work, which says `Follows: <spike>`. An answer may
@@ -485,11 +583,17 @@ or spike" (input 114), with the user free to pick (R7, input 126).
   adds or removes a design paragraph, is `not ok`. The review judges the
   rest. Larger design changes stay on path 2.
 
+<!-- SP-44 note -->
+
 ## 8. Tasks
+
+<!-- SP-45 rationale explains:SP-122 -->
 
 Why: "I want to be light on the project mgmt side ... we do not enforce one
 way" (input 115). The chain must still reach from the requirement to the work
 (input 100).
+
+<!-- SP-122 rule serves:R8,R11 -->
 
 - A task is optional. Where a project uses tasks, a task has an ID and a
   reference: a line in a file of the request, an issue number, a tracker key
@@ -507,13 +611,19 @@ way" (input 115). The chain must still reach from the requirement to the work
 - The context and the outcome never claim that a merged task or a reconciled
   spec proves the work complete. They show the evidence and what is unknown.
 
+<!-- SP-46 note -->
+
 ## 9. Checks of rules, and results
+
+<!-- SP-47 rationale explains:SP-123 -->
 
 Why: a rule with no check is a wish, but how to check belongs to the project
 (R11). Coverage builds up slowly in real specs: the Rust Reference had test
 links for about 5.4% of its rules after two years (its test summary,
 2026-10-09), and the Ferrocene spec asks for one test per section. So a hint
 on every old rule would only make noise.
+
+<!-- SP-123 rule serves:R8,R11 -->
 
 - Each `rule` stays visible on its own: `al context` lists its checks, or
   "none". One checked rule never hides an unchecked one.
@@ -544,7 +654,11 @@ on every old rule would only make noise.
   adds or changes the result file never changes the checked object. Unchanged
   inputs never count as a fresh run.
 
+<!-- SP-48 note -->
+
 ## 10. Records
+
+<!-- SP-49 rationale explains:SP-124 -->
 
 Why: the owner wants the records "checked in, so it is easy to rebuild the
 rag when needed" (input 123). The AI only fills the schema; the owner and the
@@ -553,6 +667,8 @@ AI fields stay hints: the same prompt at fixed settings gave accuracy that
 varied by up to 15% over ten runs (arXiv 2408.04667), and a change of model
 moved the main tag on close to half of the notes in one study (arXiv
 2606.05970).
+
+<!-- SP-124 rule serves:R10,R12 -->
 
 - `.assuredloop/schema.yaml`: the schema, with a version. The owner and the
   architect design it. A user's extension gets the same careful review.
@@ -593,7 +709,11 @@ moved the main tag on close to half of the notes in one study (arXiv
   on it. `al` may use a pinned YAML library; zero dependencies is the least
   important goal (input 99).
 
+<!-- SP-50 note -->
+
 ## 11. Search and the export
+
+<!-- SP-51 rationale explains:SP-52,SP-53 -->
 
 Why: the owner wants search at a strength the user chooses, where "all cases
 must work, it just provides different strength" (input 131). The evidence
@@ -612,6 +732,8 @@ strong base; and old text must be filtered out, not ranked down.
 - An agent that greps files does well on small corpora, and word search
   (BM25) overtakes it near 10 million tokens (arXiv 2607.26497).
 
+<!-- SP-52 interface serves:R10 -->
+
 **The export.** `al export` writes one deterministic JSONL row per paragraph
 version, built from the committed docs and records. It is not committed;
 anyone rebuilds it. Fields: `repo, doc_or_request, id, version, role, file,
@@ -629,6 +751,8 @@ levels above 0 need this export.
 - Output files and results add `evidence` rows, in the central repo and in
   the output repos (section 12).
 
+<!-- SP-53 definition serves:R10 -->
+
 **Roles.** "Latest version" does not mean "the current system": a baseline
 paragraph, an open proposal for it and a spike candidate can each be their
 source's newest version. The script derives one role for each row from the
@@ -641,9 +765,13 @@ existing records:
 - `evidence`: results and outputs;
 - `history`: removed, abandoned and superseded text, and closed changes.
 
+<!-- SP-54 rule serves:R10 -->
+
 These are retrieval labels, not work states. When a row fits two roles,
 `history` wins, and the row keeps its original source type (for example a
 closed spike, or a replaced requirement version).
+
+<!-- SP-55 rule serves:R10 -->
 
 **Queries:**
 - The default query is the current system: `baseline` rows at the selected
@@ -669,6 +797,8 @@ closed spike, or a replaced requirement version).
   (`$(git rev-parse --git-path assuredloop)/search.sqlite`), never committed.
   One index serves the central repo and its output repos.
 - No `llms.txt`: it has no measured benefit.
+
+<!-- SP-56 rule serves:R10 -->
 
 **The search levels** (input 130):
 
@@ -720,6 +850,8 @@ closed spike, or a replaced requirement version).
   the default (input 130), and it is measured again on a larger real corpus
   before the release.
 
+<!-- SP-57 rule serves:R13 -->
+
 **Scale** (input 132): up to 1,000 change specs in one repo, and one search
 across up to 20 repos. These are estimates, at about 100 tokens a paragraph:
 - History is large and the current text is small. 1,000 archived change specs
@@ -733,11 +865,17 @@ across up to 20 repos. These are estimates, at about 100 tokens a paragraph:
 - `al check` must stay fast at 1,000 requests: it checks what the branch
   changed, and reads archived records only through their stored hashes.
 
+<!-- SP-58 note -->
+
 ## 12. One central spec repo, and output repos
+
+<!-- SP-59 rationale explains:SP-125 -->
 
 Why: "many of our solutions are using multi repos" (input 134); "so far
 let's assume the spec stay in the central repo" (input 133). Links from output
 repos are a must.
+
+<!-- SP-125 rule serves:R8,R13 -->
 
 - The central repo holds the spec (`specs/`, `specs/adr/`), the requests and
   the records. Its `config.yaml` lists the output repos, each with a name,
@@ -776,6 +914,8 @@ repos are a must.
 - In an output repo, `al check` looks up the central IDs that the branch's
   changed files cite.
 
+<!-- SP-60 data serves:R8 -->
+
 **Output rows.** An output file is a file that a record declares, or a file
 that names a known ID: `central:<ID>` in any repo, or a bare ID of the
 central export in the central repo. The spec's own files are not outputs:
@@ -793,7 +933,11 @@ declared one shows `how: declared`. One cite finder serves every repo.
   refine the central spec. The qualified-ID form leaves room for a `refines`
   link.
 
+<!-- SP-61 note -->
+
 ## 13. Commands
+
+<!-- SP-62 interface serves:R9 -->
 
 | Command | v4 |
 |---|---|
@@ -809,9 +953,15 @@ declared one shows `how: declared`. One cite finder serves every repo.
 | `al export` | the export: one JSONL row per paragraph version, output file or result, with its repo, role, version, commit and edges; not committed |
 | `al search` | search at levels 0-2 across the central repo and its output repos, with the current-system, change-context and history queries; it shows each hit's repo and commit |
 
+<!-- SP-63 note -->
+
 ## 14. Migration and adoption
 
+<!-- SP-64 rationale explains:SP-126 -->
+
 Why: "no need to take care of nbackward copatibility" (input 98).
+
+<!-- SP-126 rule serves:R9 -->
 
 - v4 is a breaking release. It does not read 0.1.0 records.
 - History: `--at` works on commits made under v4. Older records stay readable
@@ -826,15 +976,23 @@ Why: "no need to take care of nbackward copatibility" (input 98).
   command writes that adoption record itself, because every adopter needs it
   (T17 builds it).
 
+<!-- SP-65 note -->
+
 ## 15. Validation, before the build
+
+<!-- SP-66 note -->
 
 Validation ran in October 2026: parts A and B of `validation.md` in this
 folder. Its results shaped the rules above; decision D2 in `request.md`
 records what stayed, changed and went.
 
+<!-- SP-67 plan -->
+
 Why: "if things are not useful, it is a total waste" (input 111), and the
 owner chose to validate before building (inputs 117-118). Validation keeps
 only the rules that earn their cost.
+
+<!-- SP-68 plan -->
 
 Three ways, in this order (input 135):
 1. **A simulation with planted defects**, on a tiny central repo with three
@@ -846,6 +1004,8 @@ Three ways, in this order (input 135):
    model.
 3. **A private adopter on a scratch copy**: convert its open request by hand,
    with no change to the adopter's repo, and run the fresh-reader test.
+
+<!-- SP-69 plan -->
 
 Cases:
 - the paths: a fix with a typo, a small amend, a small design correction, a
@@ -888,8 +1048,12 @@ Cases:
   three separate facts (a PR merged, a proof not run, a part still open) and
   name the evidence that is not available.
 
+<!-- SP-70 plan -->
+
 Arms, for each way: today's records; a lighter arm with the same texts and
 paragraph IDs and fewer declarations; the full model.
+
+<!-- SP-71 plan -->
 
 Measures:
 - usefulness: 20-30 real review questions, some held out from the record
@@ -903,12 +1067,18 @@ Measures:
   guide, not a hard limit (input 123);
 - catch rate: planted defects found, against false alarms on the controls.
 
+<!-- SP-72 plan -->
+
 A rule stays only where it helped a reviewer answer a question or catch a
 real defect, at an acceptable cost. A rule that only catches its own missing
 declaration does not count. If a need in the signed requirement must change,
 the owner signs again.
 
+<!-- SP-73 note -->
+
 ## 16. Cost, and the checks left for the build
+
+<!-- SP-74 note -->
 
 **Cost.** The records cost 1.3 to 1.6 times the tokens of the work on small
 and big changes in validation (records-agent tokens divided by work-agent
@@ -925,11 +1095,15 @@ measurements:
   its path; `al context` gives an agent only the paragraphs and records that
   its change touches.
 
+<!-- SP-75 note -->
+
 The validation ratios have limits: small invented changes, one model family,
 token counts per agent run, one uncounted helper, and no work agent in the
 OpenSpec replay. A complete cost account runs on the product (T16):
 record creation, reading, corrections, indexing and review across every
 agent, with small changes and epics apart, against the same flexible target.
+
+<!-- SP-76 plan -->
 
 **Checks left for the build**, measured on the product, not on a model:
 scale timings (T15); Node 24 and level 1 (T13); real fallback and level 2
@@ -939,7 +1113,11 @@ checks, an absent clone and a missing commit (T9, T10, T12); the cost account
 (T16). Search recall at levels 0-1 was about 0.3 in the model; level 2 is
 measured in T14.
 
+<!-- SP-77 note -->
+
 ## 17. Building v4
+
+<!-- SP-78 plan -->
 
 Why: v1 keeps working while v4 is built, so the repo and its adopters are
 never without a working tool.
@@ -950,11 +1128,19 @@ never without a working tool.
 - CI keeps checking this repo with the published 0.1.0 until T17.
 - T17 switches the command to v4, converts this repo's spec and records to v4,
   and removes the v1 code.
+
+<!-- SP-127 limit serves:R12 -->
+
 - Node 24 or newer. T13 tests `node:sqlite` with FTS5 on the minimum version;
   if Node 24 lacks it, the minimum goes up.
 - Every dependency is pinned, and no release newer than 24 hours is used.
+
+<!-- SP-128 plan -->
+
 - The release (T18) is a follow-on outside this request, and needs the
   owner's yes.
+
+<!-- SP-79 rule serves:R2,R3 -->
 
 Build decisions (the architect, 2026-10-10, recorded in the build PRs too):
 - Which files carry markers: every `*.md` under the spec root except
@@ -979,19 +1165,29 @@ Build decisions (the architect, 2026-10-10, recorded in the build PRs too):
   normalized and the marker framing is removed. The YAML library is `yaml`
   2.9.1, pinned.
 
+<!-- SP-80 note -->
+
 ## AssuredLoop v4: the model from input to output
+
+<!-- SP-81 note -->
 
 This is the model behind `design.md`, with one worked example. The example is
 invented: a small invoicing project, `invoicer`, whose central repo holds the
 spec, and one output repo, `invoicer-web`, that holds the web code. Where this
 file and `design.md` differ, `design.md` holds.
 
+<!-- SP-82 rationale explains:SP-84 -->
+
 Why a model: the owner asked for "a schema with modeling from input till the
 output (code + test + doc changes + adr .. etc), they are alll connected like
 a graph" (input 100). The owner and the architect design the schema; the AI
 only fills it (input 96).
 
+<!-- SP-83 note -->
+
 ### 1. The picture
+
+<!-- SP-84 flow serves:R8 -->
 
 Every item has an ID, and every link has a name. The graph runs from what the
 owner said to what was shipped:
@@ -1016,7 +1212,11 @@ owner said to what was shipped:
                  └── serves ── requirement   └─> result: pass / fail / not run
 ```
 
+<!-- SP-85 note -->
+
 ### 2. The kinds of item
+
+<!-- SP-86 data serves:R3,R8 -->
 
 | Item | Where its text lives | Written by | ID | Needs the owner's sign-off |
 |---|---|---|---|---|
@@ -1032,10 +1232,16 @@ owner said to what was shipped:
 | Code, test, user doc | the central repo or an output repo: outputs of a change | the developer | a file path | no |
 | Result | a result file at a commit | a test run or a review | test + commit | no |
 
+<!-- SP-87 rule serves:R4 -->
+
 The owner signs the organized requirement, never a paragraph. The kind only
 decides whether a change needs that sign-off.
 
+<!-- SP-88 note -->
+
 ### 3. IDs in the text
+
+<!-- SP-89 rule serves:R2 -->
 
 Each paragraph gets an ID, in a hidden marker on its own line before it, with
 a blank line after the marker and a blank line before it. The marker holds
@@ -1058,10 +1264,16 @@ The export link MUST expire 30 minutes after the email is sent.
   link-time bindings and, where a project uses them, the AI hints are in the
   record files (section 7).
 
+<!-- SP-90 note -->
+
 ### 4. The kinds of paragraph
+
+<!-- SP-91 definition serves:R2 -->
 
 Each paragraph has one kind, from a fixed list. The kind decides what a
 change to it needs, and what it must link to.
+
+<!-- SP-92 definition serves:R2,R4 -->
 
 Promise kinds. A change needs a signed requirement that covers it:
 
@@ -1073,6 +1285,8 @@ Promise kinds. A change needs a signed requirement that covers it:
 | `limit` | what it does not do or promise | say what is out | "Invoicer does not calculate tax." |
 | `definition` | a term or a structure; it changes what the rules mean | link to the rules that use it | "A paid invoice is one whose full amount has arrived." |
 
+<!-- SP-93 definition serves:R2 -->
+
 Informative kinds. A change needs review only:
 
 | Kind | What it is | It must link to |
@@ -1081,32 +1295,48 @@ Informative kinds. A change needs review only:
 | `example` | a case | `illustrates` → the rule |
 | `open` | a choice left open | `resolved by` → a later decision or ADR |
 
+<!-- SP-94 rule serves:R5 -->
+
 In a change spec, informative paragraphs are meant for `specs/`, beside the
 rules they explain, so each gets a disposition like any spec text. A
 rationale that explains only how one change is built is an `approach`.
 
+<!-- SP-95 definition serves:R2 -->
+
 Design kinds, in a change spec and in `specs/`: `component`, `interface`,
 `data`, `flow` and `choice`. A change needs review only. A `choice` that is
 hard to undo becomes an ADR.
+
+<!-- SP-96 definition serves:R2 -->
 
 The `approach` kind is design text that explains how one change is built. It
 links like the other design kinds (it serves a requirement, and builds on or
 changes spec paragraphs), and it stays with its change: it is never
 consolidated.
 
+<!-- SP-97 definition serves:R2 -->
+
 Change-only kinds, in a change spec only: `plan`, `step` and `migration`.
 They belong to their request by default; a task reference is optional. They
 stay with the change, and are never consolidated.
 
+<!-- SP-98 definition serves:R2 -->
+
 The `note` kind: introductions, headings and connecting text. It needs no
 link, and a change to it needs review only.
+
+<!-- SP-99 rule serves:R11 -->
 
 How a rule is checked, and by whom, is the project's way of working. `al
 context` lists each rule's checks, or "none"; there is no hint for a rule with
 no check. A paragraph that holds two rules and a limit gets the hint "split
 it"; it is only a hint.
 
+<!-- SP-100 note -->
+
 ### 5. ADRs
+
+<!-- SP-101 rule serves:R1 -->
 
 - One file per decision, numbered, in `specs/adr/`. Its text does not change
   after it is accepted. Only its status changes: proposed → accepted →
@@ -1125,7 +1355,11 @@ it"; it is only a hint.
 - A superseded ADR keeps its `decides` links as history, even to paragraphs
   that were removed later.
 
+<!-- SP-102 note -->
+
 ### 6. The links
+
+<!-- SP-103 definition serves:R8 -->
 
 | Link | From → to | How it is made |
 |---|---|---|
@@ -1147,6 +1381,8 @@ it"; it is only a hint.
 | `result` | test or review → pass, fail or not run, at a commit, with the hashes of its declared inputs | exact: "declared inputs unchanged since C1"; that those inputs are complete is a claim; inputs not given or not available give "applicability unknown" |
 | `explains`, `illustrates`, `resolved by`, `decides`, `supersedes` | as in sections 4 and 5 | declared |
 
+<!-- SP-104 definition serves:R8 -->
+
 The tool shows how each link was made:
 - **exact**: the script finds it in the files or in git.
 - **declared**: the developer's agent writes it in the PR, and the review
@@ -1154,10 +1390,16 @@ The tool shows how each link was made:
 - **hinted**: a rough link from git history, from files that change
   together, or from an AI suggestion with a quote.
 
+<!-- SP-105 definition serves:R8 -->
+
 A link to another repo uses a qualified ID: `central:INV-41`,
 `central:invoice-exports/R3`, or a PR such as `invoicer-web#57`.
 
+<!-- SP-106 note -->
+
 ### 7. Where the model lives
+
+<!-- SP-107 data serves:R3,R10 -->
 
 - The docs hold the text and the markers.
 - `.assuredloop/` holds `config.yaml` (the settings and, in the central repo,
@@ -1181,13 +1423,19 @@ A link to another repo uses a qualified ID: `central:INV-41`,
   what anyone wrote there. Ordinary indexing never advances a binding; only
   `al index --align <ID>` does.
 
+<!-- SP-108 note -->
+
 ### 8. A worked example as records
+
+<!-- SP-109 example illustrates:SP-107 -->
 
 The epic `invoice-exports` adds CSV and yearly ZIP exports of invoices, with a
 link sent by email. Its requirement has R1 (CSV download), R2 (an email link
 that expires), R3 (a yearly ZIP) and R4 (ISO dates in every export). Its change
 spec consolidated SP-12 as INV-41 early, in part 1. The web code lives in the
 output repo `invoicer-web`. Hashes are cut short.
+
+<!-- SP-110 example illustrates:SP-107 -->
 
 The per-doc record. The kinds and links are in the markers, so the record
 holds only regenerable fields and, because this project uses them, the
@@ -1214,6 +1462,8 @@ paragraphs:
       summary: An export link expires 30 minutes after the email is sent.
       quote: {exact: "MUST expire 30 minutes"}
 ```
+
+<!-- SP-111 example illustrates:SP-107 -->
 
 The request record:
 
@@ -1275,11 +1525,17 @@ dispositions:                   # one per change-paragraph version with a baseli
   - {source: invoice-exports/SP-12, source_sha256: 2f07…, disposition: incorporated, spec: INV-41, spec_sha256: 2f07…}
 ```
 
+<!-- SP-112 example illustrates:SP-107 -->
+
 The script adds the results from the result files, for example: the test
 `test/export-link.test.js` passed at `invoicer-web@a81c…`, and its declared
 inputs are unchanged since then.
 
+<!-- SP-113 note -->
+
 ### 9. What the graph lets the tool say
+
+<!-- SP-114 example illustrates:SP-104 -->
 
 On these records, the tool can say, as exact facts or as hints:
 
@@ -1298,6 +1554,8 @@ On these records, the tool can say, as exact facts or as hints:
    purpose with `al index --align`.
 6. A typo claim that changes "only paid invoices" to "all paid invoices" is
    marked meaning-sensitive; the review decides (a hint).
+
+<!-- SP-115 limit serves:R8 -->
 
 What it does not say: that a test really checks INV-41, that a kind is
 right, or that a merged task means the work is complete.

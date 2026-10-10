@@ -1,0 +1,6 @@
+# AssuredLoop settings (design.md 2, schema.md 7).
+schema: assuredloop/1
+root: specs
+docs:
+  - {file: specs/design.md, prefix: DES}
+  - {file: specs/schema.md, prefix: SCH}
