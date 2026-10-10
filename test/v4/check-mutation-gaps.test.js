@@ -1,5 +1,5 @@
 // Two gaps that a hand mutation check of T10 found (#179): an abandoned
-// disposition of a paragraph with a changes: link (decision D11, rule a), and
+// disposition of a paragraph with a changes: link (decision D13, rule a), and
 // the case of the requirement words (design.md 3). States of the invoicer world
 // (test/v4/fixtures/invoicer/cases/abandon-changes.yaml, req-words.yaml).
 import { test } from 'node:test';
