@@ -5,11 +5,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isSeq, parse, parseDocument } from 'yaml';
 import { KINDS, LINK_WORDS } from './markers.js';
+import { symlinkOn } from './scope.js';
 
 export const SCHEMA_VERSION = 'assuredloop/1';
 const DIR = '.assuredloop';
 
 function read(top, name) {
+  const link = symlinkOn(top, `${DIR}/${name}`);
+  if (link) throw new Error(`${DIR}/${name} is reached through the symlink ${link}; nothing was read`);
   const path = join(top, DIR, name);
   if (!existsSync(path)) return null;
   try {
