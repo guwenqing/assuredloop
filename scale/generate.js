@@ -13,7 +13,7 @@ import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { writeSetup } from '../src/v4/config.js';
-import { EFFECT, HOUR, Repo, START, Words, closeRequest, docRecord, docRecordPath, entriesOf, openRequest, pad, render } from './world.js';
+import { EFFECT, HOUR, Repo, START, Words, closeRequest, docRecord, docRecordPath, entriesOf, git, openRequest, pad, render } from './world.js';
 
 const SECTIONS = 4;
 const PER_SECTION = 8;
@@ -207,8 +207,12 @@ export function generate(o) {
     concluded: names.filter((n) => !open.has(n)),
     removed,
   };
-  // The working trees match main.
-  for (const r of [central, ...outs]) r.stage();
+  // The working trees match main, and the objects are packed, as in a clone.
+  for (const r of [central, ...outs]) {
+    r.stage();
+    git(r.dir, ['-c', 'pack.threads=4', 'repack', '-a', '-d', '-q']);
+    git(r.dir, ['prune']);
+  }
   writeFileSync(join(o.out, 'world.json'), `${JSON.stringify(world, null, 2)}\n`);
   return world;
 }
