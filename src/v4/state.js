@@ -34,7 +34,7 @@ const adrBody = (text) => text.replace(/\r\n?/g, '\n').replace(/^\s*Status:[^\n]
 
 // The settings of a commit: its own config.yaml and schema.yaml, with the
 // defaults of config.js when a file is absent or not a mapping.
-function settingsAt(top, rev) {
+export function settingsAt(top, rev) {
   const yamlAt = (name) => {
     try {
       const v = parse(fileAt(top, rev, `.assuredloop/${name}`) ?? 'null');
