@@ -44,7 +44,7 @@ export function namedIds(text, { qualified = true, known = null } = {}) {
   return out;
 }
 
-// The one cite finder (design.md 3, 12; D15): each line of the repo at `dir`
+// The one cite finder (design.md 3, 12; D17): each line of the repo at `dir`
 // that names an ID, at commit `rev`, or in the working tree (tracked, and
 // untracked not ignored) when `rev` is null. Text files only; nothing under
 // the `exclude` paths. Options as namedIds. Returns [{ file, line, text, ids }].

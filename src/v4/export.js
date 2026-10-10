@@ -134,7 +134,7 @@ function itemsOf(path, text, what, bytes = null) {
       return { doc: what.doc, id: `${what.request}/${d.id}`, sha256: sha256(body), row: { source_type: 'decision', file: path, line: null, heading_path: [], text: body } };
     });
   }
-  // An output file (D15): its version (the hash of its bytes), and only the
+  // An output file (D17): its version (the hash of its bytes), and only the
   // lines that name an ID.
   if (what.type === 'output') {
     const lines = text.split('\n').map((l, i) => ({ n: i + 1, text: l, ids: namedIds(l, what.cite) })).filter((l) => l.ids.length);
@@ -279,7 +279,7 @@ const PROVES = { exact: 'proves only that the ID is named', declared: 'a claim, 
 
 // The rows of one repo's output files and results, walked on its own
 // first-parent history up to `commit` with the history `hs.get(key)`. An
-// output row holds only the lines that name an ID (D15).
+// output row holds only the lines that name an ID (D17).
 function outputRows(dir, commit, hs, key, { repo, files, results, cite, declared, chain }) {
   if (!hs.has(key)) hs.set(key, newHistory());
   const h = hs.get(key);
@@ -306,7 +306,7 @@ function outputRows(dir, commit, hs, key, { repo, files, results, cite, declared
       let extra = {};
       let text = v.row.text;
       if (out) {
-        // In the central repo only the IDs that the export has count (D15).
+        // In the central repo only the IDs that the export has count (D17).
         const keep = (id) => !cite.known || cite.known.has(id.replace(/^central:/, ''));
         const lines = v.row.lines.map((l) => ({ ...l, ids: l.ids.filter(keep) })).filter((l) => l.ids.length);
         const cites = [...new Set(lines.flatMap((l) => l.ids))].sort();
@@ -326,7 +326,7 @@ function outputRows(dir, commit, hs, key, { repo, files, results, cite, declared
 }
 
 // The rows of the export at `commit`: the central repo's, sorted, then each
-// known output repo's (design.md 12; D15). `h` is the central history to
+// known output repo's (design.md 12; D17). `h` is the central history to
 // resume from and `hs` the output histories by key (the index keeps them);
 // with none, the whole history is walked. `repos` gives each repo's commit,
 // or why it is unknown.
@@ -418,7 +418,7 @@ export function exportRows(top, commit, h = newHistory(), hs = new Map()) {
   const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
   const order = (list) => list.sort((a, b) => cmp(a.doc_or_request, b.doc_or_request) || cmp(a.id, b.id) || a.version - b.version || cmp(a.sha256, b.sha256));
 
-  // The output files (D15): in the central repo, the declared ones and every
+  // The output files (D17): in the central repo, the declared ones and every
   // other file that names a known ID, but not the spec's own files; in an
   // output repo, the declared ones and every file that names central:<ID>.
   const declared = declaredOf(records, config);

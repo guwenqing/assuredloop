@@ -63,7 +63,7 @@ function indexDir(top) {
   return isAbsolute(p) ? p : join(top, p);
 }
 
-// The requests each evidence row is evidence for, set as `for` (D15): an
+// The requests each evidence row is evidence for, set as `for` (D17): an
 // output row's declaring records and the requests whose IDs it cites; a
 // result's, through its declared inputs: an output of the same repo, a
 // declared output of the central repo, or a file of a request's folder.
@@ -147,7 +147,7 @@ function loadHistory(text) {
 // (rows missing from its listing are removed), the history index added to and
 // never removed from. Returns what it did.
 function refresh(db, top, commit, repos) {
-  // The index is up to date only when no repo moved (D15).
+  // The index is up to date only when no repo moved (D17).
   const stamp = repos.map((r) => `${r.name}@${r.commit ?? 'unknown'}`).join(' ');
   const before = getMeta(db, 'commit');
   if (before === stamp) return { line: `up to date at ${short(commit)}`, changed: false };
@@ -337,7 +337,7 @@ export async function search({ top, args, opts }) {
   const commit = resolveCommit(top, opts.at);
   const want = opts.level === undefined ? 2 : Number(opts.level);
   const chain = firstParents(top, commit);
-  // Each repo at its selected commit (D15): the central repo first, then the output repos.
+  // Each repo at its selected commit (D17): the central repo first, then the output repos.
   const repos = selectedRepos(top, commit);
   const chains = new Map(repos.filter((r) => r.commit).map((r) => [r.name, r.dir === top ? chain : firstParents(r.dir, r.commit)]));
   const q = { words, id: opts.id ?? null, change: opts.change ?? null, history: Boolean(opts.history), chain, chains };
