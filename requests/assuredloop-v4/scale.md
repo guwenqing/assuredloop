@@ -2,7 +2,7 @@
 
 This is the report of T15 in `tasks.md` (issue #188). It times `al` v4 on
 1,000 generated requests and 20 repos, against the criteria of T15. The
-world and the harness are in `scale/`; decision D18 in `request.md` records
+world and the harness are in `scale/`; decision D19 in `request.md` records
 their shape.
 
 ## Result
@@ -25,7 +25,7 @@ the current index, and a history query still finds each of them.
 
 - Date: 2026-10-10; the run ended at 18:17 EDT, after about 4 minutes.
 - `al`: main at b4fe90e, run as `bin/al-v4.js` from branch commit 87198bc,
-  which adds only `scale/`, its tests and D18 to main. So the timed code is
+  which adds only `scale/`, its tests and D19 to main. So the timed code is
   main's code, with #184 (checks and views), #186 (search across the output
   repos) and #190 (one batch git read per commit) merged.
 - The command: `node scale/run.js --world <dir>` (3 runs of `al check`, 5
@@ -66,7 +66,7 @@ The machine is not the reference machine of T15.
 ## The world
 
 `scale/generate.js` writes it, deterministically, in the v4 formats as `al`
-writes them (D18). Its tests check that `al-v4 index` on a small world changes no file, and that
+writes them (D19). Its tests check that `al-v4 index` on a small world changes no file, and that
 `al-v4 check` on it prints no `not ok` and no `no-link` hint on an adopted
 paragraph.
 
@@ -121,7 +121,7 @@ rebuild was 28 to 44 s, the incremental index 13 to 17 s, and search 0.15 to
 
 ## Not checked
 
-- Level 2 search: not timed (D18). The criterion "al search answers within
+- Level 2 search: not timed (D19). The criterion "al search answers within
   2 s" was timed at level 1.
 - A 16 GB reference machine: not available here.
 - `al check` in an output repo, `al index` and `al context` at this size: not
