@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { stringify } from 'yaml';
-import { Fail, SCHEMA, STAMP, day, exists, freeName, isName, now, read, recordPath, sha256, stamp, write } from './base.js';
+import { Fail, SCHEMA, STAMP, day, exists, freeName, guard, isName, now, read, recordPath, sha256, stamp, write } from './base.js';
 import { formatSnapshot, slug } from './snapshot.js';
 import { addDecision, decisionNumbers, requirements, setSignedOff, signedText } from './request-md.js';
 import { YAML_OPTIONS, addVersions, append, highest, latest, openRecord, recordText } from './records.js';
@@ -34,6 +34,7 @@ export function newRequest({ top, cwd, args, opts }) {
   const when = now();
   const file = `${day(when)}-owner-words.md`;
   const dir = `requests/${name}`;
+  guard(top, [`${dir}/origin/${file}`, `${dir}/request.md`, recordPath(name)]);
   write(top, `${dir}/origin/${file}`, formatSnapshot({ source: opts.from === '-' ? 'standard input' : opts.from, fetched: stamp(when), text: words }));
   write(top, `${dir}/request.md`, [
     `# ${opts.title ?? name}`,
@@ -99,6 +100,7 @@ function recordOrigin({ top, cwd, args, opts }) {
   const snapshot = formatSnapshot({ source: opts.url, fetched, text });
   const shown = snapshot.toString('utf8').replace(/\n$/, '').split('\n');
   if (!opts.yes) return { body: [`Would write ${dir}/origin/${file}:`, ...shown], next: 'run the same command with --yes to write it' };
+  guard(top, [`${dir}/origin/${file}`, rec.path]);
   append(rec, 'sources', { file, kind: 'owner-words', sha256: sha256(text), taken: fetched, url: opts.url });
   write(top, `${dir}/origin/${file}`, snapshot);
   write(top, rec.path, recordText(rec));
@@ -117,8 +119,10 @@ function recordSignoff({ top, args, opts }) {
   const reqs = requirements(md);
   const signoffs = rec.data.signoff ?? [];
   const last = signoffs.at(-1);
-  const covered = (last?.covers ?? []).map((c) => `${c.id} ${c.sha256}`).sort().join('\n');
-  if (last && last.sha256 === sha256(text) && covered === reqs.map((r) => `${r.id} ${r.sha256}`).sort().join('\n')) {
+  // Each requirement's version now: its latest, when the text is that version's; else a new one to come.
+  const version = (r) => { const v = latest(rec.data, r.id); return v?.sha256 === r.sha256 ? v.version : 'new'; };
+  const covered = (last?.covers ?? []).map((c) => `${c.id} ${c.version} ${c.sha256}`).sort().join('\n');
+  if (last && last.sha256 === sha256(text) && covered === reqs.map((r) => `${r.id} ${version(r)} ${r.sha256}`).sort().join('\n')) {
     return { body: [`nothing to sign: unchanged since ${last.id} (${last.file})`], next: `al index` };
   }
   const when = now();
@@ -126,6 +130,7 @@ function recordSignoff({ top, args, opts }) {
   const body = [last ? `To be signed (last signed: ${last.id}):` : 'To be signed (first sign-off):', ...text.replace(/\n$/, '').split('\n')];
   if (!opts.yes) return { body: [...body, `Would write ${dir}/origin/${file}, ${rec.path} and the Signed off line`], next: 'show this to the owner; on their OK, run the same command with --yes' };
 
+  guard(top, [`${dir}/origin/${file}`, rec.path, `${dir}/request.md`]);
   addVersions(rec, reqs);
   const data = rec.data;
   const id = `S${highest(rec, 'signoff', 'S') + 1}`;
@@ -153,6 +158,7 @@ function recordDecision({ top, args, opts }) {
   const date = day(now());
   const line = `- D${n}, ${date}. Source: ${opts.source}. ${opts.text}`;
   if (!opts.yes) return { body: [`Would add to ${dir}/request.md, ## Decisions, and to ${rec.path}:`, line], next: 'run the same command with --yes to write it' };
+  guard(top, [`${dir}/request.md`, rec.path]);
   const entry = { id: `D${n}`, date, source: opts.source, text: opts.text, sha256: sha256(opts.text) };
   if (opts.clarifies) entry.clarifies = opts.clarifies.split(',').map((s) => s.trim()).filter(Boolean);
   append(rec, 'decisions', entry);

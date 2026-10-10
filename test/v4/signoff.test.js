@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DAY, STAMP, WORDS_FILE, appendSection, assertSnapshot, editRecord, editRequest, move, newRequest, ok, organized,
-  project, read, record, refused, req, sectionNow, sha, signedText, writesNothing,
+  index, project, read, record, refused, req, sectionNow, sha, signedText, writesNothing,
 } from './helpers/project.js';
 
 const R1 = req('R1', 'Monthly CSV download', 'A user MUST be able to download one month as one CSV file.', [WORDS_FILE]);
@@ -160,4 +160,27 @@ test('signoff refuses no --source, no organized section and an archived request'
 
   move(dir, 'requests/inv', 'requests/archive/inv');
   refused(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--yes']);
+});
+
+test('a requirement changed and changed back is a new version, and that version is signed again', (t) => {
+  const dir = drafted(t);
+  ok(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--yes']);
+  const R1b = req('R1', R1.title, 'A user MUST be able to download one year as one CSV file.', [WORDS_FILE]);
+  editRequest(dir, 'inv', R1.text, R1b.text);
+  index(dir);
+  editRequest(dir, 'inv', R1b.text, R1.text);
+  index(dir);
+  assert.deepEqual(record(dir, 'inv').requirements.filter((v) => v.id === 'R1').map((v) => [v.version, v.sha256]),
+    [[1, R1.sha256], [2, R1b.sha256], [3, R1.sha256]]);
+
+  const r = ok(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--yes']);
+  assert.doesNotMatch(r.stdout, /nothing to sign/);
+  const rec = record(dir, 'inv');
+  assert.deepEqual(rec.signoff.map((s) => s.id), ['S1', 'S2']);
+  assert.equal(rec.signoff[1].file, `${DAY}-signoff-2.md`);
+  assert.deepEqual(rec.signoff[1].covers, [
+    { id: 'R1', version: 3, sha256: R1.sha256 },
+    { id: 'R2', version: 1, sha256: R2.sha256 },
+  ]);
+  assert.equal(rec.requirements.length, 4, 'signoff adds no version: the text is version 3');
 });

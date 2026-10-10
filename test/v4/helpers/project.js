@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync,
+  existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
@@ -81,14 +81,15 @@ export function move(dir, from, to) {
   renameSync(join(dir, from), join(dir, to));
 }
 
-// Every file under dir except .git, as {path: content}.
+// Every file under dir except .git, as {path: content}; a symlink as its target, not followed.
 export function tree(dir) {
   const out = {};
   const walk = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       if (e.name === '.git') continue;
       const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
+      if (e.isSymbolicLink()) out[relative(dir, p)] = `symlink:${readlinkSync(p)}`;
+      else if (e.isDirectory()) walk(p);
       else out[relative(dir, p)] = readFileSync(p).toString('base64');
     }
   };

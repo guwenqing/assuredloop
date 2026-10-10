@@ -6,5 +6,5 @@ import { parse } from 'yaml';
 export function loadConfig(top) {
   let c = {};
   try { c = parse(readFileSync(join(top, '.assuredloop/config.yaml'), 'utf8')) ?? {}; } catch { c = {}; }
-  return { ...c, docs: Array.isArray(c.docs) ? c.docs : [] };
+  return { ...c, root: c.root ?? 'specs', docs: Array.isArray(c.docs) ? c.docs : [] };
 }

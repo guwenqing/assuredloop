@@ -9,7 +9,8 @@ import { parseMarkdown } from './markers.js';
 import { diffParagraphs } from './ids.js';
 import { git, mergeBase, fileAt } from './git.js';
 import { loadConfig } from './config.js';
-import { Fail, SCHEMA, docRecordPath, read, recordPath, sha256, write } from './base.js';
+import { SPEC, docsInScope } from './scope.js';
+import { Fail, SCHEMA, docRecordPath, guard, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
 import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
@@ -20,7 +21,6 @@ const LINK_WORDS = {
   supersedes: 'supersedes', source: 'source',
 };
 const OUTPUT_LINKS = ['implements', 'verifies', 'documents'];
-const ADR_FILE = /^specs\/adr\/\d{4}-[^/]*\.md$/;
 const CONFLICT = /^(<{7}|={7}|>{7})( |$)/m;
 
 const list = (top, dir) => {
@@ -39,17 +39,26 @@ function requestNames(top) {
 // its record's data.
 function loadState(top, at, config, names) {
   const get = at ? (p) => fileAt(top, at, p) : (p) => read(top, p);
-  const adrs = at
-    ? (git(top, ['ls-tree', '--name-only', at, 'specs/adr/'], { allowFail: true }) ?? '').split('\n')
-    : list(top, 'specs/adr').filter((e) => e.isFile()).map((e) => `specs/adr/${e.name}`);
-  const files = [...new Set([...config.docs.map((d) => d.file).filter(Boolean), ...adrs.filter((f) => ADR_FILE.test(f)).sort()])].map((file) => ({ file, request: null }));
-  files.push(...names.open.map((n) => ({ file: `requests/${n}/spec.md`, request: n })));
+  // The spec docs and the open change specs (docsInScope), and the ADRs in <root>/adr/.
+  const adr = `${String(config.root).replace(/\/+$/, '')}/adr`;
+  const adrs = (at
+    ? (git(top, ['ls-tree', '--name-only', at, `${adr}/`], { allowFail: true }) ?? '').split('\n')
+    : list(top, adr).filter((e) => e.isFile()).map((e) => `${adr}/${e.name}`))
+    .filter((f) => f.startsWith(`${adr}/`) && /^\d{4}-[^/]*\.md$/.test(f.slice(adr.length + 1))).sort();
+  const open = new Set(names.open);
+  const files = [
+    ...docsInScope(top, config, at).flatMap((d) => {
+      if (d.scope === SPEC) return [{ file: d.path, request: null, text: d.text }];
+      const n = d.scope.slice('request:'.length);
+      return d.path === `requests/${n}/spec.md` && open.has(n) ? [{ file: d.path, request: n, text: d.text }] : [];
+    }),
+    ...adrs.map((file) => ({ file, request: null, text: get(file), adr: true })),
+  ];
   const docs = [];
-  for (const { file, request } of files) {
-    const text = get(file);
-    if (text === null) continue;
+  for (const { file, request, text, adr: isAdr } of files) {
+    if (text === null || text === undefined) continue;
     const paragraphs = parseMarkdown(text, file).paragraphs.filter((p) => p.id);
-    docs.push({ file, request, text, paragraphs, ids: new Set(paragraphs.map((p) => p.id)) });
+    docs.push({ file, request, text, adr: Boolean(isAdr), paragraphs, ids: new Set(paragraphs.map((p) => p.id)) });
   }
   const requests = new Map();
   for (const [n, open] of [...names.open.map((n) => [n, true]), ...names.archived.map((n) => [n, false])]) {
@@ -228,9 +237,12 @@ export function index({ top, opts }) {
   }
 
   // The per-doc records: regenerable fields, written fresh; hints kept by ID.
-  const diffs = main ? diffParagraphs(loadState(top, main, config, names).docs.flatMap((d) => d.paragraphs), now.docs.flatMap((d) => d.paragraphs)) : null;
+  // A change spec's IDs are its request's own, so they are compared as <request>/<ID>.
+  const qualified = (docs) => docs.flatMap((d) => d.paragraphs.map((p) => (d.request ? { ...p, id: `${d.request}/${p.id}` } : p)));
+  const diffs = main ? diffParagraphs(qualified(loadState(top, main, config, names).docs), qualified(now.docs)) : null;
+  const own = (d, id) => (d.request ? `${d.request}/${id}` : id);
   const changeOf = new Map((diffs ?? []).filter((x) => x.sha256 !== null).map((x) => [`${x.file}\t${x.id}`, x.changes]));
-  const written = [];
+  const outputs = [];
   for (const d of now.docs) {
     const path = docRecordPath(d.file);
     const old = read(top, path);
@@ -241,18 +253,20 @@ export function index({ top, opts }) {
       if (data && typeof data === 'object') hints = new Map((data.paragraphs ?? []).filter((p) => p?.id && p.hint).map((p) => [p.id, p.hint]));
       else body.push(`hints dropped: ${path} could not be read, so it was rebuilt with no hints`);
     }
-    const status = d.file.startsWith('specs/adr/') ? d.text.split('\n').find((l) => l.trim())?.match(/^Status:\s*([a-z]+)/i)?.[1].toLowerCase() : undefined;
+    const status = d.adr ? d.text.split('\n').find((l) => l.trim())?.match(/^Status:\s*([a-z]+)/i)?.[1].toLowerCase() : undefined;
     const paragraphs = d.paragraphs.map((p) => {
-      const change = changeOf.get(`${d.file}\t${p.id}`) ?? [];
+      const change = changeOf.get(`${d.file}\t${own(d, p.id)}`) ?? [];
       const hint = hints.get(p.id);
       if (hint && stale(hint, p)) body.push(`refresh hint: ${d.file} ${p.id}`);
       return { id: p.id, ...(p.kind ? { kind: p.kind } : {}), text_sha256: p.sha256, display: p.displayNumber, ...(change.length ? { change } : {}), ...(hint ? { hint } : {}) };
     });
-    const removed = (diffs ?? []).filter((x) => x.sha256 === null && x.file === d.file).map((x) => x.id);
+    const removed = (diffs ?? []).filter((x) => x.sha256 === null && x.file === d.file).map((x) => (d.request ? x.id.slice(d.request.length + 1) : x.id));
     const rec = { schema: SCHEMA, file: d.file, ...(status ? { status } : {}), paragraphs, ...(removed.length ? { removed } : {}) };
-    if (write(top, path, stringify(rec, YAML_OPTIONS))) written.push(path);
+    outputs.push([path, stringify(rec, YAML_OPTIONS)]);
   }
-  for (const [, rec] of recs) if (rec.changed && write(top, rec.path, recordText(rec))) written.push(rec.path);
+  for (const [, rec] of recs) if (rec.changed) outputs.push([rec.path, recordText(rec)]);
+  guard(top, outputs.map(([path]) => path));
+  const written = outputs.filter(([path, text]) => write(top, path, text)).map(([path]) => path);
 
   return {
     body: [`Indexed ${now.docs.length} docs and ${recs.size} request records; bound ${bound} new links`, ...(written.length ? [`Wrote ${written.join(', ')}`] : ['No record changed']), ...notes, ...body],
