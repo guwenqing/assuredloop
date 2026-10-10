@@ -1,0 +1,11 @@
+# schema.md 5: a proposed ADR may change.
+title: Change the proposed ADR-5
+base: adr-proposed-pre
+claim: "Tier: 2 — invoice-exports"
+steps:
+  - edit:
+      file: specs/adr/0005-stream-zip.md
+      from: "Decision: the worker streams the ZIP file as it builds it."
+      to: "Decision: the worker streams the ZIP file as it builds it, one month at a time."
+  - index: true
+    date: 2026-07-25

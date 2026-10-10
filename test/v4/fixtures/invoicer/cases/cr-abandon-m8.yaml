@@ -1,0 +1,20 @@
+# On main (M8): SP-7 consolidated as EXP-9.
+title: Yearly ZIP rule (SP-7 as EXP-9)
+base: base
+claim: "Tier: 3 — invoice-exports, SP-7"
+steps:
+  - edit:
+      file: specs/exports.md
+      from: "<!-- EXP-8 note -->"
+      to: |-
+        <!-- EXP-9 rule serves:invoice-exports/R3 -->
+
+        A user MUST be able to download the invoices of one year as one ZIP file.
+
+        <!-- EXP-8 note -->
+  - dispositions:
+      request: invoice-exports
+      add:
+        - {source: invoice-exports/SP-7, disposition: incorporated, spec: EXP-9}
+  - index: true
+    date: 2026-07-08

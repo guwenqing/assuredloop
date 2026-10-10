@@ -1,0 +1,8 @@
+# On main: a proposed ADR, ADR-5.
+title: "ADR-5 proposed: stream the yearly ZIP"
+base: base
+claim: "Tier: 2 — invoice-exports"
+steps:
+  - files: {from: adr, to: specs/adr}
+  - index: true
+    date: 2026-07-24

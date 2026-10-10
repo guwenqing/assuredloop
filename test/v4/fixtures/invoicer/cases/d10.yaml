@@ -1,0 +1,20 @@
+# D10: a typo claim that changes a MUST (t2 defects.yaml D10).
+title: Fix a typo in the export order rule
+base: typo-pre
+claim: "Tier: 0 — typo in EXP-9"
+arms:
+  defect:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: A monthly export MUST list each invoice once, sorted by invoice nubmer.
+          to: A monthly export SHOULD list each invoice once, sorted by invoice number.
+  control:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: A monthly export MUST list each invoice once, sorted by invoice nubmer.
+          to: A monthly export MUST list each invoice once, sorted by invoice number.
+after:
+  - index: true
+    date: 2026-07-22

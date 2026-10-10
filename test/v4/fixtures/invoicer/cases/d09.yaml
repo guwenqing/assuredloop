@@ -1,0 +1,66 @@
+# D09: a wrong path claim (t2 defects.yaml D09, as amended). The same text
+# change of INV-4: the defect claims a path-0 restore with no request; the
+# control is path 1 with the signed request no-conversion. Two more arms for
+# the claim itself: newest (an older commit claims path 1, the newest claims
+# path 0) and unclaimed (no Tier line at all).
+title: "Invoices: no currency conversion"
+base: base
+arms:
+  defect:
+    claim: "Tier: 0 — restores INV-4"
+    steps:
+      - edit:
+          file: specs/invoices.md
+          from: Invoicer does not calculate tax.
+          to: Invoicer does not calculate tax or convert currencies.
+      - index: true
+        date: 2026-07-17
+  control:
+    claim: "Tier: 1 — no-conversion"
+    steps:
+      - al: [new, no-conversion, --from, '-', --title, No conversion, --tier, '1']
+        date: 2026-07-16
+        input: |
+          people ask if we convert currencies. we don't, write that down.
+      - section:
+          request: no-conversion
+          text: |
+            ## Organized requirement
+
+            <!-- R1 -->
+
+            ### R1 No currency conversion
+            Invoicer does not convert between currencies.
+      - al: [record, no-conversion, signoff, --source, the project chat, --words, signed., --yes]
+        date: 2026-07-17
+      - edit:
+          file: specs/invoices.md
+          from: |-
+            <!-- INV-4 limit serves:invoicer-baseline/R1 -->
+
+            Invoicer does not calculate tax.
+          to: |-
+            <!-- INV-4 limit serves:no-conversion/R1 -->
+
+            Invoicer does not calculate tax or convert currencies.
+      - index: true
+        date: 2026-07-17
+      - archive: no-conversion
+  newest:
+    claim: "Tier: 0 — restores INV-4"
+    steps:
+      - edit:
+          file: specs/invoices.md
+          from: Invoicer does not calculate tax.
+          to: Invoicer does not calculate tax or convert currencies.
+      - commit: "Start the conversion limit\n\nTier: 1 — no-conversion"
+      - index: true
+        date: 2026-07-17
+  unclaimed:
+    steps:
+      - edit:
+          file: specs/invoices.md
+          from: Invoicer does not calculate tax.
+          to: Invoicer does not calculate tax or convert currencies.
+      - index: true
+        date: 2026-07-17

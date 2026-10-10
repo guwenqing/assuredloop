@@ -1,0 +1,66 @@
+# D08: a stale AI summary with a surviving quote (t2 defects.yaml D08). SP-2
+# changes INV-8 and the same PR incorporates it. Only the control refreshes
+# INV-8's AI hint; the defect keeps the base hint, whose quote still matches.
+title: Due dates in the invoice data
+base: base
+claim: "Tier: 2 — due-dates"
+steps:
+  - al: [new, due-dates, --from, '-', --title, Due dates, --tier, '2']
+    date: 2026-07-14
+    input: |
+      reminders count from the due date, but the invoice data does not even
+      have one. add it.
+  - section:
+      request: due-dates
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 A due date on each invoice
+        Each invoice records its due date.
+  - write:
+      file: requests/due-dates/spec.md
+      text: |
+        <!-- SP-1 note -->
+
+        # Due dates: the change
+
+        <!-- SP-2 data serves:R1 changes:INV-8 -->
+
+        An invoice has a number, a customer, lines, a total, a due date and a paid
+        date.
+
+        <!-- SP-3 plan -->
+
+        One PR: the due date column in invoicer-web, and INV-8 replaced.
+  - index: true
+    date: 2026-07-14
+  - edit:
+      file: specs/invoices.md
+      from: |-
+        <!-- INV-8 data serves:invoicer-baseline/R1 -->
+
+        An invoice has a number, a customer, lines, a total and a paid date.
+      to: |-
+        <!-- INV-8 data serves:due-dates/R1 -->
+
+        An invoice has a number, a customer, lines, a total, a due date and a paid
+        date.
+  - dispositions:
+      request: due-dates
+      add:
+        - {source: due-dates/SP-2, disposition: incorporated, spec: INV-8}
+  - index: true
+    date: 2026-07-14
+arms:
+  defect:
+    steps: []
+  control:
+    steps:
+      - hint:
+          doc: specs/invoices.md
+          id: INV-8
+          summary: An invoice has a number, a customer, lines, a total, a due date and a paid date.
+          tags: [data]
+          quote: {exact: An invoice has a number}

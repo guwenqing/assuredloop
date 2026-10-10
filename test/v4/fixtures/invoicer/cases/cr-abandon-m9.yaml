@@ -1,0 +1,15 @@
+# On main (M9): EXP-9 is removed again; the owner dropped the ZIP.
+title: "Revert EXP-9: the ZIP is dropped"
+base: cr-abandon-m8
+claim: "Tier: 3 — invoice-exports, EXP-9 reverted"
+steps:
+  - edit:
+      file: specs/exports.md
+      from: |-
+        <!-- EXP-9 rule serves:invoice-exports/R3 -->
+
+        A user MUST be able to download the invoices of one year as one ZIP file.
+
+      to: ""
+  - index: true
+    date: 2026-07-10

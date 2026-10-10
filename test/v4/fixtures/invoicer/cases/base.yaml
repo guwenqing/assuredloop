@@ -1,0 +1,163 @@
+# The invoicer world on main: the spec, the ADRs, two archived requests and
+# three open ones, built through al-v4 new, record and index.
+title: The invoicer world
+steps:
+  - files: {from: .assuredloop, to: .assuredloop}
+  - files: {from: specs, to: specs}
+
+  # Adoption: the spec as it was, served by an unsigned requirement (README).
+  - al: [new, invoicer-baseline, --from, '-', --title, Invoicer baseline, --tier, '1']
+    date: 2026-02-20
+    input: |
+      The spec of Invoicer as it stood when AssuredLoop was adopted. Nobody
+      signed it; it is the baseline that later changes start from.
+  - section:
+      request: invoicer-baseline
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 The adopted baseline
+        Invoicer keeps the promises and the design that its spec held when
+        AssuredLoop was adopted.
+  - archive: invoicer-baseline
+
+  # invoice-numbers: concluded and archived (path 2).
+  - al: [new, invoice-numbers, --from, '-', --title, Invoice numbers, --tier, '2']
+    date: 2026-03-01
+    input: |
+      We got a letter from the tax office: two invoices with the same number.
+      Numbers must be unique and never come back, even for cancelled ones.
+  - section:
+      request: invoice-numbers
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 Unique numbers
+        Invoice numbers MUST be unique within one business and MUST NOT be used
+        again.
+  - al: [record, invoice-numbers, signoff, --source, an email to the agent, --words, R1 signed., --yes]
+    date: 2026-03-02
+  - al: [record, invoice-numbers, decision, --source, agent, --text, 'Wording: the spec says "even after an invoice is cancelled", which R1 implies.', --clarifies, R1, --yes]
+    date: 2026-03-02
+  - files: {from: requests/invoice-numbers, to: requests/invoice-numbers}
+  - archive: invoice-numbers
+
+  # invoice-exports: an open epic, part 1 consolidated early.
+  - al: [new, invoice-exports, --from, '-', --title, Invoice exports, --tier, '3']
+    date: 2026-05-04
+    input: |
+      Our customers' accountants keep asking for the invoices. I want them to
+      download a month as a file any accounting tool can read. And send them a
+      link by email, but the link should not work forever, people forward these
+      emails. At year end they want the whole year in one go, a zip is fine.
+      Dates must be the normal ISO kind, not 05/04/26, that confuses everyone.
+  - section:
+      request: invoice-exports
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 Monthly CSV download
+        A user MUST be able to download the invoices of one month as one CSV file.
+
+        <!-- R2 -->
+
+        ### R2 An email link that expires
+        The download link sent by email MUST stop working after a short time.
+
+        <!-- R3 -->
+
+        ### R3 A yearly ZIP
+        A user MUST be able to download the invoices of one year as one ZIP file.
+
+        <!-- R4 -->
+
+        ### R4 ISO dates in every export
+        Every date in every export MUST be an ISO 8601 date.
+
+        Out: tax reports; exports in other currencies.
+        Assumed: a month is a calendar month in the business's time zone.
+  - al: [record, invoice-exports, signoff, --source, the project chat, --words, 'ok signed, R1 to R4 as written', --yes]
+    date: 2026-05-05
+  - al: [record, invoice-exports, origin, --url, 'https://chat.example.invalid/invoicer/2026-05-06', --from, '-', --fetched, '2026-05-06T16:03Z', --yes]
+    date: 2026-05-06
+    input: |
+      half an hour for the link is fine. and the token thing you showed me,
+      do that, I want to be able to kill a link if someone forwards it.
+  - al: [record, invoice-exports, decision, --source, owner, --text, 'The link expires 30 minutes after the email is sent.', --clarifies, R2, --yes]
+    date: 2026-05-06
+  - al: [record, invoice-exports, decision, --source, owner, --text, 'The link uses a one-time token that can be cancelled; ADR-4 replaces ADR-3.', --clarifies, R2, --yes]
+    date: 2026-05-06
+  - files: {from: requests/invoice-exports, to: requests/invoice-exports}
+  - recordSet:
+      request: invoice-exports
+      set:
+        tasks:
+          - {id: T1, ref: "tasks.md T1; issue #31", delivers: [R1, R2, R4]}
+          - {id: T2, ref: "tasks.md T2; issue #34", delivers: [R3]}
+          - {id: T3, ref: "tasks.md T3; issue #36", delivers: [R1, R2]}
+  - dispositions:
+      request: invoice-exports
+      add:
+        - {source: invoice-exports/SP-4, disposition: incorporated, spec: EXP-2}
+        - {source: invoice-exports/SP-5, disposition: incorporated, spec: EXP-3}
+        - {source: invoice-exports/SP-6, disposition: incorporated, spec: EXP-4}
+        - {source: invoice-exports/SP-9, disposition: incorporated, spec: EXP-6}
+
+  # reminder-emails: an open big change, signed, not consolidated.
+  - al: [new, reminder-emails, --from, '-', --title, Reminder emails, --tier, '2']
+    date: 2026-06-02
+    input: |
+      one reminder is not enough, people ignore it. send three, a week apart.
+      and no text messages, email only, I don't want to pay for SMS.
+  - section:
+      request: reminder-emails
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 Three reminders
+        Invoicer SHOULD send up to three reminders by email for an open invoice,
+        7, 14 and 21 days after the due date.
+
+        Out: reminders by text message.
+  - al: [record, reminder-emails, signoff, --source, the project chat, --words, 'yes R1 is right, sign', --yes]
+    date: 2026-06-03
+  - al: [record, reminder-emails, decision, --source, owner, --text, 'Reminders go by email only, never by text message. This resolves INV-12.', --yes]
+    date: 2026-06-03
+  - files: {from: requests/reminder-emails, to: requests/reminder-emails}
+
+  # link-expiry-spike: an open spike with a signed question.
+  - al: [new, link-expiry-spike, --from, '-', --title, Link expiry spike, --tier, S]
+    date: 2026-06-10
+    input: |
+      some customers say 30 minutes is too long, others too short. can we make
+      it shorter without support calls? find out before we change anything.
+  - section:
+      request: link-expiry-spike
+      text: |
+        ## Organized question
+
+        <!-- Q1 -->
+
+        ### Q1 A shorter link time
+        Can the export link expire sooner than 30 minutes without more support
+        calls about links that no longer work?
+  - al: [record, link-expiry-spike, signoff, --source, the project chat, --words, yes that is the question, --yes]
+    date: 2026-06-11
+  - files: {from: requests/link-expiry-spike, to: requests/link-expiry-spike}
+
+  - index: true
+    date: 2026-06-12
+  - hint:
+      doc: specs/invoices.md
+      id: INV-8
+      summary: An invoice has a number, a customer, lines, a total and a paid date.
+      tags: [data]
+      quote: {exact: An invoice has a number}
