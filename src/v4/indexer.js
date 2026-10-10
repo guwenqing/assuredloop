@@ -146,7 +146,8 @@ const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
 const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
 export function index({ top, opts }) {
-  const loaded = loadConfig(top);
+  let loaded;
+  try { loaded = loadConfig(top); } catch (e) { throw new Fail(e.message, 'fix .assuredloop/config.yaml'); }
   const body = [];
   const notes = [];
   // The spec root as a repo path, once (`./specs/` is `specs`), for the tree and for past commits alike.
@@ -155,8 +156,11 @@ export function index({ top, opts }) {
     throw new Fail(`config root ${loaded.root} is not a folder inside the repository; nothing was read or written`, 'set root: in .assuredloop/config.yaml to a folder in this repo, such as specs');
   }
   // Nothing is read through a symlink, which can lead out of the repo: read() refuses for each
-  // file, and the spec root, which docsInScope walks, is refused here.
-  if (symlinkOn(top, root)) throw new Fail(`${root} is reached through the symlink ${symlinkOn(top, root)}; nothing was read or written`, `make ${symlinkOn(top, root)} a real folder in this repo`);
+  // file, and the folders that are walked or listed are refused here, empty or not
+  // (the check of requests/archive looks at requests/ on its way).
+  for (const dir of [root, 'requests/archive']) {
+    if (symlinkOn(top, dir)) throw new Fail(`${dir} is reached through the symlink ${symlinkOn(top, dir)}; nothing was read or written`, `make ${symlinkOn(top, dir)} a real folder in this repo`);
+  }
   // A doc that config names outside the repo, or through a symlink, is neither read nor indexed.
   const why = (file) => (!inside(file) ? 'outside the repository' : symlinkOn(top, posix.normalize(file)) ? 'through a symlink' : null);
   const config = { ...loaded, root, docs: loaded.docs.filter((d) => !why(String(d.file ?? ''))) };

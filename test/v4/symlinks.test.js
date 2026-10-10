@@ -246,3 +246,39 @@ test('index refuses when a declared output file is a symlink to an outside file'
   assert.equal(readFileSync(external, 'utf8'), 'export const minutes = 30;\n');
   assert.deepEqual(record(dir, 'inv').bindings.filter((b) => b.holder === 'src/x.js'), []);
 });
+
+// --- a symlinked folder or config refuses index even when it holds nothing
+// (#175, review finding)
+
+test('index refuses when requests/ is a symlink to an empty outside folder', (t) => {
+  const dir = project(t);
+  write(dir, 'specs/a.md', doc([['A-1 rule', 'An export MUST be a CSV file.']]));
+  const external = outside(t);
+  symlinkSync(external, join(dir, 'requests'));
+  refused(dir, ['index']);
+  assert.ok(!exists(dir, '.assuredloop/records/specs/a.md.yaml'));
+  assert.deepEqual(tree(external), {});
+});
+
+test('index refuses when requests/archive is a symlink to an empty outside folder', (t) => {
+  const dir = project(t);
+  write(dir, 'specs/a.md', doc([['A-1 rule', 'An export MUST be a CSV file.']]));
+  newRequest(dir, 'inv');
+  const external = outside(t);
+  symlinkSync(external, join(dir, 'requests/archive'));
+  refused(dir, ['index']);
+  assert.ok(!exists(dir, '.assuredloop/records/specs/a.md.yaml'));
+  assert.deepEqual(tree(external), {});
+});
+
+test('index refuses when .assuredloop/config.yaml is a symlink to an outside file', (t) => {
+  const dir = project(t);
+  write(dir, 'docs-spec/a.md', doc([['A-1 rule', 'An export MUST be a CSV file.']]));
+  mkdirSync(join(dir, '.assuredloop'));
+  const external = join(outside(t), 'config.yaml');
+  write(dirname(external), 'config.yaml', 'root: docs-spec\n');
+  symlinkSync(external, join(dir, '.assuredloop/config.yaml'));
+  refused(dir, ['index']);
+  assert.ok(!exists(dir, '.assuredloop/records/docs-spec/a.md.yaml'));
+  assert.equal(readFileSync(external, 'utf8'), 'root: docs-spec\n');
+});
