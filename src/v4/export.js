@@ -29,8 +29,8 @@ const yamlAt = (text) => {
   try { const v = parse(text ?? 'null'); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; }
 };
 
-// The text of each blob, by `git cat-file --batch`.
-function readBlobs(top, blobs) {
+// The text of each blob, by `git cat-file --batch`; with `raw`, its bytes.
+function readBlobs(top, blobs, raw = false) {
   const texts = new Map();
   if (!blobs.length) return texts;
   const buf = execFileSync('git', ['-C', top, 'cat-file', '--batch'], { input: blobs.join('\n') + '\n', maxBuffer: 1 << 30, stdio: ['pipe', 'pipe', 'ignore'] });
@@ -40,7 +40,8 @@ function readBlobs(top, blobs) {
     const [blob, type, size] = buf.subarray(at, eol).toString('utf8').split(' ');
     at = eol + 1;
     if (type === 'missing') continue;
-    texts.set(blob, buf.subarray(at, at + Number(size)).toString('utf8'));
+    const bytes = buf.subarray(at, at + Number(size));
+    texts.set(blob, raw ? bytes : bytes.toString('utf8'));
     at += Number(size) + 1;
   }
   return texts;
@@ -101,7 +102,7 @@ function kindOfPath(path, config, extra) {
 }
 
 // The items one version of a file holds: [{ doc, id, sha256, row }].
-function itemsOf(path, text, what) {
+function itemsOf(path, text, what, bytes = null) {
   if (what.type === 'spec' || what.type === 'adr' || what.type === 'change') {
     const paragraphs = parseMarkdown(text, path).paragraphs.filter((p) => p.id);
     const title = paragraphs.find((p) => /^#\s/.test(p.text))?.text.replace(/^#\s+/, '').split('\n')[0].trim() ?? null;
@@ -133,10 +134,11 @@ function itemsOf(path, text, what) {
       return { doc: what.doc, id: `${what.request}/${d.id}`, sha256: sha256(body), row: { source_type: 'decision', file: path, line: null, heading_path: [], text: body } };
     });
   }
-  // An output file (D15): its version, and only the lines that name an ID.
+  // An output file (D15): its version (the hash of its bytes), and only the
+  // lines that name an ID.
   if (what.type === 'output') {
     const lines = text.split('\n').map((l, i) => ({ n: i + 1, text: l, ids: namedIds(l, what.cite) })).filter((l) => l.ids.length);
-    return [{ doc: path, id: path, sha256: sha256(text), row: { source_type: 'output', file: path, line: null, heading_path: [], lines } }];
+    return [{ doc: path, id: path, sha256: sha256(bytes ?? text), row: { source_type: 'output', file: path, line: null, heading_path: [], lines } }];
   }
   // A snapshot or a result: the whole file is one item.
   const id = what.type === 'origin' ? `${what.request}/${what.file}` : path;
@@ -182,7 +184,7 @@ function recordsAt(top, tree, config) {
 // What the history walk knows: every version of every item, and the items
 // each path holds at `last`. `spec` names the settings it was walked with; a
 // walk with other settings starts again from the first commit.
-export const newHistory = () => ({ last: null, spec: null, versions: new Map(), atPath: new Map() });
+export const newHistory = () => ({ last: null, spec: null, files: [], versions: new Map(), atPath: new Map() });
 
 // The commits of the first-parent history up to `commit`, as a set.
 export const firstParents = (top, commit) => new Set((git(top, ['rev-list', '--first-parent', commit]) ?? '').split('\n').filter(Boolean));
@@ -192,23 +194,37 @@ export const firstParents = (top, commit) => new Set((git(top, ['rev-list', '--f
 // same; else from the first commit, so a version's number never depends on a
 // branch indexed before. Reads only the files each commit changed. Returns the keys
 // (doc TAB id) whose versions changed.
-function advance(top, h, commit, spec, paths, classify, chain) {
+function advance(top, h, commit, spec, paths, classify, chain, { added = [], removed = [] } = {}) {
   const resume = h.last && h.spec === spec && chain.has(h.last);
   if (!resume) Object.assign(h, newHistory());
+  else {
+    // Files that left the set lose their rows; a file that joined it gets its
+    // history up to the indexed commit, read for its path alone.
+    for (const path of removed) {
+      h.atPath.delete(path);
+      for (const [key, vs] of h.versions) if ([...vs.values()].some((v) => v.meta.doc === path)) h.versions.delete(key);
+    }
+    if (added.length) walkInto(top, h, h.last, added.map((p) => `:(literal)${p}`), classify);
+  }
   h.spec = spec;
-  const changed = new Set();
-  if (h.last === commit) return changed;
-  const commits = walk(top, h.last ? `${h.last}..${commit}` : commit, paths);
-  const blobs = readBlobs(top, [...new Set(commits.flatMap((c) => c.changes.map((x) => x.blob)).filter(Boolean))]);
+  if (h.last === commit) return;
+  walkInto(top, h, h.last ? `${h.last}..${commit}` : commit, paths, classify);
+  h.last = commit;
+}
+
+// Walks the commits of `range` that touch `paths` into `h`, oldest first.
+function walkInto(top, h, range, paths, classify) {
+  const commits = walk(top, range, paths);
+  const blobs = readBlobs(top, [...new Set(commits.flatMap((c) => c.changes.map((x) => x.blob)).filter(Boolean))], true);
   for (const { commit: c, changes } of commits) {
     const touched = new Set();
     for (const { path, blob } of changes) {
       for (const it of h.atPath.get(path) ?? []) touched.add(it.key);
       h.atPath.delete(path);
       const what = blob && classify(path);
-      const text = what ? blobs.get(blob) : undefined;
-      if (text === undefined) continue;
-      const items = itemsOf(path, text, what);
+      const bytes = what ? blobs.get(blob) : undefined;
+      if (bytes === undefined) continue;
+      const items = itemsOf(path, bytes.toString('utf8'), what, bytes);
       h.atPath.set(path, items.map((it) => ({ key: `${it.doc}\t${it.id}`, sha: it.sha256 })));
       for (const it of items) {
         const key = `${it.doc}\t${it.id}`;
@@ -224,15 +240,12 @@ function advance(top, h, commit, spec, paths, classify, chain) {
     // A touched version that no path holds after this commit ended here.
     const present = new Set([...h.atPath.values()].flat().filter((x) => touched.has(x.key)).map((x) => `${x.key}\t${x.sha}`));
     for (const key of touched) {
-      changed.add(key);
       for (const [sha, v] of h.versions.get(key) ?? []) {
         if (present.has(`${key}\t${sha}`)) v.until = null;
         else if (v.until === null) v.until = c;
       }
     }
   }
-  h.last = commit;
-  return changed;
 }
 
 // The repos of the export at `commit`: the central repo first, then the
@@ -274,9 +287,14 @@ function outputRows(dir, commit, hs, key, { repo, files, results, cite, declared
   const inResults = (p) => results !== null && p.endsWith('.yaml') && (results === '.' ? !p.includes('/') : p.startsWith(`${results}/`) && !p.slice(results.length + 1).includes('/'));
   const paths = [...list.map((f) => `:(literal)${f}`), ...(results === null ? [] : [results === '.' ? ':(glob)*.yaml' : `:(literal)${results}/`])];
   if (!paths.length) { Object.assign(h, newHistory()); return []; }
-  const spec = JSON.stringify({ files: list, results, cite: cite.qualified ? 'central:' : sha256([...cite.known].sort().join('\n')) });
-  const classify = (p) => (inResults(p) ? { type: 'result', doc: p } : files.has(p) ? { type: 'output', doc: p, cite } : null);
-  advance(dir, h, commit, spec, paths, classify, chain);
+  // The set of files and the known IDs are not in the walk's settings: a file
+  // that joins the set is walked alone, and IDs are matched when rows are made.
+  const spec = JSON.stringify({ results, cite: cite.qualified ? 'central:' : 'known IDs' });
+  const walked = { qualified: cite.qualified, known: null };
+  const classify = (p) => (inResults(p) ? { type: 'result', doc: p } : files.has(p) ? { type: 'output', doc: p, cite: walked } : null);
+  const before = new Set(h.files ?? []);
+  advance(dir, h, commit, spec, paths, classify, chain, { added: list.filter((f) => !before.has(f)), removed: [...before].filter((f) => !files.has(f)) });
+  h.files = list;
   const current = new Set([...h.atPath.values()].flat().map((x) => `${x.key}\t${x.sha}`));
   const rows = [];
   for (const [k, vs] of h.versions) {
@@ -286,11 +304,14 @@ function outputRows(dir, commit, hs, key, { repo, files, results, cite, declared
       let extra = {};
       let text = v.row.text;
       if (out) {
-        const cites = [...new Set(v.row.lines.flatMap((l) => l.ids))].sort();
+        // In the central repo only the IDs that the export has count (D15).
+        const keep = (id) => !cite.known || cite.known.has(id.replace(/^central:/, ''));
+        const lines = v.row.lines.map((l) => ({ ...l, ids: l.ids.filter(keep) })).filter((l) => l.ids.length);
+        const cites = [...new Set(lines.flatMap((l) => l.ids))].sort();
         const dec = declared.get(`${repo}\t${v.row.file}`);
         const how = [...(dec ? ['declared'] : []), ...(cites.length ? ['exact'] : [])];
         extra = { cites, declared: dec ?? [], how, proves: how.map((x) => PROVES[x]) };
-        text = v.row.lines.map((l) => `${l.n}: ${l.text}`).join('\n');
+        text = lines.map((l) => `${l.n}: ${l.text}`).join('\n');
       }
       rows.push({
         repo, doc_or_request: v.meta.doc, id: v.meta.id, version: v.n, role: live ? 'evidence' : 'history', source_type: v.row.source_type,
@@ -403,7 +424,9 @@ export function exportRows(top, commit, h = newHistory(), hs = new Map()) {
   const own = (name) => [...declared.keys()].filter((k) => k.startsWith(`${name}\t`)).map((k) => k.slice(name.length + 1));
   const cite = { qualified: false, known };
   const exclude = [config.root, 'requests', '.assuredloop', config.results, ...config.docs.map((d) => String(d.file ?? '').replace(/^\.\//, ''))].filter(Boolean);
-  const files = new Set([...findCites(top, commit, { ...cite, exclude }).map((c) => c.file), ...own(config.repo)]);
+  // A declared file of the spec's own is no output either.
+  const outside = (path) => !exclude.some((e) => path === e || path.startsWith(`${e}/`));
+  const files = new Set([...findCites(top, commit, { ...cite, exclude }).map((c) => c.file), ...own(config.repo).filter(outside)]);
   rows.push(...outputRows(top, commit, hs, `${config.repo}\toutputs`, { repo: config.repo, files, results: null, cite, declared, chain }));
   order(rows);
 
@@ -412,8 +435,9 @@ export function exportRows(top, commit, h = newHistory(), hs = new Map()) {
     repos.push({ name: r.name, commit: r.sha, unknown: r.unknown });
     if (!r.sha) continue;
     const results = posix.normalize(String(repoConfigAt(r.dir, r.sha).results ?? '.assuredloop/results')).replace(/\/+$/, '');
-    const cited = findCites(r.dir, r.sha, { exclude: ['.assuredloop', ...(results === '.' ? [] : [results])] }).map((c) => c.file);
-    const theirs = new Set([...cited, ...own(r.name)]);
+    const skip = ['.assuredloop', ...(results === '.' ? [] : [results])];
+    const cited = findCites(r.dir, r.sha, { exclude: skip }).map((c) => c.file);
+    const theirs = new Set([...cited, ...own(r.name).filter((p) => !skip.some((e) => p === e || p.startsWith(`${e}/`)))]);
     rows.push(...order(outputRows(r.dir, r.sha, hs, r.name, { repo: r.name, files: theirs, results, cite: { qualified: true }, declared, chain: firstParents(r.dir, r.sha) })));
   }
   return { rows, config, records, outputs, chain, repos };

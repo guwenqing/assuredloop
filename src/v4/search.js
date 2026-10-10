@@ -136,11 +136,11 @@ const getMeta = (db, k) => db.prepare('SELECT v FROM meta WHERE k = ?').get(k)?.
 const setMeta = (db, k, v) => db.prepare('INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)').run(k, v);
 
 // The walk state as stored: versions and the items of each path.
-const saveHistory = (h) => JSON.stringify({ last: h.last, spec: h.spec, atPath: [...h.atPath], versions: [...h.versions].map(([k, vs]) => [k, [...vs]]) });
+const saveHistory = (h) => JSON.stringify({ last: h.last, spec: h.spec, files: h.files ?? [], atPath: [...h.atPath], versions: [...h.versions].map(([k, vs]) => [k, [...vs]]) });
 function loadHistory(text) {
   if (!text) return newHistory();
   const s = JSON.parse(text);
-  return { last: s.last, spec: s.spec, atPath: new Map(s.atPath), versions: new Map(s.versions.map(([k, vs]) => [k, new Map(vs)])) };
+  return { last: s.last, spec: s.spec, files: s.files ?? [], atPath: new Map(s.atPath), versions: new Map(s.versions.map(([k, vs]) => [k, new Map(vs)])) };
 }
 
 // Brings the index to `commit`: the current index to that commit's rows
