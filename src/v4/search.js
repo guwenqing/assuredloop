@@ -380,6 +380,5 @@ export async function search({ top, args, opts }) {
     for (const l of String(h.text).split('\n')) body.push(`   ${l}`);
     for (const s of h.section ?? []) if (s.id !== h.id) body.push(`   | ${s.id}: ${String(s.text).split('\n')[0]}`);
   }
-  body.push(`Not known ${NOT_KNOWN}`);
-  return { body, next: out.length ? `al search --id <ID> for one row; --history adds removed and replaced text` : 'try other words, --change <request>, or --history' };
+  return { body, notKnown: [NOT_KNOWN], next: out.length ? `al search --id <ID> for one row; --history adds removed and replaced text` : 'try other words, --change <request>, or --history' };
 }
