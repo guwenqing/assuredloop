@@ -10,20 +10,23 @@ import { index } from '../src/v4/indexer.js';
 import { exportCommand } from '../src/v4/export.js';
 import { search } from '../src/v4/search.js';
 
+// positionals: how many positional arguments a command uses, or a function of
+// its options that says so; any more are refused. None given: it uses them all.
 const COMMANDS = {
-  new: { run: newRequest, options: { from: { type: 'string' }, title: { type: 'string' }, tier: { type: 'string' } } },
+  new: { run: newRequest, positionals: 1, options: { from: { type: 'string' }, title: { type: 'string' }, tier: { type: 'string' } } },
   record: {
     run: record,
+    positionals: 2,
     options: {
       url: { type: 'string' }, from: { type: 'string' }, fetched: { type: 'string' }, yes: { type: 'boolean' },
       source: { type: 'string' }, words: { type: 'string' }, presented: { type: 'string' }, 'transcribed-by': { type: 'string' },
       text: { type: 'string' }, clarifies: { type: 'string' },
     },
   },
-  index: { run: index, options: { align: { type: 'string' } } },
-  spec: { run: spec, options: { 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } } },
-  check: { run: check, options: { strict: { type: 'boolean' } } },
-  export: { run: exportCommand, options: { at: { type: 'string' }, out: { type: 'string' } } },
+  index: { run: index, positionals: 0, options: { align: { type: 'string' } } },
+  spec: { run: spec, positionals: (o) => (o['add-ids'] === undefined ? Infinity : 0), options: { 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } } },
+  check: { run: check, positionals: 0, options: { strict: { type: 'boolean' } } },
+  export: { run: exportCommand, positionals: 0, options: { at: { type: 'string' }, out: { type: 'string' } } },
   search: {
     run: search,
     options: {
@@ -62,6 +65,14 @@ async function main(argv) {
       parsed = parseArgs({ args: rest, options: command.options, allowPositionals: true, strict: true });
     } catch (e) {
       throw new Fail(e.message, USAGE);
+    }
+    const { positionals = Infinity } = command;
+    const n = typeof positionals === 'function' ? positionals(parsed.values) : positionals;
+    const extra = parsed.positionals[n];
+    if (extra !== undefined) {
+      const used = name === 'spec' ? 'spec --add-ids' : name;
+      throw new Fail(`extra argument ${JSON.stringify(extra)}: ${used} takes ${n === 0 ? 'no' : n} positional argument${n === 1 ? '' : 's'}`,
+        'quote an option value that holds spaces, and leave out the extra argument');
     }
     let out;
     try {
