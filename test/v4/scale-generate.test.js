@@ -167,14 +167,14 @@ describe('generate.js on a small world', () => {
       assert.ok(!existsSync(join(central(), 'requests', name)), `${name} is not in requests/`);
       for (const f of ['request.md', 'spec.md']) assert.ok(existsSync(join(base, f)), `${base}/${f}`);
       assert.ok(statSync(join(base, 'origin')).isDirectory() && readdirSync(join(base, 'origin')).length >= 1, `${base}/origin/ holds snapshots`);
-      assert.match(readFileSync(join(base, 'request.md'), 'utf8'), /^Status: concluded\s*$/m, `${name}: request.md says Status: concluded`);
+      assert.match(readFileSync(join(base, 'request.md'), 'utf8'), /\bStatus: concluded\b/, `${name}: request.md says Status: concluded`);
     }
     for (const name of world.openRequests) {
       const base = join(central(), 'requests', name);
       assert.ok(!existsSync(join(central(), 'requests/archive', name)), `${name} is not archived`);
       for (const f of ['request.md', 'spec.md']) assert.ok(existsSync(join(base, f)), `${base}/${f}`);
       assert.ok(statSync(join(base, 'origin')).isDirectory() && readdirSync(join(base, 'origin')).length >= 1, `${base}/origin/ holds snapshots`);
-      assert.doesNotMatch(readFileSync(join(base, 'request.md'), 'utf8'), /^Status: concluded\s*$/m, `${name} is open`);
+      assert.doesNotMatch(readFileSync(join(base, 'request.md'), 'utf8'), /\bStatus: concluded\b/, `${name} is open`);
     }
   });
 
