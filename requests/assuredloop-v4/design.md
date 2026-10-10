@@ -79,10 +79,12 @@ A reader must find the current system without reading past changes (R1).
   only, so they need no consolidation.
 - User documents in `docs/` are an output of a change, like code and tests
   (input 112). They carry no paragraph IDs of their own.
-- Change-only paragraphs (plan, step, migration) and `approach` paragraphs
-  stay with the change as its history; they are never copied into `specs/`.
-  Informative paragraphs that explain lasting rules (rationale, example) do
-  belong in `specs/`, beside the rules they explain.
+- Change-only paragraphs (plan, step, migration), `approach` paragraphs and
+  `note` paragraphs stay with the change as its history; they are never
+  copied into `specs/`. Every other kind in a change spec (promise kinds,
+  the lasting design kinds, and the informative kinds rationale, example and
+  open) is meant for `specs/`. A rationale that only explains how this change
+  is built is written as `approach`.
 - A change closes and its folder moves to `requests/archive/<name>/`.
 
 ## 3. IDs, kinds and links
@@ -273,13 +275,16 @@ before an epic closes (input 105), and nothing applied dropped in silence
    spec.
 2. It happens when a piece is ready: in the PR with its code, or in a later
    PR, part by part, before the epic closes.
-3. Promise and design kinds go into `specs/`. Change-only, note and
-   explanatory paragraphs stay with the change as its history.
+3. Promise kinds, the lasting design kinds (component, interface, data,
+   flow, choice) and the informative kinds (rationale, example, open) go into
+   `specs/`. Change-only kinds (plan, step, migration), `approach` and `note`
+   stay with the change as its history.
 4. A promise-kind paragraph consolidated before its requirement is signed:
    `not ok`.
 
-**Dispositions.** Each change paragraph with a baseline effect (a promise or
-design paragraph that adds, changes or removes spec text) gets a disposition
+**Dispositions.** Each change paragraph with a baseline effect (any paragraph
+of a kind that goes into `specs/`, by item 3 above, and every declared
+`removes:`) gets a disposition
 in the request's record. A disposition closes one named source version, not
 an ID forever: it names the source paragraph's version (its text hash) and
 the spec version it produced. When the source paragraph is edited, the new
@@ -309,7 +314,8 @@ text's hash, or by changing the text again.
 
 **Removals.** A change declares a removal with `removes:<ID>`. For a promise
 paragraph, a removal is allowed only where a signed requirement covers it. An
-informative paragraph needs only the declaration, and no disposition. A loss
+informative paragraph needs only the declaration and its `removed`
+disposition, with no sign-off. A loss
 that nobody declared stays a lost-ID lint. Why: a whole-block replace in real
 OpenSpec history dropped scenarios with no notice (validation.md B6).
 
@@ -332,7 +338,9 @@ take a wording decision or a typo claim.
 **The close rule.** `al conclude` refuses until each change paragraph with a
 baseline effect has a valid disposition for its current version, every
 promise change is signed, and a spike's current question is signed (section
-6). Change-only, note and explanatory paragraphs need no disposition.
+6). Change-only, `approach` and `note` paragraphs need no disposition. Why:
+R5 asks every change paragraph that affects the spec to have a recorded
+fate, explanations included.
 - The check runs on the closing PR's state. An archived request is never
   checked again against today's spec.
 - The local tree and main stay apart: "consolidated on main" is read from

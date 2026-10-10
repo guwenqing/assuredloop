@@ -100,6 +100,10 @@ Informative kinds. A change needs review only:
 | `example` | a case | `illustrates` → the rule |
 | `open` | a choice left open | `resolved by` → a later decision or ADR |
 
+In a change spec, informative paragraphs are meant for `specs/`, beside the
+rules they explain, so each gets a disposition like any spec text. A
+rationale that explains only how one change is built is an `approach`.
+
 Design kinds, in a change spec and in `specs/`: `component`, `interface`,
 `data`, `flow` and `choice`. A change needs review only. A `choice` that is
 hard to undo becomes an ADR.
