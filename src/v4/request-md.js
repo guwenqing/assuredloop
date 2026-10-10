@@ -20,11 +20,14 @@ export function organized(md) {
 }
 
 // What a sign-off binds: the organized section with no Signed off line and no
-// marker line.
+// marker framing, the marker line and the blank line after it (D20, as the
+// paragraph hash drops it), so adding markers changes no signed byte.
 export function signedText(md) {
   const o = organized(md);
   if (!o) return null;
-  const kept = o.lines.slice(o.start, o.end).filter((l) => !SIGNED_OFF.test(l) && !MARKER.test(l));
+  const lines = o.lines.slice(o.start, o.end);
+  const kept = lines.filter((l, i) => !SIGNED_OFF.test(l) && !MARKER.test(l)
+    && !(l === '' && i > 0 && MARKER.test(lines[i - 1])));
   while (kept.length && !kept.at(-1).trim()) kept.pop();
   return `${kept.join('\n')}\n`;
 }
