@@ -5,7 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { K7 } from './helpers/cross-repo.js';
-import { crossRepo, pin, searchWorld } from './helpers/cross-search.js';
+import { crossRepo, pin, searchWorld, setOutputs } from './helpers/cross-search.js';
+import { git } from './helpers/project.js';
 import { asRow, embedded, exportRows, installEmbedder, key, runOk, search, show } from './helpers/search.js';
 
 // One world for the tests that only read it, with the fixed embedder, and its export.
@@ -151,5 +152,43 @@ for (const level of [0, 1]) {
     assert.ok(out.not_known.some((x) => x.includes('invoicer-worker') && x.includes(reason)), JSON.stringify(out.not_known));
     const r = runOk(w.central, ['search', '--id', 'src/reminders.js', '--level', String(level)]);
     assert.ok(r.stdout.split('\n').some((l) => /^Repos\s/.test(l) && l.includes(' invoicer-worker unknown')), show(r));
+  });
+}
+
+// The output repos come from the central config as committed (interface-186.md 1),
+// for search as for the export.
+for (const level of [0, 1]) {
+  test(`level ${level}: search takes the output repos from the committed config; an uncommitted change is not used`, (t) => {
+    const w = searchWorld(t);
+    const queries = [['--id', 'src/reminders.js'], ['--id', 'src/zip-export.js', '--history']];
+    const answer = () => queries.map((q) => {
+      const out = search(w.central, q, { level });
+      return { repos: out.repos, hits: out.hits };
+    });
+    const reposLine = () => {
+      const r = runOk(w.central, ['search', '--id', 'src/reminders.js', '--level', String(level)]);
+      const line = r.stdout.split('\n').find((l) => /^Repos\s/.test(l));
+      assert.ok(line, show(r));
+      return line;
+    };
+    const before = answer();
+    const lineBefore = reposLine();
+    assert.deepEqual(before[0].hits.map((h) => h.repo).sort(), ['invoicer-web', 'invoicer-worker'], 'before: both repos have src/reminders.js');
+    const { typo } = w.shas.worker;
+    // Not committed: web dropped, and the worker pinned to the typo commit.
+    setOutputs(w, (outs) => outs.filter((o) => o.name !== 'invoicer-web')
+      .map((o) => (o.name === 'invoicer-worker' ? { ...o, commit: typo.slice(0, 7) } : o)), { commitIt: false });
+    assert.deepEqual(answer(), before, 'the same repos and hits with the config edited, not committed');
+    assert.equal(reposLine(), lineBefore, 'the same Repos line');
+    git(w.central, 'add', '-A');
+    git(w.central, 'commit', '-q', '-m', 'Drop web, pin the worker to the typo commit');
+    const [reminders, zip] = answer();
+    assert.deepEqual(reminders.repos.map((r) => r.name), ['invoicer', 'invoicer-worker', 'invoicer-mobile'], 'once committed, web is gone');
+    assert.equal(reminders.repos.find((r) => r.name === 'invoicer-worker').commit, typo);
+    assert.deepEqual(reminders.hits.map((h) => `${h.repo} ${h.commit}`), [`invoicer-worker ${typo}`]);
+    assert.deepEqual(zip.hits.map((h) => `${h.repo} v${h.version} ${h.role} ${h.commit}`), [`invoicer-worker v1 evidence ${typo}`]);
+    const line = reposLine();
+    assert.ok(!line.includes('invoicer-web'), line);
+    assert.ok(line.includes(`invoicer-worker@${c12(typo)}`), line);
   });
 }
