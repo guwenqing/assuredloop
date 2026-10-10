@@ -248,9 +248,9 @@ necessary for that, not proof of it: the tool does not check this task list.
   within 10 s at 1,000 requests; `al search` answers within 2 s across 20
   repos; an incremental index after a merge within 2 minutes; a full level 1
   rebuild within 15 minutes. The architect may revise these in T7 before the
-  run, and records any change. Also the cost account of design.md 16 on
-  generated changes: record creation, reading, corrections, indexing and
-  review, against the flexible target.
+  run, and records any change. The report names the machine and its load when
+  the run is on another machine. The cost account moved to T16, because it
+  needs agents that follow the v4 skill (the architect, 2026-10-10).
 - **Read:** design.md 11 (Scale), 15, 16 (Cost).
 
 ### T16 Skill and docs
@@ -260,14 +260,19 @@ necessary for that, not proof of it: the tool does not check this task list.
 - **Boundary:** describe the tool; do not prescribe a way of working.
 - **Delivers:** R7, R11, R14.
 - **Check:** a fresh agent follows the skill through each path on a fixture;
-  the cost account of design.md 16 on real agent runs, with small changes and
-  epics apart; marker preservation by agents, measured apart from the lint.
+  the whole cost account of design.md 16 on real agent runs (record creation,
+  reading, corrections, indexing and review, across every agent), with small
+  changes and epics apart, against the flexible target; marker preservation
+  by agents, measured apart from the lint.
 - **Read:** design.md 1, 7, 11, 14, 16 (Cost).
 
 ### T17 The v4 spec
 - **Wanted:** the consolidated v4 spec in `specs/`, with markers, from
   design.md; each change paragraph of this request with its disposition,
-  prepared and checked.
+  prepared and checked. Also the switch of design.md 17: the command becomes
+  v4, this repo's spec and records become v4, the v1 code goes, and `yaml`
+  moves to `dependencies`; the v4 skill and README of T16 move into place;
+  and `al spec --add-ids` writes the adoption record (design.md 14).
 - **Boundary:** the spec states promises and lasting design; history stays in
   this request.
 - **Delivers:** R1, R5.
@@ -293,15 +298,20 @@ says what it needs first.
 |---|---|---|---|
 | A. Validation: fixtures, questions and simulation | T1-T3 | #170 | done (PR #172) |
 | B. Validation: OpenSpec replay and the private adopter | T4-T5 | #171 | done (PR #173) |
-| C. Schema and markers | T8 | #174 | started; it owns the shared parser `src/v4/markers.js` |
-| D. Records and bindings | T9 | #175 | started at the same time as C, against the shared parser interface (a stub until C merges) |
-| E. Checks and views | T10-T11 | when D merges | D is done (the records); T11 also needs T10 |
-| F. Cross-repo links | T12 | when D merges | D is done |
-| G. Export and search levels 1-2 | T13-T14 | when D merges | D is done; T14 also needs T13 |
-| H. Scale, skill, docs and the v4 spec | T15-T17 | after E, F and G | T15 needs T12-T14; T16 needs T11; T17 needs T10-T11 |
+| C. Schema and markers | T8 | #174 | done (PR #177) |
+| D. Records and bindings | T9 | #175 | done (PR #178) |
+| E. Checks and views | T10-T11 | #179 | done (PR #184) |
+| F. Cross-repo links | T12 | #180 | done (PR #185) |
+| G. Export and search levels 1-2 | T13-T14 | #181 | done (PR #183) |
+| T9 gaps: `new --tier 1d`, extra positional arguments | T9 | #182 | done (PR #187) |
+| Export and search across the output repos | T13 with T12 | #186 | done (PR #192) |
+| `al check` reads files at a commit in one git process | T15's finding | #190 | after the first scale run |
+| H1. Scale run timings | T15 | #188 | generator and harness now; the measured run after #186 and #190 |
+| H2. Skill, docs and the cost account | T16 | #193 | E is done |
+| H3. The v4 spec and the switch | T17 | when the design PR merges | E is done; design.md holds the build decisions |
 
-E, F and G may run at the same time: up to three developers at once (owner
-input 150).
+H was split into H1-H3 (the architect, 2026-10-10), because its tasks depend
+on different issues. Up to three developers work at once (owner input 150).
 
 T6 and T7 are the architect's. T18 is the architect's follow-on, outside
 this request.
