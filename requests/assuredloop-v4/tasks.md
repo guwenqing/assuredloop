@@ -1,6 +1,9 @@
 # AssuredLoop v4: tasks
 
-The current design is `design.md` and `schema.md` in this folder. Where they
+The current design is `spec.md` in this folder, this request's change spec:
+`design.md` became its sections 1-17, and `schema.md` its last sections
+(D19). "design.md N" below means section N of spec.md, and "schema.md N" its
+section N under "AssuredLoop v4: the model from input to output". Where they
 differ from anything else, they hold.
 
 This list is our own way of working, not a rule of the tool (owner input
@@ -308,7 +311,7 @@ says what it needs first.
 | `al check` reads files at a commit in one git process | T15's finding | #190 | after the first scale run |
 | H1. Scale run timings | T15 | #188 | generator and harness now; the measured run after #186 and #190 |
 | H2. Skill, docs and the cost account | T16 | #193 | E is done |
-| H3. The v4 spec and the switch | T17 | when the design PR merges | E is done; design.md holds the build decisions |
+| H3. The v4 spec and the switch | T17 | #196 | E is done; design.md holds the build decisions |
 
 H was split into H1-H3 (the architect, 2026-10-10), because its tasks depend
 on different issues. Up to three developers work at once (owner input 150).
