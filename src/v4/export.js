@@ -202,7 +202,7 @@ function advance(top, h, commit, spec, paths, classify, chain, { added = [], rem
     // history up to the indexed commit, read for its path alone.
     for (const path of removed) {
       h.atPath.delete(path);
-      for (const [key, vs] of h.versions) if ([...vs.values()].some((v) => v.meta.doc === path)) h.versions.delete(key);
+      for (const [key, vs] of h.versions) if ([...vs.values()].some((v) => v.meta.doc === path && v.meta.type === 'output')) h.versions.delete(key);
     }
     if (added.length) walkInto(top, h, h.last, added.map((p) => `:(literal)${p}`), classify);
   }
@@ -283,17 +283,19 @@ const PROVES = { exact: 'proves only that the ID is named', declared: 'a claim, 
 function outputRows(dir, commit, hs, key, { repo, files, results, cite, declared, chain }) {
   if (!hs.has(key)) hs.set(key, newHistory());
   const h = hs.get(key);
-  const list = [...files].sort();
   const inResults = (p) => results !== null && p.endsWith('.yaml') && (results === '.' ? !p.includes('/') : p.startsWith(`${results}/`) && !p.slice(results.length + 1).includes('/'));
+  // A result file is a result, never a member of the output set (it keeps its history).
+  const list = [...files].filter((p) => !inResults(p)).sort();
   const paths = [...list.map((f) => `:(literal)${f}`), ...(results === null ? [] : [results === '.' ? ':(glob)*.yaml' : `:(literal)${results}/`])];
   if (!paths.length) { Object.assign(h, newHistory()); return []; }
   // The set of files and the known IDs are not in the walk's settings: a file
   // that joins the set is walked alone, and IDs are matched when rows are made.
   const spec = JSON.stringify({ results, cite: cite.qualified ? 'central:' : 'known IDs' });
   const walked = { qualified: cite.qualified, known: null };
-  const classify = (p) => (inResults(p) ? { type: 'result', doc: p } : files.has(p) ? { type: 'output', doc: p, cite: walked } : null);
+  const members = new Set(list);
+  const classify = (p) => (inResults(p) ? { type: 'result', doc: p } : members.has(p) ? { type: 'output', doc: p, cite: walked } : null);
   const before = new Set(h.files ?? []);
-  advance(dir, h, commit, spec, paths, classify, chain, { added: list.filter((f) => !before.has(f)), removed: [...before].filter((f) => !files.has(f)) });
+  advance(dir, h, commit, spec, paths, classify, chain, { added: list.filter((f) => !before.has(f)), removed: [...before].filter((f) => !members.has(f) && !inResults(f)) });
   h.files = list;
   const current = new Set([...h.atPath.values()].flat().map((x) => `${x.key}\t${x.sha}`));
   const rows = [];
