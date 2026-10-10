@@ -61,9 +61,20 @@ export function check({ top, opts }) {
   return {
     body,
     read: base ? `working tree · base ${base.slice(0, 7)} (merge-base with main)` : 'working tree · no base',
-    next: lints.length ? 'fix each not ok; al-v4 spec --add-ids <file> marks the paragraphs with no ID'
-      : t10.findings.some((f) => f.severity !== 'info') ? 'deal with each not ok and hint, or say in the PR why it stays' : 'al-v4 context',
+    next: nextStep([...lints.map(severity), ...t10.findings.map((f) => f.severity)], lints.some((l) => l.code === 'no-id')),
     notKnown,
     exit: opts.strict && notOk ? 1 : 0,
   };
+}
+
+// The Next line names what to do for what printed: a not ok, a hint, both, or
+// neither (#198).
+function nextStep(severities, noId) {
+  const notOk = severities.includes('not ok');
+  const hint = severities.includes('hint');
+  const addIds = noId ? '; al-v4 spec --add-ids <file> marks the paragraphs with no ID' : '';
+  if (notOk && hint) return `fix each not ok, and deal with each hint or say in the PR why it stays${addIds}`;
+  if (notOk) return `fix each not ok${addIds}`;
+  if (hint) return 'deal with each hint, or say in the PR why it stays';
+  return 'al-v4 context';
 }
