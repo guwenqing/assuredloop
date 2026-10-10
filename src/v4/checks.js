@@ -10,6 +10,7 @@ import { read } from './base.js';
 import { judgeRequest } from './dispositions.js';
 import { git } from './git.js';
 import { diffParagraphs } from './ids.js';
+import { crossRepo } from './repos.js';
 import { loadResults } from './results.js';
 import {
   hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
@@ -284,6 +285,13 @@ export function checks(top, { base, strict = false }) {
       continue;
     }
     add('info', 'result', res.file, res.check, `${res.outcome} at ${res.commit === 'unknown' ? 'an unknown commit' : res.commit.slice(0, 7)}: ${applicability(top, res)}`);
+  }
+
+  // Output repos (T12, design.md 12): their results, and each repo that cannot be read.
+  const cross = crossRepo(top);
+  for (const repo of cross.repos) if (repo.unknown) add('info', 'output-repo', repo.name, '-', `unknown: ${repo.unknown}`);
+  for (const res of cross.results) {
+    add('info', 'result', `${res.repo}/${res.file}`, res.check ?? '-', `${res.outcome ?? 'no outcome'} at ${res.repo}@${String(res.resolved ?? res.commit ?? 'unknown').slice(0, 7)}: ${res.applies}`);
   }
 
   // Adopted paragraphs (D16): a disposition with `source: adoption` names the
