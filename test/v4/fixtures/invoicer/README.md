@@ -94,6 +94,8 @@ Each step is a map with one key.
 | `code-cite` | EXP-2 named by code only (arm `code`), by a test file (arm `test`), or by a review file that a result names as its check (arm `result`) |
 | `spaced-pre`, `remove-spaced`, `remove-spaced-merged-unsigned`, `remove-spaced-merged-signed` | a limit INV-99 whose marker has extra spaces, on main; drop-spaced removes it (arms `unsigned`, `signed`); then the removal merged on main, with an empty closing PR |
 | `abandon-decided-dropped`, `abandon-decided-kept` | an owner decision D1 to drop csv-bom's rule SP-2, named in an abandoned disposition, on top of `abandon-unsigned` arm `abandoned` (no kept effect) or arm `incorporated` (EXP-9 kept) |
+| `root-moved-unsigned`, `root-moved-signed` | on top of `remove-merged-*`: the closing PR moves specs/ to current-specs/, with root and docs paths updated, and indexes |
+| `kind-pre`, `remove-kind` | on main, INV-99 committed as a note, then made a limit; drop-latest's note serves R1 and declares `removes:INV-99` (arms `unsigned`, `signed`); the test removes INV-99 itself |
 | `views` | a central test that names EXP-4 and its result, and declared outputs of invoice-exports; arms `fresh` and `changed` (the test changes after the result) |
 
 The main commits of `cr-abandon` and `cr-revert` name their PR in the title,
