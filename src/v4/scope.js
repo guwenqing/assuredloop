@@ -3,10 +3,9 @@
 // folder plus the files config's docs list names; and one scope per request,
 // its requests/<name>/spec.md (or the archived one), with prefix SP and IDs of
 // its own. Two scopes never share IDs.
-import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, posix, relative } from 'node:path';
-import { git, fileAt } from './git.js';
+import { git, filesAt, readObjects } from './git.js';
 import { parseMarkdown } from './markers.js';
 
 export const SPEC = 'spec';
@@ -98,12 +97,13 @@ export function docsInScope(top, config, rev = null) {
   } else {
     paths = (git(top, ['ls-tree', '-r', '-z', '--name-only', rev], { allowFail: true }) ?? '').split('\0').filter(Boolean);
   }
+  const inScope = [...new Set(paths)].sort().filter((path) => scopeOf(path, config));
+  const atRev = rev === null ? null : filesAt(top, rev, inScope);
   const docs = [];
-  for (const path of [...new Set(paths)].sort()) {
+  for (const path of inScope) {
     const scope = scopeOf(path, config);
-    if (!scope) continue;
     let text;
-    if (rev !== null) text = fileAt(top, rev, path);
+    if (rev !== null) text = atRev.get(path);
     else if (existsSync(join(top, path)) && lstatSync(join(top, path)).isFile()) text = readFileSync(join(top, path), 'utf8');
     if (text == null) continue;
     docs.push({ path, scope, text });
@@ -159,22 +159,9 @@ export function idsEverUsed(top, config, rev) {
   return used;
 }
 
-// The text of each blob, by `git cat-file --batch`: "<sha> blob <size>" LF,
-// the bytes, LF; or "<sha> missing" LF.
+// The text of each blob that is there.
 function readBlobs(top, blobs) {
-  const texts = new Map();
-  if (!blobs.length) return texts;
-  const buf = execFileSync('git', ['-C', top, 'cat-file', '--batch'], { input: blobs.join('\n') + '\n', maxBuffer: 1 << 30, stdio: ['pipe', 'pipe', 'ignore'] });
-  let at = 0;
-  while (at < buf.length) {
-    const eol = buf.indexOf(10, at);
-    const [sha, type, size] = buf.subarray(at, eol).toString('utf8').split(' ');
-    at = eol + 1;
-    if (type === 'missing') continue;
-    texts.set(sha, buf.subarray(at, at + Number(size)).toString('utf8'));
-    at += Number(size) + 1;
-  }
-  return texts;
+  return new Map([...readObjects(top, blobs)].map(([b, bytes]) => [b, bytes.toString('utf8')]));
 }
 
 export const isShallow = (top) => git(top, ['rev-parse', '--is-shallow-repository'], { allowFail: true }) === 'true';

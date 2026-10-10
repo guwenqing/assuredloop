@@ -7,7 +7,7 @@ import { join, posix } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
 import { diffParagraphs } from './ids.js';
-import { blobAt, git, mergeBase, fileAt } from './git.js';
+import { git, mergeBase, fileAt, filesAt } from './git.js';
 import { loadConfig } from './config.js';
 import { SPEC, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
@@ -33,7 +33,9 @@ const list = (top, dir) => {
 export function requestNames(top, at = null) {
   if (at) {
     const dirs = (path) => (git(top, ['ls-tree', '-d', '--name-only', at, `${path}/`], { allowFail: true }) ?? '').split('\n').filter(Boolean).map((p) => p.slice(path.length + 1));
-    const open = dirs('requests').filter((n) => n !== 'archive' && fileAt(top, at, `requests/${n}/request.md`) !== null).sort();
+    const candidates = dirs('requests').filter((n) => n !== 'archive');
+    const mds = filesAt(top, at, candidates.map((n) => `requests/${n}/request.md`));
+    const open = candidates.filter((n) => mds.get(`requests/${n}/request.md`) !== null).sort();
     return { open, archived: dirs('requests/archive').sort() };
   }
   const open = list(top, 'requests').filter((e) => e.isDirectory() && e.name !== 'archive' && read(top, `requests/${e.name}/request.md`) !== null).map((e) => e.name).sort();
@@ -45,13 +47,17 @@ export function requestNames(top, at = null) {
 // docs, parsed, and its requests, each with request.md's requirements and
 // its record's data.
 export function loadState(top, at, config, names) {
-  const get = at ? (p) => fileAt(top, at, p) : (p) => read(top, p);
   // The spec docs and the open change specs (docsInScope), and the ADRs in <root>/adr/.
   const adr = `${config.root}/adr`;
   const adrs = (at
     ? (git(top, ['ls-tree', '--name-only', at, `${adr}/`], { allowFail: true }) ?? '').split('\n')
     : symlinkOn(top, adr) ? [] : list(top, adr).filter((e) => e.isFile()).map((e) => `${adr}/${e.name}`))
     .filter((f) => f.startsWith(`${adr}/`) && /^\d{4}-[^/]*\.md$/.test(f.slice(adr.length + 1))).sort();
+  // At a commit, every file below is read in one batch.
+  const atCommit = at ? filesAt(top, at, [...adrs,
+    ...names.open.flatMap((n) => [`requests/${n}/request.md`, recordPath(n)]),
+    ...names.archived.flatMap((n) => [`requests/archive/${n}/request.md`, recordPath(n), `requests/archive/${n}/spec.md`])]) : null;
+  const get = at ? (p) => (atCommit.has(p) ? atCommit.get(p) : fileAt(top, at, p)) : (p) => read(top, p);
   const open = new Set(names.open);
   const files = [
     ...docsInScope(top, config, at).flatMap((d) => {
@@ -110,6 +116,16 @@ const foreign = (o, config) => Boolean(o.repo) && o.repo !== config.repo && o.re
 // output repos of config, by name (live only).
 function linksOf(top, state, config, live, repos = new Map()) {
   const out = [];
+  // The declared output files in another repo, read in one batch per repo.
+  const batches = new Map();
+  const outputFiles = (repo) => {
+    if (!batches.has(repo.name)) {
+      const files = [...state.requests.values()].filter((r) => r.open).flatMap((r) => r.data?.outputs ?? [])
+        .filter((o) => o?.file && o.repo === repo.name).map((o) => String(o.file));
+      batches.set(repo.name, filesAt(repo.dir, repo.sha, [...new Set(files)], null));
+    }
+    return batches.get(repo.name);
+  };
   for (const d of state.docs) {
     for (const p of d.paragraphs) {
       const holder = d.request ? `${d.request}/${p.id}` : p.id;
@@ -131,7 +147,7 @@ function linksOf(top, state, config, live, repos = new Map()) {
       const unknown = !other || !live ? null : !repo ? 'not an output repo in config' : repo.unknown;
       let bytes = null;
       if (live && !other) bytes = read(top, o.file, null);
-      else if (live && !unknown) bytes = blobAt(repo.dir, repo.sha, String(o.file));
+      else if (live && !unknown) bytes = outputFiles(repo).get(String(o.file));
       const at = other && live && !unknown ? { commit: `${o.repo}@${repo.sha}` } : {};
       for (const link of OUTPUT_LINKS) {
         for (const ref of [].concat(o[link] ?? [])) {

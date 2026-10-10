@@ -1,4 +1,5 @@
-// The git reads of v4: the base of a branch and files at a commit.
+// The git reads of v4: the base of a branch, and files at a commit, read in
+// one batch git process.
 import { execFileSync } from 'node:child_process';
 
 // Trimmed stdout of `git -C top <args>`; with allowFail, null when git fails.
@@ -20,14 +21,49 @@ export function mergeBase(top) {
   return null;
 }
 
-// The text of `path` at `commit`, or null when it is not there.
-export function fileAt(top, commit, path) {
+// Git objects by name (a blob hash, or `<commit>:<path>`), read with one
+// `git cat-file --batch -Z` process, NUL-separated so that any path works:
+// Map name -> bytes for each name that is a blob. A missing, ambiguous or
+// other object is not in the Map. Every reader of files at a commit uses it.
+export function readObjects(top, names) {
+  const out = new Map();
+  const list = [...new Set(names.map(String))];
+  if (!list.length) return out;
+  let buf;
   try {
-    return execFileSync('git', ['-C', top, 'show', `${commit}:${path}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 30 });
+    buf = execFileSync('git', ['-C', top, 'cat-file', '--batch', '-Z'], { input: list.map((n) => `${n}\0`).join(''), stdio: ['pipe', 'pipe', 'ignore'], maxBuffer: 1 << 30 });
   } catch {
-    return null;
+    return out;
   }
+  // Each answer, in the order asked: "<oid> <type> <size>" NUL, the bytes, NUL;
+  // or "<name> missing" (or ambiguous) NUL.
+  let at = 0;
+  for (const name of list) {
+    const end = buf.indexOf(0, at);
+    if (end < 0) break;
+    const header = /^[0-9a-f]+ ([a-z]+) (\d+)$/.exec(buf.subarray(at, end).toString('utf8'));
+    at = end + 1;
+    if (!header) continue;
+    const size = Number(header[2]);
+    if (header[1] === 'blob') out.set(name, buf.subarray(at, at + size));
+    at += size + 1;
+  }
+  return out;
 }
+
+// Each of `paths` at `commit`, with one git process: Map path -> its text in
+// `encoding` (its bytes when encoding is null), or null when it is not a file
+// there (missing, a folder, or a commit that does not resolve).
+export function filesAt(top, commit, paths, encoding = 'utf8') {
+  const read = readObjects(top, paths.map((p) => `${commit}:${p}`));
+  return new Map(paths.map((p) => {
+    const bytes = read.get(`${commit}:${p}`);
+    return [p, bytes === undefined ? null : encoding === null ? bytes : bytes.toString(encoding)];
+  }));
+}
+
+// The text of `path` at `commit`, or null when it is not a file there.
+export const fileAt = (top, commit, path) => filesAt(top, commit, [path]).get(path);
 
 // The full hash of commit `rev` in the repo at `dir`, or null when git cannot
 // resolve it there. So a short and a full hash of one commit give one hash;
@@ -38,13 +74,7 @@ export function commitOf(dir, rev) {
 }
 
 // The bytes of `path` at `commit`, or null when it is not there.
-export function blobAt(dir, commit, path) {
-  try {
-    return execFileSync('git', ['-C', dir, 'cat-file', 'blob', `${commit}:${path}`], { stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 30 });
-  } catch {
-    return null;
-  }
-}
+export const blobAt = (dir, commit, path) => filesAt(dir, commit, [path], null).get(path);
 
 // The commit that merged PR `n`, in the first-parent history at `commit`: the
 // newest whose subject is "Merge pull request #n ..." or ends in "(#n)". Null

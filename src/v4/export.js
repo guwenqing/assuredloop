@@ -3,13 +3,12 @@
 // committed files only, with the row's role at the selected commit. Every
 // version comes from the first-parent history up to that commit, so removed
 // and replaced text stays findable as `history`.
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import { parse } from 'yaml';
 import { parseMarkdown } from './markers.js';
 import { requirements } from './request-md.js';
-import { git } from './git.js';
+import { git, readObjects } from './git.js';
 import { SPEC, scopeOf } from './scope.js';
 import { Fail, guard, write } from './base.js';
 
@@ -27,21 +26,9 @@ const yamlAt = (text) => {
   try { const v = parse(text ?? 'null'); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; }
 };
 
-// The text of each blob, by `git cat-file --batch`.
+// The text of each blob (or `<commit>:<path>`) that is there.
 function readBlobs(top, blobs) {
-  const texts = new Map();
-  if (!blobs.length) return texts;
-  const buf = execFileSync('git', ['-C', top, 'cat-file', '--batch'], { input: blobs.join('\n') + '\n', maxBuffer: 1 << 30, stdio: ['pipe', 'pipe', 'ignore'] });
-  let at = 0;
-  while (at < buf.length) {
-    const eol = buf.indexOf(10, at);
-    const [blob, type, size] = buf.subarray(at, eol).toString('utf8').split(' ');
-    at = eol + 1;
-    if (type === 'missing') continue;
-    texts.set(blob, buf.subarray(at, at + Number(size)).toString('utf8'));
-    at += Number(size) + 1;
-  }
-  return texts;
+  return new Map([...readObjects(top, blobs)].map(([b, bytes]) => [b, bytes.toString('utf8')]));
 }
 
 // The files of `commit`: Map path -> blob.
