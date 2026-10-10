@@ -349,3 +349,103 @@ describe('the adoption record is only for spec paragraphs', () => {
     assert.deepEqual(dispositions(dir).map((d) => d.spec), ALL, show(s));
   });
 });
+
+// --- review of PR #200: one base block covers at most one adopted paragraph.
+
+const CREDIT = 'A credit note MUST have two lines.';
+const SALE = 'A sale MUST have one line.';
+// INV-1 heading, INV-2 and INV-3 the two rules, in file order.
+const twoRules = (a, b) => `# Invoices\n\n${a}\n\n${b}\n`;
+const RULES = { 'INV-2': 'rule', 'INV-3': 'rule' };
+const hasPromiseFindings = (r, id) => PROMISE_CODES.every((code) => r.findings.some((f) => f.severity === 'not ok' && f.code === code && f.id === id));
+
+// main: the v4 config and the spec with the two rules; then the branch `feature`.
+function rulesBase(t, a, b) {
+  const dir = project(t);
+  writeConfig(dir);
+  write(dir, SPEC, twoRules(a, b));
+  commitAll(dir, 'the v4 config and the spec, before IDs');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  return dir;
+}
+
+describe('one base block covers at most one adopted paragraph', () => {
+  test('--add-ids: two equal paragraphs in the working tree and that text once at HEAD give one adoption entry, and the other is named not adopted', (t) => {
+    const dir = rulesBase(t, CREDIT, SALE);
+    write(dir, SPEC, twoRules(SALE, SALE));
+    const r = adopt(dir);
+    const specs = dispositions(dir).map((d) => d.spec);
+    assert.ok(specs.includes('INV-1'), show(r));
+    const adopted = ['INV-2', 'INV-3'].filter((id) => specs.includes(id));
+    assert.equal(adopted.length, 1, `one of INV-2 and INV-3 is adopted, not ${JSON.stringify(adopted)}:\n${show(r)}`);
+    const other = adopted[0] === 'INV-2' ? 'INV-3' : 'INV-2';
+    assert.ok(outLines(r).some((l) => new RegExp(`\\b${other}\\b`).test(l) && /not adopted/i.test(l)), `a line names ${other} as not adopted:\n${show(r)}`);
+  });
+
+  test('check: a paragraph edited on the branch to equal another adopted text gets signoff-coverage and path-claim not ok, --strict exits 1', (t) => {
+    const dir = rulesBase(t, CREDIT, SALE);
+    editFile(dir, SPEC, CREDIT, SALE);
+    adopt(dir);
+    setKinds(dir, RULES);
+    commitAll(dir, CLAIM);
+    const r = check(dir);
+    assert.ok(['INV-2', 'INV-3'].some((id) => hasPromiseFindings(r, id)), `one of the two equal rules gets its not ok findings:\n${show(r)}`);
+    assertClean(r, ['INV-1']);
+    assert.equal(check(dir, '--strict').code, 1, show(r));
+  });
+
+  test('check: the same, when the adoption record names both equal paragraphs with the same hash', (t) => {
+    const dir = rulesBase(t, CREDIT, SALE);
+    editFile(dir, SPEC, CREDIT, SALE);
+    adopt(dir);
+    setKinds(dir, RULES);
+    const h = hashes(dir);
+    assert.equal(h['INV-2'], h['INV-3'], 'the two paragraphs have equal text');
+    handRecord(dir, pick(h, ['INV-1', 'INV-2', 'INV-3']));
+    commitAll(dir, CLAIM);
+    const r = check(dir);
+    assert.ok(['INV-2', 'INV-3'].some((id) => hasPromiseFindings(r, id)), `one of the two equal rules gets its not ok findings:\n${show(r)}`);
+    assertClean(r, ['INV-1']);
+    assert.equal(check(dir, '--strict').code, 1, show(r));
+  });
+
+  test('control: two equal paragraphs that were two equal blocks at the base are both adopted, with no not ok', (t) => {
+    const dir = rulesBase(t, SALE, SALE);
+    const r = adopt(dir);
+    assert.deepEqual(dispositions(dir).map((d) => d.spec), ['INV-1', 'INV-2', 'INV-3'], show(r));
+    setKinds(dir, RULES);
+    commitAll(dir, CLAIM);
+    const c = check(dir);
+    assertClean(c, ['INV-1', 'INV-2', 'INV-3']);
+  });
+});
+
+// --- review of PR #200: a refusal writes nothing.
+
+describe('an adoption record that does not parse makes --add-ids refuse, and write nothing', () => {
+  const BAD = {
+    'not valid YAML': 'schema: assuredloop/1\ndispositions: [\n  - {source: adoption\n',
+    'not a map': '- source: adoption\n  spec: INV-9\n',
+  };
+  for (const [what, text] of Object.entries(BAD)) {
+    test(`a record that is ${what}: exit 2, an al: line, no file changes; after a repair the same command marks and writes the entries`, (t) => {
+      const dir = project(t);
+      write(dir, SPEC, UNMARKED);
+      write(dir, ADOPTION, text);
+      commitAll(dir, `the spec, and an adoption record that is ${what}`);
+      const head = git(dir, 'rev-parse', 'HEAD');
+      refused(dir, ['spec', '--add-ids', SPEC, '--prefix', 'INV', '--yes']);
+      assert.equal(read(dir, SPEC), UNMARKED);
+      assert.equal(read(dir, ADOPTION), text);
+      assert.ok(!exists(dir, ADOPTION_MD));
+      assert.ok(!exists(dir, '.assuredloop/config.yaml'));
+      assert.ok(!exists(dir, '.assuredloop/schema.yaml'));
+
+      writeYaml(dir, ADOPTION, { schema: 'assuredloop/1', request: 'adoption', status: 'concluded', dispositions: [] });
+      const r = adopt(dir);
+      assert.match(read(dir, SPEC), /^<!-- INV-5 -->$/m, show(r));
+      const h = hashes(dir);
+      assert.deepEqual(dispositions(dir), ALL.map((id) => entry(id, head, h[id])), show(r));
+    });
+  }
+});
