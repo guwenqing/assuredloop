@@ -110,21 +110,29 @@ export function judge(state, r, p, d, opts = {}, seen = new Set()) {
 }
 
 // The kind that spec paragraph `id` had in the newest commit that held it,
-// from git history, or null. The candidates are the commits whose diff adds
-// or removes its marker, in any spacing the parser allows, in any path; each
-// commit, then its parent, is read with that commit's own config and schema,
-// so a later move of the spec root or a later kind change is seen.
+// from git history, or null. First the selected commit itself; then, newest
+// first, each commit whose diff adds or removes the marker (in any spacing
+// the parser allows, in any path) or changes .assuredloop/config.yaml (which
+// can bring a marked file into scope or take it out). Each commit, then its
+// parent, is read with that commit's own config and schema.
 export function pastKind(state, id) {
+  const top = state.top;
+  const rev = state.rev ?? 'HEAD';
   const marker = `<!--[[:space:]][[:space:]]*${id}[[:space:]]`;
-  const out = git(state.top, ['log', '--format=%H', '-G', marker, state.rev ?? 'HEAD'], { allowFail: true }) ?? '';
-  for (const sha of out.split('\n').filter(Boolean)) {
-    for (const rev of [sha, `${sha}^`]) {
-      const { config, kinds } = settingsAt(state.top, rev);
-      for (const d of docsInScope(state.top, config, rev).filter((x) => x.scope === SPEC)) {
-        const p = parseMarkdown(d.text, d.path, { kinds }).paragraphs.find((x) => x.id === id);
-        if (p) return p.kind;
-      }
+  const list = (args) => (git(top, ['log', '--format=%H', ...args], { allowFail: true }) ?? '').split('\n').filter(Boolean);
+  const candidates = new Set([...list(['-G', marker, rev]), ...list([rev, '--', '.assuredloop/config.yaml'])]);
+  const ordered = (git(top, ['rev-list', rev], { allowFail: true }) ?? '').split('\n').filter((sha) => candidates.has(sha));
+  const kindAt = (at) => {
+    const { config, kinds } = settingsAt(top, at);
+    for (const d of docsInScope(top, config, at).filter((x) => x.scope === SPEC)) {
+      const p = parseMarkdown(d.text, d.path, { kinds }).paragraphs.find((x) => x.id === id);
+      if (p) return p.kind;
     }
+    return undefined;
+  };
+  for (const at of [rev, ...ordered.flatMap((sha) => [sha, `${sha}^`])]) {
+    const kind = kindAt(at);
+    if (kind !== undefined) return kind;
   }
   return null;
 }
