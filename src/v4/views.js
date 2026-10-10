@@ -4,7 +4,8 @@
 import { Fail } from './base.js';
 import { applicability, checks } from './checks.js';
 import { judge, judgeRequest } from './dispositions.js';
-import { git, mergeBase } from './git.js';
+import { git, mergeBase, mergeOf } from './git.js';
+import { crossRepo } from './repos.js';
 import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
 import { latestVersion, loadState, named, qualify, requestOf, resolve, signed } from './state.js';
@@ -97,16 +98,25 @@ const resultChecks = (state) => new Set(state.rev ? [] : loadResults(state.top).
 // A rule's checks (design.md 9): a test file or a result's check that names
 // it (cites, exact), or a declared verifies output (a claim). Any other file
 // that names it, such as code, is listed apart and is no check.
-function checksOf(id, cites, verifies, named) {
+function checksOf(id, cites, verifies, named, cross = null) {
   const files = [...(cites.get(id) ?? [])].sort();
+  const outside = crossCites(cross, id);
   return {
     checks: [
       ...files.filter((f) => isTest(f) || named.has(f)).map((file) => ({ file, how: 'cites it' })),
+      ...outside.filter((c) => isTest(c.file)).map((c) => ({ file: `${c.repo}/${c.file}`, how: `cites it (at ${c.repo}@${c.commit.slice(0, 7)})`, repo: c.repo, path: c.file })),
       ...(verifies.get(id) ?? []).map((file) => ({ file, how: 'verifies it (a claim)' })),
     ],
-    other: files.filter((f) => !isTest(f) && !named.has(f)),
+    other: [...files.filter((f) => !isTest(f) && !named.has(f)), ...outside.filter((c) => !isTest(c.file)).map((c) => `${c.repo}/${c.file}`)],
   };
 }
+
+// The files of output repos that cite `central:<id>` (T12, exact), from crossRepo.
+const crossCites = (cross, id) => (cross?.links ?? []).filter((l) => l.link === 'cites' && l.target === `central:${id}` && l.commit)
+  .map((l) => ({ repo: l.repo, file: l.file, commit: l.commit }));
+
+// The cross-repo facts of the working tree, or null at --at (crossRepo reads the working tree's config).
+const crossOf = (state) => (state.rev ? null : crossRepo(state.top));
 const showChecks = ({ checks, other }) => `${checks.length ? checks.map((c) => `${c.file} ${c.how}`).join(' · ') : 'none'}`
   + `${other.length ? ` · also named in ${other.join(', ')} (not a test: no check)` : ''}`;
 
@@ -121,6 +131,7 @@ function coverage(state, rules, perRule) {
   const cites = citesOf(state);
   const verifies = verifiesOf(state);
   const named = resultChecks(state);
+  const cross = crossOf(state);
   const sections = new Map();
   for (const p of rules) {
     const key = `${p.file} ${sectionOf(p)}`;
@@ -129,11 +140,11 @@ function coverage(state, rules, perRule) {
   }
   const out = [];
   for (const [key, ps] of sections) {
-    const checked = ps.filter((p) => checksOf(p.id, cites, verifies, named).checks.length);
+    const checked = ps.filter((p) => checksOf(p.id, cites, verifies, named, cross).checks.length);
     out.push(line('Coverage', `${key}: ${ps.length} rules, ${checked.length} with a check, ${ps.length - checked.length} without (${Math.round((100 * checked.length) / ps.length)}% have a check)`));
     if (perRule) {
       for (const p of ps) {
-        out.push(`  ${p.id} rule: ${showChecks(checksOf(p.id, cites, verifies, named))}`);
+        out.push(`  ${p.id} rule: ${showChecks(checksOf(p.id, cites, verifies, named, cross))}`);
       }
     }
   }
@@ -155,6 +166,29 @@ function prsFromGit(state, name) {
     for (const m of msg.matchAll(/(?<![\w-])((?:[a-z0-9-]+)?#\d+)\b/g)) if (!prs.has(m[1])) prs.set(m[1], sha.slice(0, 7));
   }
   return [...prs].map(([pr, sha]) => `${pr} (${sha})`);
+}
+
+// A git fact for each PR of a task (design.md 8; T12's mergeOf): this repo's
+// `#n` in the first-parent history of main (or of the selected commit); an
+// output repo's from crossRepo. Never "not merged": a merge not found is that.
+function taskPrs(state, r) {
+  const rev = state.rev ?? (git(state.top, ['rev-parse', '--verify', '--quiet', 'main'], { allowFail: true }) ? 'main' : 'HEAD');
+  const self = new Set(['central', ...(typeof state.config.repo === 'string' ? [state.config.repo] : [])]);
+  const cross = crossOf(state);
+  const repos = new Map((cross?.repos ?? []).map((x) => [x.name, x]));
+  return (task, pr) => {
+    const m = /^(?:([A-Za-z0-9][A-Za-z0-9._-]*))?#(\d+)$/.exec(pr);
+    if (!m) return '(not a PR reference)';
+    if (!m[1] || self.has(m[1])) {
+      const merge = mergeOf(state.top, rev, m[2]);
+      return merge ? `merged at ${merge.slice(0, 7)}` : `no merge found in ${rev === 'main' ? 'main' : rev.slice(0, 7)}`;
+    }
+    if (state.rev) return 'unknown: output repos are read at the working tree only';
+    const l = (cross?.links ?? []).find((x) => x.link === 'pr' && x.holder === `${r.name}/${task}` && x.target === pr);
+    if (l?.merged) return l.merged;
+    if (!repos.has(m[1]) || repos.get(m[1]).unknown) return `unknown: ${l?.unknown ?? repos.get(m[1])?.unknown ?? 'not an output repo in config'}`;
+    return l?.unknown ?? 'no merge found';
+  };
 }
 
 // The findings of al check that concern request `name`.
@@ -194,7 +228,11 @@ function requestView(state, r, audit) {
   for (const q of r.reqs) body.push(`  ${q.id} ${versionOf(r, q)} (${q.title}): ${signState(state, r, q)}`);
   if (!r.reqs.length) body.push('  no organized requirement yet');
   for (const d of list(r.data?.decisions)) body.push(line('Decision', `${d.id} (${d.source ?? 'no source'}): ${d.text ?? d.summary ?? ''}`));
-  for (const t of list(r.data?.tasks)) body.push(line('Task', `${t.id} ${t.ref ?? ''}${t.delivers ? ` · delivers ${[].concat(t.delivers).join(', ')}` : ''}`));
+  const prFacts = taskPrs(state, r);
+  for (const t of list(r.data?.tasks)) {
+    const prs = [].concat(t.prs ?? []).map((pr) => `${pr} ${prFacts(t.id, String(pr))}`);
+    body.push(line('Task', `${t.id} ${t.ref ?? ''}${t.delivers ? ` · delivers ${[].concat(t.delivers).join(', ')}` : ''}${prs.length ? ` · PRs: ${prs.join(', ')}` : ''}`));
+  }
   const prs = prsFromGit(state, r.name);
   body.push(`PRs from git: ${prs.length ? prs.join(' · ') : 'none found'}`);
   const judged = judgeRequest(state, r);
@@ -263,6 +301,24 @@ function auditLines(state, r) {
   return out;
 }
 
+// The Checks line of a paragraph and the Result lines of its checks: this
+// repo's (a spec ID only, `local`) and the output repos'.
+function checkLines(state, id, local) {
+  const cross = crossOf(state);
+  const found = checksOf(id, local ? citesOf(state) : new Map(), verifiesOf(state), local ? resultChecks(state) : new Set(), cross);
+  const out = [line('Checks', showChecks(found))];
+  if (state.rev) return out;
+  for (const res of loadResults(state.top)) {
+    if (!found.checks.some((c) => !c.repo && c.file === res.check)) continue;
+    out.push(line('Result', `${res.file} ${res.check} ${res.outcome}: ${res.problems.length ? `not valid: ${res.problems.join('; ')}` : applicability(state.top, res)}`));
+  }
+  for (const res of cross?.results ?? []) {
+    if (!found.checks.some((c) => c.repo === res.repo && c.path === res.check)) continue;
+    out.push(line('Result', `${res.repo}/${res.file} ${res.check} ${res.outcome} at ${res.repo}@${String(res.resolved ?? res.commit ?? 'unknown').slice(0, 7)}: ${res.applies}`));
+  }
+  return out;
+}
+
 function idView(state, id) {
   const t = qualify(id, null);
   const r = t.req ? state.requests.get(t.req) : null;
@@ -292,17 +348,7 @@ function idView(state, id) {
       }
     }
     body.push(line('Open', changes.length ? changes.join(' · ') : 'no open change builds on or changes it'));
-    {
-      const found = checksOf(p.id, citesOf(state), verifiesOf(state), resultChecks(state));
-      const cs = found.checks;
-      body.push(line('Checks', showChecks(found)));
-      if (!state.rev) {
-        for (const res of loadResults(state.top)) {
-          if (!cs.some((c) => c.file === res.check)) continue;
-          body.push(line('Result', `${res.file} ${res.check} ${res.outcome}: ${res.problems.length ? `not valid: ${res.problems.join('; ')}` : applicability(state.top, res)}`));
-        }
-      }
-    }
+    body.push(...checkLines(state, p.id, true));
     for (const o of state.requests.values()) {
       for (const d of list(o.data?.dispositions)) {
         if (d?.spec !== p.id) continue;
@@ -310,6 +356,7 @@ function idView(state, id) {
       }
     }
   } else {
+    body.push(...checkLines(state, who, false));
     const d = judgeRequest(state, r).find((j) => j.p.id === p.id);
     if (d) body.push(line('Disp.', judgedLine(d).trim()));
   }
