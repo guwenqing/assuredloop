@@ -97,8 +97,10 @@ function openIndex(DatabaseSync, dir, rebuild) {
   const old = (() => { try { return db.prepare("SELECT v FROM meta WHERE k = 'manifest'").get()?.v ?? null; } catch { return null; } })();
   const fresh = rebuild || old !== JSON.stringify(MANIFEST);
   if (fresh) {
+    // Everything in the folder goes, the level 2 package's vectors included.
     db.close();
-    rmSync(path, { force: true });
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
     db = new DatabaseSync(path);
   }
   db.exec(`
@@ -311,9 +313,9 @@ export async function search({ top, args, opts }) {
       // An ID resolves in every non-history row, whatever the query.
       const exact = exactHits(db, { ...q }, ids);
       let ranked = wordHits(db, q, ws, level === 2 ? DEEP : limit);
+      if (level === 2) model = found2.l2.model ?? 'an unnamed model';
       if (level === 2 && ws.length) {
         const l2 = found2.l2;
-        model = l2.model ?? 'an unnamed model';
         try {
           const cur = db.prepare('SELECT key, row FROM current').all().map((x) => ({ key: x.key, r: JSON.parse(x.row) }));
           const embed = cur.filter((x) => x.r.role === 'baseline' || x.r.role === 'proposal');
