@@ -9,7 +9,7 @@ import { isAbsolute, posix, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { read, sha256 } from './base.js';
 import { loadConfig } from './config.js';
-import { commitOf, fileAt, filesAt, git, mergeBase, mergeOf } from './git.js';
+import { commitOf, commitsOf, fileAt, filesAt, git, mergeBase, mergesOf } from './git.js';
 import { loadState, qualify, requestNames } from './indexer.js';
 import { latest } from './records.js';
 import { parseResult } from './results.js';
@@ -179,9 +179,11 @@ function resultsOf(repo) {
   const texts = filesAt(repo.dir, repo.sha, files);
   const parsed = files.map((file) => [file, parseResult(file, texts.get(file) ?? '')]);
   const bytes = filesAt(repo.dir, repo.sha, [...new Set(parsed.flatMap(([, r]) => (r.inputs ?? []).map((x) => String(x.file))))], null);
+  // The commits the results ran at, in one batch.
+  const commits = commitsOf(repo.dir, parsed.map(([, r]) => r.commit).filter((c) => typeof c === 'string' && c !== 'unknown'));
   return parsed.map(([file, r]) => {
     const inputs = r.inputs ?? [];
-    const resolved = typeof r.commit === 'string' && r.commit !== 'unknown' ? commitOf(repo.dir, r.commit) : null;
+    const resolved = typeof r.commit === 'string' && r.commit !== 'unknown' ? commits.get(r.commit) : null;
     const res = { repo: repo.name, file, check: r.check ?? null, outcome: r.outcome ?? null, commit: r.commit ?? null, resolved, inputs, by: r.by ?? null, source: r.source ?? null, note: r.note ?? null, problems: r.problems };
     return { ...res, applies: applies(repo, res, bytes) };
   });
@@ -197,6 +199,13 @@ function taskCommits(dir, sha) {
     for (const id of new Set(ids(message))) if (TASK.test(id)) found.push({ sha: h, task: id });
   }
   return found;
+}
+
+// The output repos of the central repo at `top` and their results, and
+// nothing else of crossRepo: what al check reads (design.md 9, 12).
+export function crossResults(top) {
+  const repos = outputRepos(top, loadConfig(top));
+  return { repos: repos.map(({ dir, ...r }) => r), results: repos.filter((r) => r.sha).flatMap((r) => resultsOf(r)) };
 }
 
 const link = (fields) => ({ repo: null, holder: null, link: null, target: null, how: null, proves: null, commit: null, unknown: null, resolves: null, file: null, line: null, request: null, ...fields });
@@ -225,6 +234,8 @@ export function crossRepo(top) {
   }
 
   // What the central records declare: outputs in other repos, and the PRs of tasks.
+  // The merges of each repo are read once (mergesOf).
+  const mergesByRepo = new Map();
   const unknownOf = (name) => (byName.has(name) ? byName.get(name).unknown : 'not an output repo in config');
   // The declared output files of each readable repo, read in one batch per repo.
   const declared = new Map();
@@ -259,7 +270,8 @@ export function crossRepo(top) {
         let merge = null;
         let unknown = unknownOf(m[1]);
         if (!unknown) {
-          merge = mergeOf(repo.dir, repo.sha, m[2]);
+          if (!mergesByRepo.has(repo.name)) mergesByRepo.set(repo.name, mergesOf(repo.dir, repo.sha));
+          merge = mergesByRepo.get(repo.name)(m[2]);
           if (!merge) unknown = `no merge found at ${repo.name}@${short(repo.sha)}`;
         }
         links.push({

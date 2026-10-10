@@ -70,19 +70,39 @@ export function loadState(top, rev = null) {
     const dir = open ? `requests/${name}` : `requests/archive/${name}`;
     const md = get(`${dir}/request.md`);
     if (md === null || md === undefined) return;
-    let data = null;
+    // The record is read now and parsed on first use (design.md 11): a check
+    // that does not need an archived record never parses it.
+    let text = null;
     try {
-      data = parse(get(recordPath(name)) ?? 'null');
+      text = get(recordPath(name));
     } catch {
-      data = null;
+      text = null;
     }
-    if (!data || typeof data !== 'object' || Array.isArray(data)) data = null;
+    let data;
+    const dataOf = () => {
+      if (data !== undefined) return data;
+      try {
+        data = parse(text ?? 'null');
+      } catch {
+        data = null;
+      }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) data = null;
+      return data;
+    };
     const specFile = `${dir}/spec.md`;
     const paras = (scopes.get(`request:${name}`) ?? []).filter((p) => p.file === specFile);
-    const tier = String(data?.tier ?? /^Tier:\s*(\S+)/m.exec(md)?.[1] ?? '');
+    const tierOf = () => String(dataOf()?.tier ?? /^Tier:\s*(\S+)/m.exec(md)?.[1] ?? '');
     requests.set(name, {
-      name, open, dir, md, specFile, data, tier,
-      spike: tier === 'S' || /^##\s+Organized question\s*$/m.test(md),
+      name, open, dir, md, specFile,
+      get data() { return dataOf(); },
+      get tier() { return tierOf(); },
+      get spike() { return tierOf() === 'S' || /^##\s+Organized question\s*$/m.test(md); },
+      // Whether the record's text names `x`, so that a reader parses only the
+      // records that can hold what it looks for; mayAdopt for the adoption
+      // entries. YAML writes a word another way only through an escape in a
+      // double-quoted string, so a record with a backslash always counts.
+      mentions: (x) => typeof text === 'string' && (text.includes(x) || text.includes('\\')),
+      mayAdopt: typeof text === 'string' && (text.includes('adoption') || text.includes('\\')),
       reqs: requirements(md), paras: new Map(paras.map((p) => [p.id, p])),
     });
   };
@@ -132,13 +152,18 @@ export function resolve(state, t) {
   }
   const r = state.requests.get(t.req);
   if (!r) return null;
-  const data = r.data ?? {};
+  // A requirement in request.md needs no record, so the record is not parsed for it.
   if (/^[RQ]\d+$/.test(t.id)) {
     const q = r.reqs.find((x) => x.id === t.id);
     if (q) return { sha: q.sha256, req: q };
-    const v = latestVersion(data, t.id);
+    const v = latestVersion(r.data ?? {}, t.id);
     return v ? { sha: v.sha256 } : null;
   }
+  if (!/^[DST]\d+$/.test(t.id) && !/\.md$/.test(t.id)) {
+    const p = r.paras.get(t.id);
+    return p ? { sha: p.sha256, p } : null;
+  }
+  const data = r.data ?? {};
   const entry = (key) => (Array.isArray(data[key]) ? data[key] : []).find((e) => e?.id === t.id);
   if (/^D\d+$/.test(t.id)) return entry('decisions') ? { sha: entry('decisions').sha256 ?? null, entry: entry('decisions') } : null;
   if (/^S\d+$/.test(t.id)) return entry('signoff') ? { sha: entry('signoff').sha256 ?? null, entry: entry('signoff') } : null;
@@ -147,8 +172,7 @@ export function resolve(state, t) {
     const s = (Array.isArray(data.sources) ? data.sources : []).find((e) => e?.file === t.id);
     return s ? { sha: s.sha256 ?? null } : null;
   }
-  const p = r.paras.get(t.id);
-  return p ? { sha: p.sha256, p } : null;
+  return null;
 }
 
 export function adrParagraph(state, id) {

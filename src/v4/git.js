@@ -86,8 +86,55 @@ export function commitOf(dir, rev) {
   return git(dir, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${rev}^{commit}`], { allowFail: true }) || null;
 }
 
+// Each of `revs` as a full commit hash in the repo at `dir`, or null when git
+// cannot resolve it to a commit there, as commitOf gives it, read with one
+// `git cat-file --batch-check` process. A rev that holds a newline or a NUL, or
+// ends in a carriage return, cannot go on a line of the batch: it gets commitOf.
+export function commitsOf(dir, revs) {
+  const out = new Map();
+  const asked = [...new Set(revs)];
+  const alone = (r) => r.includes('\n') || r.endsWith('\r') || r.includes('\0');
+  const lines = asked.filter((r) => typeof r === 'string' && r && !alone(r));
+  for (const r of asked) out.set(r, null);
+  if (lines.length) {
+    let text = '';
+    try {
+      text = execFileSync('git', ['-C', dir, 'cat-file', '--batch-check'], { input: lines.map((r) => `${r}^{commit}\n`).join(''), encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], maxBuffer: 1 << 30 });
+    } catch {
+      text = '';
+    }
+    // One answer per line, in the order asked: "<sha> commit <size>", or "<name> missing" (or ambiguous).
+    const answers = text.split('\n');
+    lines.forEach((r, i) => {
+      const m = /^([0-9a-f]{40,64}) commit \d+$/.exec(answers[i] ?? '');
+      if (m) out.set(r, m[1]);
+    });
+  }
+  for (const r of asked) if (typeof r === 'string' && r && alone(r)) out.set(r, commitOf(dir, r));
+  return out;
+}
+
 // The bytes of `path` at `commit`, or null when it is not there.
 export const blobAt = (dir, commit, path) => filesAt(dir, commit, [path], null).get(path);
+
+// mergeOf for many PRs: the first-parent history at `commit` read with one git
+// process, and a function from `n` to the commit that merged PR `n`, or null,
+// as mergeOf gives it.
+export function mergesOf(dir, commit) {
+  const out = git(dir, ['log', '--first-parent', '--format=%H %s', commit], { allowFail: true }) ?? '';
+  const merges = new Map();
+  for (const line of out.split('\n')) {
+    const sp = line.indexOf(' ');
+    if (sp <= 0) continue;
+    const subject = line.slice(sp + 1);
+    const sha = line.slice(0, sp);
+    // The newest commit wins: the log is newest first.
+    for (const m of [/^Merge pull request #(\d+)(\s|$)/.exec(subject), /\(#(\d+)\)\s*$/.exec(subject)]) {
+      if (m && !merges.has(m[1])) merges.set(m[1], sha);
+    }
+  }
+  return (n) => merges.get(String(Number(n))) ?? null;
+}
 
 // The commit that merged PR `n`, in the first-parent history at `commit`: the
 // newest whose subject is "Merge pull request #n ..." or ends in "(#n)". Null
