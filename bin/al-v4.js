@@ -7,6 +7,8 @@ import { check } from '../src/v4/check.js';
 import { Fail, spec } from '../src/v4/spec.js';
 import { newRequest, record } from '../src/v4/commands.js';
 import { index } from '../src/v4/indexer.js';
+import { exportCommand } from '../src/v4/export.js';
+import { search } from '../src/v4/search.js';
 
 const COMMANDS = {
   new: { run: newRequest, options: { from: { type: 'string' }, title: { type: 'string' }, tier: { type: 'string' } } },
@@ -21,6 +23,14 @@ const COMMANDS = {
   index: { run: index, options: { align: { type: 'string' } } },
   spec: { run: spec, options: { 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } } },
   check: { run: check, options: { strict: { type: 'boolean' } } },
+  export: { run: exportCommand, options: { at: { type: 'string' }, out: { type: 'string' } } },
+  search: {
+    run: search,
+    options: {
+      id: { type: 'string' }, change: { type: 'string' }, history: { type: 'boolean' }, level: { type: 'string' }, at: { type: 'string' },
+      limit: { type: 'string' }, section: { type: 'boolean' }, rebuild: { type: 'boolean' }, json: { type: 'boolean' },
+    },
+  },
 };
 const USAGE = `node bin/al-v4.js <${Object.keys(COMMANDS).join('|')}> [options]`;
 
@@ -38,7 +48,7 @@ function topLevel(cwd) {
   }
 }
 
-function main(argv) {
+async function main(argv) {
   const cwd = process.cwd();
   let read = 'nothing';
   try {
@@ -55,13 +65,15 @@ function main(argv) {
     }
     let out;
     try {
-      out = command.run({ top, cwd, args: parsed.positionals, opts: parsed.values });
+      out = await command.run({ top, cwd, args: parsed.positionals, opts: parsed.values });
     } catch (e) {
       // A config or schema file that does not parse is the user's to fix.
       if (e instanceof Fail || !/^\.assuredloop\//.test(e.message)) throw e;
       throw new Fail(e.message, 'fix the file and run it again');
     }
-    print(out.body, out.read ?? read, out.next, out.notKnown ?? []);
+    // A machine stream (the export's JSONL, search --json) is written as it is.
+    if (out.raw !== undefined) process.stdout.write(out.raw);
+    else print(out.body, out.read ?? read, out.next, out.notKnown ?? []);
     return out.exit ?? 0;
   } catch (e) {
     if (!(e instanceof Fail)) throw e;
@@ -71,7 +83,7 @@ function main(argv) {
 }
 
 try {
-  process.exitCode = main(process.argv.slice(2));
+  process.exitCode = await main(process.argv.slice(2));
 } catch (e) {
   process.stderr.write(`al: internal error: ${e.stack || e}\n`);
   process.exitCode = 2;
