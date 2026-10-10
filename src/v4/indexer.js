@@ -10,7 +10,7 @@ import { diffParagraphs } from './ids.js';
 import { git, mergeBase, fileAt } from './git.js';
 import { loadConfig } from './config.js';
 import { SPEC, docsInScope } from './scope.js';
-import { Fail, SCHEMA, docRecordPath, guard, read, recordPath, sha256, write } from './base.js';
+import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
 import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
@@ -146,10 +146,14 @@ const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
 const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
 export function index({ top, opts }) {
-  const config = loadConfig(top);
+  const loaded = loadConfig(top);
   const names = requestNames(top);
   const body = [];
   const notes = [];
+  if (!inside(String(loaded.root))) throw new Fail(`config root ${loaded.root} is outside the repository; nothing was read or written`, 'set root: in .assuredloop/config.yaml to a folder in this repo');
+  // A doc that config names outside the repo is neither read nor indexed.
+  const config = { ...loaded, docs: loaded.docs.filter((d) => inside(String(d.file ?? ''))) };
+  for (const d of loaded.docs) if (!inside(String(d.file ?? ''))) notes.push(`not indexed: ${d.file}: outside the repository`);
 
   // The base: the merge-base with main; with no main, HEAD (so a committed
   // link with no binding stays unknown); with no commit, nothing.
