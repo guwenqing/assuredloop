@@ -6,7 +6,7 @@ import { join, posix } from 'node:path';
 import { parse } from 'yaml';
 import { read, recordPath } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
-import { fileAt, git } from './git.js';
+import { fileAt, filesAt, git } from './git.js';
 import { KINDS, groupOf, parseMarkdown } from './markers.js';
 import { requirements } from './request-md.js';
 import { SPEC, docsInScope, parseScopes, symlinkOn } from './scope.js';
@@ -35,9 +35,10 @@ const adrBody = (text) => text.replace(/\r\n?/g, '\n').replace(/^\s*Status:[^\n]
 // The settings of a commit: its own config.yaml and schema.yaml, with the
 // defaults of config.js when a file is absent or not a mapping.
 export function settingsAt(top, rev) {
+  const files = filesAt(top, rev, ['.assuredloop/config.yaml', '.assuredloop/schema.yaml']);
   const yamlAt = (name) => {
     try {
-      const v = parse(fileAt(top, rev, `.assuredloop/${name}`) ?? 'null');
+      const v = parse(files.get(`.assuredloop/${name}`) ?? 'null');
       return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
     } catch {
       return {};
@@ -50,8 +51,17 @@ export function settingsAt(top, rev) {
 
 export function loadState(top, rev = null) {
   const { config, kinds } = rev ? settingsAt(top, rev) : { config: loadConfig(top), kinds: loadSchema(top).kinds };
-  const get = rev ? (p) => fileAt(top, rev, p) : (p) => read(top, p);
   const root = posix.normalize(String(config.root)).replace(/\/+$/, '');
+  const openNames = names(top, rev, 'requests', true).filter((n) => n !== 'archive');
+  const archivedNames = names(top, rev, 'requests/archive', true);
+  const adrFiles = names(top, rev, `${root}/adr`, false);
+  // At a commit, the requests' files and the ADRs are read in one batch.
+  const atRev = rev ? filesAt(top, rev, [
+    ...openNames.flatMap((n) => [`requests/${n}/request.md`, recordPath(n)]),
+    ...archivedNames.flatMap((n) => [`requests/archive/${n}/request.md`, recordPath(n)]),
+    ...adrFiles.map((f) => `${root}/adr/${f}`),
+  ]) : null;
+  const get = rev ? (p) => (atRev.has(p) ? atRev.get(p) : fileAt(top, rev, p)) : (p) => read(top, p);
   const { scopes, lints } = parseScopes(docsInScope(top, config, rev), kinds);
   const spec = new Map((scopes.get(SPEC) ?? []).map((p) => [p.id, p]));
 
@@ -76,11 +86,11 @@ export function loadState(top, rev = null) {
       reqs: requirements(md), paras: new Map(paras.map((p) => [p.id, p])),
     });
   };
-  for (const n of names(top, rev, 'requests', true)) if (n !== 'archive') add(n, true);
-  for (const n of names(top, rev, 'requests/archive', true)) if (!requests.has(n)) add(n, false);
+  for (const n of openNames) add(n, true);
+  for (const n of archivedNames) if (!requests.has(n)) add(n, false);
 
   const adrs = new Map();
-  for (const f of names(top, rev, `${root}/adr`, false)) {
+  for (const f of adrFiles) {
     const m = ADR_FILE.exec(f);
     if (!m) continue;
     const file = `${root}/adr/${f}`;
