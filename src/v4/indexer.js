@@ -107,7 +107,7 @@ function linksOf(top, state, config, live) {
     const own = new Set(r.paras.keys());
     for (const o of r.data?.outputs ?? []) {
       if (!o?.file || (o.repo && o.repo !== config.repo)) continue;
-      const bytes = live ? read(top, o.file) : null;
+      const bytes = live ? read(top, o.file, null) : null;
       for (const link of OUTPUT_LINKS) {
         for (const ref of [].concat(o[link] ?? [])) {
           out.push({ holder: o.file, holderSha: bytes === null ? null : sha256(bytes), link, target: qualify(String(ref), r.name, own).key, t: qualify(String(ref), r.name, own), homes: [r.name], output: true });
@@ -154,10 +154,9 @@ export function index({ top, opts }) {
   if (!inside(String(loaded.root)) || !inside(root) || root === '.') {
     throw new Fail(`config root ${loaded.root} is not a folder inside the repository; nothing was read or written`, 'set root: in .assuredloop/config.yaml to a folder in this repo, such as specs');
   }
-  // Nothing is read through a symlink: it can lead out of the repo.
-  for (const dir of [root, 'requests']) {
-    if (symlinkOn(top, dir)) throw new Fail(`${dir} is reached through the symlink ${symlinkOn(top, dir)}; nothing was read or written`, `make ${symlinkOn(top, dir)} a real folder in this repo`);
-  }
+  // Nothing is read through a symlink, which can lead out of the repo: read() refuses for each
+  // file, and the spec root, which docsInScope walks, is refused here.
+  if (symlinkOn(top, root)) throw new Fail(`${root} is reached through the symlink ${symlinkOn(top, root)}; nothing was read or written`, `make ${symlinkOn(top, root)} a real folder in this repo`);
   // A doc that config names outside the repo, or through a symlink, is neither read nor indexed.
   const why = (file) => (!inside(file) ? 'outside the repository' : symlinkOn(top, posix.normalize(file)) ? 'through a symlink' : null);
   const config = { ...loaded, root, docs: loaded.docs.filter((d) => !why(String(d.file ?? ''))) };
@@ -176,7 +175,7 @@ export function index({ top, opts }) {
   const recs = new Map();
   for (const n of names.open) {
     let rec = null;
-    try { rec = openRecord(top, n); } catch (e) { if (!(e instanceof Fail)) throw e; notes.push(`not read: ${e.message}`); continue; }
+    try { rec = openRecord(top, n); } catch (e) { if (!e.invalid) throw e; notes.push(`not read: ${e.message}`); continue; }
     if (!rec) { notes.push(`no record: requests/${n} has no ${recordPath(n)}`); continue; }
     rec.changed = addVersions(rec, requirements(read(top, `requests/${n}/request.md`) ?? '')).length > 0;
     recs.set(n, rec);

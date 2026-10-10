@@ -25,13 +25,31 @@ export const SCHEMA = 'assuredloop/1';
 export const recordPath = (name) => `.assuredloop/records/requests/${name}.yaml`;
 export const docRecordPath = (file) => `.assuredloop/records/${file}.yaml`;
 
-export const read = (top, path) => {
-  try { return readFileSync(join(top, path), 'utf8'); } catch { return null; }
-};
-export const exists = (top, path) => existsSync(join(top, path));
-
 // A path that stays inside the repo: relative, with no `..` part.
 export const inside = (path) => !isAbsolute(path) && !path.split(/[\\/]/).includes('..');
+
+// The first part of `path` (a path under `top`) that is a symlink, or null.
+function linkOn(top, path) {
+  let at = top;
+  for (const part of path.split('/')) {
+    at = join(at, part);
+    let st;
+    try { st = lstatSync(at); } catch { return null; }
+    if (st.isSymbolicLink()) return at.slice(top.length + 1);
+  }
+  return null;
+}
+
+// The text of `path` under `top` (its bytes with `encoding` null), or null
+// when it is absent. Nothing is read outside the repo or through a symlink,
+// which can lead out of it: either is a refusal.
+export function read(top, path, encoding = 'utf8') {
+  if (!inside(path)) throw new Fail(`${path} is outside the repository; nothing was read or written`);
+  const link = linkOn(top, path);
+  if (link) throw new Fail(`${path} is reached through the symlink ${link}; nothing was read or written`, `make ${link} a real file or folder in this repo`);
+  try { return readFileSync(join(top, path), encoding); } catch { return null; }
+}
+export const exists = (top, path) => existsSync(join(top, path));
 
 // Refuses, before anything is written, when any of `paths` (paths under
 // `top`) leaves the repo, or a part of one that exists is a symlink: records
@@ -39,13 +57,8 @@ export const inside = (path) => !isAbsolute(path) && !path.split(/[\\/]/).includ
 export function guard(top, paths) {
   for (const path of paths) {
     if (!inside(path)) throw new Fail(`${path} is outside the repository; nothing was written`);
-    let at = top;
-    for (const part of path.split('/')) {
-      at = join(at, part);
-      let st;
-      try { st = lstatSync(at); } catch { break; }
-      if (st.isSymbolicLink()) throw new Fail(`${path} is reached through the symlink ${at.slice(top.length + 1)}; records are written only through real folders, and nothing was written`, `make ${at.slice(top.length + 1)} a real folder in this repo`);
-    }
+    const link = linkOn(top, path);
+    if (link) throw new Fail(`${path} is reached through the symlink ${link}; records are written only through real folders, and nothing was written`, `make ${link} a real folder in this repo`);
   }
 }
 

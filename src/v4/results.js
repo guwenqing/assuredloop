@@ -5,7 +5,7 @@
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { read } from './base.js';
+import { Fail, read } from './base.js';
 import { loadConfig } from './config.js';
 
 const OUTCOMES = ['pass', 'fail', 'not run'];
@@ -18,7 +18,7 @@ export function loadResults(top) {
     const file = `${dir}/${f}`;
     let r;
     // The failsafe schema keeps each value as written: a commit such as 0123456 stays text.
-    try { r = parse(read(top, file), { schema: 'failsafe' }); } catch { return { file, problems: ['not YAML'] }; }
+    try { r = parse(read(top, file), { schema: 'failsafe' }); } catch (e) { return { file, problems: [e instanceof Fail ? e.message : 'not YAML'] }; }
     if (!r || typeof r !== 'object' || Array.isArray(r)) return { file, problems: ['not a YAML map'] };
     const problems = [];
     for (const k of ['check', 'outcome', 'commit']) if (r[k] === undefined || r[k] === null || r[k] === '') problems.push(`no ${k}`);

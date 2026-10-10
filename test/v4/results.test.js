@@ -1,6 +1,8 @@
 // loadResults from src/v4/results.js: the result files and their problems (#175).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
@@ -104,4 +106,27 @@ test('a commit that YAML would read as a number keeps its exact text and gives n
   for (const [i, c] of commits.entries()) write(dir, `${DIR}/n${i}.yaml`, `check: x\noutcome: pass\ncommit: ${c}\n`);
   const results = await loadResults(dir);
   assert.deepEqual(results.map((r) => [r.commit, r.problems]), commits.map((c) => [c, []]));
+});
+
+test('a result file that is a symlink to an outside file is not read: one problem that names the symlink', async (t) => {
+  const loadResults = await load();
+  const dir = project(t);
+  const external = mkdtempSync(join(realpathSync(tmpdir()), 'al-v4-outside-'));
+  t.after(() => rmSync(external, { recursive: true, force: true }));
+  const outsideText = 'check: test/outside.test.js\noutcome: fail\ncommit: b81c3f2\n';
+  writeFileSync(join(external, 'r.yaml'), outsideText);
+  mkdirSync(join(dir, DIR), { recursive: true });
+  symlinkSync(join(external, 'r.yaml'), join(dir, DIR, 'r.yaml'));
+  write(dir, `${DIR}/a.yaml`, GOOD);
+  const results = await loadResults(dir);
+  assert.deepEqual(results.map((r) => r.file), [`${DIR}/a.yaml`, `${DIR}/r.yaml`]);
+  assert.deepEqual(results[0].problems, [], 'the other result file is read as usual');
+  assert.equal(results[0].check, 'test/export-link.test.js');
+  const r = results[1];
+  assert.notEqual(r.check, 'test/outside.test.js');
+  assert.notEqual(r.outcome, 'fail');
+  assert.notEqual(r.commit, 'b81c3f2');
+  assert.equal(r.problems.length, 1, JSON.stringify(r.problems));
+  assert.match(r.problems[0], /symlink/);
+  assert.equal(readFileSync(join(external, 'r.yaml'), 'utf8'), outsideText);
 });
