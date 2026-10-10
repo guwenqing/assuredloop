@@ -43,7 +43,7 @@ Section 9 lists the rules with the evidence for and against each one.
 ## 2. What was run, and what is a model
 
 Run:
-- Every agent: 312 subagent runs, all of one model family. These are the
+- Every agent: 313 subagent runs, all of one model family. These are the
   owner, developer, records writer, reviewer, answerer, fixture builder,
   control auditor and mechanism judge. 6 runs are invalid and 36 were
   replaced by a rerun; the raw logs keep all of them.
@@ -371,8 +371,10 @@ these differences:
   design kinds, and both paragraphs are rationale.
 
 The model's close rule gives the expected verdict on every closing case:
-the wording decision passes, the A→B→C chain ending in a removal passes, the
-unexplained revert refuses, the source edited from 30 to 45 minutes refuses
+the wording decision passes; the A→B→C chain ending in a removal is a
+valid disposition, but the request still refuses to close in both arms,
+because SP-7, SP-10 and SP-11 have no disposition yet; the
+unexplained revert refuses; the source edited from 30 to 45 minutes refuses
 until its new version has a disposition, and the result is the same after a
 squash merge. In the lighter arm, supersession can be checked by ID only.
 
