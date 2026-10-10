@@ -1,0 +1,19 @@
+# On main: INV-99 committed as a note, then its kind changed to limit (the
+# text the same) in a later commit (review of c74c3d0, finding 2).
+title: Make the foreign tax paragraph a limit
+base: base
+claim: "Tier: 1 — foreign-tax"
+steps:
+  - edit:
+      file: specs/invoices.md
+      from: "Whether reminders may also go by text message is open.\n"
+      to: "Whether reminders may also go by text message is open.\n\n<!-- INV-99 note -->\n\nInvoicer does not calculate foreign tax.\n"
+  - index: true
+    date: 2026-08-08
+  - commit: "Record the foreign tax note\n\nTier: 1d — foreign-tax"
+  - edit:
+      file: specs/invoices.md
+      from: "<!-- INV-99 note -->"
+      to: "<!-- INV-99 limit -->"
+  - index: true
+    date: 2026-08-09

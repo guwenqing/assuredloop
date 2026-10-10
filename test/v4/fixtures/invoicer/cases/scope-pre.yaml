@@ -1,0 +1,24 @@
+# On main (review of d715a16): policies/tax.md, which holds the limit INV-99,
+# is committed outside the spec scope; a later commit adds it to config docs
+# with prefix INV, with no change to its marker, and indexes.
+title: Include the tax policy in the spec
+base: base
+claim: "Tier: 1 — foreign-tax"
+steps:
+  - write:
+      file: policies/tax.md
+      text: |
+        <!-- INV-99 limit -->
+
+        Invoicer does not calculate foreign tax.
+  - commit: "Store the tax policy outside the spec scope"
+  - write:
+      file: .assuredloop/config.yaml
+      text: |
+        root: specs
+        docs:
+          - {file: specs/invoices.md, prefix: INV}
+          - {file: specs/exports.md, prefix: EXP}
+          - {file: policies/tax.md, prefix: INV}
+  - index: true
+    date: 2026-08-11

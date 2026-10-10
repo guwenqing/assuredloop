@@ -87,6 +87,16 @@ Each step is a map with one key.
 | `spike-q2` | the spike's Q1 changes after its sign-off, and nobody signs the new version |
 | `conclude-unsigned` | late-fees incorporates a rule as EXP-9 with a valid disposition, but R1 is not signed |
 | `adoption-gap` | promise paragraphs with no link and no adoption entry: arm `unlisted` (INV-10's entry removed), arm `new` (a new rule INV-17) |
+| `abandon-changes` | reminder-emails/SP-2 (`changes:INV-11`) abandoned with no decision: arm `kept` (INV-11 unchanged), arm `applied` (INV-11 holds SP-2's text), arm `changed` (INV-11 changed in another way) |
+| `req-words` | a sentence added to EXP-5, a rationale: arm `lower` (may, should, must, shall), arm `upper` (MAY), arm `never`, arm `always` (Always) |
+| `remove-promise`, `remove-merged-unsigned`, `remove-merged-signed` | drop-tax removes the adopted limit INV-4 with a note that serves R1 and declares `removes:INV-4`: arms `unsigned` and `signed`; then the same removal merged on main, with an empty closing PR |
+| `abandon-unsigned` | csv-bom, unsigned, with one rule SP-2: arm `abandoned` (never in specs/), arm `incorporated` (as EXP-9) |
+| `code-cite` | EXP-2 named by code only (arm `code`), by a test file (arm `test`), or by a review file that a result names as its check (arm `result`) |
+| `spaced-pre`, `remove-spaced`, `remove-spaced-merged-unsigned`, `remove-spaced-merged-signed` | a limit INV-99 whose marker has extra spaces, on main; drop-spaced removes it (arms `unsigned`, `signed`); then the removal merged on main, with an empty closing PR |
+| `abandon-decided-dropped`, `abandon-decided-kept` | an owner decision D1 to drop csv-bom's rule SP-2, named in an abandoned disposition, on top of `abandon-unsigned` arm `abandoned` (no kept effect) or arm `incorporated` (EXP-9 kept) |
+| `root-moved-unsigned`, `root-moved-signed` | on top of `remove-merged-*`: the closing PR moves specs/ to current-specs/, with root and docs paths updated, and indexes |
+| `kind-pre`, `remove-kind` | on main, INV-99 committed as a note, then made a limit; drop-latest's note serves R1 and declares `removes:INV-99` (arms `unsigned`, `signed`); the test removes INV-99 itself |
+| `scope-pre`, `remove-scoped` | on main, policies/tax.md (the limit INV-99) committed outside scope, then added to config docs; drop-configured's note serves R1 and declares `removes:INV-99` (arms `unsigned`, `signed`); the test removes INV-99 itself |
 | `views` | a central test that names EXP-4 and its result, and declared outputs of invoice-exports; arms `fresh` and `changed` (the test changes after the result) |
 
 The main commits of `cr-abandon` and `cr-revert` name their PR in the title,
@@ -98,7 +108,7 @@ The fixtures were written before the final design. These are the changes.
 
 1. Markers have no `from:` link. `from` is not a marker link word.
 2. The adopted paragraphs (`from:adoption`) have a kind and no link
-   (decision D12). The base first commits the spec as it was at adoption
+   (decision D16). The base first commits the spec as it was at adoption
    (INV-1 to INV-12) on main. Then the `adoption` step writes, by hand in the
    T9 format, the archived request `adoption`
    (`requests/archive/adoption/request.md`) and its record
