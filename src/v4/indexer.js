@@ -64,7 +64,9 @@ function loadState(top, at, config, names) {
   for (const [n, open] of [...names.open.map((n) => [n, true]), ...names.archived.map((n) => [n, false])]) {
     const md = get(open ? `requests/${n}/request.md` : `requests/archive/${n}/request.md`) ?? '';
     let data = null;
-    try { data = parse(get(recordPath(n)) ?? 'null'); } catch { data = null; }
+    // A record that is not YAML reads as none; a refused read (outside, or through a symlink) stays a refusal.
+    const text = get(recordPath(n));
+    try { data = parse(text ?? 'null'); } catch { data = null; }
     const spec = open ? docs.find((d) => d.request === n) : null;
     let paras = spec?.paragraphs;
     if (!open) {
