@@ -178,13 +178,17 @@ function recordsAt(top, tree, config) {
 // walk with other settings starts again from the first commit.
 export const newHistory = () => ({ last: null, spec: null, versions: new Map(), atPath: new Map() });
 
+// The commits of the first-parent history up to `commit`, as a set.
+export const firstParents = (top, commit) => new Set((git(top, ['rev-list', '--first-parent', commit]) ?? '').split('\n').filter(Boolean));
+
 // Brings `h` to `commit`: walks only the commits after `h.last` when that is
-// an ancestor of `commit` and the settings are the same; else from the
-// first commit. Reads only the files each commit changed. Returns the keys
+// on the first-parent history of `commit` (`chain`) and the settings are the
+// same; else from the first commit, so a version's number never depends on a
+// branch indexed before. Reads only the files each commit changed. Returns the keys
 // (doc TAB id) whose versions changed.
-function advance(top, h, commit, config, outputs) {
+function advance(top, h, commit, config, outputs, chain) {
   const spec = JSON.stringify({ root: config.root, docs: config.docs, results: config.results, repo: config.repo, outputs: [...outputs.keys()].sort() });
-  const resume = h.last && h.spec === spec && (h.last === commit || git(top, ['merge-base', '--is-ancestor', h.last, commit], { allowFail: true }) !== null);
+  const resume = h.last && h.spec === spec && chain.has(h.last);
   if (!resume) Object.assign(h, newHistory());
   h.spec = spec;
   const changed = new Set();
@@ -233,7 +237,8 @@ export function exportRows(top, commit, h = newHistory()) {
   const tree = treeOf(top, commit);
   const config = configAt(top, tree, readBlobs(top, [tree.get('.assuredloop/config.yaml')].filter(Boolean)));
   const { records, outputs } = recordsAt(top, tree, config);
-  advance(top, h, commit, config, outputs);
+  const chain = firstParents(top, commit);
+  advance(top, h, commit, config, outputs, chain);
   const current = new Set([...h.atPath.values()].flat().map((x) => `${x.key}\t${x.sha}`));
 
   // Requirement versions: the record's number when it holds the hash; else after its highest.
@@ -313,7 +318,22 @@ export function exportRows(top, commit, h = newHistory()) {
   }
   const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
   rows.sort((a, b) => cmp(a.doc_or_request, b.doc_or_request) || cmp(a.id, b.id) || a.version - b.version || cmp(a.sha256, b.sha256));
-  return { rows, config, records, outputs };
+  return { rows, config, records, outputs, chain };
+}
+
+// The parent section of paragraph `id` in `file` as it was at `commit`: the
+// paragraphs under the same heading path, in file order, each { id, sha256,
+// row }. Null when the file or the ID is not there.
+export function sectionAt(top, commit, file, id) {
+  const [text] = readBlobs(top, [`${commit}:${file}`]).values();
+  if (text === undefined) return null;
+  const r = REQUEST_FILE.exec(file);
+  const what = r && r[3] === 'spec.md' ? { type: 'change', doc: r[2], request: r[2] } : { type: 'spec', doc: file };
+  const items = itemsOf(file, text, what);
+  const hit = items.find((it) => it.id === id);
+  if (!hit) return null;
+  const path = JSON.stringify(hit.row.heading_path);
+  return items.filter((it) => JSON.stringify(it.row.heading_path) === path);
 }
 
 // A row as the export writes it: the design's fields, in a fixed order.
