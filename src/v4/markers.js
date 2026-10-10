@@ -127,12 +127,27 @@ export function markBlocks(text, nextId) {
   return { text: out.join('\n'), marks };
 }
 
-// The text hash of every block of `text`, marked or not, as parseMarkdown
-// hashes a paragraph: what a doc held before it had markers (D16, #196).
-export function blockHashes(text, file = '') {
+// The IDs of `paragraphs` (one doc's, in file order) whose text is a block of
+// `text` (that doc at another commit, marked or not) in the same order: the
+// longest common subsequence of the two hash lists, as a diff keeps lines.
+// So one block there stands for one paragraph here, and of two equal
+// paragraphs only the one in the block's place matches (D16, D19, #196).
+export function sameBlocks(text, paragraphs, file = '') {
   let n = 0;
-  const marked = markBlocks(lf(text), () => `UNMARKED-${++n}`).text;
-  return new Set(parseMarkdown(marked, file).paragraphs.map((p) => p.sha256));
+  const a = parseMarkdown(markBlocks(lf(text), () => `UNMARKED-${++n}`).text, file).paragraphs.map((p) => p.sha256);
+  const b = paragraphs.map((p) => p.sha256);
+  // len[i][j]: the length of the common subsequence of a[i..] and b[j..].
+  const len = Array.from({ length: a.length + 1 }, () => new Uint32Array(b.length + 1));
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = b.length - 1; j >= 0; j--) len[i][j] = a[i] === b[j] ? len[i + 1][j + 1] + 1 : Math.max(len[i + 1][j], len[i][j + 1]);
+  }
+  const same = new Set();
+  for (let i = 0, j = 0; i < a.length && j < b.length;) {
+    if (a[i] === b[j] && len[i][j] === len[i + 1][j + 1] + 1) { same.add(paragraphs[j].id); i++; j++; }
+    else if (len[i + 1][j] > len[i][j + 1]) i++;
+    else j++;
+  }
+  return same;
 }
 
 const emptyLinks = () => Object.fromEntries(Object.values(LINK_WORDS).map((k) => [k, []]));
