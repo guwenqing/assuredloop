@@ -1,0 +1,48 @@
+# An unsigned promise change: late-fees adds a rule and incorporates it as
+# EXP-9 with a valid disposition, but nobody signed R1.
+title: Late fees on overdue exports
+base: base
+claim: "Tier: 2 — late-fees"
+steps:
+  - al: [new, late-fees, --from, '-', --title, Late fees, --tier, '2']
+    date: 2026-07-28
+    input: |
+      the overdue export should show the late fee of each invoice.
+  - section:
+      request: late-fees
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 Late fees in the export
+        A monthly export shows the late fee of each overdue invoice.
+  - write:
+      file: requests/late-fees/spec.md
+      text: |
+        <!-- SP-1 note -->
+
+        # Late fees: the change
+
+        <!-- SP-2 rule serves:R1 -->
+
+        A monthly export MUST show the late fee of each overdue invoice.
+
+        <!-- SP-3 plan -->
+
+        One PR: the fee column in invoicer-web, and SP-2 into `specs/exports.md`.
+  - edit:
+      file: specs/exports.md
+      from: "<!-- EXP-8 note -->"
+      to: |-
+        <!-- EXP-9 rule serves:late-fees/R1 -->
+
+        A monthly export MUST show the late fee of each overdue invoice.
+
+        <!-- EXP-8 note -->
+  - dispositions:
+      request: late-fees
+      add:
+        - {source: late-fees/SP-2, disposition: incorporated, spec: EXP-9}
+  - index: true
+    date: 2026-07-28

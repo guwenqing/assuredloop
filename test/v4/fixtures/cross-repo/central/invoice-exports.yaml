@@ -1,0 +1,14 @@
+# Set on the request record of invoice-exports in the central repo (design.md
+# 12, schema.md 8): its tasks with their PR references, and its declared outputs.
+tasks:
+  - {id: T1, ref: "tasks.md T1; issue #31", delivers: [R1, R2, R4], prs: ["#33", "invoicer-web#57"]}
+  - {id: T2, ref: "tasks.md T2; issue #34", delivers: [R3], prs: ["invoicer-worker#12", "invoicer-worker#13", "invoicer-worker#1"]}
+  - {id: T3, ref: "tasks.md T3; issue #36", delivers: [R1, R2], prs: ["invoicer-web#570", "invoicer-mobile#4", "invoicer-desktop#2"]}
+outputs:
+  - {repo: invoicer-web, file: src/export-link.js, implements: [central:EXP-4]}
+  - {repo: invoicer-web, file: test/export-link.test.js, verifies: [central:EXP-4]}
+  - {repo: invoicer-web, file: docs/missing.md, documents: [central:EXP-4]}
+  - {repo: invoicer-worker, file: src/zip-export.js, implements: [central:invoice-exports/R3]}
+  - {repo: invoicer-mobile, file: src/link.swift, implements: [central:EXP-4]}
+  - {repo: invoicer-desktop, file: src/app.js, implements: [central:EXP-4]}
+  - {repo: invoicer, file: docs/exports.md, documents: [EXP-4]}

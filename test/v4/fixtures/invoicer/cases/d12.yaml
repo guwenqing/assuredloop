@@ -1,0 +1,21 @@
+# D12: a typo claim that removes a doubled "MUST MUST" (t2 defects.yaml D12).
+# The control is the true typo; the mark fires on both.
+title: Fix a doubled word in the file name rule
+base: typo-pre
+claim: "Tier: 0 — typo in EXP-11"
+arms:
+  defect:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: An export file name MUST MUST start with the business's short name.
+          to: An export file name MUST NOT start with the business's short name.
+  control:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: An export file name MUST MUST start with the business's short name.
+          to: An export file name MUST start with the business's short name.
+after:
+  - index: true
+    date: 2026-07-22

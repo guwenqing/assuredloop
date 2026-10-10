@@ -1,0 +1,16 @@
+# On main (M9): a PR claimed as a wording fix puts the old INV-11 text back.
+# No decision explains it.
+title: Tidy the wording of invoices.md (#49)
+base: cr-revert-m8
+claim: "Tier: 0 — typo in INV-11"
+steps:
+  - edit:
+      file: specs/invoices.md
+      from: |-
+        Invoicer SHOULD send up to three reminders by email for an open invoice,
+        7, 14 and 21 days after the due date.
+      to: |-
+        Invoicer SHOULD send a reminder 7 days after the due date of an open
+        invoice.
+  - index: true
+    date: 2026-07-22

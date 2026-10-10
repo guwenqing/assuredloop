@@ -1,0 +1,31 @@
+# results whose applicability is unknown: commit unknown; no inputs declared;
+# a declared input that is not there; a commit that the clone does not have.
+title: Results the tool cannot place
+base: report-base
+steps:
+  - result:
+      file: commit-unknown.yaml
+      check: citation review, run by hand
+      outcome: pass
+      commit: unknown
+      inputs: [report/market-q3.md]
+  - result:
+      file: no-inputs.yaml
+      check: spelling review
+      outcome: pass
+      commit: HEAD
+  - result:
+      file: input-absent.yaml
+      check: figure review
+      outcome: pass
+      commit: HEAD
+      inputs:
+        - report/market-q3.md
+        - {file: report/figures.csv, sha256: 0d9e3f71c2a8b4550d9e3f71c2a8b4550d9e3f71c2a8b4550d9e3f71c2a8b455}
+  - result:
+      file: commit-absent.yaml
+      check: source review
+      outcome: pass
+      commit: 0123456789abcdef0123456789abcdef01234567
+      inputs: [report/market-q3.md]
+claim: "Tier: 2 — q3-report"

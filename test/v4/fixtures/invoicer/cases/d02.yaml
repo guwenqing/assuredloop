@@ -1,0 +1,60 @@
+# D02: a new rule labelled `data` (t2 defects.yaml D02). Only SP-2's text
+# differs between the arms.
+title: "Credit notes: request and change spec"
+base: base
+claim: "Tier: 2 — credit-notes"
+steps:
+  - al: [new, credit-notes, --from, '-', --title, Credit notes, --tier, '2']
+    date: 2026-07-08
+    input: |
+      customers sometimes get money back after the fact. we need credit notes
+      that cancel part of an invoice.
+  - section:
+      request: credit-notes
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 Credit notes
+        A business can cancel part of an invoice with a credit note.
+arms:
+  defect:
+    steps:
+      - write:
+          file: requests/credit-notes/spec.md
+          text: |
+            <!-- SP-1 note -->
+
+            # Credit notes: the change
+
+            <!-- SP-2 data serves:R1 builds-on:INV-8 -->
+
+            A credit note MUST NOT be larger than the total of the invoice it
+            cancels.
+
+            <!-- SP-3 plan -->
+
+            One PR: the credit note table in invoicer-web; SP-2 goes into
+            `specs/invoices.md`.
+  control:
+    steps:
+      - write:
+          file: requests/credit-notes/spec.md
+          text: |
+            <!-- SP-1 note -->
+
+            # Credit notes: the change
+
+            <!-- SP-2 data serves:R1 builds-on:INV-8 -->
+
+            A credit note has a number, the number of the invoice it cancels,
+            and an amount.
+
+            <!-- SP-3 plan -->
+
+            One PR: the credit note table in invoicer-web; SP-2 goes into
+            `specs/invoices.md`.
+after:
+  - index: true
+    date: 2026-07-08

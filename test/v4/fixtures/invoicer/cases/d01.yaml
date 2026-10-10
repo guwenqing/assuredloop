@@ -1,0 +1,44 @@
+# D01: an unsigned promise change (t2 defects.yaml D01, as amended by
+# defects-repair.yaml). Path 1: INV-6 now serves small-remainders/R1; the
+# request is archived on merge. Only the control has the sign-off.
+title: Small remainders count as paid
+base: base
+claim: "Tier: 1 — small-remainders"
+steps:
+  - al: [new, small-remainders, --from, '-', --title, Small remainders, --tier, '1']
+    date: 2026-07-05
+    input: |
+      customers leave a few cents open all the time. if less than a euro is
+      left, count the invoice as paid.
+  - section:
+      request: small-remainders
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 Small remainders
+        An invoice whose remaining amount is less than 1.00 in its currency counts
+        as paid.
+arms:
+  defect:
+    steps: []
+  control:
+    steps:
+      - al: [record, small-remainders, signoff, --source, the project chat, --words, 'R1 ok, sign', --yes]
+        date: 2026-07-06
+after:
+  - edit:
+      file: specs/invoices.md
+      from: |-
+        <!-- INV-6 definition -->
+
+        A paid invoice is one whose full amount has arrived.
+      to: |-
+        <!-- INV-6 definition serves:small-remainders/R1 -->
+
+        A paid invoice is one whose full amount has arrived, or whose
+        remaining amount is less than 1.00 in its currency.
+  - index: true
+    date: 2026-07-06
+  - archive: small-remainders

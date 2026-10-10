@@ -1,0 +1,28 @@
+# D11: a typo claim that changes "only" to "all" (t2 defects.yaml D11).
+title: Fix a typo in the overdue export rule
+base: typo-pre
+claim: "Tier: 0 — typo in EXP-10"
+arms:
+  defect:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: |-
+            The overdue export MUST include only open invoices whose due date has
+            passed, with the number of days overdeu.
+          to: |-
+            The overdue export MUST include all open invoices whose due date has
+            passed, with the number of days overdue.
+  control:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: |-
+            The overdue export MUST include only open invoices whose due date has
+            passed, with the number of days overdeu.
+          to: |-
+            The overdue export MUST include only open invoices whose due date has
+            passed, with the number of days overdue.
+after:
+  - index: true
+    date: 2026-07-22

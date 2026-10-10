@@ -1,0 +1,80 @@
+# D06: a drifted consolidation (t2 defects-repair.yaml D06). PR #74
+# consolidates part 2 of invoice-exports in a later PR than the code; the
+# request stays open. Only EXP-10's text differs: in the defect it drops the
+# empty months, with no wording decision. Added to both arms, beyond the
+# fixture: EXP-12, the incorporated copy of the rationale SP-12, because the
+# final design gives an informative kind a baseline effect (design.md 5).
+# The worker repo (invoicer-worker#13, K8) is T12's, so it is not built here.
+title: "Invoice exports part 2: the yearly ZIP (T2)"
+base: base
+claim: "Tier: 3 — invoice-exports, part 2"
+arms:
+  defect:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: "<!-- EXP-8 note -->"
+          to: |-
+            <!-- EXP-9 rule serves:invoice-exports/R3 -->
+
+            A user MUST be able to download the invoices of one year as one ZIP file.
+
+            <!-- EXP-10 data serves:invoice-exports/R3 -->
+
+            A yearly ZIP holds one CSV file for each month that has invoices, named
+            YYYY-MM.csv, each in the format of a monthly export.
+
+            <!-- EXP-11 interface serves:invoice-exports/R3 -->
+
+            The worker serves `GET /exports/{year}.zip` and answers 404 for a year with
+            no invoices.
+
+            <!-- EXP-12 rationale explains:EXP-10 -->
+
+            Twelve monthly files let an accountant check one month without opening the
+            rest.
+
+            <!-- EXP-8 note -->
+  control:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: "<!-- EXP-8 note -->"
+          to: |-
+            <!-- EXP-9 rule serves:invoice-exports/R3 -->
+
+            A user MUST be able to download the invoices of one year as one ZIP file.
+
+            <!-- EXP-10 data serves:invoice-exports/R3 -->
+
+            A yearly ZIP holds twelve monthly CSV files named YYYY-MM.csv, each in the
+            format of a monthly export.
+
+            <!-- EXP-11 interface serves:invoice-exports/R3 -->
+
+            The worker serves `GET /exports/{year}.zip` and answers 404 for a year with
+            no invoices.
+
+            <!-- EXP-12 rationale explains:EXP-10 -->
+
+            Twelve monthly files let an accountant check one month without opening the
+            rest.
+
+            <!-- EXP-8 note -->
+after:
+  - edit:
+      file: requests/invoice-exports/spec.md
+      from: |-
+        yearly ZIP. Part 1 (CSV and links) is consolidated. Part 2 (the ZIP) is
+        open.
+      to: |-
+        yearly ZIP. Part 1 (CSV and links) and part 2 (the ZIP) are consolidated.
+  - dispositions:
+      request: invoice-exports
+      add:
+        - {source: invoice-exports/SP-7, disposition: incorporated, spec: EXP-9}
+        - {source: invoice-exports/SP-10, disposition: incorporated, spec: EXP-10}
+        - {source: invoice-exports/SP-11, disposition: incorporated, spec: EXP-11}
+        - {source: invoice-exports/SP-12, disposition: incorporated, spec: EXP-12}
+  - index: true
+    date: 2026-07-07

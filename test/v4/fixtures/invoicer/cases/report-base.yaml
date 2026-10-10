@@ -1,0 +1,15 @@
+# market-report, a non-code project: the Q3 report draft at C1, and the
+# citation review that passed at C1, added alone at C2. The report's own bytes
+# are the whole checked object (design.md 9).
+title: Citation review result (passed at C1)
+steps:
+  - files: {from: report, to: report}
+  - commit: "Q3 report draft (C1)"
+  - result:
+      file: citation-review.yaml
+      check: citation review of report/market-q3.md
+      outcome: pass
+      commit: HEAD
+      inputs: [report/market-q3.md]
+      by: a review agent
+claim: "Tier: 2 — q3-report"

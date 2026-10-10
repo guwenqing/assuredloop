@@ -1,0 +1,33 @@
+# schema.md 5: a PR that changes a paragraph that an ADR decides gets the hint
+# "check that ADR-n still holds". Arm decided: EXP-6, which the accepted ADR-4
+# decides, is reworded. Arm free: EXP-5, which no ADR decides, is reworded.
+title: Reword an export-link paragraph
+base: base
+claim: "Tier: 1d — link-wording"
+steps:
+  # al-v4 new refuses --tier 1d (see d13.yaml).
+  - al: [new, link-wording, --from, '-', --title, Link wording]
+    date: 2026-07-26
+    input: |
+      the link paragraphs read badly, tidy the wording.
+  - archive: link-wording
+arms:
+  decided:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: |-
+            The link service issues a one-time token for each export and stores the
+            time at which the token expires.
+          to: |-
+            The link service issues one one-time token for each export and stores the
+            time at which that token expires.
+  free:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: Thirty minutes is long enough to open the email, and short enough that a
+          to: Thirty minutes is long enough to read the email, and short enough that a
+after:
+  - index: true
+    date: 2026-07-26

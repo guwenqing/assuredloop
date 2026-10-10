@@ -1,0 +1,48 @@
+# cr-wording: part 2 of invoice-exports consolidated with a recorded wording
+# change; the epic can close. SP-10 goes in as EXP-10 with "named" moved, and
+# decision D3 (source: the agent) names the pair; al-v4 index fills the two
+# hashes in D3's wording map. A third arm of D06 that passes.
+title: "Invoice exports part 2: the yearly ZIP (T2)"
+base: base
+claim: "Tier: 3 — invoice-exports, part 2; closes the request"
+steps:
+  - edit:
+      file: specs/exports.md
+      from: "<!-- EXP-8 note -->"
+      to: |-
+        <!-- EXP-9 rule serves:invoice-exports/R3 -->
+
+        A user MUST be able to download the invoices of one year as one ZIP file.
+
+        <!-- EXP-10 data serves:invoice-exports/R3 -->
+
+        A yearly ZIP holds twelve monthly CSV files, each in the format of a monthly
+        export and named YYYY-MM.csv.
+
+        <!-- EXP-11 interface serves:invoice-exports/R3 -->
+
+        The worker serves `GET /exports/{year}.zip` and answers 404 for a year with
+        no invoices.
+
+        <!-- EXP-12 rationale explains:EXP-10 -->
+
+        Twelve monthly files let an accountant check one month without opening the
+        rest.
+
+        <!-- EXP-8 note -->
+  - al: [record, invoice-exports, decision, --source, agent, --text, 'Wording: EXP-10 words SP-10 as "A yearly ZIP holds twelve monthly CSV files, each in the format of a monthly export and named YYYY-MM.csv." The meaning is the same.', --yes]
+    date: 2026-06-25
+  - decision:
+      request: invoice-exports
+      id: D3
+      set:
+        wording: {source: invoice-exports/SP-10, spec: EXP-10}
+  - dispositions:
+      request: invoice-exports
+      add:
+        - {source: invoice-exports/SP-7, disposition: incorporated, spec: EXP-9}
+        - {source: invoice-exports/SP-10, disposition: incorporated, spec: EXP-10, decision: D3}
+        - {source: invoice-exports/SP-11, disposition: incorporated, spec: EXP-11}
+        - {source: invoice-exports/SP-12, disposition: incorporated, spec: EXP-12}
+  - index: true
+    date: 2026-06-25

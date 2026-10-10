@@ -1,0 +1,50 @@
+# D07: a stale base after indexing (t2 defects.yaml D07, as amended). Path 1:
+# INV-10 now serves billing-copy/R1. reminder-emails/SP-4 builds on INV-10.
+# Only the control checks SP-4 and runs `al-v4 index --align reminder-emails/SP-4`.
+title: "Invoices: a copy to the business"
+base: base
+claim: "Tier: 1 — billing-copy"
+steps:
+  - al: [new, billing-copy, --from, '-', --title, Billing copy, --tier, '1']
+    date: 2026-07-12
+    input: |
+      send a copy of every invoice to the business itself too, they keep
+      asking for it.
+  - section:
+      request: billing-copy
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 A copy to the business
+        Invoicer MUST send a copy of each invoice to the business's own email
+        address.
+  - al: [record, billing-copy, signoff, --source, the project chat, --words, ok sign, --yes]
+    date: 2026-07-13
+  - edit:
+      file: specs/invoices.md
+      from: |-
+        <!-- INV-10 rule -->
+
+        Invoicer MUST send each invoice by email to the customer's billing address.
+      to: |-
+        <!-- INV-10 rule serves:billing-copy/R1 -->
+
+        Invoicer MUST send each invoice by email to the customer's billing address,
+        with a copy to the business's own address.
+  - index: true
+    date: 2026-07-13
+  - archive: billing-copy
+arms:
+  defect:
+    steps: []
+  control:
+    steps:
+      - section:
+          request: reminder-emails
+          text: |
+            2026-07-13 the agent checked SP-4 against the new INV-10: reminders go to
+            the billing address only. Aligned.
+      - align: reminder-emails/SP-4
+        date: 2026-07-13

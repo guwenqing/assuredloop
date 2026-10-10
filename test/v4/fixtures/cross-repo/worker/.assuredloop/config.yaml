@@ -1,0 +1,2 @@
+repo: invoicer-worker
+central: {path: ../invoicer}

@@ -1,0 +1,10 @@
+# results: C3 changes one figure of the report; the result file is not
+# changed, so the C1 result does not apply to the current text.
+title: Correct the price figure
+base: report-base
+steps:
+  - edit:
+      file: report/market-q3.md
+      from: rose from 9 to 11 euros
+      to: rose from 9 to 12 euros
+claim: "Tier: 2 — q3-report"

@@ -7,11 +7,12 @@ import { join, posix } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
 import { diffParagraphs } from './ids.js';
-import { git, mergeBase, fileAt } from './git.js';
+import { blobAt, git, mergeBase, fileAt } from './git.js';
 import { loadConfig } from './config.js';
 import { SPEC, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
+import { outputRepos } from './repos.js';
 import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
 // The marker links that get a binding, by the parser's key; `for` (a task) has no text to bind.
@@ -27,8 +28,14 @@ const list = (top, dir) => {
   try { return readdirSync(join(top, dir), { withFileTypes: true }); } catch { return []; }
 };
 
-// The names of the open requests (requests/<name>/request.md) and of the archived ones.
-function requestNames(top) {
+// The names of the open requests (requests/<name>/request.md) and of the
+// archived ones, in the working tree, or at commit `at`.
+export function requestNames(top, at = null) {
+  if (at) {
+    const dirs = (path) => (git(top, ['ls-tree', '-d', '--name-only', at, `${path}/`], { allowFail: true }) ?? '').split('\n').filter(Boolean).map((p) => p.slice(path.length + 1));
+    const open = dirs('requests').filter((n) => n !== 'archive' && fileAt(top, at, `requests/${n}/request.md`) !== null).sort();
+    return { open, archived: dirs('requests/archive').sort() };
+  }
   const open = list(top, 'requests').filter((e) => e.isDirectory() && e.name !== 'archive' && read(top, `requests/${e.name}/request.md`) !== null).map((e) => e.name).sort();
   const archived = list(top, 'requests/archive').filter((e) => e.isDirectory()).map((e) => e.name).sort();
   return { open, archived };
@@ -37,7 +44,7 @@ function requestNames(top) {
 // One state of the project, the working tree (at null) or a commit: its
 // docs, parsed, and its requests, each with request.md's requirements and
 // its record's data.
-function loadState(top, at, config, names) {
+export function loadState(top, at, config, names) {
   const get = at ? (p) => fileAt(top, at, p) : (p) => read(top, p);
   // The spec docs and the open change specs (docsInScope), and the ADRs in <root>/adr/.
   const adr = `${config.root}/adr`;
@@ -81,7 +88,9 @@ function loadState(top, at, config, names) {
 // A link target as written, made exact: `name:ID` is another repo's;
 // `<request>/<ID>` a request's; in a request's own text, R/Q/D/S numbers, a
 // snapshot file and an ID of its own change spec are its own; else a spec ID.
-function qualify(ref, request, own) {
+export function qualify(ref, request, own = new Set(), central = false) {
+  // In the central repo, `central:X` is its own X (T12); the key stays as written.
+  if (central && ref.startsWith('central:')) return { ...qualify(ref.slice('central:'.length), request, own), key: ref };
   if (ref.includes(':')) return { key: ref, cross: true };
   const slash = ref.indexOf('/');
   if (slash > 0) return { key: ref, req: ref.slice(0, slash), id: ref.slice(slash + 1) };
@@ -89,14 +98,22 @@ function qualify(ref, request, own) {
   return { key: ref, req: null, id: ref };
 }
 
+// The central repo is the one whose config lists output repos (T12).
+export const isCentral = (config) => Array.isArray(config.outputs) && config.outputs.length > 0;
+
+// An output in another repo (T12): its repo is named, and is not this one.
+const foreign = (o, config) => Boolean(o.repo) && o.repo !== config.repo && o.repo !== 'central';
+
 // Every declared link of a state: { holder, holderSha, link, target, homes }, with
-// `homes` the requests whose record holds it.
-function linksOf(top, state, config, live) {
+// `homes` the requests whose record holds it. An output in another repo also
+// has `commit` (<repo>@<sha>), or `unknown` with the reason; `repos` are the
+// output repos of config, by name (live only).
+function linksOf(top, state, config, live, repos = new Map()) {
   const out = [];
   for (const d of state.docs) {
     for (const p of d.paragraphs) {
       const holder = d.request ? `${d.request}/${p.id}` : p.id;
-      const ls = Object.entries(LINK_WORDS).flatMap(([k, link]) => (p.links?.[k] ?? []).map((ref) => ({ link, t: qualify(ref, d.request, d.ids) })));
+      const ls = Object.entries(LINK_WORDS).flatMap(([k, link]) => (p.links?.[k] ?? []).map((ref) => ({ link, t: qualify(ref, d.request, d.ids, isCentral(config)) })));
       const homes = d.request ? [d.request] : [...new Set(ls.map((l) => l.t.req).filter(Boolean))];
       for (const { link, t } of ls) out.push({ holder, holderSha: p.sha256, link, target: t.key, t, homes });
     }
@@ -108,11 +125,17 @@ function linksOf(top, state, config, live) {
     }
     const own = new Set(r.paras.keys());
     for (const o of r.data?.outputs ?? []) {
-      if (!o?.file || (o.repo && o.repo !== config.repo)) continue;
-      const bytes = live ? read(top, o.file, null) : null;
+      if (!o?.file) continue;
+      const other = foreign(o, config);
+      const repo = other ? repos.get(o.repo) : null;
+      const unknown = !other || !live ? null : !repo ? 'not an output repo in config' : repo.unknown;
+      let bytes = null;
+      if (live && !other) bytes = read(top, o.file, null);
+      else if (live && !unknown) bytes = blobAt(repo.dir, repo.sha, String(o.file));
+      const at = other && live && !unknown ? { commit: `${o.repo}@${repo.sha}` } : {};
       for (const link of OUTPUT_LINKS) {
         for (const ref of [].concat(o[link] ?? [])) {
-          out.push({ holder: o.file, holderSha: bytes === null ? null : sha256(bytes), link, target: qualify(String(ref), r.name, own).key, t: qualify(String(ref), r.name, own), homes: [r.name], output: true });
+          out.push({ holder: other ? `${o.repo}/${o.file}` : o.file, holderSha: bytes === null ? null : sha256(bytes), link, target: qualify(String(ref), r.name, own, isCentral(config)).key, t: qualify(String(ref), r.name, own, isCentral(config)), homes: [r.name], output: true, ...(unknown ? { unknown } : {}), ...at });
         }
       }
     }
@@ -121,7 +144,7 @@ function linksOf(top, state, config, live) {
 }
 
 // The text hash of a target in `state`, with its version for a requirement; null when it does not resolve.
-function targetOf(t, state) {
+export function targetOf(t, state) {
   if (!t.req) {
     const p = state.spec.get(t.id);
     return p ? { sha: p.sha256 } : null;
@@ -189,14 +212,15 @@ export function index({ top, opts }) {
 
   const now = loadState(top, null, config, names);
   for (const [n, rec] of recs) now.requests.get(n).data = rec.data;
-  const links = linksOf(top, now, config, true);
+  const repos = new Map(outputRepos(top, loaded).filter((r) => r.name).map((r) => [r.name, r]));
+  const links = linksOf(top, now, config, true, repos);
   const atBase = new Set(base ? linksOf(top, loadState(top, base, config, names), config, false).map(tripleKey) : []);
 
   // --align <ID>: the ID must be something that holds links now.
   const align = opts.align;
   if (align !== undefined) {
     const froms = new Set([...now.docs.flatMap((d) => d.paragraphs.map((p) => (d.request ? `${d.request}/${p.id}` : p.id))),
-      ...[...now.requests.values()].filter((r) => r.open).flatMap((r) => [...r.reqs.map((q) => `${r.name}/${q.id}`), ...(r.data?.outputs ?? []).map((o) => o?.file)])]);
+      ...[...now.requests.values()].filter((r) => r.open).flatMap((r) => [...r.reqs.map((q) => `${r.name}/${q.id}`), ...(r.data?.outputs ?? []).map((o) => (o && foreign(o, config) ? `${o.repo}/${o.file}` : o?.file))])]);
     if (!froms.has(align)) throw new Fail(`--align ${align}: no paragraph, requirement or output with that ID (a change spec's ID is <request>/<ID>)`, 'al index --align <ID>');
   }
 
@@ -215,11 +239,13 @@ export function index({ top, opts }) {
       const at = items.findIndex((it) => it?.get?.('holder') === l.holder && it.get('link') === l.link && it.get('target') === l.target);
       if (at >= 0 && !aligning) continue;
       if (at < 0 && !aligning && atBase.has(tripleKey(l))) { once(`binding unknown: ${name}`); continue; }
+      if (l.unknown) { once(`unknown: ${name}: ${l.unknown}`); continue; }
       const target = targetOf(l.t, now);
       if (!target) { once(`not bound: ${name}: target not found`); continue; }
       if (l.holderSha === null) { once(`not bound: ${name}: output file not found`); continue; }
       const entry = { holder: l.holder, link: l.link, target: l.target, holder_sha256: l.holderSha, target_sha256: target.sha };
       if (target.version !== undefined) entry.target_version = target.version;
+      if (l.commit) entry.commit = l.commit;
       const node = rec.doc.createNode(entry);
       node.flow = true;
       if (at >= 0) {
@@ -244,12 +270,12 @@ export function index({ top, opts }) {
       const source = it.get('source');
       // `adoption` names the captured baseline, which has no hash here (T17).
       if (source && source !== 'adoption' && !it.has('source_sha256')) {
-        const t = targetOf(qualify(String(source), n, own), now);
+        const t = targetOf(qualify(String(source), n, own, isCentral(config)), now);
         if (t) { it.set('source_sha256', t.sha); rec.changed = true; } else body.push(`disposition: ${source} not found, so its hash is not filled`);
       }
       const spec = it.get('spec');
       if (it.get('disposition') === 'incorporated' && spec && !it.has('spec_sha256')) {
-        const t = targetOf(qualify(String(spec), null, new Set()), now);
+        const t = targetOf(qualify(String(spec), null, new Set(), isCentral(config)), now);
         if (t) { it.set('spec_sha256', t.sha); rec.changed = true; } else body.push(`disposition: ${spec} not found, so its spec hash is not filled`);
       }
     }

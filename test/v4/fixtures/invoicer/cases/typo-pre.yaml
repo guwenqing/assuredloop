@@ -1,0 +1,48 @@
+# On main: a merged path-1 PR added three export rules, each with a real typo
+# ('nubmer', 'overdeu', the doubled 'MUST MUST'). D10-D12 start here.
+title: "Export rules: order, overdue export, file names"
+base: base
+claim: "Tier: 1 — export-rules"
+steps:
+  - al: [new, export-rules, --from, '-', --title, Export rules, --tier, '1']
+    date: 2026-07-01
+    input: |
+      sort the exports by number please. and I want an export of everything
+      overdue. the file name should start with our short name, the accountants
+      mix up the files.
+  - section:
+      request: export-rules
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 Export order, the overdue export and file names
+        Every monthly export MUST be sorted by invoice number. An overdue export
+        MUST list the open invoices that are past their due date. Every export
+        file name MUST start with the business's short name.
+  - al: [record, export-rules, signoff, --source, the project chat, --words, R1 signed, --yes]
+    date: 2026-07-02
+  - edit:
+      file: specs/exports.md
+      from: "<!-- EXP-8 note -->"
+      to: |-
+        <!-- EXP-9 rule serves:export-rules/R1 -->
+
+        A monthly export MUST list each invoice once, sorted by invoice nubmer.
+
+        <!-- EXP-10 rule serves:export-rules/R1 -->
+
+        The overdue export MUST include only open invoices whose due date has
+        passed, with the number of days overdeu.
+
+        <!-- EXP-11 rule serves:export-rules/R1 -->
+
+        An export file name MUST MUST start with the business's short name.
+
+        <!-- EXP-8 note -->
+  - index: true
+    date: 2026-07-03
+  - archive: export-rules
+  - index: true
+    date: 2026-07-03
