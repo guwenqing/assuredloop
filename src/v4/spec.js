@@ -2,15 +2,30 @@
 // `--add-ids <file>` marks every paragraph that has no marker.
 import { existsSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { Fail } from './base.js';
+import { parseDocument } from 'yaml';
+import { Fail, exists, guard, read, recordPath, write } from './base.js';
 import { loadConfig, loadSchema, writeSetup } from './config.js';
-import { HEADING, blocksOf, lf, parseMarkdown } from './markers.js';
+import { fileAt, git } from './git.js';
+import { blockHashes, lf, markBlocks, parseMarkdown } from './markers.js';
+import { append, openRecord, recordText } from './records.js';
 import { docsInScope, idsEverUsed, isShallow, notRead, prefixOf, rootProblem, scopeOf, symlinkOn } from './scope.js';
 
 // The refusal every v4 command shares (exit 2, nothing written).
 export { Fail };
 
 const PREFIX = /^[A-Z][A-Z0-9]*$/;
+// The adoption record (design.md 5 and 14, D16, D19): an archived request
+// named adoption, whose dispositions say where each adopted paragraph's text
+// came from. It is not an owner approval.
+const ADOPTION = recordPath('adoption');
+const ADOPTION_MD = 'requests/archive/adoption/request.md';
+const ADOPTION_TEXT = `# Adoption
+
+The paragraphs that \`al spec --add-ids\` marked, as they were at the commit
+that each entry of \`${ADOPTION}\` names. \`source: adoption\`
+says where the text came from. It is not an owner approval, and it does not
+excuse a later change.
+`;
 const USAGE = 'al-v4 spec --add-ids <file> [--prefix <PREFIX>] [--yes]';
 
 export function spec({ top, cwd, args, opts }) {
@@ -40,7 +55,7 @@ function addIds({ top, cwd, opts }) {
   const config = loadConfig(top);
   if (!path.endsWith('.md') || path.startsWith('..')) throw new Fail(`${opts['add-ids']}: give a .md file in this repo`, USAGE);
   // --add-ids writes the doc and the two settings files: never through a symlink.
-  for (const p of [path, '.assuredloop/config.yaml', '.assuredloop/schema.yaml']) {
+  for (const p of [path, '.assuredloop/config.yaml', '.assuredloop/schema.yaml', ADOPTION, ADOPTION_MD]) {
     const link = symlinkOn(top, p);
     if (link) throw new Fail(`${link} is a symlink; --add-ids writes no file through a symlink`, USAGE);
   }
@@ -65,37 +80,65 @@ function addIds({ top, cwd, opts }) {
   for (const d of docs) for (const p of parseMarkdown(d.text, d.path).paragraphs) used.add(p.id);
   let next = Math.max(0, ...[...used].filter((id) => id.slice(0, id.lastIndexOf('-')) === prefix).map((id) => Number(id.slice(id.lastIndexOf('-') + 1)))) + 1;
 
-  const lines = text.split('\n');
-  const { blocks: all, markers } = blocksOf(lines);
-  const todo = all.filter((b) => !b.marked);
-  const out = [];
-  let k = 0;
-  const marks = [];
-  lines.forEach((l, i) => {
-    if (k < todo.length && todo[k].first === i) {
-      const id = `${prefix}-${next++}`;
-      marks.push(id);
-      if (out.length && out.at(-1).trim() !== '') out.push('');
-      out.push(HEADING.test(l) ? `<!-- ${id} note -->` : `<!-- ${id} -->`, '');
-      k++;
-    } else if (markers.has(i) && out.length && out.at(-1).trim() !== '') {
-      out.push('');
-    }
-    out.push(l);
-    if (markers.has(i) && lines[i + 1] !== undefined && lines[i + 1].trim() !== '') out.push('');
-  });
+  const { text: marked, marks } = markBlocks(text, () => `${prefix}-${next++}`);
   const notKnown = ['IDs used on branches that were never fetched here'];
   if (isShallow(top)) notKnown.push('IDs used before the shallow history begins');
   const verb = opts.yes ? 'Marked' : 'Would mark';
   const body = [`${verb} ${marks.length} paragraph(s) in ${path}`];
   if (marks.length) body.push(`  ${marks[0]}${marks.length > 1 ? ` to ${marks.at(-1)}` : ''}`);
+  // Only spec paragraphs are adopted; a change spec's paragraphs are its own.
+  const adoption = scope === 'spec' ? adoptionOf(top, path, marked, marks) : { body: [], write: () => [] };
+  body.push(...adoption.body);
   if (opts.yes) {
-    writeFileSync(join(top, path), out.join('\n'));
+    writeFileSync(join(top, path), marked);
     for (const w of writeSetup(top, path, scope === 'spec' ? prefix : null)) body.push(`wrote ${w}`);
+    for (const w of adoption.write()) body.push(`wrote ${w}`);
   }
   return {
     body,
     next: opts.yes ? `set the kind of each new marker, review the diff of ${path} and commit it` : 'run the same command with --yes to write it',
     notKnown,
   };
+}
+
+// What --add-ids records of the paragraphs it marked: one adoption entry for
+// each whose text is a block of the file at HEAD, with that commit; the others
+// are named as not adopted. `write()` writes the record and, when absent, the
+// adoption request.md, and returns the paths written.
+function adoptionOf(top, path, marked, marks) {
+  if (exists(top, 'requests/adoption/request.md')) {
+    throw new Fail('requests/adoption is an open request, and the name adoption holds the adoption record', 'give that request another name, then run it again');
+  }
+  const none = { body: [], write: () => [] };
+  if (!marks.length) return none;
+  const head = git(top, ['rev-parse', '--verify', '-q', 'HEAD^{commit}'], { allowFail: true });
+  if (!head) return { ...none, body: ['no adoption record written: the repo has no commit, so no commit holds the adopted text'] };
+  const atHead = fileAt(top, head, path);
+  const known = atHead == null ? new Set() : blockHashes(atHead, path);
+  const ids = new Set(marks);
+  const paras = parseMarkdown(marked, path).paragraphs.filter((p) => ids.has(p.id));
+  const adopted = paras.filter((p) => known.has(p.sha256));
+  const body = paras.filter((p) => !known.has(p.sha256))
+    .map((p) => `not adopted: ${p.id}: its text is not in ${path} at HEAD ${head.slice(0, 7)}`);
+  if (!adopted.length) return { body: [...body, 'no adoption record written: no marked paragraph is in the file at HEAD'], write: () => [] };
+  body.unshift(`adoption: ${adopted.length} paragraph(s) from commit ${head.slice(0, 7)}, in ${ADOPTION}`);
+  return {
+    body,
+    write() {
+      guard(top, [ADOPTION, ADOPTION_MD]);
+      const rec = openRecord(top, 'adoption') ?? newRecord();
+      for (const p of adopted) {
+        append(rec, 'dispositions', { source: 'adoption', disposition: 'incorporated', spec: p.id, commit: head, spec_sha256: p.sha256 }, true);
+      }
+      const written = [];
+      if (write(top, ADOPTION, recordText(rec))) written.push(ADOPTION);
+      if (read(top, ADOPTION_MD) === null && write(top, ADOPTION_MD, ADOPTION_TEXT)) written.push(ADOPTION_MD);
+      return written;
+    },
+  };
+}
+
+function newRecord() {
+  const doc = parseDocument('schema: assuredloop/1\nrequest: adoption\nstatus: concluded\ndispositions: []\n');
+  return { doc, get data() { return doc.toJS() ?? {}; } };
 }
