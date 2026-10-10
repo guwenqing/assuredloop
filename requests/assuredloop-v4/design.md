@@ -530,8 +530,8 @@ moved the main tag on close to half of the notes in one study (arXiv
   them (input 98). The script writes the derived facts.
 - AI hints and declared outputs are optional. A PR never needs them. A
   project fills AI hints only where it uses search level 2 or higher. Why: in
-  validation, no AI hint changed a verdict, and they were a large part of the
-  record cost (validation.md section 9).
+  validation, no AI hint changed a verdict; their own cost was not measured
+  (validation.md section 9).
 - **AI hints** (summaries, tags, quotes):
   - Each hint records the paragraph hash it was made from. A hint is stale
     when the paragraph's hash differs, even if its quote still matches: a
@@ -815,8 +815,10 @@ the owner signs again.
 ## 16. Cost, and the checks left for the build
 
 **Cost.** The records cost 1.3 to 1.6 times the tokens of the work on small
-and big changes in validation, and converting one real change cost 166k to
-294k tokens. The signed R12 asks for about a fifth, as a flexible target. So
+and big changes in validation (records-agent tokens divided by work-agent
+tokens; some record reading is inside the work denominator, and later
+corrections and repeated review were not measured), and converting one real
+change cost 166k to 294k tokens. The signed R12 asks for about a fifth, as a flexible target. So
 the target is not met, and 0.1.0 did not meet it either. The owner chose to
 build and measure again: "The cost is fine we can always try" (input 149).
 These steps aim to lower the cost; their savings are hypotheses, not
