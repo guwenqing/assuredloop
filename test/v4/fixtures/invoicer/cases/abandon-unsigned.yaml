@@ -1,0 +1,59 @@
+# A request with an unsigned requirement and one rule (review of 9680c1a,
+# finding 2). design.md 6: "A request with no kept effect may be abandoned
+# without a sign-off." Arm abandoned: SP-2 is abandoned and its text never
+# entered specs/. Arm incorporated: SP-2 is incorporated as EXP-9, with no
+# sign-off.
+title: A byte order mark in the CSV
+base: base
+claim: "Tier: 2 — csv-bom"
+steps:
+  - al: [new, csv-bom, --from, '-', --title, CSV byte order mark, --tier, '2']
+    date: 2026-08-03
+    input: |
+      maybe the csv files need a byte order mark for one accounting tool.
+  - section:
+      request: csv-bom
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 A byte order mark
+        Every CSV export starts with a byte order mark.
+  - write:
+      file: requests/csv-bom/spec.md
+      text: |
+        <!-- SP-1 note -->
+
+        # CSV byte order mark: the change
+
+        <!-- SP-2 rule serves:R1 -->
+
+        Every CSV export MUST start with a byte order mark.
+  - index: true
+    date: 2026-08-03
+arms:
+  abandoned:
+    steps:
+      - dispositions:
+          request: csv-bom
+          add:
+            - {source: csv-bom/SP-2, disposition: abandoned}
+  incorporated:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: "<!-- EXP-8 note -->"
+          to: |-
+            <!-- EXP-9 rule serves:csv-bom/R1 -->
+
+            Every CSV export MUST start with a byte order mark.
+
+            <!-- EXP-8 note -->
+      - dispositions:
+          request: csv-bom
+          add:
+            - {source: csv-bom/SP-2, disposition: incorporated, spec: EXP-9}
+after:
+  - index: true
+    date: 2026-08-03

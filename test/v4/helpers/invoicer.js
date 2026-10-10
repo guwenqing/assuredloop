@@ -109,7 +109,7 @@ function step(dir, caseDir, s) {
       assert.ok(rec.dispositions.length < before, `${request} has a disposition for ${spec}`);
     });
   } else if (s.adoption) {
-    // The adoption record, by hand in the T9 format (decision D12): the archived
+    // The adoption record, by hand in the T9 format (decision D16): the archived
     // request `adoption`, and one disposition per adopted paragraph with the
     // adopting commit (HEAD) and the paragraph's text hash from the per-doc
     // record (so run index first).

@@ -9,6 +9,8 @@ import { newRequest, record } from '../src/v4/commands.js';
 import { index } from '../src/v4/indexer.js';
 import { exportCommand } from '../src/v4/export.js';
 import { search } from '../src/v4/search.js';
+import { context } from '../src/v4/views.js';
+import { conclude } from '../src/v4/conclude.js';
 
 // positionals: how many positional arguments a command uses, or a function of
 // its options that says so; any more are refused. None given: it uses them all.
@@ -34,6 +36,8 @@ const COMMANDS = {
       limit: { type: 'string' }, section: { type: 'boolean' }, rebuild: { type: 'boolean' }, json: { type: 'boolean' },
     },
   },
+  context: { run: context, options: { diff: { type: 'string' }, for: { type: 'string' }, audit: { type: 'boolean' }, at: { type: 'string' } } },
+  conclude: { run: conclude, options: { yes: { type: 'boolean' } } },
 };
 const USAGE = `node bin/al-v4.js <${Object.keys(COMMANDS).join('|')}> [options]`;
 

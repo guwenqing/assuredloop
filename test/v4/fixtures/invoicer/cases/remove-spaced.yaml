@@ -1,0 +1,46 @@
+# drop-spaced removes INV-99, whose marker has extra spaces (review of
+# e89b991, finding 1). Its note serves R1 and declares removes:INV-99, with a
+# removed disposition. Arm unsigned: R1 is not signed. Arm signed: R1 is signed.
+title: Drop the foreign tax limit
+base: spaced-pre
+claim: "Tier: 2 — drop-spaced"
+steps:
+  - al: [new, drop-spaced, --from, '-', --title, Drop the foreign tax limit, --tier, '2']
+    date: 2026-08-06
+    input: |
+      take out the foreign tax line, we do that now.
+  - section:
+      request: drop-spaced
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 No foreign tax limit
+        The spec no longer says that Invoicer does not calculate foreign tax.
+arms:
+  unsigned:
+    steps: []
+  signed:
+    steps:
+      - al: [record, drop-spaced, signoff, --source, the project chat, --words, R1 ok, --yes]
+        date: 2026-08-07
+after:
+  - write:
+      file: requests/drop-spaced/spec.md
+      text: |
+        <!-- SP-1 note serves:R1 removes:INV-99 -->
+
+        Remove INV-99. Invoicer calculates foreign tax now.
+  - index: true
+    date: 2026-08-07
+  - edit:
+      file: specs/invoices.md
+      from: "\n<!--   INV-99   limit   -->\n\nInvoicer does not calculate foreign tax.\n"
+      to: ""
+  - dispositions:
+      request: drop-spaced
+      add:
+        - {source: drop-spaced/SP-1, disposition: removed, spec: INV-99}
+  - index: true
+    date: 2026-08-07

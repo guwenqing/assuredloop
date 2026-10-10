@@ -6,7 +6,7 @@ import { writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { docsInScope } from '../../src/v4/scope.js';
 import { loadConfig } from '../../src/v4/config.js';
-import { makeRepo, runV4, lines, show } from './helpers/repo.js';
+import { makeRepo, addRequest, runV4, lines, show } from './helpers/repo.js';
 
 // A marker problem a read would show: no blank line after the marker, and no kind.
 const OUTSIDE_TEXT = '<!-- OUT-1 -->\nOutside text.\n';
@@ -291,7 +291,8 @@ describe('a root: that is the repository top is refused', () => {
   function dotSpecs(t) {
     const repo = makeRepo(t);
     repo.write('.assuredloop/config.yaml', 'root: ./specs\n');
-    repo.write('specs/a.md', '<!-- A-1 note -->\n\n# Alpha\n\n<!-- A-2 rule serves:R1 -->\n\nA rule.\n');
+    repo.write('specs/a.md', '<!-- A-1 note -->\n\n# Alpha\n\n<!-- A-2 rule serves:inv/R1 -->\n\nA rule.\n');
+    addRequest(repo);
     repo.commit('specs with root ./specs');
     return repo;
   }
