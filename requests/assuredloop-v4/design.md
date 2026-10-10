@@ -78,7 +78,8 @@ A reader must find the current system without reading past changes (R1).
   written straight into `specs/adr/` by that change's PR. ADRs are append
   only, so they need no consolidation.
 - User documents in `docs/` are an output of a change, like code and tests
-  (input 112). They carry no paragraph IDs of their own.
+  (input 112). They carry no paragraph IDs of their own, unless the config's
+  `docs:` list names them (section 17).
 - Change-only paragraphs (plan, step, migration), `approach` paragraphs and
   `note` paragraphs stay with the change as its history; they are never
   copied into `specs/`. Every other kind in a change spec (promise kinds,
@@ -739,8 +740,9 @@ let's assume the spec stay in the central repo" (input 133). Links from output
 repos are a must.
 
 - The central repo holds the spec (`specs/`, `specs/adr/`), the requests and
-  the records. Its `config.yaml` lists the output repos, each with a name, a
-  local path or a URL, and a selected or pinned commit.
+  the records. Its `config.yaml` lists the output repos, each with a name,
+  the path of a local clone, and a selected or pinned commit. A URL is only a
+  note for people: `al` never fetches.
 - An output repo holds code, tests and user documents only: no spec and no
   requests. Its config names the central repo, so `al` there can resolve
   central IDs for hints.
@@ -925,7 +927,7 @@ measurements:
 
 The validation ratios have limits: small invented changes, one model family,
 token counts per agent run, one uncounted helper, and no work agent in the
-OpenSpec replay. A complete cost account runs on the product (T15, T16):
+OpenSpec replay. A complete cost account runs on the product (T16):
 record creation, reading, corrections, indexing and review across every
 agent, with small changes and epics apart, against the same flexible target.
 
@@ -934,7 +936,7 @@ scale timings (T15); Node 24 and level 1 (T13); real fallback and level 2
 (T14); every role through the change-context query at levels 0-2 (T13, T14);
 marker preservation by agents (T16); the record commands end to end, the ADR
 checks, an absent clone and a missing commit (T9, T10, T12); the cost account
-(T15, T16). Search recall at levels 0-1 was about 0.3 in the model; level 2 is
+(T16). Search recall at levels 0-1 was about 0.3 in the model; level 2 is
 measured in T14.
 
 ## 17. Building v4
