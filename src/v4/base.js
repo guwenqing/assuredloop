@@ -2,7 +2,7 @@
 // request names and the record paths.
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 
 // A refusal: exit 2, `al: <message>`, and nothing written.
 export class Fail extends Error {
@@ -30,11 +30,15 @@ export const read = (top, path) => {
 };
 export const exists = (top, path) => existsSync(join(top, path));
 
-// Refuses, before anything is written, when a part of any of `paths` (paths
-// under `top`) that exists is a symlink: records are written only through
-// real folders, so nothing lands outside the repo.
+// A path that stays inside the repo: relative, with no `..` part.
+export const inside = (path) => !isAbsolute(path) && !path.split(/[\\/]/).includes('..');
+
+// Refuses, before anything is written, when any of `paths` (paths under
+// `top`) leaves the repo, or a part of one that exists is a symlink: records
+// are written only through real folders, so nothing lands outside the repo.
 export function guard(top, paths) {
   for (const path of paths) {
+    if (!inside(path)) throw new Fail(`${path} is outside the repository; nothing was written`);
     let at = top;
     for (const part of path.split('/')) {
       at = join(at, part);
