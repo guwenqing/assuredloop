@@ -5,7 +5,7 @@
 // its own. Two scopes never share IDs.
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
-import { join, posix } from 'node:path';
+import { join, posix, relative } from 'node:path';
 import { git, fileAt } from './git.js';
 import { parseMarkdown } from './markers.js';
 
@@ -17,10 +17,40 @@ const outside = (p) => posix.isAbsolute(String(p)) || /^\.\.(\/|$)/.test(clean(p
 
 // The root and the docs entries of config that are outside the repository,
 // as written (the root with a trailing slash): never walked or read.
-export const outsideDocs = (config) => [
+const outsideDocs = (config) => [
   ...(outside(config.root) ? [`${String(config.root).replace(/\/+$/, '')}/`] : []),
   ...config.docs.map((d) => String(d.file)).filter(outside),
 ];
+
+// The first part of `path` (from the repo top) that is a symlink, or null.
+export function symlinkOn(top, path) {
+  let at = top;
+  for (const part of path.split('/')) {
+    at = join(at, part);
+    let stat;
+    try {
+      stat = lstatSync(at);
+    } catch {
+      return null;
+    }
+    if (stat.isSymbolicLink()) return relative(top, at);
+  }
+  return null;
+}
+
+// The root and the docs entries that are inside the repository but reached
+// through a symlink: never walked or read either.
+const linked = (top, config) => [
+  ...(!outside(config.root) && symlinkOn(top, clean(config.root)) ? [`${String(config.root).replace(/\/+$/, '')}/`] : []),
+  ...insideDocs(config).map((d) => String(d.file)).filter((f) => symlinkOn(top, clean(f))),
+];
+
+// One line for each root or docs entry that is not read, and why.
+export const notRead = (top, config) => [
+  ...outsideDocs(config).map((f) => `not read: ${f}: outside the repository`),
+  ...linked(top, config).map((f) => `not read: ${f}: through a symlink`),
+];
+
 const insideDocs = (config) => config.docs.filter((d) => !outside(d.file));
 
 // The scope of a repo path, or null when it holds no markers.
@@ -58,7 +88,8 @@ export function docsInScope(top, config, rev = null) {
   const root = clean(config.root);
   let paths;
   if (rev === null) {
-    paths = [...(outside(config.root) ? [] : walk(top, root)), ...walk(top, 'requests'), ...insideDocs(config).map((d) => clean(d.file))];
+    const read = (p) => !symlinkOn(top, p);
+    paths = [...(outside(config.root) || !read(root) ? [] : walk(top, root)), ...walk(top, 'requests'), ...insideDocs(config).map((d) => clean(d.file)).filter(read)];
   } else {
     paths = (git(top, ['ls-tree', '-r', '-z', '--name-only', rev], { allowFail: true }) ?? '').split('\0').filter(Boolean);
   }
