@@ -45,6 +45,11 @@ const linked = (top, config) => [
   ...insideDocs(config).map((d) => String(d.file)).filter((f) => symlinkOn(top, clean(f))),
 ];
 
+// Why config's root cannot be used, or null: the repository top is no spec root.
+export const rootProblem = (config) => (!outside(config.root) && ['.', ''].includes(clean(config.root))
+  ? `.assuredloop/config.yaml: root: ${JSON.stringify(String(config.root))} is the repository top; give the spec folder, for example specs`
+  : null);
+
 // One line for each root or docs entry that is not read, and why.
 export const notRead = (top, config) => [
   ...outsideDocs(config).map((f) => `not read: ${f}: outside the repository`),

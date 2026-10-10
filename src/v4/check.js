@@ -6,10 +6,13 @@
 import { loadConfig, loadSchema } from './config.js';
 import { mergeBase } from './git.js';
 import { diffParagraphs, idLints } from './ids.js';
-import { docsInScope, idsEverUsed, isShallow, notRead, parseScopes, SPEC } from './scope.js';
+import { docsInScope, idsEverUsed, isShallow, notRead, parseScopes, rootProblem, SPEC } from './scope.js';
+import { Fail } from './spec.js';
 
 export function check({ top, opts }) {
   const config = loadConfig(top);
+  const root = rootProblem(config);
+  if (root) throw new Fail(root, 'fix root: in .assuredloop/config.yaml');
   const { kinds } = loadSchema(top);
   const base = mergeBase(top);
   const now = parseScopes(docsInScope(top, config), kinds);
