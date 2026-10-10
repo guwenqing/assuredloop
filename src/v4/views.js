@@ -5,7 +5,7 @@ import { Fail } from './base.js';
 import { applicability, checks } from './checks.js';
 import { judge, judgeRequest } from './dispositions.js';
 import { git, mergeBase, mergeOf } from './git.js';
-import { crossRepo } from './repos.js';
+import { crossRepo, findCites } from './repos.js';
 import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
 import { latestVersion, loadState, named, qualify, requestOf, resolve, signed } from './state.js';
@@ -57,18 +57,16 @@ const judgedLine = (j) => `  ${j.p.id} ${j.p.kind} ${j.status}${j.d?.spec ? ` ${
   + `${j.status === 'pending' ? '' : j.valid ? ` · valid${j.reason ? ` (${j.reason})` : ''}` : ` · not valid: ${j.reason}`}`;
 
 // The files that name each spec ID (cites, exact): every file outside the
-// spec root, requests/ and .assuredloop/, in the working tree or at `rev`.
+// spec root, requests/ and .assuredloop/, in the working tree or at `rev`,
+// found by the one cite finder (findCites, D17).
 function citesOf(state) {
-  const args = ['grep', '-I', '-o', '-w', ...(state.rev ? [] : ['--untracked']), '-E', '-e', '[A-Z][A-Z0-9]*-[0-9]+', ...(state.rev ? [state.rev] : [])];
-  args.push('--', '.', `:!${state.root}`, ':!requests', ':!.assuredloop', ':!node_modules');
-  const out = git(state.top, args, { allowFail: true }) ?? '';
   const cites = new Map();
-  for (const l of out.split('\n').filter(Boolean)) {
-    const parts = l.split(':');
-    const id = parts.pop();
-    const file = (state.rev ? parts.slice(1) : parts).join(':');
-    if (!cites.has(id)) cites.set(id, new Set());
-    cites.get(id).add(file);
+  for (const { file, ids } of findCites(state.top, state.rev ?? null, { qualified: false, exclude: [state.root, 'requests', '.assuredloop', 'node_modules'] })) {
+    for (const written of ids) {
+      const id = written.replace(/^central:/, '');
+      if (!cites.has(id)) cites.set(id, new Set());
+      cites.get(id).add(file);
+    }
   }
   return cites;
 }
