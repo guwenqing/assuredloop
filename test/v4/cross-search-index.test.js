@@ -167,3 +167,33 @@ test('review 192 #1, level 1: a new spec paragraph in the central repo does not 
   assert.equal(historyAsExport(w, 'invoicer', 'src/quokka.js').length, 1);
   assert.equal(historyAsExport(w, 'invoicer', 'docs/guide.md').length, 1);
 });
+
+// --- review of PR #192 at 2343e45: a result file at the top of an output repo
+// (`results: .`) whose note stops citing a central ID.
+test('review 192 (2343e45), level 1: a root result file that stops citing: the refresh gives v1 history (superseded by the new commit) and v2 evidence, as --rebuild and the export', (t) => {
+  const w = searchWorld(t);
+  const result = (note) => [
+    'check: test/export-link.test.js', 'outcome: pass', 'commit: unknown',
+    'inputs:', `  - {file: src/export-link.js, sha256: ${'b'.repeat(64)}}`, `note: ${note}`, '',
+  ].join('\n');
+  write(w.web, '.assuredloop/config.yaml', 'repo: invoicer-web\ncentral: {path: ../invoicer}\nresults: .\n');
+  write(w.web, 'review.yaml', result('reviewed against central:invoice-exports/R2'));
+  const V1 = commit(w.web, 'Results at the top; a review result');
+  const first = search(w.central, ['--id', 'review.yaml', '--history'], L1);
+  assert.ok(first.hits.some((h) => h.repo === 'invoicer-web' && h.source_type === 'result'), `the result is indexed:\n${first.hits.map(key).join('\n')}`);
+  write(w.web, 'review.yaml', result('reviewed'));
+  const V2 = commit(w.web, 'The note no longer cites');
+  const q = ['--id', 'review.yaml', '--history'];
+  const refreshed = search(w.central, q, L1);
+  const rebuilt = search(w.central, [...q, '--rebuild'], L1);
+  const results = (out) => out.hits.filter((h) => h.repo === 'invoicer-web' && h.source_type === 'result').map(asRow)
+    .sort((a, b) => a.version - b.version);
+  const rows = exportRows(w.central).rows.filter((r) => r.repo === 'invoicer-web' && r.id === 'review.yaml' && r.source_type === 'result')
+    .sort((a, b) => a.version - b.version);
+  assert.deepEqual(rows.map((r) => [r.version, r.role, r.valid_from, r.superseded_by]), [[1, 'history', V1, V2], [2, 'evidence', V2, null]],
+    'the export: v1 history superseded at V2, v2 evidence');
+  assert.deepEqual(results(rebuilt), rows, '--rebuild gives the export rows');
+  assert.deepEqual(results(refreshed).map((r) => [r.version, r.role, r.valid_from, r.superseded_by]),
+    rows.map((r) => [r.version, r.role, r.valid_from, r.superseded_by]), 'the refresh: v1 history superseded at V2, v2 evidence');
+  assert.deepEqual(results(refreshed), rows, 'the refreshed index gives the export rows');
+});
