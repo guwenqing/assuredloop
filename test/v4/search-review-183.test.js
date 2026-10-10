@@ -112,3 +112,33 @@ for (const level of [0, 1]) {
     assert.ok(ids.indexOf('EXP-3') < ids.indexOf('EXP-4') && ids.indexOf('EXP-4') < ids.indexOf('EXP-5'), `file order: ${ids.join(', ')}`);
   });
 }
+
+// 5. The section of a past hit is the section as it was at the hit's commit:
+// each row shows that commit, the heading path and the line as they were, and
+// the role history (a history query never shows a history row as current).
+for (const level of [0, 1]) {
+  test(`review 183 #5, level ${level}: each section row of a past version is the row as it was, at its commit, as history`, (t) => {
+    const { dir, A } = smallRepo(t);
+    const atA = new Map(exportRows(dir).rows.map((r) => [r.id, r]));
+    const changed = 'The export link MUST expire 45 minutes after the email is sent.';
+    write(dir, SPEC, SMALL_SPEC.replace('## Export links', '## Quasar navigation').replace(A_TEXT.exp4, changed));
+    commitAll(dir, 'B: heading renamed, EXP-4 changed');
+    search(dir, ['--id', 'EXP-4'], { level }); // the index is refreshed at B
+    const out = search(dir, ['--id', 'EXP-4', '--history', '--section'], { level });
+    const old = out.hits.find((h) => h.version === 1);
+    assert.ok(old, `EXP-4 v1 is a hit:\n${idRoles(out).join('\n')}`);
+    assert.equal(old.commit, A);
+    const ids = old.section.map((r) => r.id);
+    for (const id of ['EXP-3', 'EXP-4', 'EXP-5']) assert.ok(ids.includes(id), `${id} is in the section: ${ids.join(', ')}`);
+    for (const r of old.section) {
+      const then = atA.get(r.id);
+      assert.ok(then, `${r.id} was a row at A`);
+      assert.equal(r.commit, A, `${r.id}: the commit of the section is A`);
+      assert.equal(r.role, 'history', `${r.id}: a row of a past section is shown as history, not ${r.role}`);
+      assert.deepEqual(r.heading_path, then.heading_path, `${r.id}: the heading path as at A`);
+      assert.ok(!r.heading_path.includes('Quasar navigation'), `${r.id}: no heading of B`);
+      assert.equal(r.line, then.line, `${r.id}: the line as at A`);
+      assert.equal(r.text, then.text, `${r.id}: the text as at A`);
+    }
+  });
+}
