@@ -176,6 +176,15 @@ itself (2, then 1, then 0), and says which level answered and why.
   `--level <0|1|2>` asks for a lower level; `--at <commit>` another commit.
 - Each hit shows its role (`baseline`, `proposal`, `spike`, `source`,
   `evidence` or `history`), its version and its commit.
+- In the central repo, search covers the output repos that its committed
+  config lists, each at its resolved commit. The `Repos` line names each repo
+  and its commit, for example
+  `Repos     invoicer@a6ac3a7785dd invoicer-web@5aa04042117b`. An output repo
+  gives `evidence` rows: its result files, and the files that cite a central
+  ID or that a record declares. Such a hit shows `<repo>:<path>`, and each
+  line that names a central ID, with its line number. A repo that is absent,
+  or a commit that cannot be found, gives no rows and a `Not known` line with
+  the reason.
 - The index is one SQLite file inside `.git`, never committed. `al search`
   brings it up to date before it answers; `--rebuild` builds it again.
 - Level 2 runs a small local model (bge-small-en-v1.5, pinned by its

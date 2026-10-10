@@ -21,7 +21,8 @@ test and review is your project's way of working; this skill does not set it.
    it names. Read those paragraphs and records, not the whole spec.
 2. To find a paragraph by its words, run `al search <words>`. Add
    `--change <name>` for one request's open text, and `--history` for removed
-   and replaced text.
+   and replaced text. In a central repo, a hit from an output repo shows
+   `<repo>:<path>` and the lines that name a central ID.
 3. Choose the path from the table. Then read "Markers" and the section of
    your path only.
 
