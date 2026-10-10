@@ -275,15 +275,20 @@ inputs are unchanged since then.
 
 On these records, the tool can say, as exact facts or as hints:
 
-1. INV-41 serves R2, which the owner signed in S1; its source is SP-12,
-   incorporated with equal text (exact).
-2. Two tests cite INV-41; one declares `verifies` (a claim). Its declared
-   inputs are unchanged since `invoicer-web@a81c…` (exact); whether they are
-   complete is a claim.
+1. SP-12 declares that it serves R2 (a declaration). That S1 covers R2 with
+   its hash, and that INV-41's text equals SP-12's incorporated text, are
+   exact facts.
+2. `test/export-link.test.js` declares that it verifies INV-41 (a claim). If
+   it, or another test file, names INV-41 in its text, that citation is an
+   exact fact. Its declared inputs are unchanged since `invoicer-web@a81c…`
+   (exact); whether they are complete is a claim.
 3. R3 and R4 have no task yet (a hint, because this project uses tasks).
-4. A new open change that `changes` INV-41 makes SP-12's binding stale for
-   that change, and shows both changes on INV-41 (a hint on both).
-5. A typo claim that changes "only paid invoices" to "all paid invoices" is
+4. Two open changes that both `change` INV-41 get an overlap hint on both. A
+   new proposal does not change INV-41's text, so it makes no binding stale.
+5. A later PR that edits INV-12 makes SP-12's recorded binding to INV-12 stale
+   (its hash no longer matches). The hint stays until the change aligns on
+   purpose with `al index --align`.
+6. A typo claim that changes "only paid invoices" to "all paid invoices" is
    marked meaning-sensitive; the review decides (a hint).
 
 What it does not say: that a test really checks INV-41, that a kind is

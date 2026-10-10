@@ -611,8 +611,8 @@ let's assume the spec stay in the central repo" (input 133). Links from output
 repos are a must.
 
 - The central repo holds the spec (`specs/`, `specs/adr/`), the requests and
-  the records. Its `config.yaml` lists the output repos, each with a name and
-  a local path or a URL.
+  the records. Its `config.yaml` lists the output repos, each with a name, a
+  local path or a URL, and a selected or pinned commit.
 - An output repo holds code, tests and user documents only: no spec and no
   requests. Its config names the central repo, so `al` there can resolve
   central IDs for hints.
