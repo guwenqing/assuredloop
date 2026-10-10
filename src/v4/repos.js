@@ -9,7 +9,7 @@ import { isAbsolute, posix, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { read, sha256 } from './base.js';
 import { loadConfig } from './config.js';
-import { blobAt, commitOf, fileAt, git, mergeBase, mergeOf } from './git.js';
+import { commitOf, fileAt, filesAt, git, mergeBase, mergeOf } from './git.js';
 import { loadState, qualify, requestNames } from './indexer.js';
 import { latest } from './records.js';
 import { parseResult } from './results.js';
@@ -152,16 +152,17 @@ function resolves(state, target, request) {
   return findCentral(state, t.req ? `${t.req}/${t.id}` : t.id) !== null;
 }
 
-// Whether a result applies to the repo's tree at `sha` (design.md 9).
-function applies(repo, res) {
+// Whether a result applies to the repo's tree at `sha` (design.md 9);
+// `bytes` holds the declared inputs there, by path.
+function applies(repo, res, bytes) {
   if (!res.inputs.length) return 'applicability unknown: no declared inputs';
   if (res.commit === 'unknown') return 'applicability unknown: the commit is unknown';
   if (!res.resolved) return `applicability unknown: commit ${res.commit} is not in the ${repo.name} clone`;
   for (const x of res.inputs) {
-    if (blobAt(repo.dir, repo.sha, String(x.file)) === null) return `applicability unknown: the declared input ${x.file} is not there`;
+    if (bytes.get(String(x.file)) === null) return `applicability unknown: the declared input ${x.file} is not there`;
   }
   for (const x of res.inputs) {
-    if (sha256(blobAt(repo.dir, repo.sha, String(x.file))) !== x.sha256) return `does not apply to the current text: ${x.file} changed`;
+    if (sha256(bytes.get(String(x.file))) !== x.sha256) return `does not apply to the current text: ${x.file} changed`;
   }
   return `declared inputs unchanged since ${repo.name}@${short(res.resolved)}`;
 }
@@ -174,12 +175,15 @@ function resultsOf(repo) {
   const prefix = dir === '.' ? '' : `${dir}/`;
   const files = (git(repo.dir, ['ls-tree', '-z', '--name-only', repo.sha, ...(prefix ? ['--', prefix] : [])], { allowFail: true }) ?? '')
     .split('\0').filter((f) => f.startsWith(prefix) && !f.slice(prefix.length).includes('/') && f.endsWith('.yaml')).sort();
-  return files.map((file) => {
-    const r = parseResult(file, blobAt(repo.dir, repo.sha, file)?.toString('utf8') ?? '');
+  // The result files, then all their declared inputs, each in one batch.
+  const texts = filesAt(repo.dir, repo.sha, files);
+  const parsed = files.map((file) => [file, parseResult(file, texts.get(file) ?? '')]);
+  const bytes = filesAt(repo.dir, repo.sha, [...new Set(parsed.flatMap(([, r]) => (r.inputs ?? []).map((x) => String(x.file))))], null);
+  return parsed.map(([file, r]) => {
     const inputs = r.inputs ?? [];
     const resolved = typeof r.commit === 'string' && r.commit !== 'unknown' ? commitOf(repo.dir, r.commit) : null;
     const res = { repo: repo.name, file, check: r.check ?? null, outcome: r.outcome ?? null, commit: r.commit ?? null, resolved, inputs, by: r.by ?? null, source: r.source ?? null, note: r.note ?? null, problems: r.problems };
-    return { ...res, applies: applies(repo, res) };
+    return { ...res, applies: applies(repo, res, bytes) };
   });
 }
 
@@ -222,6 +226,16 @@ export function crossRepo(top) {
 
   // What the central records declare: outputs in other repos, and the PRs of tasks.
   const unknownOf = (name) => (byName.has(name) ? byName.get(name).unknown : 'not an output repo in config');
+  // The declared output files of each readable repo, read in one batch per repo.
+  const declared = new Map();
+  for (const r of state.requests.values()) {
+    for (const o of Array.isArray(r.data?.outputs) ? r.data.outputs : []) {
+      if (!o?.file || !o.repo || self.has(o.repo) || !byName.get(o.repo)?.sha) continue;
+      if (!declared.has(o.repo)) declared.set(o.repo, new Set());
+      declared.get(o.repo).add(String(o.file));
+    }
+  }
+  const present = new Map([...declared].map(([name, files]) => [name, filesAt(byName.get(name).dir, byName.get(name).sha, [...files], null)]));
   for (const r of state.requests.values()) {
     const data = r.data ?? {};
     for (const o of Array.isArray(data.outputs) ? data.outputs : []) {
@@ -232,7 +246,7 @@ export function crossRepo(top) {
         for (const ref of [].concat(o[kind] ?? [])) {
           links.push({
             ...link({ repo: String(o.repo), holder: `${o.repo}/${o.file}`, link: kind, target: String(ref), how: 'declared', proves: PROVES.declared, commit: known?.sha ?? null, unknown: unknownOf(o.repo), resolves: resolves(state, String(ref), r.name), file: String(o.file), request: r.name }),
-            present: known ? blobAt(known.dir, known.sha, String(o.file)) !== null : null,
+            present: known ? present.get(o.repo).get(String(o.file)) !== null : null,
           });
         }
       }
