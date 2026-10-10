@@ -252,7 +252,7 @@ test('export: evidence: result files and declared outputs of this repo that exis
   assert.equal(out.role, 'evidence');
   assert.equal(out.source_type, 'output');
   assert.equal(out.file, 'src/reminders.js');
-  // D15 (interface-186.md, "The central repo's own output rows"): an output
+  // D17 (interface-186.md, "The central repo's own output rows"): an output
   // row holds only the lines that name an ID, as "<n>: <line>", not the whole file.
   assert.equal(out.text, `1: ${REMINDERS_JS.split('\n')[0]}`, 'only line 1 names an ID (reminder-emails/SP-2)');
   assert.deepEqual(out.cites, ['reminder-emails/SP-2']);

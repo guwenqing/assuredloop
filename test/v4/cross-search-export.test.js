@@ -1,5 +1,5 @@
 // al export across the output repos (#186, T13 with T12; design.md 11 and 12;
-// interface-186.md 1-3, with D15 for the central repo's own output rows).
+// interface-186.md 1-3, with D17 for the central repo's own output rows).
 // Written from the requirement and the interface only, on one central repo
 // with three output repos: invoicer-web (a branch), invoicer-worker (a pinned
 // short hash) and invoicer-mobile (no clone). See helpers/cross-search.js.
@@ -263,8 +263,8 @@ test('export: the same path in two repos is two rows; the version key (with repo
   assert.equal(new Set(keys).size, keys.length, 'no two rows share repo, doc_or_request, id and version');
 });
 
-// D15: the central repo's own output rows have the same bound.
-test('export: central output rows (D15): the declared files and every other file that names a known ID, bounded', () => {
+// D17: the central repo's own output rows have the same bound.
+test('export: central output rows (D17): the declared files and every other file that names a known ID, bounded', () => {
   const { w, rows } = get();
   const outs = rows.filter((r) => r.repo === 'invoicer' && r.source_type === 'output');
   assert.deepEqual(outs.map((r) => `${r.id} v${r.version} ${r.role}`).sort(), [
