@@ -134,7 +134,13 @@ export function markBlocks(text, nextId) {
 // paragraphs only the one in the block's place matches (D16, D19, #196).
 export function sameBlocks(text, paragraphs, file = '') {
   let n = 0;
-  const a = parseMarkdown(markBlocks(lf(text), () => `UNMARKED-${++n}`).text, file).paragraphs.map((p) => p.sha256);
+  const there = parseMarkdown(markBlocks(lf(text), () => `UNMARKED-${++n}`).text, file).paragraphs;
+  // A block whose ID is still a paragraph here is that paragraph's: it stands
+  // for no other one. Only the other blocks and paragraphs are matched.
+  const ids = new Set(paragraphs.map((p) => p.id));
+  const kept = new Set(there.filter((p) => ids.has(p.id)).map((p) => p.id));
+  const a = there.filter((p) => !kept.has(p.id)).map((p) => p.sha256);
+  paragraphs = paragraphs.filter((p) => !kept.has(p.id));
   const b = paragraphs.map((p) => p.sha256);
   // len[i][j]: the length of the common subsequence of a[i..] and b[j..].
   const len = Array.from({ length: a.length + 1 }, () => new Uint32Array(b.length + 1));
