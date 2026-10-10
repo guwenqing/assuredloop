@@ -449,3 +449,67 @@ describe('an adoption record that does not parse makes --add-ids refuse, and wri
     });
   }
 });
+
+// --- review of PR #200 (head 586ad34): a base block whose ID still exists at
+// the head belongs to that ID; only the other base blocks can stand for a new
+// paragraph.
+
+const RULE_TEXT = 'An invoice MUST have at least one line.';
+const MARKED_SPEC = `<!-- INV-1 note -->\n\n# Invoices\n\n<!-- INV-2 rule -->\n\n${RULE_TEXT}\n`;
+
+// main: the v4 config, the marked spec, and an adoption record that names
+// INV-1 and INV-2 with their hashes, all committed. Then the branch `feature`.
+function adoptedMarkedBase(t) {
+  const dir = project(t);
+  writeConfig(dir);
+  write(dir, SPEC, MARKED_SPEC);
+  commitAll(dir, 'the v4 config and the marked spec');
+  handRecord(dir, pick(hashes(dir), ['INV-1', 'INV-2']));
+  commitAll(dir, 'the adoption record');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  return dir;
+}
+
+// Adds an entry for id with the HEAD commit, by hand; the other entries stay.
+function addEntry(dir, id, hash) {
+  const rec = readYaml(dir, ADOPTION);
+  rec.dispositions.push(entry(id, git(dir, 'rev-parse', 'HEAD'), hash));
+  writeYaml(dir, ADOPTION, rec);
+}
+
+const COPY_BEFORE = `<!-- INV-1 note -->\n\n# Invoices\n\n${RULE_TEXT}\n\n<!-- INV-2 rule -->\n\n${RULE_TEXT}\n`;
+const COPY_AFTER = `${MARKED_SPEC}\n${RULE_TEXT}\n`;
+
+describe('a copy of a kept paragraph is not adopted', () => {
+  for (const [where, text, copyMarked] of [
+    ['before', COPY_BEFORE, `<!-- INV-3 -->\n\n${RULE_TEXT}\n\n<!-- INV-2 rule -->`],
+    ['after (control)', COPY_AFTER, `<!-- INV-2 rule -->\n\n${RULE_TEXT}\n\n<!-- INV-3 -->\n\n${RULE_TEXT}\n`],
+  ]) {
+    test(`--add-ids: an unmarked copy of INV-2's text ${where} INV-2 gets INV-3, no entry, and a not adopted line; INV-2's entry stays`, (t) => {
+      const dir = adoptedMarkedBase(t);
+      const before = dispositions(dir);
+      write(dir, SPEC, text);
+      const r = adopt(dir);
+      assert.ok(read(dir, SPEC).includes(copyMarked), `the copy is INV-3:\n${read(dir, SPEC)}`);
+      const now = dispositions(dir);
+      assert.deepEqual(now.slice(0, before.length), before, show(r));
+      assert.deepEqual(now.filter((d) => d.spec === 'INV-3'), [], show(r));
+      assert.ok(outLines(r).some((l) => /\bINV-3\b/.test(l) && /not adopted/i.test(l)), `a line names INV-3 as not adopted:\n${show(r)}`);
+    });
+
+    for (const named of [false, true]) {
+      test(`check: the copy ${where} INV-2, as rule INV-3${named ? ', named by hand in the adoption record with its hash,' : ''} gets signoff-coverage and path-claim not ok, --strict exits 1; INV-2 has no not ok`, (t) => {
+        const dir = adoptedMarkedBase(t);
+        write(dir, SPEC, text);
+        adopt(dir);
+        setKinds(dir, { 'INV-3': 'rule' });
+        if (named) addEntry(dir, 'INV-3', hashes(dir)['INV-3']);
+        commitAll(dir, CLAIM);
+        const r = check(dir);
+        assertPromiseFindings(r, 'INV-3');
+        assert.deepEqual(notOk(r, 'INV-2'), [], `no not ok for INV-2:\n${show(r)}`);
+        assert.equal(check(dir, '--strict').code, 1, show(r));
+      });
+    }
+  }
+});
