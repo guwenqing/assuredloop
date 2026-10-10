@@ -239,6 +239,22 @@ function fuse(lists) {
   return [...score].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(([k]) => k);
 }
 
+// Level 2's fusion. Only baseline and proposal rows have vectors (design.md
+// 11), so the fusion reorders only the places of those rows; every other row
+// keeps its level 1 place, and the vectors cannot push it down. A row that
+// only the vectors found takes a place after the word hits' rows with vectors.
+function fuseInPlace(ranked, vec, embedded, byKey) {
+  const fused = fuse([ranked.map(keyOf).filter((k) => embedded.has(k)), vec]);
+  const out = [];
+  let j = 0;
+  for (const r of ranked) {
+    if (!embedded.has(keyOf(r))) out.push(r);
+    else if (j < fused.length) out.push(byKey.get(fused[j++]));
+  }
+  while (j < fused.length) out.push(byKey.get(fused[j++]));
+  return out;
+}
+
 // --- Level 0: a scan of the export ------------------------------------------
 
 function scan(rows, q, ws, limit) {
@@ -323,7 +339,7 @@ export async function search({ top, args, opts }) {
           const keys = embed.filter((x) => inScope(x.r, q)).map((x) => x.key);
           const vec = keys.length ? await l2.rank({ dir, query: words, keys, k: DEEP }) : [];
           const byKey = new Map([...ranked.map((r) => [keyOf(r), r]), ...embed.map((x) => [x.key, x.r])]);
-          ranked = fuse([ranked.map(keyOf), vec.filter((k) => byKey.has(k))]).map((k) => byKey.get(k));
+          ranked = fuseInPlace(ranked, vec.filter((k) => byKey.has(k)), new Set(keys), byKey);
         } catch (e) {
           if (e instanceof Fail) throw e;
           falls.push(`level 2 failed: ${String(e.message ?? e).split('\n')[0]}`);
