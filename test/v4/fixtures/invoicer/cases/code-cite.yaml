@@ -1,0 +1,37 @@
+# A code cite is not a check (review of 9680c1a, finding 4; design.md 9).
+# Arm code: only src/exports.js names EXP-2. Arm test: a test file names it.
+# Arm result: a review file outside any test folder names EXP-2, and a result
+# names that file as its check.
+title: The monthly export code
+base: base
+claim: "Tier: 0 — restores EXP-2"
+arms:
+  code:
+    steps:
+      - write:
+          file: src/exports.js
+          text: |
+            // Builds the monthly CSV export (EXP-2).
+            export const monthly = true;
+  test:
+    steps:
+      - write:
+          file: test/exports.test.js
+          text: |
+            // Checks EXP-2: one month downloads as one CSV file.
+            import { test } from 'node:test';
+
+            test('one month is one CSV file', () => {});
+  result:
+    steps:
+      - write:
+          file: reviews/monthly-export.md
+          text: |
+            Review of EXP-2: one month downloads as one CSV file. Passed.
+      - commit: "Review the monthly export"
+      - result:
+          file: monthly-export-review.yaml
+          check: reviews/monthly-export.md
+          outcome: pass
+          commit: HEAD
+          inputs: [reviews/monthly-export.md]
