@@ -25,7 +25,7 @@ the current index, and a history query still finds each of them.
 
 - Date: 2026-10-10; the run ended at 18:17 EDT, after about 4 minutes.
 - `al`: main at b4fe90e, run as `bin/al-v4.js` from branch commit 87198bc,
-  which adds only `scale/`, its tests and D19 to main. So the timed code is
+  which adds only `scale/`, its tests and the scale-run decision (then D18, now D19) to main. So the timed code is
   main's code, with #184 (checks and views), #186 (search across the output
   repos) and #190 (one batch git read per commit) merged.
 - The command: `node scale/run.js --world <dir>` (3 runs of `al check`, 5
