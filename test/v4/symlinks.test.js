@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { parse } from 'yaml';
 import {
   INVOICES, appendSection, doc, editFile, editRecord, exists, move, newRequest, ok, organized, project, read, record,
   refused, req, tree, write, writeConfig,
@@ -281,4 +282,27 @@ test('index refuses when .assuredloop/config.yaml is a symlink to an outside fil
   refused(dir, ['index']);
   assert.ok(!exists(dir, '.assuredloop/records/docs-spec/a.md.yaml'));
   assert.equal(readFileSync(external, 'utf8'), 'root: docs-spec\n');
+});
+
+test('index refuses when an archived request record is a symlink to an outside file', (t) => {
+  const dir = draftProject(t);
+  newRequest(dir, 'old');
+  move(dir, 'requests/old', 'requests/archive/old');
+  const external = fileOut(t, dir, '.assuredloop/records/requests/old.yaml');
+  const text = readFileSync(external, 'utf8');
+  refused(dir, ['index']);
+  assert.deepEqual(record(dir, 'inv').requirements, [], 'inv gets no requirement version');
+  assert.equal(readFileSync(external, 'utf8'), text);
+});
+
+test('an archived request record that is real but not YAML does not stop index', (t) => {
+  const dir = draftProject(t);
+  newRequest(dir, 'old');
+  move(dir, 'requests/old', 'requests/archive/old');
+  const broken = '<<<<<<< HEAD\nrequest: old\n=======\nrequest: [old\n>>>>>>> other\n';
+  assert.throws(() => parse(broken), 'the test record is not YAML');
+  write(dir, '.assuredloop/records/requests/old.yaml', broken);
+  ok(dir, ['index']);
+  assert.deepEqual(record(dir, 'inv').requirements.map((v) => [v.id, v.version]), [['R1', 1]]);
+  assert.equal(read(dir, '.assuredloop/records/requests/old.yaml'), broken, 'an archived record is never written');
 });
