@@ -6,7 +6,7 @@ import { git } from './git.js';
 import { parseMarkdown } from './markers.js';
 import { SPEC, docsInScope } from './scope.js';
 import { closeness, NEAR } from './words.js';
-import { hasBaselineEffect, isPromise, qualify, servesSigned } from './state.js';
+import { hasBaselineEffect, isPromise, qualify, servesSigned, settingsAt } from './state.js';
 
 const list = (x) => (Array.isArray(x) ? x : []);
 
@@ -109,17 +109,19 @@ export function judge(state, r, p, d, opts = {}, seen = new Set()) {
   }
 }
 
-// The kind that spec paragraph `id` had in the last commit that held it, from
-// git history (the newest commit that added or removed its marker), or null.
+// The kind that spec paragraph `id` had in the newest commit that held it,
+// from git history, or null. The candidates are the commits whose diff adds
+// or removes its marker, in any spacing the parser allows, in any path; each
+// commit, then its parent, is read with that commit's own config and schema,
+// so a later move of the spec root or a later kind change is seen.
 export function pastKind(state, id) {
-  const paths = [state.root, ...state.config.docs.map((d) => String(d.file))];
-  // Any marker spacing the parser allows: `<!--`, blanks, the ID, a blank.
   const marker = `<!--[[:space:]][[:space:]]*${id}[[:space:]]`;
-  const out = git(state.top, ['log', '--format=%H', '-G', marker, state.rev ?? 'HEAD', '--', ...paths], { allowFail: true }) ?? '';
+  const out = git(state.top, ['log', '--format=%H', '-G', marker, state.rev ?? 'HEAD'], { allowFail: true }) ?? '';
   for (const sha of out.split('\n').filter(Boolean)) {
-    for (const rev of [`${sha}^`, sha]) {
-      for (const d of docsInScope(state.top, state.config, rev).filter((x) => x.scope === SPEC)) {
-        const p = parseMarkdown(d.text, d.path, { kinds: state.kinds }).paragraphs.find((x) => x.id === id);
+    for (const rev of [sha, `${sha}^`]) {
+      const { config, kinds } = settingsAt(state.top, rev);
+      for (const d of docsInScope(state.top, config, rev).filter((x) => x.scope === SPEC)) {
+        const p = parseMarkdown(d.text, d.path, { kinds }).paragraphs.find((x) => x.id === id);
         if (p) return p.kind;
       }
     }
