@@ -84,7 +84,7 @@ export function checks(top, { base, strict = false }) {
     const file = c.head.file;
     if (!atBase.has(file)) {
       const text = was.get(file);
-      atBase.set(file, text == null ? new Set() : sameBlocks(text, (now.scopes.get(c.scope) ?? []).filter((p) => p.file === file), file));
+      atBase.set(file, text == null ? new Set() : sameBlocks(text, (now.scopes.get(c.scope) ?? []).filter((p) => p.file === file), { file, living: new Set(now.spec.keys()) }));
     }
     return atBase.get(file).has(c.id);
   };
