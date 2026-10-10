@@ -3,6 +3,9 @@
 // beside fileAt and blobAt; and `al-v4 check` and `al-v4 index` start about
 // as many git processes for 60 docs (or requests) as for 5. Written before the
 // code, from the issue and the interface note (interface-190.md).
+// Round b ("Git versions", review of PR #191): the reads use only what git
+// 2.31 has (`cat-file --batch`, one name on each line, no -z or -Z); a name
+// that holds a newline or ends in a carriage return gets its own process.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -12,7 +15,8 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as gitjs from '../../src/v4/git.js';
 import { makeRepo } from './helpers/repo.js';
-import { project, write, commitAll, git as pgit, al, show, newRequest } from './helpers/project.js';
+import { project, write, writeYaml, commitAll, git as pgit, al, show, newRequest, tree, baseProject } from './helpers/project.js';
+import { buildWorld, run as runSearch, show as showSearch } from './helpers/search.js';
 
 const GIT_JS = fileURLToPath(new URL('../../src/v4/git.js', import.meta.url));
 
@@ -48,6 +52,8 @@ const FILES = {
   'tab\tand "quote".md': 'tab and quote\n',
   'sp/ends in space ': 'a name that ends in a space\n',
   '-dash.md': 'a name that starts with a dash\n',
+  'cr/ends in cr\r': 'a name that ends in a carriage return\n',
+  'cr/cr\rinside.md': 'a carriage return inside the name\n',
 };
 const MISSING = ['missing.md', 'sub/missing.md', 'a.txt/inside', 'nope/deeper/x.md'];
 const FOLDERS = ['sub', 'sub/deep', 'dir with space', 'données'];
@@ -257,19 +263,34 @@ function realGit() {
 }
 
 // A temp folder with the wrapper; `count()` reads how many git processes ran
-// since the last `reset()`.
-function gitCounter(t) {
+// since the last `reset()`. With `old: true` the wrapper acts as git 2.31: a
+// `cat-file` call with -z or -Z (git 2.38, 2.42) or --batch-command (2.36)
+// exits 129 with a usage error, and `refused()` lists those calls.
+function gitCounter(t, { old = false } = {}) {
   const dir = mkdtempSync(join(realpathSync(tmpdir()), 'al4-gitwrap-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const log = join(dir, 'calls.log');
   const wrapper = join(dir, 'git');
-  writeFileSync(wrapper, `#!/bin/sh\nprintf '${MARK} %s\\n' "$*" >> '${log}'\nexec '${realGit()}' "$@"\n`);
+  const refuse = old ? [
+    'cat=0',
+    'for a in "$@"; do',
+    '  if [ "$a" = cat-file ]; then cat=1; fi',
+    '  if [ $cat = 1 ]; then',
+    '    case "$a" in',
+    `      -z|-Z|--batch-command) printf 'REFUSED %s\\n' "$*" >> '${log}'; echo "error: unknown switch '$a' (git 2.31)" >&2; echo "usage: git cat-file (-t | -s | -e | -p | <type>) <object>" >&2; exit 129;;`,
+    '    esac',
+    '  fi',
+    'done',
+  ] : [];
+  writeFileSync(wrapper, ['#!/bin/sh', `printf '${MARK} %s\\n' "$*" >> '${log}'`, ...refuse, `exec '${realGit()}' "$@"`, ''].join('\n'));
   chmodSync(wrapper, 0o755);
-  const calls = () => (existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter((l) => l.startsWith(`${MARK} `)) : []);
+  const logLines = () => (existsSync(log) ? readFileSync(log, 'utf8').split('\n') : []);
+  const calls = () => logLines().filter((l) => l.startsWith(`${MARK} `));
   return {
     PATH: `${dir}:${process.env.PATH}`,
     reset: () => rmSync(log, { force: true }),
     calls,
+    refused: () => logLines().filter((l) => l.startsWith('REFUSED ')),
     count: () => calls().length,
   };
 }
@@ -280,28 +301,45 @@ function childEnv(PATH) {
   return { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', PATH };
 }
 
-// Runs src/v4/git.js's `name`(...args) in a child node process with the
-// wrapper first on PATH. Gives the Map's size, its non-null values, and the
-// number of git processes the call started.
+// Runs calls [name, args] of src/v4/git.js in one child node process with the
+// wrapper first on PATH, and gives each result: a Map as its entries, a value
+// as it is (a Buffer as {b64}, a string as {s}).
 const CHILD = `
 import { readFileSync } from 'node:fs';
-const { mod, name, args } = JSON.parse(readFileSync(0, 'utf8'));
+const { mod, calls } = JSON.parse(readFileSync(0, 'utf8'));
 const m = await import(mod);
-if (typeof m[name] !== 'function') { console.log(JSON.stringify({ missing: name })); process.exit(3); }
-const r = await m[name](...args);
-console.log(JSON.stringify({ map: r instanceof Map, size: r.size, found: [...r.values()].filter((v) => v !== null).length }));
+const enc = (v) => (v === null ? null : Buffer.isBuffer(v) ? { b64: v.toString('base64') } : typeof v === 'string' ? { s: v } : { other: String(v) });
+const out = [];
+for (const [name, args] of calls) {
+  if (typeof m[name] !== 'function') { console.log(JSON.stringify({ missing: name })); process.exit(3); }
+  const r = await m[name](...args);
+  out.push(r instanceof Map ? { map: [...r].map(([k, v]) => [k, enc(v)]) } : { value: enc(r) });
+}
+console.log(JSON.stringify(out));
 `;
+const dec = (v) => (v === null ? null : v.b64 !== undefined ? Buffer.from(v.b64, 'base64') : v.s !== undefined ? v.s : v);
 
-function countIn(counter, name, args) {
+function runChild(counter, calls) {
   counter.reset();
   const r = spawnSync(process.execPath, ['--input-type=module', '-e', CHILD], {
-    input: JSON.stringify({ mod: pathToFileURL(GIT_JS).href, name, args }),
+    input: JSON.stringify({ mod: pathToFileURL(GIT_JS).href, calls }),
     env: childEnv(counter.PATH),
     encoding: 'utf8',
     timeout: 60_000,
+    maxBuffer: 1 << 28,
   });
-  assert.equal(r.status, 0, `child ${name}: exit ${r.status} ${r.signal ?? ''}\n${r.stdout}\n${r.stderr}`);
-  return { ...JSON.parse(r.stdout.trim().split('\n').at(-1)), processes: counter.count(), calls: counter.calls() };
+  assert.equal(r.status, 0, `child ${calls.map(([n]) => n).join(', ')}: exit ${r.status} ${r.signal ?? ''}\n${r.stdout}\n${r.stderr}`);
+  const results = JSON.parse(r.stdout.trim().split('\n').at(-1))
+    .map((x) => (x.map ? new Map(x.map.map(([k, v]) => [k, dec(v)])) : dec(x.value)));
+  return { results, processes: counter.count(), calls: counter.calls(), refused: counter.refused() };
+}
+
+// One call `name`(...args): the Map's size, its non-null values, and the
+// number of git processes the call started.
+function countIn(counter, name, args) {
+  const { results: [r], ...rest } = runChild(counter, [[name, args]]);
+  const map = r instanceof Map;
+  return { map, size: map ? r.size : undefined, found: map ? [...r.values()].filter((v) => v !== null).length : undefined, ...rest };
 }
 
 function manyFilesRepo(t, n) {
@@ -348,6 +386,39 @@ describe('one git process for any number of paths', () => {
     const none = countIn(counter, 'readObjects', [top, []]);
     assert.equal(none.size, 0);
     assert.equal(none.processes, 0, none.calls.join('\n'));
+  });
+
+  // "Git versions": a name with a newline, or one that ends in a carriage
+  // return, cannot go on a batch line, so it gets one process of its own.
+  test('a path or name with a newline or an ending CR adds one git process each, with the right value', (t) => {
+    const repo = makeRepo(t);
+    for (let i = 1; i <= 76; i++) repo.write(`docs/f${i}.md`, `file ${i}\n`);
+    const odd = { 'odd/new\nline.md': 'newline one\n', 'odd/two\nnew\nlines.md': 'newline two\n', 'odd/ends in cr\r': 'cr one\n' };
+    for (const [p, text] of Object.entries(odd)) repo.write(p, text);
+    repo.write('odd/cr\rinside.md', 'cr inside\n');
+    const commit = repo.commit('plain and odd names');
+    const counter = gitCounter(t);
+    const plain = [...Array.from({ length: 76 }, (_, i) => `docs/f${i + 1}.md`), 'odd/cr\rinside.md', 'missing.md'];
+    const oddPaths = Object.keys(odd);
+
+    const files = runChild(counter, [['filesAt', [repo.dir, commit, [...plain, ...oddPaths]]]]);
+    const got = files.results[0];
+    assert.equal(got.size, plain.length + oddPaths.length);
+    for (const [p, text] of Object.entries(odd)) assert.equal(got.get(p), text, JSON.stringify(p));
+    assert.equal(got.get('odd/cr\rinside.md'), 'cr inside\n');
+    assert.equal(got.get('docs/f76.md'), 'file 76\n');
+    assert.equal(got.get('missing.md'), null);
+    assert.equal(files.processes, 1 + oddPaths.length,
+      `one process for the plain paths, one for each of ${oddPaths.length} odd paths:\n${files.calls.join('\n')}`);
+
+    const names = [...plain.map((p) => `${commit}:${p}`), ...oddPaths.map((p) => `${commit}:${p}`)];
+    const objects = runChild(counter, [['readObjects', [repo.dir, names]]]);
+    const bytes = objects.results[0];
+    for (const [p, text] of Object.entries(odd)) assert.ok(bytes.get(`${commit}:${p}`)?.equals(Buffer.from(text)), JSON.stringify(p));
+    assert.ok(!bytes.has(`${commit}:missing.md`));
+    assert.equal(bytes.size, names.length - 1);
+    assert.equal(objects.processes, 1 + oddPaths.length,
+      `one process for the plain names, one for each of ${oddPaths.length} odd names:\n${objects.calls.join('\n')}`);
   });
 });
 
@@ -436,5 +507,156 @@ describe('al-v4 check and al-v4 index start about as many git processes for 60 a
     const sixty = indexRun(t, 60);
     assert.ok(sixty.processes <= five.processes + SLACK,
       `git processes: ${five.processes} for 5 requests, ${sixty.processes} for 60\n--- 60:\n${sixty.calls.join('\n')}`);
+  });
+});
+
+// --- "Git versions": on a git that has no `cat-file -z` or `-Z` (git 2.31,
+// the oldest the README allows) every read still gives the right value.
+
+// How al prints a path in a line: control characters as \xNN, as bin/al-v4.js does.
+const shownPath = (p) => p.replace(/[\x00-\x1f]/g, (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`);
+
+describe('on git 2.31: no cat-file -z, -Z or --batch-command', () => {
+  test('filesAt gives every value, with utf8 and with encoding null', (t) => {
+    const { top, commit } = filesRepo(t);
+    const old = gitCounter(t, { old: true });
+    const { results: [text, raw], refused } = runChild(old, [['filesAt', [top, commit, ALL]], ['filesAt', [top, commit, ALL, null]]]);
+    assert.deepEqual([...text.keys()].sort(), [...ALL].sort());
+    for (const p of FILE_PATHS) {
+      assert.equal(text.get(p), asBuffer(FILES[p]).toString('utf8'), `the text of ${JSON.stringify(p)}`);
+      assert.ok(Buffer.isBuffer(raw.get(p)) && raw.get(p).equals(asBuffer(FILES[p])), `the bytes of ${JSON.stringify(p)}`);
+    }
+    for (const p of [...MISSING, ...FOLDERS]) {
+      assert.equal(text.get(p), null, JSON.stringify(p));
+      assert.equal(raw.get(p), null, JSON.stringify(p));
+    }
+    assert.deepEqual(refused, [], 'no cat-file call that git 2.31 refuses');
+  });
+
+  test('readObjects gives the bytes of each blob, names with a newline or an ending CR included; the rest are not in the Map', (t) => {
+    const { repo, top, commit } = filesRepo(t);
+    const old = gitCounter(t, { old: true });
+    const blobs = FILE_PATHS.map((p) => [`${commit}:${p}`, asBuffer(FILES[p])]);
+    blobs.push([repo.git(['rev-parse', `${commit}:a.txt`]), Buffer.from(FILES['a.txt'])]);
+    const notBlobs = ['0'.repeat(40), `${commit}:missing.md`, `${commit}:sub`, commit];
+    const { results: [got], refused } = runChild(old, [['readObjects', [top, [...blobs.map(([n]) => n), ...notBlobs]]]]);
+    for (const [n, want] of blobs) assert.ok(got.get(n)?.equals(want), `the bytes of ${JSON.stringify(n)}`);
+    for (const n of notBlobs) assert.ok(!got.has(n), `${n} is not in the Map`);
+    assert.equal(got.size, blobs.length);
+    assert.deepEqual(refused, [], 'no cat-file call that git 2.31 refuses');
+  });
+
+  test('fileAt and blobAt give each file, and null for a missing path and a folder', (t) => {
+    const { top, commit } = filesRepo(t);
+    const old = gitCounter(t, { old: true });
+    const paths = [...FILE_PATHS, ...MISSING, ...FOLDERS];
+    const { results, refused } = runChild(old, [
+      ...paths.map((p) => ['fileAt', [top, commit, p]]),
+      ...paths.map((p) => ['blobAt', [top, commit, p]]),
+    ]);
+    paths.forEach((p, i) => {
+      const text = results[i];
+      const bytes = results[paths.length + i];
+      if (FILES[p] === undefined) {
+        assert.equal(text, null, `fileAt ${JSON.stringify(p)}`);
+        assert.equal(bytes, null, `blobAt ${JSON.stringify(p)}`);
+      } else {
+        assert.equal(text, asBuffer(FILES[p]).toString('utf8'), `fileAt ${JSON.stringify(p)}`);
+        assert.ok(Buffer.isBuffer(bytes) && bytes.equals(asBuffer(FILES[p])), `blobAt ${JSON.stringify(p)}`);
+      }
+    });
+    assert.deepEqual(refused, [], 'no cat-file call that git 2.31 refuses');
+  });
+
+  // Docs named in config.yaml, odd names included, and an ID (G-9) that a
+  // deleted doc used before, which the branch uses again.
+  const ODD_DOCS = [['specs/plain.md', 'P'], ['specs/doc with space.md', 'S'], ['specs/données.md', 'E'], ['specs/new\nline.md', 'N'], ['specs/ends in cr\r', 'C']];
+  const oddDoc = (p) => `<!-- ${p}-1 note -->\n\n# Doc ${p}\n\n<!-- ${p}-2 rule serves:R1 -->\n\nDoc ${p} MUST work.\n`;
+  function oddCheckRepo(t) {
+    const dir = project(t);
+    write(dir, 'specs/gone.md', '<!-- G-9 note -->\n\nGone.\n');
+    commitAll(dir, 'a doc with G-9');
+    rmSync(join(dir, 'specs/gone.md'));
+    writeYaml(dir, '.assuredloop/config.yaml', { docs: [...ODD_DOCS.map(([file, prefix]) => ({ file, prefix })), { file: 'specs/reuse.md', prefix: 'G' }] });
+    for (const [f, p] of ODD_DOCS) write(dir, f, oddDoc(p));
+    commitAll(dir, 'base: G-9 gone, the odd docs');
+    pgit(dir, 'checkout', '-q', '-b', 'feature');
+    for (const [f, p] of ODD_DOCS) {
+      write(dir, f, `${oddDoc(p).replace('MUST work.', 'MUST work every day.')}\n<!-- ${p}-3 rule serves:R1 -->\n\nDoc ${p} MUST log.\n`);
+    }
+    write(dir, 'specs/reuse.md', '<!-- G-9 note -->\n\nAgain.\n');
+    commitAll(dir, 'change the docs, use G-9 again');
+    return dir;
+  }
+
+  test('al-v4 check gives the same output as on today\'s git', (t) => {
+    const dir = oddCheckRepo(t);
+    const now = al(dir, ['check']);
+    assert.equal(now.code, 0, show(now));
+    const want = ['specs/reuse.md G-9 New'];
+    for (const [f, p] of ODD_DOCS) want.push(`${shownPath(f)} ${p}-2 Changed`, `${shownPath(f)} ${p}-3 New`);
+    const changeLines = outLines(now).filter((l) => l.startsWith('specs/'));
+    assert.deepEqual([...changeLines].sort(), [...want].sort(), show(now));
+    const usedAgain = outLines(now).filter((l) => l.startsWith('not ok used-again '));
+    assert.equal(usedAgain.length, 1, show(now));
+    assert.match(usedAgain[0], /^not ok used-again specs\/reuse\.md:1 G-9 \S/, show(now));
+
+    const old = gitCounter(t, { old: true });
+    const r = al(dir, ['check'], { env: { PATH: old.PATH } });
+    assert.ok(old.calls().some((l) => l.includes('merge-base')), `the wrapper saw al's git:\n${old.calls().join('\n')}`);
+    assert.equal(r.code, now.code, show(r));
+    assert.equal(r.stdout, now.stdout, `the same output on git 2.31:\n${show(r)}`);
+    assert.deepEqual(old.refused(), [], 'no cat-file call that git 2.31 refuses');
+  });
+
+  // Two repos built the same way: fixed dates and clock, so the same commits.
+  function indexRepoWithAdr(t) {
+    const dir = baseProject(t, { branch: null });
+    for (const name of ['r1', 'r2', 'r3']) newRequest(dir, name);
+    commitAll(dir, 'three requests');
+    pgit(dir, 'checkout', '-q', '-b', 'feature');
+    newRequest(dir, 'r4');
+    return dir;
+  }
+
+  test('al-v4 index gives the same output and writes the same records as on today\'s git', (t) => {
+    const a = indexRepoWithAdr(t);
+    const b = indexRepoWithAdr(t);
+    assert.equal(pgit(a, 'rev-parse', 'HEAD'), pgit(b, 'rev-parse', 'HEAD'), 'the two repos are the same');
+    assert.deepEqual(tree(a), tree(b), 'the two trees are the same');
+    const now = al(a, ['index']);
+    assert.equal(now.code, 0, show(now));
+    assert.match(now.stdout, /\b4 request records\b/, show(now));
+
+    const old = gitCounter(t, { old: true });
+    const r = al(b, ['index'], { env: { PATH: old.PATH } });
+    assert.ok(old.calls().some((l) => l.includes('merge-base')), `the wrapper saw al's git:\n${old.calls().join('\n')}`);
+    assert.equal(r.code, now.code, show(r));
+    assert.equal(r.stdout, now.stdout, `the same output on git 2.31:\n${show(r)}`);
+    assert.deepEqual(tree(b), tree(a), 'the same files after the run on git 2.31');
+    assert.deepEqual(old.refused(), [], 'no cat-file call that git 2.31 refuses');
+  });
+
+  test('al-v4 export and al-v4 search give the same output as on today\'s git', (t) => {
+    const W = buildWorld(t);
+    const old = gitCounter(t, { old: true });
+    const runs = [
+      ['export'],
+      ['export', '--at', W.A],
+      ['search', 'export', 'link', '--level', '0', '--json', '--rebuild'],
+      ['search', 'export', 'link', '--history', '--level', '1', '--json', '--rebuild'],
+    ];
+    for (const args of runs) {
+      const now = runSearch(W.dir, args);
+      assert.equal(now.code, 0, showSearch(now));
+      assert.ok(now.stdout.length > 0, showSearch(now));
+      if (args[0] === 'search') assert.ok(JSON.parse(now.stdout).hits.length > 0, `search finds rows:\n${showSearch(now)}`);
+      old.reset();
+      const r = runSearch(W.dir, args, { env: { PATH: old.PATH } });
+      assert.ok(old.count() > 0, `the wrapper saw al's git: ${args.join(' ')}`);
+      assert.equal(r.code, now.code, showSearch(r));
+      assert.equal(r.stdout, now.stdout, `the same output on git 2.31: ${args.join(' ')}`);
+      assert.deepEqual(old.refused(), [], `no cat-file call that git 2.31 refuses: ${args.join(' ')}`);
+    }
   });
 });
