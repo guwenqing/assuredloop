@@ -82,7 +82,7 @@ function buildWorker(dir) {
   write(dir, 'src/reminders.js', fixture('worker/src/reminders.js'));
   const K1 = commit(dir, 'Start the worker');
   write(dir, 'src/zip-export.js', ZIP_V1);
-  write(dir, 'test/zip-export.test.js', fixture('worker/test/zip-export.test.js'));
+  write(dir, 'test/zip-export.test.js', fixture('worker/zip-export.test.js.txt'));
   const K4 = commit(dir, 'Reminder job: 7 days after the due date (central:INV-11)');
   const at = (file) => ({ file, sha256: blobSha(dir, K4, file) });
   const results = {
