@@ -1,8 +1,8 @@
-# AssuredLoop v4: validation A (T1-T3)
+# AssuredLoop v4: validation A (T1-T3) and B (T4-T5)
 
-This report covers the tasks T1, T2 and T3 of `tasks.md` (issue #170). It
-gives the evidence for T6. It decides nothing: the architect decides the
-model in T6.
+This report covers the tasks T1, T2 and T3 of `tasks.md` (issue #170) in
+sections 1-12, and the tasks T4 and T5 (issue #171) in Part B. It gives the
+evidence for T6. It decides nothing: the architect decides the model in T6.
 
 ## 1. The answer
 
@@ -495,3 +495,323 @@ reviews of the repaired pairs included), the judge labels, the control
 audits, the scoring scripts and the usage log are in the architect's working
 notes: `validation/v4/` in the bots repository of the AssuredLoop bot, at
 the commit named in the PR. They are not in this repository.
+
+# Part B: validation B (T4-T5)
+
+## B1. The answer
+
+- Formatting-only differences under exact equality are rare in real
+  OpenSpec history. Over the whole archive (69 changes with delta specs, 328
+  requirements found in the spec at their archive commit), no paragraph
+  differs in whitespace only. One requirement differs only in the number of
+  blank lines between its paragraphs; the paragraph split absorbs it. Six
+  paragraphs differ in markup only: 4 in a code-fence info string, 2 in
+  letter case. Under exact equality these 6 need a wording decision or a
+  typo claim. 70 paragraphs differ in words.
+- The agents' conversion kept the bytes. In all 33 replay states, the
+  converted spec without its markers equals the real OpenSpec spec line by
+  line, code fences included. No replayed disposition needed a wording
+  decision or a typo claim: every difference that the replay met changed the
+  meaning.
+- On the review questions, the three arms answered the same: 30 of 30 each.
+  The questions were answerable from OpenSpec's own records and the diffs.
+  The v4 records added no right answer on this real history; they added
+  paragraph IDs (recall 0.64 in the full arm, 0.72 in the lighter arm).
+- The v4 tool showed six real problems in the replayed history that the
+  OpenSpec CLI did not show (section B6). The full arm showed all six; the
+  lighter arm missed the overlap hint and the stale-base hint, as in
+  validation A.
+- Converting one real change cost 166k to 294k tokens and 5 to 13 minutes of
+  agent time, in two runs (open and close). Most of it is a fixed cost: the
+  changes of 340 to 450 words cost 166k to 184k, the largest (2,221 words)
+  294k.
+- The fresh-reader test on a private adopter: with the v4 records, 6 of 6
+  readers recovered all three facts. With the original records, 0 of 3 did:
+  each of them answered "unknown" for the merged PR, because the records say
+  that it is not merged. All 9 readers recovered the other two facts.
+
+## B2. What was run, and what is a model
+
+Run:
+- 38 agent runs for T4 (22 conversion runs, 1 question author, 15
+  answerers) and 12 for T5 (1 conversion run, 9 fresh readers, 2 judges). All of one model family, the
+  same as in validation A.
+- The equality measurement: a script over the real git history of OpenSpec.
+- The fidelity check: a script that compares each converted spec with the
+  real OpenSpec spec of the same state.
+- The OpenSpec CLI, version 1.14.1 (released 2026-10-05), on today's arm of
+  T4: its `list`, `list --specs` and `validate --all` output is what
+  today's answerers saw.
+- The pinned `al` of the private adopter, on today's arm of T5.
+
+A model, not a product test:
+- The tool output of the full and lighter arms: validation A's rule model,
+  unchanged, with two additions in Part B. T4 shows an archived request as
+  judged on its own closing state (design.md 5: "An archived request is
+  never checked again"); validation A's model judges every request on the
+  current state. T5 adds the git facts of design.md 8 (which PRs name a task,
+  and whether they merged) and resolves a commit through git, not as a
+  string.
+- The adoption step of T4: a script marked the base specs with IDs and
+  kinds from the OpenSpec structure. It stands in for `al spec --add-ids`,
+  which does not exist yet. Each change was converted by agents, by hand.
+
+No result here is a measurement of v4 product code: there is none yet.
+
+### The architect's decisions for Part B (2026-10-10)
+
+- The arms of T4: today's arm is OpenSpec's own records, with the output of
+  a released OpenSpec CLI that is at least 24 hours old; the lighter and
+  full arms are as in validation A. Validation A already measured 0.1.0.
+- The fresh reader of T5 gets the records and the tool output only, with no
+  direct git. In the v4 arms, the tool output carries the git facts of
+  design.md 8. In today's arm, the reader gets the original records and the
+  pinned `al`'s own output.
+- The T5 key: the three facts (a PR merged, a proof not run, a part still
+  open), and two pieces of evidence that are not available: (a) the proof
+  that did not run has no evidence (no run, no check result); (b) the owner's chat itself
+  is not available, only a transcription. A reader who says that the PR is
+  not merged fails the first fact, though the request's text says so.
+- Design gap 1 of section 8 as decided there: `serves` in the marker,
+  `source:` for provenance.
+
+## B3. T4: the OpenSpec changes and the replay
+
+OpenSpec (github.com/Fission-AI/OpenSpec), main read at commit
+`9111a7654d7800391459431fff4eaf66e33a3d2e`. Nine archived changes, in five
+episodes. Each episode replays real commits, in order. A state holds the
+real bytes of the requirements that the episode follows; the other
+requirements stay at the base bytes, so the edits of changes that are not
+replayed stay out.
+
+| Change (`openspec/changes/archive/`) | Archive commit | Size | Why it was chosen |
+|---|---|---|---|
+| `2025-09-29-update-markdown-parser-crlf` | `6f7cc2abd20c` | 450 words; 1 ADDED | a small change: one ADDED requirement |
+| `2025-09-29-sort-active-changes-by-progress` | `6f7cc2abd20c` | 345 words; 1 MODIFIED | a small change: one MODIFIED requirement |
+| `2025-08-19-adopt-delta-based-changes` | `7ced2a87916e` | 2,221 words; ADDED, MODIFIED, REMOVED over 3 specs | a large change with a removal, and the one whitespace-only difference of the archive |
+| `2025-10-14-add-non-interactive-init-options` | `345f9dbb456b` | 609 words; 1 ADDED, 1 MODIFIED | two changes MODIFIED one requirement, archived in one commit |
+| `2025-10-14-update-cli-init-enter-selection` | `345f9dbb456b` | 340 words; 1 MODIFIED | the other change of that pair |
+| `2025-12-21-add-config-command` | `971f8ca4a36d` | 1,941 words; 11 ADDED, a new spec | a large new spec; one consolidated requirement says the opposite of the change |
+| `2026-04-23-add-kimi-cli-skills-only-support` | `342ed43e694a` | 1,184 words; MODIFIED in 2 specs | the first of a chain of three changes on one requirement |
+| `2026-08-15-add-dsh-support` | `297092cb25d9` | 1,753 words; 1 MODIFIED | the second of the chain |
+| `2026-07-11-add-grok-build-skills-only-support` | `e232080d0943` | 1,605 words; MODIFIED in 2 specs | the third of the chain; its base text changed while it was open |
+
+The chain also replays four commits that changed the spec with no OpenSpec
+change: `e60ff536442f`, `4a0f15d3b2f5`, `cdd06a059424` and `781c7f9447b4`.
+None of the three changes of the chain was open on main before its archive
+commit. The replay opens the first at the base state, and each of the other
+two on the date of its folder name.
+
+The replay converted each change in two agent runs: one opens the request
+(the request, the change spec, the record), one closes it (the hand
+consolidation into `specs/`, the dispositions, the outputs, the AI hints).
+One run applied each direct spec edit. The agents worked from a written
+guide and validation A's records as examples. A script filled the hashes
+and the per-doc records, as `al index` would. The lighter arm was made from
+the full arm by validation A's script.
+
+## B4. Formatting-only differences under exact equality
+
+For each archived change with a delta spec, a script compared each ADDED or
+MODIFIED requirement with the requirement of the same name in
+`openspec/specs/<capability>/spec.md` at the archive commit. It applied the
+equality rule of design.md 5 (line endings normalized; the framing blank
+lines removed), then lighter and heavier normalizations, to name the kind of
+each difference.
+
+| Set | Requirements compared | Equal | Blank lines only | Markup only | Words differ |
+|---|---|---|---|---|---|
+| Whole archive (69 changes) | 328 (28 more not found by name) | 285 | 1 | 2 | 40 |
+| The 9 chosen changes | 28 | 21 | 1 | 0 | 6 |
+
+By paragraph (each change paragraph against its closest paragraph in the
+spec requirement): whole archive 2,866 paragraphs, 2,790 equal, 0 whitespace
+only, 6 markup only (4 code-fence info strings, 2 letter case), 70 words.
+Chosen changes: 197 paragraphs, 185 equal, 12 words.
+
+- OpenSpec's archive command copies the delta text into the spec. So most
+  text is equal. v4 consolidates by hand (design.md 5), so this measures
+  the source texts, not hand copies. The fidelity check measures the hand
+  copies: 33 of 33 converted states equal the real bytes.
+- Most "words differ" cases are not drift of one text. Several changes
+  MODIFIED one requirement and were archived in one commit, or a MODIFIED
+  delta held only the new scenario and the archive kept the others. At the
+  paragraph level, the second case is equal.
+- The one blank-line case: under v4 each paragraph has its own marker, so
+  the blank lines between paragraphs do not count, and the paragraphs are
+  equal. No more normalization is needed for whitespace. The 6 markup cases
+  would need a wording decision or a typo claim each.
+
+## B5. Conversion cost, and the equality cases in the replay
+
+| Change | Tokens (2 runs) | Agent time | Baseline effect | Incorporated | Removed | No valid disposition |
+|---|---|---|---|---|---|---|
+| update-markdown-parser-crlf | 168k | 341 s | 2 | 2 | 0 | 0 |
+| sort-active-changes-by-progress | 166k | 338 s | 2 | 2 | 0 | 0 |
+| adopt-delta-based-changes | 294k | 769 s | 30 | 23 | 7 | 0 |
+| add-non-interactive-init-options | 204k | 483 s | 8 | 7 | 0 | 1 |
+| update-cli-init-enter-selection | 184k | 300 s | 2 | 2 | 0 | 0 |
+| add-config-command | 204k | 482 s | 42 | 34 | 0 | 8 (2 rules, 6 design) |
+| add-kimi-cli-skills-only-support | 192k | 495 s | 11 | 6 | 0 | 5 (design) |
+| add-dsh-support | 221k | 406 s | 15 | 7 | 0 | 8 (1 rule, 7 design) |
+| add-grok-build-skills-only-support | 221k | 507 s | 18 | 9 | 0 | 9 (3 rules, 6 design) |
+
+The four direct spec edits cost 67k to 85k tokens each (95 s to 121 s). All
+conversion runs together: 2.15 million tokens, 22 runs. The dispositions are
+judged on each request's closing state.
+
+- Wording decisions and typo claims: none. No replayed text differed in
+  wording only. Each difference changed the meaning: the converters left
+  those paragraphs with no disposition, and `al conclude` (the model) refuses
+  each of those requests.
+- No OpenSpec change has a sign-off, so the model's `al conclude` refuses
+  all nine requests. A maintainer's merge is not a sign-off; the converters
+  recorded none.
+- Design text: OpenSpec keeps `design.md` with the change and never puts it
+  into the specs. Under design.md 5, design kinds go into `specs/` and need
+  a disposition. 24 design paragraphs of four changes have none, so the
+  close rule refuses them, though the code delivered them.
+- There is no "work" agent in this replay: the work happened in the real
+  project. So the cost is not a ratio. The question author cost 215k tokens.
+
+## B6. What each arm's tool showed on the real problems
+
+The replay met six real problems. The OpenSpec CLI ran on the states before
+and after the last step of each episode, and gave no error on any of them.
+
+| Real problem (episode) | OpenSpec CLI 1.14.1 | Lighter (model) | Full (model) |
+|---|---|---|---|
+| A MODIFIED requirement silently dropped two scenarios (sort-active) | passed | `not ok`: 4 IDs lost | `not ok`: 4 IDs lost |
+| Two open changes MODIFIED one requirement; one text was lost at the archive (the pair) | passed | no overlap hint; `al conclude` refuses the lost paragraph | overlap hint while both were open; `al conclude` refuses the lost paragraph |
+| The consolidated requirement says the opposite of the change (config: unknown keys rejected, not allowed) | passed | `al conclude` refuses 2 rules | the same |
+| A spec text changed under an open change (the chain: a rename, then a tool replaced) | passed | nothing while open; `al conclude` refuses at the close | stale-binding hint while open; `al conclude` refuses at the close |
+| Four commits changed promise text with no change | passed | `not ok`: no signed requirement | `not ok`: no signed requirement |
+| No change has a sign-off | not a concept | `al conclude` refuses all 9 | the same |
+
+The answerers of all three arms still answered the questions on these
+problems right, from the diffs and the history. No defect review was run in
+T4, so the effect of these findings on a reviewer is not measured here.
+
+## B7. Questions in three arms (30 questions)
+
+A separate agent wrote 30 questions over the five episodes after the
+conversion, from the real history and the converted IDs. No conversion agent
+saw them. Each has one answer that a script checks: 20 choice, 8 yes or no,
+2 sets. A check of the scorer: each answer changed to a wrong one scored
+wrong (90 of 90).
+
+| Arm | Right | Recall of the evidence | Tokens per answerer | Time per answerer |
+|---|---|---|---|---|
+| today (OpenSpec's records) | 30/30 | 0.42, by reference | 44k | 28 s |
+| lighter | 30/30 | 0.72, by v4 ID | 51k | 29 s |
+| full | 30/30 | 0.64, by v4 ID | 54k | 30 s |
+
+- Every arm answered every question right, with high confidence. On this
+  history, the v4 records did not change an answer.
+- Recall is not comparable across the arms. OpenSpec's records have no
+  paragraph IDs, so its recall matches requirement and scenario names.
+- The v4 packets are larger: the records, the diff and the tool output of
+  the five episodes are 0.62 MB (lighter) and 0.71 MB (full), against 0.16
+  MB for OpenSpec's own. The answerers' tokens grew less: 51k and 54k,
+  against 44k.
+
+## B8. Gaps in the design that the replay found
+
+1. Design text that a project keeps only with the change. OpenSpec never
+   consolidates `design.md`. Under design.md 5, every design paragraph with
+   a baseline effect needs `incorporated` or `abandoned`. Neither is true for
+   delivered design that stays with its change, so the close rule refuses.
+2. An archived request judged again. Validation A's model judged archived
+   requests on today's spec; design.md 5 says it must not. The product must
+   judge an archived request on its closing state only (T10, T11).
+3. A direct edit keeps an old `serves` link. After a direct edit of a
+   promise paragraph, its marker still names the requirement of the closed
+   change that wrote it, though the text no longer matches. The sign-off
+   check then names that old requirement. The design does not say what a
+   direct edit does with the old link.
+4. Silent loss in a whole-block replace. OpenSpec's archive replaces a whole
+   requirement block with the MODIFIED text, so scenarios that the delta
+   left out vanish. The v4 ID lint catches this (`not ok`). This supports
+   the ID lint.
+5. Markup-only differences (code-fence info strings, letter case) need a
+   wording decision or a typo claim under exact equality. This is 6 of 2,866
+   paragraphs. The data does not support more normalization.
+
+## B9. T5: a private adopter's tier-3 restart request
+
+The adopter's open tier-3 request was converted by hand on a scratch copy,
+at a pinned commit. Nothing was changed in the adopter's repo, and nothing
+from it is in this repository. The private detail is in the bots repository
+(see B11).
+
+Method:
+- One conversion agent converted the request's records into v4 records (one
+  run, 229k tokens, 12 min). It wrote 44 spec markers, a change spec of 51
+  paragraphs, the request record (23 sources, 4 requirements, 1 sign-off, 4
+  decisions, 4 tasks, 12 declared outputs, 36 dispositions) and 20 result
+  files (3 of them "not run"). The lighter arm was made from it by script.
+- Nine fresh readers, three for each arm, each with only its arm's records
+  and tool output. Each listed the PRs, the checks, the parts, the evidence
+  that is not available, and the contradictions.
+- The three facts were scored by script. The two pieces of evidence and the
+  contradiction were labelled by two judges who did not see the arm; a label
+  counts when both agree. They agreed on 26 of 27 labels. The key was fixed
+  before any answer was read.
+
+| Arm | All three facts | A PR merged | A proof not run | A part still open | (a) no evidence of the proof that did not run | (b) owner chat not available | Saw the contradiction | Tokens per reader | Time per reader |
+|---|---|---|---|---|---|---|---|---|---|
+| today | 0/3 | 0/3 ("unknown") | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 121k | 193 s |
+| lighter | 3/3 | 3/3 | 3/3 | 3/3 | 2/3 | 3/3 | 0/3 | 100k | 159 s |
+| full | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 0/3 | 128k | 214 s |
+
+Findings:
+- The merge fact came from the tool's git facts. The original records say
+  that the PR is not merged: the request wrote that line inside the PR,
+  before the merge, so it went stale at the merge. Today's readers saw that
+  the tool read a tree that already held the PR's records, and answered
+  "unknown"; none answered "merged".
+- Two things helped the v4 readers, and this test cannot tell them apart:
+  the derived merge fact, and the conversion rule that drops a merge state
+  from the records ("the tool derives it from git"). The converter dropped
+  the stale line for that reason. So the v4 readers saw no contradiction.
+- The lighter arm did as well as the full arm. The facts come from the git
+  facts, the results and the task references, which both arms keep.
+- "A part still open" came from the part's brief ("not started") and a dated
+  status line in all arms, and in the v4 arms also from a task that no PR
+  names. v4 keeps no task status (design.md 8), so the converter kept the
+  status text as dated dialog lines.
+- The conversion needed fields that the examples do not have: results with
+  "by", "source" and "note", sign-offs with the presented packet and the
+  transcription, and "commit: unknown" for 7 of the 20 results. A result
+  with no commit gives "applicability unknown".
+- Validation A's model compared commit IDs as strings, so a full hash and a
+  short hash of one commit did not match. The T5 view resolved them through
+  git. The product must do the same (T12).
+- The request has its own rule that any change to the spec's bytes needs a
+  new sign-off. Under v4, a change to a heading, a design paragraph or an
+  open paragraph needs review only. v4 does not carry that project rule.
+
+## B10. Limits of this evidence
+
+- One model family played every role: the converters, the question author,
+  the answerers, the readers and the judges.
+- T4 has one answerer for each episode and arm. All arms scored 30 of 30,
+  so the questions did not separate the arms; harder questions might.
+- The T4 questions were written from the replay. They test what the real
+  history asks; they are not planted defects. T4 ran no defect review.
+- The replay keeps only the followed requirements of each spec, and opens
+  two changes on the date of their folder names. The real history held more
+  text and other changes.
+- T5 is one request, three readers per arm. Its result rests on one
+  stale line and one derived fact.
+- The tool output of the v4 arms is a model of the rules. The adoption step
+  is a script that stands in for `al spec --add-ids`.
+- Agent time is the wall time of an agent run, not a person's time.
+
+## B11. Where the data is
+
+The replay world, the conversion snapshots, the prompts, every agent's
+output, the scorers, the usage log and the T5 detail are in the architect's
+working notes: `validation/v4/t4/` and `validation/v4/t5/` in the bots
+repository of the AssuredLoop bot, at the commit named in the PR. They are
+not in this repository.
