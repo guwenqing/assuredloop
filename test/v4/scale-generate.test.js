@@ -8,7 +8,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import {
-  FULL, PR_MERGE, al, firstParentMerges, generate, git, linesOf, listDir, makeWorld, markerIds, readYamlFile,
+  DESIGN_KINDS, FULL, PROMISE_KINDS, PR_MERGE, REPO, al, exportAt, firstParentMerges, generate, git, linesOf, listDir, makeWorld,
+  markerIds, readYamlFile,
   removeDir, repoState, show, specIdsAt, tempDir, tryGit,
 } from './helpers/scale.js';
 
@@ -310,6 +311,68 @@ describe('generate.js on a small world', () => {
       }
     }
   });
+
+  // --- the adoption (design.md 5 and 14; decision D16 of PR #184)
+
+  const adoption = () => readYamlFile(join(central(), '.assuredloop/records/requests/adoption.yaml'));
+  // The one commit that every adoption disposition names.
+  const adoptingCommit = () => {
+    const commits = [...new Set((adoption().dispositions ?? []).map((d) => d.commit))];
+    assert.equal(commits.length, 1, `the adoption dispositions name one commit: ${JSON.stringify(commits)}`);
+    return commits[0];
+  };
+
+  test('the adoption is the archived request adoption, concluded, and not one of the --requests requests', () => {
+    const md = join(central(), 'requests/archive/adoption/request.md');
+    assert.ok(existsSync(md), md);
+    assert.match(readFileSync(md, 'utf8'), /\bStatus: concluded\b/, 'adoption/request.md says Status: concluded');
+    assert.ok(!existsSync(join(central(), 'requests/adoption')), 'adoption is not an open request');
+    assert.equal(adoption().status, 'concluded');
+    assert.ok(!world.concluded.includes('adoption') && !world.openRequests.includes('adoption'), 'adoption is not in world.json');
+    assert.equal(requestNames().length, OPTS.requests);
+  });
+
+  test('the adoption record: one incorporated disposition per promise or design paragraph of specs/ at the adopting commit', () => {
+    const ds = adoption().dispositions;
+    assert.ok(Array.isArray(ds) && ds.length >= 1, `dispositions: ${JSON.stringify(ds)}`);
+    const C = adoptingCommit();
+    assert.match(C, FULL, 'the full hash of the adopting commit');
+    for (const d of ds) {
+      assert.equal(d.source, 'adoption', JSON.stringify(d));
+      assert.equal(d.disposition, 'incorporated', JSON.stringify(d));
+      assert.match(String(d.spec_sha256), /^[0-9a-f]{64}$/, JSON.stringify(d));
+    }
+    const rows = exportAt(central(), C).filter((r) => r.role === 'baseline' && String(r.file).startsWith('specs/'));
+    const kinds = [...PROMISE_KINDS, ...DESIGN_KINDS];
+    const want = new Map(rows.filter((r) => kinds.includes(r.kind)).map((r) => [r.id, r.sha256]));
+    assert.ok(want.size >= 1, 'specs/ at the adopting commit has promise or design paragraphs');
+    const ids = ds.map((d) => d.spec);
+    assert.equal(new Set(ids).size, ids.length, `one disposition per paragraph: ${ids.join(' ')}`);
+    assert.deepEqual([...ids].sort(), [...want.keys()].sort(), 'the dispositions name exactly the promise and design paragraphs');
+    for (const d of ds) assert.equal(d.spec_sha256, want.get(d.spec), `${d.spec}: spec_sha256 is its text hash at ${C}`);
+  });
+
+  test('the adopting commit is on main and is the first with the spec: no parent of it has a spec paragraph', () => {
+    const C = adoptingCommit();
+    assert.equal(tryGit(central(), 'merge-base', '--is-ancestor', C, 'main').code, 0, `${C} is a commit of main`);
+    assert.ok(specIdsAt(central(), C).size >= 1, `specs/ at ${C} has paragraphs`);
+    const parents = git(central(), 'rev-list', '--parents', '-n', '1', C).split(' ').slice(1);
+    for (const p of parents) assert.equal(specIdsAt(central(), p).size, 0, `parent ${p} has no spec paragraph`);
+  });
+
+  // PR #184 adds the checks that read the adoption (src/v4/checks.js). Until it
+  // is merged, this al has no such check, and the test is skipped.
+  const has184 = existsSync(join(REPO, 'src/v4/checks.js'));
+  test("with PR #184's checks, an adopted paragraph whose text is unchanged gets no no-link hint",
+    { skip: !has184 && 'needs the checks of PR #184 (src/v4/checks.js)' }, () => {
+      const now = new Map(exportAt(central(), 'main').filter((r) => r.role === 'baseline' && String(r.file).startsWith('specs/')).map((r) => [r.id, r.sha256]));
+      const unchanged = adoption().dispositions.filter((d) => now.get(d.spec) === d.spec_sha256).map((d) => d.spec);
+      assert.ok(unchanged.length >= 1, 'some adopted paragraph is unchanged at main');
+      const r = al(central(), ['check']);
+      assert.equal(r.code, 0, show(r));
+      const noLink = r.stdout.split('\n').map((l) => /^(?:hint|not ok) no-link \S+ (\S+)/.exec(l)?.[1]).filter(Boolean);
+      assert.deepEqual(unchanged.filter((id) => noLink.includes(id)), [], show(r));
+    });
 });
 
 // --- edge sizes: no output repo, one paragraph, an --out dir that exists and is empty

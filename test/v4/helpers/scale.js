@@ -110,5 +110,16 @@ export function firstParentMerges(dir) {
 }
 export const PR_MERGE = /^Merge pull request #(\d+) from \S+$/;
 
+// The rows of `al-v4 export --at <rev>` in `dir`: one JSON object per line.
+export function exportAt(dir, rev) {
+  const r = al(dir, ['export', '--at', rev]);
+  assert.equal(r.code, 0, show(r));
+  return linesOf(r.stdout).map((l) => JSON.parse(l));
+}
+
+// The paragraph kinds of schema.md 4: the promise kinds and the design kinds.
+export const PROMISE_KINDS = ['purpose', 'scope', 'rule', 'limit', 'definition'];
+export const DESIGN_KINDS = ['component', 'interface', 'data', 'flow', 'choice'];
+
 export const readYamlFile = (path) => parse(readFileSync(path, 'utf8'));
 export const listDir = (dir) => (existsSync(dir) ? readdirSync(dir).sort() : null);
