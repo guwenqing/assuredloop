@@ -4,7 +4,7 @@ import { existsSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { loadConfig, loadSchema, writeSetup } from './config.js';
 import { HEADING, blocksOf, lf, parseMarkdown } from './markers.js';
-import { docsInScope, idsEverUsed, isShallow, outsideDocs, prefixOf, scopeOf } from './scope.js';
+import { docsInScope, idsEverUsed, isShallow, notRead, prefixOf, scopeOf, symlinkOn } from './scope.js';
 
 export class Fail extends Error {
   constructor(message, next) {
@@ -27,7 +27,7 @@ export function spec({ top, cwd, args, opts }) {
     if (missing.length) throw new Fail(`not a doc in scope: ${missing.join(', ')}`, 'al-v4 spec, with no file, lists every doc in scope');
     docs = docs.filter((d) => wanted.includes(d.path));
   }
-  const body = outsideDocs(config).map((f) => `not read: ${f}: outside the repository`);
+  const body = notRead(top, config);
   for (const d of docs) {
     body.push(d.path);
     for (const p of parseMarkdown(d.text, d.path, { kinds }).paragraphs) body.push(`  ${p.displayNumber}  ${p.kind ?? '-'}`);
@@ -99,20 +99,4 @@ function addIds({ top, cwd, opts }) {
     next: opts.yes ? `set the kind of each new marker, review the diff of ${path} and commit it` : 'run the same command with --yes to write it',
     notKnown,
   };
-}
-
-// The first part of `path` (from the repo top) that is a symlink, or null.
-function symlinkOn(top, path) {
-  let at = top;
-  for (const part of path.split('/')) {
-    at = join(at, part);
-    let stat;
-    try {
-      stat = lstatSync(at);
-    } catch {
-      return null;
-    }
-    if (stat.isSymbolicLink()) return relative(top, at);
-  }
-  return null;
 }

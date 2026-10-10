@@ -2,7 +2,7 @@
 // read (coordinator, 2026-10-10). Written before the code.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { docsInScope } from '../../src/v4/scope.js';
 import { loadConfig } from '../../src/v4/config.js';
@@ -171,4 +171,83 @@ describe('control: root: ./design reads design/*.md', () => {
     const json = JSON.stringify(docsInScope(repo.dir, loadConfig(repo.dir)));
     assert.ok(json.includes('"design/a.md"') && !json.includes('./design'), json);
   });
+});
+
+// Reading does not go through a symlink (coordinator, from the reviewer).
+const SYMLINK_CASES = [
+  {
+    name: 'a docs: file under a symlinked folder',
+    config: 'root: unused\ndocs:\n  - file: specs/alias/victim.md\n    prefix: OUT\n',
+    link: 'specs/alias', inner: 'victim.md', docPath: 'specs/alias/victim.md', notRead: 'specs/alias/victim.md',
+  },
+  {
+    name: 'a root: under a symlinked folder',
+    config: 'root: alias/sub\n',
+    link: 'alias', inner: 'sub/victim.md', docPath: 'alias/sub/victim.md', notRead: 'alias/sub/',
+  },
+];
+
+describe('reading does not go through a symlink', () => {
+  for (const c of SYMLINK_CASES) {
+    function linked(t) {
+      const repo = makeRepo(t);
+      const out = join(dirname(repo.dir), 'outside-linked');
+      mkdirSync(dirname(join(out, c.inner)), { recursive: true });
+      writeFileSync(join(out, c.inner), OUTSIDE_TEXT);
+      mkdirSync(dirname(join(repo.dir, c.link)), { recursive: true });
+      symlinkSync(out, join(repo.dir, c.link));
+      repo.write('.assuredloop/config.yaml', c.config);
+      return repo;
+    }
+    const notReadLine = `not read: ${c.notRead}: through a symlink`;
+
+    test(`docsInScope: ${c.name} gives no doc from it`, (t) => {
+      const repo = linked(t);
+      const json = JSON.stringify(docsInScope(repo.dir, loadConfig(repo.dir)));
+      assert.ok(!json.includes('victim.md') && !json.includes('OUT-1'), json);
+    });
+
+    test(`spec: ${c.name} lists nothing from it and prints ${JSON.stringify(notReadLine)}`, (t) => {
+      const repo = linked(t);
+      const r = runV4(repo.dir, ['spec']);
+      assert.equal(r.code, 0, show(r));
+      assert.ok(lines(r.stdout).includes(notReadLine), show(r));
+      assert.ok(!r.stdout.includes('OUT-1'), show(r));
+      assert.ok(!lines(r.stdout).includes(c.docPath), show(r));
+    });
+
+    test(`check: ${c.name} gives no lint and no change line, prints the not read line, exit 0 also with --strict`, (t) => {
+      const repo = linked(t);
+      for (const args of [[], ['--strict']]) {
+        const r = runV4(repo.dir, ['check', ...args]);
+        assert.equal(r.code, 0, show(r));
+        assert.ok(lines(r.stdout).includes(notReadLine), show(r));
+        assert.ok(!r.stdout.includes('OUT-1'), show(r));
+        assert.deepEqual(lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l)), [], show(r));
+        assert.deepEqual(lines(r.stdout).filter((l) => l.startsWith(`${c.docPath} `)), [], show(r));
+      }
+    });
+
+    // Control: the same path as a plain folder inside the repo is read.
+    function plain(t) {
+      const repo = makeRepo(t);
+      repo.write(join(c.link, c.inner), OUTSIDE_TEXT);
+      repo.write('.assuredloop/config.yaml', c.config);
+      return repo;
+    }
+
+    test(`control: ${c.name}, as a plain folder, is read by docsInScope, spec and check`, (t) => {
+      const repo = plain(t);
+      const json = JSON.stringify(docsInScope(repo.dir, loadConfig(repo.dir)));
+      assert.ok(json.includes(`"${c.docPath}"`), json);
+      const s = runV4(repo.dir, ['spec']);
+      assert.equal(s.code, 0, show(s));
+      assert.ok(lines(s.stdout).includes(c.docPath), show(s));
+      assert.ok(!s.stdout.includes('not read:'), show(s));
+      const r = runV4(repo.dir, ['check']);
+      assert.equal(r.code, 0, show(r));
+      assert.ok(!r.stdout.includes('not read:'), show(r));
+      assert.ok(lines(r.stdout).some((l) => l.startsWith(`not ok no-blank-after ${c.docPath}:1 OUT-1 `)), show(r));
+    });
+  }
 });
