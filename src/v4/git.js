@@ -22,24 +22,29 @@ export function mergeBase(top) {
 }
 
 // Git objects by name (a blob hash, or `<commit>:<path>`), read with one
-// `git cat-file --batch -Z` process, NUL-separated so that any path works:
-// Map name -> bytes for each name that is a blob. A missing, ambiguous or
-// other object is not in the Map. Every reader of files at a commit uses it.
+// `git cat-file --batch` process: Map name -> bytes for each name that is a
+// blob. A missing, ambiguous or other object is not in the Map. Every reader
+// of files at a commit uses it. It needs nothing newer than git 2.31 (no
+// `-z`): a name that holds a newline, or ends in a carriage return, cannot go
+// on a line of the batch, so it is read with its own process.
 export function readObjects(top, names) {
   const out = new Map();
   const list = [...new Set(names.map(String))];
-  if (!list.length) return out;
-  let buf;
-  try {
-    buf = execFileSync('git', ['-C', top, 'cat-file', '--batch', '-Z'], { input: list.map((n) => `${n}\0`).join(''), stdio: ['pipe', 'pipe', 'ignore'], maxBuffer: 1 << 30 });
-  } catch {
-    return out;
+  const alone = (n) => n.includes('\n') || n.endsWith('\r');
+  const lines = list.filter((n) => !alone(n));
+  let buf = null;
+  if (lines.length) {
+    try {
+      buf = execFileSync('git', ['-C', top, 'cat-file', '--batch'], { input: lines.map((n) => `${n}\n`).join(''), stdio: ['pipe', 'pipe', 'ignore'], maxBuffer: 1 << 30 });
+    } catch {
+      buf = null;
+    }
   }
-  // Each answer, in the order asked: "<oid> <type> <size>" NUL, the bytes, NUL;
-  // or "<name> missing" (or ambiguous) NUL.
+  // Each answer, in the order asked: "<oid> <type> <size>" LF, the bytes, LF;
+  // or "<name> missing" (or ambiguous) LF.
   let at = 0;
-  for (const name of list) {
-    const end = buf.indexOf(0, at);
+  for (const name of buf ? lines : []) {
+    const end = buf.indexOf(10, at);
     if (end < 0) break;
     const header = /^[0-9a-f]+ ([a-z]+) (\d+)$/.exec(buf.subarray(at, end).toString('utf8'));
     at = end + 1;
@@ -48,10 +53,18 @@ export function readObjects(top, names) {
     if (header[1] === 'blob') out.set(name, buf.subarray(at, at + size));
     at += size + 1;
   }
+  for (const name of list.filter(alone)) {
+    try {
+      out.set(name, execFileSync('git', ['-C', top, 'cat-file', 'blob', name], { stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 30 }));
+    } catch {
+      // not a blob there
+    }
+  }
   return out;
 }
 
-// Each of `paths` at `commit`, with one git process: Map path -> its text in
+// Each of `paths` at `commit`, with one git process (and one for each path
+// that holds a newline): Map path -> its text in
 // `encoding` (its bytes when encoding is null), or null when it is not a file
 // there (missing, a folder, or a commit that does not resolve).
 export function filesAt(top, commit, paths, encoding = 'utf8') {
