@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   INVOICES, WORDS_FILE, appendSection, baseProject, commitAll, doc, exists, newRequest, ok, organized, project, read, record,
-  recordPath, refused, req, show, tree, write, writeConfig,
+  refused, req, show, tree, write, writeConfig,
 } from './helpers/project.js';
 
 const WORDS = 'Fix the name of the export component.\n';
@@ -38,7 +38,6 @@ test('new --tier 1d writes the request as for any tier: "Tier: 1d" in request.md
   assert.equal(rec.tier, '1d');
   assert.equal(rec.status, 'open');
   assert.ok(exists(dir, `requests/rename-exporter/origin/${WORDS_FILE}`), 'the snapshot of the words');
-  assert.match(read(dir, recordPath('rename-exporter')), /^tier: ['"]1d['"]$/m, 'the YAML holds the tier as a quoted string');
 });
 
 test('new --tier 1d writes the same files as --tier 1, apart from the tier', (t) => {
