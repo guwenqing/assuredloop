@@ -1,0 +1,4 @@
+root: specs
+docs:
+  - {file: specs/invoices.md, prefix: INV}
+  - {file: specs/exports.md, prefix: EXP}

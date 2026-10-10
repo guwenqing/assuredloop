@@ -1,0 +1,27 @@
+# A source edited from 30 to 45 minutes after early incorporation. R2 gets a
+# version 2, signed in S2; SP-6 says 45 minutes and its serves binding is
+# aligned. specs/exports.md does not change, so EXP-4 still says 30. SP-6's
+# new version has no disposition yet (pending); the old one stays as history.
+title: "Export link: 45 minutes (R2 version 2)"
+base: base
+claim: "Tier: 3 — invoice-exports, R2 v2"
+steps:
+  - al: [record, invoice-exports, origin, --url, 'https://chat.example.invalid/invoicer/2026-06-20', --from, '-', --fetched, '2026-06-20T10:05Z', --yes]
+    date: 2026-06-20
+    input: |
+      the accountants say 30 minutes is too short, they open the mail after a
+      meeting. make it 45.
+  - edit:
+      file: requests/invoice-exports/request.md
+      from: The download link sent by email MUST stop working after a short time.
+      to: |-
+        The download link sent by email MUST stop working 45 minutes after the
+        email is sent.
+  - al: [record, invoice-exports, signoff, --source, the project chat, --words, 'R2 v2 ok, sign', --yes]
+    date: 2026-06-21
+  - edit:
+      file: requests/invoice-exports/spec.md
+      from: The export link MUST expire 30 minutes after the email is sent.
+      to: The export link MUST expire 45 minutes after the email is sent.
+  - align: invoice-exports/SP-6
+    date: 2026-06-21

@@ -1,0 +1,56 @@
+# D13: a 1d claim that adds a component (t2 defects-repair.yaml D13). Both
+# arms rename "lines" to "line items" in INV-8 and refresh its AI hint; only
+# the defect adds INV-17, a component with no link (no link the rules allow
+# fits a 1d request with no requirement).
+title: Rename invoice lines to line items
+base: base
+claim: "Tier: 1d — line-items-name"
+steps:
+  # al-v4 new refuses --tier 1d (it takes 1, 2, 3 or S), so the tier is
+  # written by hand into request.md and the record.
+  - al: [new, line-items-name, --from, '-', --title, Line items name]
+    date: 2026-07-18
+    input: |
+      everyone here says line items, not lines; rename it in the spec
+  - edit:
+      file: requests/line-items-name/request.md
+      from: "\nStatus: open\n"
+      to: "\nTier: 1d · Status: open\n"
+  - recordSet:
+      request: line-items-name
+      set: {tier: 1d}
+  - section:
+      request: line-items-name
+      text: |
+        Source: the owner, chat 2026-07-18: 'everyone here says line items, not lines; rename it in the spec'.
+
+        Outcome: concluded when PR #82 merges. INV-8 renamed "lines" to "line items".
+  - edit:
+      file: specs/invoices.md
+      from: An invoice has a number, a customer, lines, a total and a paid date.
+      to: An invoice has a number, a customer, line items, a total and a paid date.
+arms:
+  defect:
+    steps:
+      - edit:
+          file: specs/invoices.md
+          from: "<!-- INV-13 rule"
+          to: |-
+            <!-- INV-17 component -->
+
+            A line item service stores the line items of each invoice and returns them
+            with the invoice.
+
+            <!-- INV-13 rule
+  control:
+    steps: []
+after:
+  - index: true
+    date: 2026-07-18
+  - hint:
+      doc: specs/invoices.md
+      id: INV-8
+      summary: An invoice has a number, a customer, line items, a total and a paid date.
+      tags: [data]
+      quote: {exact: An invoice has a number}
+  - archive: line-items-name

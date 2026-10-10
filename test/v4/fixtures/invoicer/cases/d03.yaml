@@ -1,0 +1,13 @@
+# D03: a code-only promise change claimed as a fix (t2 defects.yaml D03), in
+# invoicer-web on top of res-config. Only the minutes differ (45 against 30).
+# No spec paragraph is in the diff, so the tool has nothing to tell apart.
+title: Link time back in line with the spec
+base: res-config
+claim: "Tier: 0 — restores central:EXP-4"
+arms:
+  defect:
+    steps:
+      - write: {file: config/link.json, text: "{ \"ttlMinutes\": 45 }\n"}
+  control:
+    steps:
+      - write: {file: config/link.json, text: "{ \"ttlMinutes\": 30 }\n"}

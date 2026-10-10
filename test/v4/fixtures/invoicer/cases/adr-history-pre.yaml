@@ -1,0 +1,8 @@
+# On main: EXP-7 is decided only by ADR-5, which ADR-6 superseded.
+title: "ADR-6 supersedes ADR-5: examples use invented customers"
+base: base
+claim: "Tier: 2 — invoice-exports"
+steps:
+  - files: {from: adr, to: specs/adr}
+  - index: true
+    date: 2026-07-24

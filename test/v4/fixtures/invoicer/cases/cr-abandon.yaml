@@ -1,0 +1,26 @@
+# Abandon an applied part of an epic. The owner dropped the ZIP (D3): SP-7 is
+# abandoned as reverted (EXP-9 was added at M8 and removed at M9); SP-10, SP-11
+# and SP-12 are abandoned as never applied.
+title: "Invoice exports: close; the ZIP is dropped (D3)"
+base: cr-abandon-m9
+claim: "Tier: 3 — invoice-exports; closes the request"
+steps:
+  - al: [record, invoice-exports, origin, --url, 'https://chat.example.invalid/invoicer/2026-07-10', --from, '-', --fetched, '2026-07-10T09:00Z', --yes]
+    date: 2026-07-10
+    input: |
+      forget the zip. nobody asked for it after all, they can download twelve
+      months. take it out again.
+  - al: [record, invoice-exports, decision, --source, owner, --text, 'The yearly ZIP is dropped. EXP-9, consolidated from SP-7, is reverted. SP-10, SP-11 and SP-12 are not delivered.', --clarifies, R3, --yes]
+    date: 2026-07-10
+  - disposition:
+      request: invoice-exports
+      source: invoice-exports/SP-7
+      set: {disposition: abandoned, decision: D3}
+  - dispositions:
+      request: invoice-exports
+      add:
+        - {source: invoice-exports/SP-10, disposition: abandoned, decision: D3}
+        - {source: invoice-exports/SP-11, disposition: abandoned, decision: D3}
+        - {source: invoice-exports/SP-12, disposition: abandoned, decision: D3}
+  - index: true
+    date: 2026-07-10

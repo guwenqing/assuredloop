@@ -1,0 +1,12 @@
+# schema.md 5: a superseded ADR's decides links are history. EXP-7, which
+# only the superseded ADR-5 decides, gets a typo fix: no adr-governs hint.
+title: Fix a typo in the CSV example
+base: adr-history-pre
+claim: "Tier: 0 — typo in EXP-7"
+steps:
+  - edit:
+      file: specs/exports.md
+      from: "The first lines of a monthly CSV file:"
+      to: "The first lines of a monthly CSV export:"
+  - index: true
+    date: 2026-07-26

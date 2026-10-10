@@ -1,0 +1,4 @@
+# The base world on main, and a branch with one empty commit that claims path 0.
+title: Nothing changes
+base: base
+claim: "Tier: 0 — restores INV-2"

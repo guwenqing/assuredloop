@@ -1,0 +1,43 @@
+# D05: a test that cites the right ID and checks another condition (t2
+# defects.yaml D05), in invoicer-web. Both arms rewrite the declared input
+# test/export-link.test.js, so the W3 result does not apply in both.
+title: Test the link expiry
+base: web-base
+claim: "Tier: 0 — restores central:EXP-4"
+arms:
+  defect:
+    steps:
+      - write:
+          file: test/export-link.test.js
+          text: |
+            // Checks central:EXP-4: the link stops working 30 minutes after sending.
+            import { test } from 'node:test';
+            import assert from 'node:assert/strict';
+            import { issueLink, openLink } from '../src/export-link.js';
+
+            const tokenOf = (url) => new URL(url, 'http://x').searchParams.get('token');
+
+            test('a link stops working 30 minutes after sending', () => {
+              const store = new Map();
+              const token = tokenOf(issueLink(store, 'e1', 0));
+              assert.equal(openLink(store, token, 1 * 60_000), 'e1');
+              assert.equal(openLink(store, token, 2 * 60_000), null);
+            });
+  control:
+    steps:
+      - write:
+          file: test/export-link.test.js
+          text: |
+            // Checks central:EXP-4: the link stops working 30 minutes after sending.
+            import { test } from 'node:test';
+            import assert from 'node:assert/strict';
+            import { issueLink, openLink } from '../src/export-link.js';
+
+            const tokenOf = (url) => new URL(url, 'http://x').searchParams.get('token');
+
+            test('a link stops working 30 minutes after sending', () => {
+              const early = new Map();
+              assert.equal(openLink(early, tokenOf(issueLink(early, 'e1', 0)), 29 * 60_000), 'e1');
+              const late = new Map();
+              assert.equal(openLink(late, tokenOf(issueLink(late, 'e2', 0)), 30 * 60_000), null);
+            });

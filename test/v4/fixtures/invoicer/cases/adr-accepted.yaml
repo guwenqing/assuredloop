@@ -1,0 +1,29 @@
+# schema.md 5: an accepted ADR's text does not change; only its status does.
+# Arm text: ADR-2's decision paragraph changes. Arm status: only ADR-2's
+# Status line changes. Arm deleted: the ADR-2 file is deleted.
+title: Change ADR-2
+base: base
+claim: "Tier: 2 — invoice-exports"
+arms:
+  text:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: |-
+            Decision: monthly exports are CSV, UTF-8, comma separated, with a header
+            row.
+          to: |-
+            Decision: monthly exports are CSV, UTF-8 with a byte order mark, comma
+            separated, with a header row.
+  status:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n"
+          to: "Status: superseded\n"
+  deleted:
+    steps:
+      - delete: specs/adr/0002-csv-not-xlsx.md
+after:
+  - index: true
+    date: 2026-07-25
