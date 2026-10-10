@@ -25,7 +25,7 @@ import * as gitjs from '../../src/v4/git.js';
 import { makeRepo } from './helpers/repo.js';
 import { blobSha, centralConfig, commit, world, worldOutputs } from './helpers/cross-repo.js';
 import { invoicer } from './helpers/invoicer.js';
-import { al, commitAll, git, move, read, readYaml, show, write, writeYaml } from './helpers/project.js';
+import { al, baseProject, commitAll, git, move, read, readYaml, sha, show, write, writeYaml } from './helpers/project.js';
 
 const GIT_JS = fileURLToPath(new URL('../../src/v4/git.js', import.meta.url));
 const { commitOf, mergeOf } = gitjs;
@@ -43,13 +43,15 @@ function cleanEnv(extra = {}) {
 }
 
 // n commits made with one `git fast-import`, each on top of the one before,
-// on `ref` (a new ref: the first is a root commit). Fixed dates, so the same
-// hashes each run. Their full hashes, oldest first.
-function fastCommits(dir, ref, n, subject) {
+// on `ref` (a new ref: the first is a root commit, or with `from` a child of
+// that commit, with its files). Fixed dates, so the same hashes each run.
+// Their full hashes, oldest first.
+function fastCommits(dir, ref, n, subject, from = null) {
   let input = '';
   for (let i = 1; i <= n; i++) {
     const msg = `${subject} ${i}\n`;
-    input += `commit ${ref}\ncommitter Fixture Committer <committer@example.invalid> 1767225600 +0000\ndata ${Buffer.byteLength(msg)}\n${msg}\n`;
+    const parent = i === 1 && from ? `from ${from}\n` : '';
+    input += `commit ${ref}\ncommitter Fixture Committer <committer@example.invalid> 1767225600 +0000\ndata ${Buffer.byteLength(msg)}\n${msg}${parent}\n`;
   }
   const r = spawnSync('git', ['-C', dir, 'fast-import', '--quiet'], { input, env: cleanEnv(), encoding: 'utf8', timeout: 60_000 });
   assert.equal(r.status, 0, `git fast-import in ${dir}:\n${r.stderr}`);
@@ -886,6 +888,45 @@ function countRun(t, w, args, assertOut) {
 
 const outLines = (r) => r.stdout.replace(/\n+$/, '').split('\n');
 
+// A repo with `n` result files in its own .assuredloop/results/ (review of
+// the first round: the central repo is a repo too): baseProject's main, then
+// on the branch feature a test file and n results of it, each at its own
+// commit (full and short hashes, by turns, of commits on refs/ci/runs, which
+// hold the files of the test commit), with the test file and
+// specs/invoices.md as inputs: each result's inputs are unchanged.
+function ownResultsRepo(t, n) {
+  const dir = baseProject(t);
+  const testText = "// INV-13: an invoice has at least one line.\ntest('one line', () => {});\n";
+  write(dir, 'test/invoices.test.js', testText);
+  const tested = commitAll(dir, 'Test INV-13\n\nTier: 0 — a test');
+  const runs = fastCommits(dir, 'refs/ci/runs', n, 'CI run', tested);
+  const inputs = [{ file: 'test/invoices.test.js', sha256: sha(testText) }, { file: 'specs/invoices.md', sha256: sha(read(dir, 'specs/invoices.md')) }];
+  for (let i = 0; i < n; i++) {
+    writeYaml(dir, `.assuredloop/results/run-${String(i + 1).padStart(2, '0')}.yaml`,
+      { check: 'test/invoices.test.js', outcome: 'pass', commit: i % 2 ? runs[i].slice(0, 7) : runs[i], inputs });
+  }
+  commitAll(dir, `Record ${n} results\n\nTier: 0 — results`);
+  return dir;
+}
+
+// One run of `al-v4 check` in `dir` with the wrapper, as countRun does.
+function ownCheckRun(t, dir, n) {
+  const counter = gitCounter(t);
+  counter.reset();
+  const r = al(dir, ['check'], { env: { PATH: counter.PATH } });
+  const processes = counter.count();
+  const calls = counter.calls();
+  assert.ok(calls.some((l) => l.includes('merge-base')), `the wrapper saw al's git:\n${calls.join('\n')}`);
+  assert.equal(r.code, 0, show(r));
+  const results = outLines(r).filter((l) => l.startsWith('info result .assuredloop/results/run-'));
+  assert.equal(results.length, n, show(r));
+  for (const l of results) assert.match(l, /: declared inputs unchanged since [0-9a-f]{7}\b/, show(r));
+  const plain = al(dir, ['check']);
+  assert.equal(plain.code, r.code, show(plain));
+  assert.equal(plain.stdout, r.stdout, 'the same output without the wrapper');
+  return { processes, calls, r };
+}
+
 describe('al-v4 check and al-v4 context start about as many git processes for 60 as for 5', () => {
   test('check: an output repo with 5 result files, and one with 60', (t) => {
     const run = (n) => countRun(t, countWorld(t, { results: n }), ['check'], (r) => {
@@ -893,6 +934,13 @@ describe('al-v4 check and al-v4 context start about as many git processes for 60
     });
     const five = run(5);
     const sixty = run(60);
+    assert.ok(sixty.processes <= five.processes + SLACK,
+      `git processes: ${five.processes} for 5 results, ${sixty.processes} for 60\n--- 60:\n${sixty.calls.join('\n')}`);
+  });
+
+  test("check: a repo with 5 result files in its own .assuredloop/results/, and one with 60", (t) => {
+    const five = ownCheckRun(t, ownResultsRepo(t, 5), 5);
+    const sixty = ownCheckRun(t, ownResultsRepo(t, 60), 60);
     assert.ok(sixty.processes <= five.processes + SLACK,
       `git processes: ${five.processes} for 5 results, ${sixty.processes} for 60\n--- 60:\n${sixty.calls.join('\n')}`);
   });
