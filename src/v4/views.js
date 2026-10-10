@@ -4,7 +4,7 @@
 import { Fail } from './base.js';
 import { applicability, checks } from './checks.js';
 import { judge, judgeRequest } from './dispositions.js';
-import { git, mergeBase, mergeOf } from './git.js';
+import { git, mergeBase, mergesOf } from './git.js';
 import { crossRepo, findCites } from './repos.js';
 import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
@@ -117,7 +117,21 @@ const crossCites = (cross, id) => (cross?.links ?? []).filter((l) => l.link === 
   .map((l) => ({ repo: l.repo, file: l.file, commit: l.commit }));
 
 // The cross-repo facts of the working tree, or null at --at (crossRepo reads the working tree's config).
-const crossOf = (state) => (state.rev ? null : crossRepo(state.top));
+// One crossRepo for each state, shared by every view of it.
+const crossOfState = new WeakMap();
+const crossOf = (state) => {
+  if (state.rev) return null;
+  if (!crossOfState.has(state)) crossOfState.set(state, crossRepo(state.top));
+  return crossOfState.get(state);
+};
+// The merges of the first-parent history at `rev`, read once for each state (mergesOf).
+const mergesOfState = new WeakMap();
+const mergesAt = (state, rev) => {
+  if (!mergesOfState.has(state)) mergesOfState.set(state, new Map());
+  const byRev = mergesOfState.get(state);
+  if (!byRev.has(rev)) byRev.set(rev, mergesOf(state.top, rev));
+  return byRev.get(rev);
+};
 const showChecks = ({ checks, other }) => `${checks.length ? checks.map((c) => `${c.file} ${c.how}`).join(' · ') : 'none'}`
   + `${other.length ? ` · also named in ${other.join(', ')} (not a test: no check)` : ''}`;
 
@@ -188,7 +202,7 @@ function taskPrs(state, r) {
     const m = /^(?:([A-Za-z0-9][A-Za-z0-9._-]*))?#(\d+)$/.exec(pr);
     if (!m) return '(not a PR reference)';
     if (!m[1] || self.has(m[1])) {
-      const merge = mergeOf(state.top, rev, m[2]);
+      const merge = mergesAt(state, rev)(m[2]);
       return merge ? `merged at ${merge.slice(0, 7)}${limit}` : `no merge found in ${where}${limit}`;
     }
     if (state.rev) return 'unknown: output repos are read at the working tree only';

@@ -3,14 +3,13 @@
 // { severity, code, file, line, id, message }: `not ok`, `hint` or `info`.
 // They compare the working tree with the base (the merge-base with main) and
 // read the records of the open requests. No AI, no network.
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { parse as parseYaml } from 'yaml';
 import { read } from './base.js';
 import { judgeRequest } from './dispositions.js';
-import { git } from './git.js';
+import { commitsOf, git } from './git.js';
 import { diffParagraphs } from './ids.js';
-import { crossRepo } from './repos.js';
+import { crossResults } from './repos.js';
 import { loadResults } from './results.js';
 import {
   hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
@@ -181,11 +180,21 @@ export function checks(top, { base, strict = false }) {
   }
 
   // Links that do not resolve, and targets that a change removed (design.md 3).
-  const removedBy = new Map();
-  for (const r of now.requests.values()) {
-    for (const p of r.paras.values()) for (const id of p.links.removes) removedBy.set(id, r.name);
-    for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) if (d?.disposition === 'removed' && d.spec) removedBy.set(d.spec, r.name);
-  }
+  // The request that removed an ID is looked up only for a link that does not
+  // resolve, and only a record whose text names the ID is parsed for it; the
+  // last request in order wins.
+  const removers = new Map();
+  const removerOf = (id) => {
+    if (removers.has(id)) return removers.get(id);
+    let by = null;
+    for (const r of now.requests.values()) {
+      for (const p of r.paras.values()) if (p.links.removes.includes(id)) by = r.name;
+      if (!r.mentions(id)) continue;
+      for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) if (d?.disposition === 'removed' && d.spec === id) by = r.name;
+    }
+    removers.set(id, by);
+    return by;
+  };
   const holders = [
     ...now.spec.values(),
     ...open.flatMap((r) => [...r.paras.values()].map((p) => ({ p, r }))),
@@ -200,7 +209,7 @@ export function checks(top, { base, strict = false }) {
         if (t.cross || resolve(now, t)) continue;
         const who = named(r?.name ?? null, p.id);
         if (word === 'removes' && !t.req && !now.spec.has(t.id) && r) continue; // its own removal, done
-        if (!t.req && removedBy.has(t.id)) add('hint', 'target-removed', p, who, `${ref}: target removed by ${removedBy.get(t.id)}; align this link`);
+        if (!t.req && removerOf(t.id)) add('hint', 'target-removed', p, who, `${ref}: target removed by ${removerOf(t.id)}; align this link`);
         else add('not ok', 'unresolved-link', p, who, `${ref}: no such ID${adr ? ` (in ${adr.id})` : ''}`);
       }
     }
@@ -278,17 +287,20 @@ export function checks(top, { base, strict = false }) {
     for (const a of govern) add('hint', 'adr-governs', p, c.id, `check that ${a.id} still holds`);
   }
 
-  // Results (design.md 9): whether each one applies to the current text.
-  for (const res of loadResults(top)) {
+  // Results (design.md 9): whether each one applies to the current text. The
+  // commits they ran at are looked up in one batch.
+  const results = loadResults(top);
+  const ran = commitsOf(top, results.filter((res) => !res.problems.length && res.inputs.length && res.commit !== 'unknown').map((res) => res.commit));
+  for (const res of results) {
     if (res.problems.length) {
       add('hint', 'result', res.file, res.check ?? '-', `not a valid result: ${res.problems.join('; ')}`);
       continue;
     }
-    add('info', 'result', res.file, res.check, `${res.outcome} at ${res.commit === 'unknown' ? 'an unknown commit' : res.commit.slice(0, 7)}: ${applicability(top, res)}`);
+    add('info', 'result', res.file, res.check, `${res.outcome} at ${res.commit === 'unknown' ? 'an unknown commit' : res.commit.slice(0, 7)}: ${applicability(top, res, ran)}`);
   }
 
   // Output repos (T12, design.md 12): their results, and each repo that cannot be read.
-  const cross = crossRepo(top);
+  const cross = crossResults(top);
   for (const repo of cross.repos) if (repo.unknown) add('info', 'output-repo', repo.name, '-', `unknown: ${repo.unknown}`);
   for (const res of cross.results) {
     add('info', 'result', `${res.repo}/${res.file}`, res.check ?? '-', `${res.outcome ?? 'no outcome'} at ${res.repo}@${String(res.resolved ?? res.commit ?? 'unknown').slice(0, 7)}: ${res.applies}`);
@@ -296,8 +308,10 @@ export function checks(top, { base, strict = false }) {
 
   // Adopted paragraphs (D16): a disposition with `source: adoption` names the
   // spec paragraph and its captured hash; it stays adopted while its text is that.
+  // Only a record whose text holds `source: adoption` is parsed for it.
   const adopted = new Set();
   for (const r of now.requests.values()) {
+    if (!r.mayAdopt) continue;
     for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) {
       if (d?.source === 'adoption' && d.spec && now.spec.get(d.spec)?.sha256 === d.spec_sha256) adopted.add(d.spec);
     }
@@ -307,14 +321,12 @@ export function checks(top, { base, strict = false }) {
 }
 
 // Whether a result applies (design.md 9): never "applies", only what is known.
-export function applicability(top, res) {
+// `ran` holds the commits already looked up (commitsOf); with none, it looks.
+export function applicability(top, res, ran = null) {
   if (!res.inputs.length) return 'applicability unknown: no declared inputs';
   if (res.commit === 'unknown') return 'applicability unknown: the commit is unknown';
-  try {
-    execFileSync('git', ['-C', top, 'cat-file', '-e', `${res.commit}^{commit}`], { stdio: 'ignore' });
-  } catch {
-    return `applicability unknown: commit ${res.commit} is not in this clone`;
-  }
+  const commit = ran?.has(res.commit) ? ran.get(res.commit) : commitsOf(top, [res.commit]).get(res.commit);
+  if (!commit) return `applicability unknown: commit ${res.commit} is not in this clone`;
   const changed = [];
   for (const x of res.inputs) {
     let bytes;
