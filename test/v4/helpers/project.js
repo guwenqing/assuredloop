@@ -154,7 +154,7 @@ export function paragraph(dir, doc, id) {
 export const hashOf = (dir, doc, id) => paragraph(dir, doc, id).text_sha256;
 
 export const bindingsOf = (rec, from, link, to) =>
-  (rec.bindings ?? []).filter((b) => b.from === from && b.link === link && b.to === to);
+  (rec.bindings ?? []).filter((b) => b.holder === from && b.link === link && b.target === to);
 
 // The one binding of (from, link, to).
 export function binding(rec, from, link, to) {

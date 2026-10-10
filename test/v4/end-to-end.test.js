@@ -72,18 +72,18 @@ test('a request from the owner\'s words to bound change spec links: the whole ch
   const cs = 'requests/invoice-exports/spec.md';
   const sp12 = hashOf(dir, cs, 'SP-12');
   assert.deepEqual(binding(rec, 'invoice-exports/SP-12', 'serves', 'invoice-exports/R2'), {
-    from: 'invoice-exports/SP-12', link: 'serves', to: 'invoice-exports/R2',
-    from_sha256: sp12, to_sha256: R2.sha256, to_version: 1,
+    holder: 'invoice-exports/SP-12', link: 'serves', target: 'invoice-exports/R2',
+    holder_sha256: sp12, target_sha256: R2.sha256, target_version: 1,
   });
-  assert.equal(rec.signoff[0].covers[1].sha256, binding(rec, 'invoice-exports/SP-12', 'serves', 'invoice-exports/R2').to_sha256,
+  assert.equal(rec.signoff[0].covers[1].sha256, binding(rec, 'invoice-exports/SP-12', 'serves', 'invoice-exports/R2').target_sha256,
     'the sign-off covers the version that SP-12 serves');
   assert.deepEqual(binding(rec, 'invoice-exports/SP-12', 'builds-on', 'INV-12'), {
-    from: 'invoice-exports/SP-12', link: 'builds-on', to: 'INV-12',
-    from_sha256: sp12, to_sha256: hashOf(dir, SPEC, 'INV-12'),
+    holder: 'invoice-exports/SP-12', link: 'builds-on', target: 'INV-12',
+    holder_sha256: sp12, target_sha256: hashOf(dir, SPEC, 'INV-12'),
   });
   for (const [r, file, h] of [[R1, WORDS_FILE, sha(words)], [R2, WORDS_FILE, sha(words)], [R2, moreFile, sha(more)]]) {
     assert.deepEqual(binding(rec, `invoice-exports/${r.id}`, 'from', `invoice-exports/${file}`), {
-      from: `invoice-exports/${r.id}`, link: 'from', to: `invoice-exports/${file}`, from_sha256: r.sha256, to_sha256: h,
+      holder: `invoice-exports/${r.id}`, link: 'from', target: `invoice-exports/${file}`, holder_sha256: r.sha256, target_sha256: h,
     });
   }
   assert.deepEqual(docRecord(dir, cs).paragraphs.map((p) => [p.id, p.kind, p.change]),
@@ -114,12 +114,12 @@ test('an ADR with decides, source and supersedes, indexed: its bindings and its 
   const rec = record(dir, 'token-links');
   const a4 = hashOf(dir, adr, 'ADR-4');
   assert.deepEqual(binding(rec, 'ADR-4', 'decides', 'INV-41'),
-    { from: 'ADR-4', link: 'decides', to: 'INV-41', from_sha256: a4, to_sha256: hashOf(dir, SPEC, 'INV-41') });
+    { holder: 'ADR-4', link: 'decides', target: 'INV-41', holder_sha256: a4, target_sha256: hashOf(dir, SPEC, 'INV-41') });
   assert.deepEqual(binding(rec, 'ADR-4', 'source', 'token-links/D1'),
-    { from: 'ADR-4', link: 'source', to: 'token-links/D1', from_sha256: a4, to_sha256: sha(decision) });
+    { holder: 'ADR-4', link: 'source', target: 'token-links/D1', holder_sha256: a4, target_sha256: sha(decision) });
   assert.deepEqual(binding(rec, 'ADR-4', 'supersedes', 'ADR-3'), {
-    from: 'ADR-4', link: 'supersedes', to: 'ADR-3', from_sha256: a4,
-    to_sha256: hashOf(dir, 'specs/adr/0003-signed-links.md', 'ADR-3'),
+    holder: 'ADR-4', link: 'supersedes', target: 'ADR-3', holder_sha256: a4,
+    target_sha256: hashOf(dir, 'specs/adr/0003-signed-links.md', 'ADR-3'),
   });
   assert.equal(rec.bindings.length, 3);
 });

@@ -78,22 +78,22 @@ function qualify(ref, request, own) {
   return { key: ref, req: null, id: ref };
 }
 
-// Every declared link of a state: { from, fromSha, link, to, homes }, with
+// Every declared link of a state: { holder, holderSha, link, target, homes }, with
 // `homes` the requests whose record holds it.
 function linksOf(top, state, config, live) {
   const out = [];
   for (const d of state.docs) {
     for (const p of d.paragraphs) {
-      const from = d.request ? `${d.request}/${p.id}` : p.id;
+      const holder = d.request ? `${d.request}/${p.id}` : p.id;
       const ls = Object.entries(LINK_WORDS).flatMap(([k, link]) => (p.links?.[k] ?? []).map((ref) => ({ link, t: qualify(ref, d.request, d.ids) })));
       const homes = d.request ? [d.request] : [...new Set(ls.map((l) => l.t.req).filter(Boolean))];
-      for (const { link, t } of ls) out.push({ from, fromSha: p.sha256, link, to: t.key, t, homes });
+      for (const { link, t } of ls) out.push({ holder, holderSha: p.sha256, link, target: t.key, t, homes });
     }
   }
   for (const r of state.requests.values()) {
     if (!r.open) continue;
     for (const q of r.reqs) {
-      for (const f of q.from) out.push({ from: `${r.name}/${q.id}`, fromSha: q.sha256, link: 'from', to: `${r.name}/${f}`, t: { req: r.name, id: f }, homes: [r.name] });
+      for (const f of q.from) out.push({ holder: `${r.name}/${q.id}`, holderSha: q.sha256, link: 'from', target: `${r.name}/${f}`, t: { req: r.name, id: f }, homes: [r.name] });
     }
     const own = new Set(r.paras.keys());
     for (const o of r.data?.outputs ?? []) {
@@ -101,7 +101,7 @@ function linksOf(top, state, config, live) {
       const bytes = live ? read(top, o.file) : null;
       for (const link of OUTPUT_LINKS) {
         for (const ref of [].concat(o[link] ?? [])) {
-          out.push({ from: o.file, fromSha: bytes === null ? null : sha256(bytes), link, to: qualify(String(ref), r.name, own).key, t: qualify(String(ref), r.name, own), homes: [r.name], output: true });
+          out.push({ holder: o.file, holderSha: bytes === null ? null : sha256(bytes), link, target: qualify(String(ref), r.name, own).key, t: qualify(String(ref), r.name, own), homes: [r.name], output: true });
         }
       }
     }
@@ -133,7 +133,7 @@ function targetOf(t, state) {
   return p ? { sha: p.sha256 } : null;
 }
 
-const tripleKey = (l) => `${l.from}\t${l.link}\t${l.to}`;
+const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
 const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
 export function index({ top, opts }) {
@@ -176,31 +176,31 @@ export function index({ top, opts }) {
   const seen = new Set();
   const once = (line) => { if (!seen.has(line)) { seen.add(line); body.push(line); } };
   for (const l of links) {
-    const name = `${l.from} ${l.link} ${l.to}`;
+    const name = `${l.holder} ${l.link} ${l.target}`;
     if (l.t.cross) { once(`not bound: ${name}: cross-repo`); continue; }
     const homes = l.homes.filter((h) => recs.has(h));
     if (!homes.length) { once(`not bound: ${name}: no request record holds it`); continue; }
-    const aligning = align !== undefined && l.from === align;
+    const aligning = align !== undefined && l.holder === align;
     for (const h of homes) {
       const rec = recs.get(h);
       const items = seq(rec, 'bindings').items;
-      const at = items.findIndex((it) => it?.get?.('from') === l.from && it.get('link') === l.link && it.get('to') === l.to);
+      const at = items.findIndex((it) => it?.get?.('holder') === l.holder && it.get('link') === l.link && it.get('target') === l.target);
       if (at >= 0 && !aligning) continue;
       if (at < 0 && !aligning && atBase.has(tripleKey(l))) { once(`binding unknown: ${name}`); continue; }
       const target = targetOf(l.t, now);
       if (!target) { once(`not bound: ${name}: target not found`); continue; }
-      if (l.fromSha === null) { once(`not bound: ${name}: output file not found`); continue; }
-      const entry = { from: l.from, link: l.link, to: l.to, from_sha256: l.fromSha, to_sha256: target.sha };
-      if (target.version !== undefined) entry.to_version = target.version;
+      if (l.holderSha === null) { once(`not bound: ${name}: output file not found`); continue; }
+      const entry = { holder: l.holder, link: l.link, target: l.target, holder_sha256: l.holderSha, target_sha256: target.sha };
+      if (target.version !== undefined) entry.target_version = target.version;
       const node = rec.doc.createNode(entry);
       node.flow = true;
       if (at >= 0) {
         const old = items[at].toJSON();
         items[at] = node;
-        body.push(`aligned: ${name}: ${short(old.from_sha256)} -> ${short(entry.from_sha256)}, ${short(old.to_sha256)} -> ${short(entry.to_sha256)}`);
+        body.push(`aligned: ${name}: ${short(old.holder_sha256)} -> ${short(entry.holder_sha256)}, ${short(old.target_sha256)} -> ${short(entry.target_sha256)}`);
       } else {
         append(rec, 'bindings', entry, true);
-        if (aligning) body.push(`aligned: ${name}: unknown -> ${short(entry.from_sha256)}, ${short(entry.to_sha256)}`);
+        if (aligning) body.push(`aligned: ${name}: unknown -> ${short(entry.holder_sha256)}, ${short(entry.target_sha256)}`);
         else bound += 1;
       }
       rec.changed = true;
@@ -214,7 +214,8 @@ export function index({ top, opts }) {
     for (const it of seq(rec, 'dispositions').items) {
       if (!it?.get) continue;
       const source = it.get('source');
-      if (source && !it.has('source_sha256')) {
+      // `adoption` names the captured baseline, which has no hash here (T17).
+      if (source && source !== 'adoption' && !it.has('source_sha256')) {
         const t = targetOf(qualify(String(source), n, own), now);
         if (t) { it.set('source_sha256', t.sha); rec.changed = true; } else body.push(`disposition: ${source} not found, so its hash is not filled`);
       }
@@ -256,14 +257,14 @@ export function index({ top, opts }) {
   return {
     body: [`Indexed ${now.docs.length} docs and ${recs.size} request records; bound ${bound} new links`, ...(written.length ? [`Wrote ${written.join(', ')}`] : ['No record changed']), ...notes, ...body],
     next: body.some((l) => l.startsWith('refresh hint:')) ? 'refresh the hints listed, then al index'
-      : body.some((l) => l.startsWith('binding unknown:')) ? 'a binding unknown was in the marker at the base and its record is gone: check the link, then al index --align <its from ID>' : 'al check',
+      : body.some((l) => l.startsWith('binding unknown:')) ? 'a binding unknown was in the marker at the base and its record is gone: check the link, then al index --align <its holder ID>' : 'al check',
   };
 }
 
 // A hint is stale when its paragraph changed since it was made, or its quote
 // no longer points at one place in the paragraph.
 function stale(hint, p) {
-  if (hint.from_sha256 !== p.sha256) return true;
+  if (hint.basis_sha256 !== p.sha256) return true;
   const q = hint.quote;
   if (!q || q.exact === undefined) return false;
   const exact = String(q.exact);

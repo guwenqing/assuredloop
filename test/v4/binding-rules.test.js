@@ -57,7 +57,7 @@ function lost(t) {
   git(dir, 'checkout', '-q', '-b', 'feature');
   editRecord(dir, 'inv', (rec) => {
     rec.bindings = rec.bindings.filter((b) =>
-      !(b.from === 'inv/SP-1' && b.link === 'builds-on') && !(b.from === 'inv/R2' && b.link === 'from'));
+      !(b.holder === 'inv/SP-1' && b.link === 'builds-on') && !(b.holder === 'inv/R2' && b.link === 'from'));
   });
   return dir;
 }
@@ -74,9 +74,9 @@ test('indexing again never advances a binding, whatever changed in either text',
   assert.deepEqual(rec.bindings, before);
   assert.deepEqual(rec.requirements.at(-1), { id: 'R2', version: 2, sha256: R2b.sha256, title: R2b.title });
   const b = binding(rec, 'inv/SP-1', 'builds-on', 'INV-12');
-  assert.notEqual(hashOf(dir, SPEC, 'INV-12'), b.to_sha256, 'the target text did change');
-  assert.notEqual(hashOf(dir, CS, 'SP-1'), b.from_sha256, 'the source text did change');
-  assert.equal(binding(rec, 'inv/SP-1', 'serves', 'inv/R2').to_version, 1);
+  assert.notEqual(hashOf(dir, SPEC, 'INV-12'), b.target_sha256, 'the target text did change');
+  assert.notEqual(hashOf(dir, CS, 'SP-1'), b.holder_sha256, 'the source text did change');
+  assert.equal(binding(rec, 'inv/SP-1', 'serves', 'inv/R2').target_version, 1);
   index(dir);
   assert.deepEqual(record(dir, 'inv').bindings, before);
 });
@@ -102,12 +102,12 @@ test('a new link on a branch is bound with the hashes of now, beside a lost one'
   const r = index(dir);
   const rec = record(dir, 'inv');
   assert.deepEqual(binding(rec, 'inv/SP-3', 'builds-on', 'INV-13'), {
-    from: 'inv/SP-3', link: 'builds-on', to: 'INV-13',
-    from_sha256: hashOf(dir, CS, 'SP-3'), to_sha256: hashOf(dir, SPEC, 'INV-13'),
+    holder: 'inv/SP-3', link: 'builds-on', target: 'INV-13',
+    holder_sha256: hashOf(dir, CS, 'SP-3'), target_sha256: hashOf(dir, SPEC, 'INV-13'),
   });
   assert.deepEqual(binding(rec, 'inv/SP-2', 'builds-on', 'INV-41'), {
-    from: 'inv/SP-2', link: 'builds-on', to: 'INV-41',
-    from_sha256: hashOf(dir, CS, 'SP-2'), to_sha256: hashOf(dir, SPEC, 'INV-41'),
+    holder: 'inv/SP-2', link: 'builds-on', target: 'INV-41',
+    holder_sha256: hashOf(dir, CS, 'SP-2'), target_sha256: hashOf(dir, SPEC, 'INV-41'),
   });
   assert.match(r.stdout, unknownLine('inv/SP-1', 'builds-on', 'INV-12'));
   assert.doesNotMatch(r.stdout, /binding unknown: inv\/SP-[23] /);
@@ -159,10 +159,10 @@ test('--align <ID> sets that paragraph\'s bindings to now and leaves the others'
   const rec = record(dir, 'inv');
   const sp1 = hashOf(dir, CS, 'SP-1');
   assert.deepEqual(binding(rec, 'inv/SP-1', 'builds-on', 'INV-12'), {
-    from: 'inv/SP-1', link: 'builds-on', to: 'INV-12', from_sha256: sp1, to_sha256: hashOf(dir, SPEC, 'INV-12'),
+    holder: 'inv/SP-1', link: 'builds-on', target: 'INV-12', holder_sha256: sp1, target_sha256: hashOf(dir, SPEC, 'INV-12'),
   });
   assert.deepEqual(binding(rec, 'inv/SP-1', 'serves', 'inv/R2'), {
-    from: 'inv/SP-1', link: 'serves', to: 'inv/R2', from_sha256: sp1, to_sha256: R2b.sha256, to_version: 2,
+    holder: 'inv/SP-1', link: 'serves', target: 'inv/R2', holder_sha256: sp1, target_sha256: R2b.sha256, target_version: 2,
   });
   assert.deepEqual(binding(rec, 'inv/SP-2', 'builds-on', 'INV-12'), binding(before, 'inv/SP-2', 'builds-on', 'INV-12'));
   assert.deepEqual(binding(rec, ...R2_FROM), binding(before, ...R2_FROM));
@@ -174,8 +174,8 @@ test('--align binds a lost link again; the next index has no "binding unknown" f
   const dir = lost(t);
   ok(dir, ['index', '--align', 'inv/SP-1']);
   assert.deepEqual(binding(record(dir, 'inv'), 'inv/SP-1', 'builds-on', 'INV-12'), {
-    from: 'inv/SP-1', link: 'builds-on', to: 'INV-12',
-    from_sha256: hashOf(dir, CS, 'SP-1'), to_sha256: hashOf(dir, SPEC, 'INV-12'),
+    holder: 'inv/SP-1', link: 'builds-on', target: 'INV-12',
+    holder_sha256: hashOf(dir, CS, 'SP-1'), target_sha256: hashOf(dir, SPEC, 'INV-12'),
   });
   const r = index(dir);
   assert.doesNotMatch(r.stdout, /binding unknown: inv\/SP-1 /);
@@ -194,8 +194,8 @@ test('--align a requirement sets its from: bindings; --align a spec ID sets that
   ok(dir, ['index', '--align', 'inv/R2']);
   let rec = record(dir, 'inv');
   assert.deepEqual(binding(rec, ...R2_FROM), {
-    from: 'inv/R2', link: 'from', to: `inv/${WORDS_FILE}`,
-    from_sha256: R2b.sha256, to_sha256: rec.sources[0].sha256,
+    holder: 'inv/R2', link: 'from', target: `inv/${WORDS_FILE}`,
+    holder_sha256: R2b.sha256, target_sha256: rec.sources[0].sha256,
   });
   assert.deepEqual(binding(rec, 'inv/SP-1', 'serves', 'inv/R2'), binding(before, 'inv/SP-1', 'serves', 'inv/R2'));
   assert.deepEqual(binding(rec, 'INV-42', 'serves', 'inv/R2'), binding(before, 'INV-42', 'serves', 'inv/R2'));
@@ -203,8 +203,8 @@ test('--align a requirement sets its from: bindings; --align a spec ID sets that
   ok(dir, ['index', '--align', 'INV-42']);
   rec = record(dir, 'inv');
   assert.deepEqual(binding(rec, 'INV-42', 'serves', 'inv/R2'), {
-    from: 'INV-42', link: 'serves', to: 'inv/R2',
-    from_sha256: hashOf(dir, SPEC, 'INV-42'), to_sha256: R2b.sha256, to_version: 2,
+    holder: 'INV-42', link: 'serves', target: 'inv/R2',
+    holder_sha256: hashOf(dir, SPEC, 'INV-42'), target_sha256: R2b.sha256, target_version: 2,
   });
 });
 
@@ -231,7 +231,7 @@ test('a second index leaves every record byte for byte the same', (t) => {
   });
   index(dir);
   const docRec = parse(read(dir, docRecordPath(SPEC)));
-  docRec.paragraphs[0].hint = { from_sha256: docRec.paragraphs[0].text_sha256, summary: 'The title.' };
+  docRec.paragraphs[0].hint = { basis_sha256: docRec.paragraphs[0].text_sha256, summary: 'The title.' };
   writeYaml(dir, docRecordPath(SPEC), docRec);
   changeTexts(dir);
   index(dir);
