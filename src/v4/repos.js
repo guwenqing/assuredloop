@@ -140,10 +140,12 @@ function applies(repo, res) {
 
 // The result files of an output repo at its commit, in its own results folder.
 function resultsOf(repo) {
-  // As a repo path, the form git gives back: `./ci/results/` is `ci/results`.
+  // As a repo path, the form git gives back: `./ci/results/` is `ci/results`;
+  // `.` and `./` are the repo's top, whose files git gives with no prefix.
   const dir = posix.normalize(String(configAt(repo.dir, repo.sha).results ?? '.assuredloop/results')).replace(/\/+$/, '');
-  const files = (git(repo.dir, ['ls-tree', '-z', '--name-only', repo.sha, '--', `${dir}/`], { allowFail: true }) ?? '')
-    .split('\0').filter((f) => f.startsWith(`${dir}/`) && !f.slice(dir.length + 1).includes('/') && f.endsWith('.yaml')).sort();
+  const prefix = dir === '.' ? '' : `${dir}/`;
+  const files = (git(repo.dir, ['ls-tree', '-z', '--name-only', repo.sha, ...(prefix ? ['--', prefix] : [])], { allowFail: true }) ?? '')
+    .split('\0').filter((f) => f.startsWith(prefix) && !f.slice(prefix.length).includes('/') && f.endsWith('.yaml')).sort();
   return files.map((file) => {
     const r = parseResult(file, blobAt(repo.dir, repo.sha, file)?.toString('utf8') ?? '');
     const inputs = r.inputs ?? [];
