@@ -1,4 +1,4 @@
-// al-v4 check and adopted paragraphs (#179; decision D14, design.md 5 and 14).
+// al-v4 check and adopted paragraphs (#179; decision D16, design.md 5 and 14).
 // An adopted paragraph is one that the adoption record names in a disposition
 // with source: adoption, its commit and its text hash. no-link does not fire on
 // it while its text hash equals that hash; after an edit it follows its path.
