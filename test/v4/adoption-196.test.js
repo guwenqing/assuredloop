@@ -513,3 +513,98 @@ describe('a copy of a kept paragraph is not adopted', () => {
     }
   }
 });
+
+// --- review of b7242a5 on PR #200: a base block whose ID still exists
+// anywhere in the spec scope at the head (any spec file) belongs to that ID.
+// (An import may stand anywhere at the top level of a module; it is here to
+// leave the lines above unchanged.)
+import { appendSection, newRequest, organized, req } from './helpers/project.js';
+
+const OTHER = 'specs/other.md';
+const LINKED_MARKER = '<!-- INV-2 rule serves:inv/R1 -->';
+const HEADING_ONLY = '<!-- INV-1 note -->\n\n# Invoices\n';
+
+// main: the v4 config, the signed request inv with R1, and specs/invoices.md
+// with the rule INV-2 that serves inv/R1, indexed and committed. No adoption
+// record: INV-2 has its link. Then the branch `feature`.
+function linkedBase(t) {
+  const dir = project(t);
+  writeConfig(dir);
+  newRequest(dir, 'inv');
+  appendSection(dir, 'inv', organized([req('R1', 'Invoice lines', RULE_TEXT)]));
+  ok(dir, ['record', 'inv', 'signoff', '--source', 'email from the owner', '--yes']);
+  write(dir, SPEC, `${HEADING_ONLY}\n${LINKED_MARKER}\n\n${RULE_TEXT}\n`);
+  index(dir);
+  commitAll(dir, 'the signed request inv and the spec with INV-2');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  return dir;
+}
+
+// The move of INV-2, with its marker and links, into specs/other.md;
+// with copy, an unmarked copy of its text stays in specs/invoices.md.
+function moveInv2(dir, { copy }) {
+  write(dir, OTHER, `${LINKED_MARKER}\n\n${RULE_TEXT}\n`);
+  write(dir, SPEC, copy ? `${HEADING_ONLY}\n${RULE_TEXT}\n` : HEADING_ONLY);
+}
+
+// Names id in the adoption record by hand with the HEAD commit, and makes the
+// record (and its request.md) when there is none.
+function nameByHand(dir, id, hash) {
+  const rec = exists(dir, ADOPTION) ? readYaml(dir, ADOPTION)
+    : { schema: 'assuredloop/1', request: 'adoption', status: 'concluded', dispositions: [] };
+  rec.dispositions = [...(rec.dispositions ?? []), entry(id, git(dir, 'rev-parse', 'HEAD'), hash)];
+  writeYaml(dir, ADOPTION, rec);
+  if (!exists(dir, ADOPTION_MD)) write(dir, ADOPTION_MD, '# Adoption\n\nThe paragraphs as adopted.\n');
+}
+
+describe('a copy of a paragraph that moved to another spec file is not adopted', () => {
+  test('--add-ids: INV-2 moves to specs/other.md and a copy of its text stays: the copy gets INV-3, no entry, and a not adopted line', (t) => {
+    const dir = linkedBase(t);
+    moveInv2(dir, { copy: true });
+    const r = adopt(dir);
+    assert.ok(read(dir, SPEC).includes(`<!-- INV-3 -->\n\n${RULE_TEXT}\n`), `the copy is INV-3:\n${read(dir, SPEC)}`);
+    if (exists(dir, ADOPTION)) assert.deepEqual((dispositions(dir) ?? []).filter((d) => d.spec === 'INV-3'), [], show(r));
+    assert.ok(outLines(r).some((l) => /\bINV-3\b/.test(l) && /not adopted/i.test(l)), `a line names INV-3 as not adopted:\n${show(r)}`);
+  });
+
+  for (const named of [false, true]) {
+    test(`check: the copy as rule INV-3${named ? ', named by hand in the adoption record with its hash,' : ''} gets signoff-coverage and path-claim not ok, --strict exits 1`, (t) => {
+      const dir = linkedBase(t);
+      moveInv2(dir, { copy: true });
+      adopt(dir);
+      setKinds(dir, { 'INV-3': 'rule' });
+      if (named) nameByHand(dir, 'INV-3', hashes(dir)['INV-3']);
+      commitAll(dir, CLAIM);
+      const r = check(dir);
+      assertPromiseFindings(r, 'INV-3');
+      assert.equal(check(dir, '--strict').code, 1, show(r));
+    });
+  }
+
+  test('control: the move of INV-2 to specs/other.md alone gives no not ok for INV-2', (t) => {
+    const dir = linkedBase(t);
+    moveInv2(dir, { copy: false });
+    commitAll(dir, 'Move INV-2\n\nTier: 0 — moves INV-2 to specs/other.md; no promise changes');
+    const r = check(dir);
+    assert.deepEqual(notOk(r, 'INV-2'), [], `no not ok for INV-2:\n${show(r)}`);
+  });
+});
+
+// --- review of b7242a5 on PR #200: a valid prefix that looks like a temporary name.
+
+describe('any valid prefix gets its adoption entries', () => {
+  for (const prefix of ['UNMARKED', 'INV']) {
+    test(`--add-ids --prefix ${prefix}${prefix === 'INV' ? ' (control)' : ''} marks the heading and the rule and writes an adoption entry for each`, (t) => {
+      const dir = project(t);
+      const file = 'specs/plain.md';
+      write(dir, file, `# Plain\n\n${RULE_TEXT}\n`);
+      const head = commitAll(dir, 'an unmarked file');
+      const r = ok(dir, ['spec', '--add-ids', file, '--prefix', prefix, '--yes']);
+      const marked = read(dir, file);
+      assert.ok(marked.includes(`<!-- ${prefix}-1 note -->\n\n# Plain\n`), `${marked}\n${show(r)}`);
+      assert.ok(marked.includes(`<!-- ${prefix}-2 -->\n\n${RULE_TEXT}\n`), `${marked}\n${show(r)}`);
+      const h = hashes(dir, file);
+      assert.deepEqual(dispositions(dir), [`${prefix}-1`, `${prefix}-2`].map((id) => entry(id, head, h[id])), show(r));
+    });
+  }
+});
