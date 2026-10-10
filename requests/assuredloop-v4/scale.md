@@ -56,8 +56,9 @@ The machine is not the reference machine of T15.
 - Other bots share this machine. The 1-minute load average was 5.7 to 14.5
   during the runs (0.3 to 0.8 for each core); report.json holds the load
   before and after each run.
-- Peak memory, measured apart from the run with `/usr/bin/time -l`: `al check`
-  2.2 GB, and the full rebuild 2.3 GB. So 16 GB is not a limit at this size.
+- Peak memory (maximum resident set size), measured twice apart from the run
+  with `/usr/bin/time -l` on central's main: `al check` 2.22 and 2.27 GB, and
+  the full rebuild 2.33 and 2.23 GB. So 16 GB is not a limit at this size.
 - Not known: the times on a 16 GB laptop with fewer cores. Most of the time of
   `al check` is in git processes and YAML parsing, on one core, so the number
   of cores matters less than the speed of one core.
@@ -87,8 +88,8 @@ paragraph.
 
 ## Why `al check` misses
 
-A CPU profile of one `al check` on central's main (39 s) shows where the time
-goes:
+A CPU profile of one `al check` on central's main (39 s; `node --cpu-prof`)
+shows where the time goes:
 
 | Part | Time | What it does |
 |---|---|---|
