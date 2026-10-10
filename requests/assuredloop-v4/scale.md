@@ -96,12 +96,12 @@ shows where the time goes:
 | `crossRepo` (repos.js), called by `checks.js` | 22.7 s | the cross-repo links and results of the 19 output repos |
 | `mergeOf` (git.js) | 8.0 s | one `git log --first-parent` for each PR reference, about 1,000 |
 | `commitOf` (git.js) | 7.4 s | one `git rev-parse` for each result's commit, about 1,000 |
-| YAML parsing | 15.7 s | the 1,001 request records (56.0 MB), parsed twice: by `state.js` `loadState` and by `indexer.js` `loadState` inside `crossRepo` |
+| YAML parsing | 15.7 s | the 1,001 request records (56.0 MB), parsed three times: by `state.js` `loadState` for the working tree and for the merge-base (checks.js lines 67-68; 11.4 s together), and by `indexer.js` `loadState` inside `crossRepo` (5.7 s) |
 
 - The parts overlap: `crossRepo` holds `mergeOf`, `commitOf` and one of the two
   YAML parses.
 - design.md 11 says that `al check` "reads archived records only through their
-  stored hashes". Today it parses every archived record, twice.
+  stored hashes". Today it parses every archived record three times.
 - `mergeOf` and `commitOf` read commits, not files, so #190 did not change
   them. One `git log` for each repo, and one `git cat-file --batch-check` for
   each repo, would replace about 2,000 processes.
