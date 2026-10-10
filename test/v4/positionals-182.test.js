@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   INVOICES, WORDS_FILE, appendSection, baseProject, commitAll, doc, exists, newRequest, ok, organized, project, read, record,
-  refused, req, show, tree, write, writeConfig,
+  refused, req, show, tree, write, writeConfig, writesNothing,
 } from './helpers/project.js';
 
 const WORDS = 'Fix the name of the export component.\n';
@@ -144,6 +144,31 @@ test('export refuses an extra positional and names it; without it, export --out 
   assert.ok(!exists(dir, 'export.jsonl'));
   okAndWrites(dir, ['export', '--out', 'export.jsonl']);
   assert.ok(exists(dir, 'export.jsonl'));
+});
+
+// --- spec --add-ids <file> uses no positional (PR #187 review)
+
+test('spec --add-ids refuses an extra positional and names it; without it, --add-ids writes the IDs', (t) => {
+  const dir = project(t);
+  const UNMARKED = '# Invoices\n\nAn invoice MUST have at least one line.\n';
+  write(dir, 'specs/invoices.md', UNMARKED);
+  const ADD = ['--add-ids', 'specs/invoices.md', '--prefix', 'INV'];
+  refusedNaming(dir, ['spec', ...ADD, '--yes', 'stray-word'], 'stray-word');
+  refusedNaming(dir, ['spec', 'stray-word', ...ADD, '--yes'], 'stray-word');
+  assert.equal(read(dir, 'specs/invoices.md'), UNMARKED);
+  assert.ok(!exists(dir, '.assuredloop/config.yaml'));
+
+  okAndWrites(dir, ['spec', ...ADD, '--yes']);
+  assert.notEqual(read(dir, 'specs/invoices.md'), UNMARKED, 'the IDs are written');
+});
+
+test('spec --add-ids without --yes (the preview) refuses an extra positional too', (t) => {
+  const dir = project(t);
+  write(dir, 'specs/invoices.md', '# Invoices\n\nAn invoice MUST have at least one line.\n');
+  const ADD = ['--add-ids', 'specs/invoices.md', '--prefix', 'INV'];
+  refusedNaming(dir, ['spec', ...ADD, 'stray-word'], 'stray-word');
+  refusedNaming(dir, ['spec', 'stray-word', ...ADD], 'stray-word');
+  writesNothing(dir, ['spec', ...ADD]);
 });
 
 // --- guard: spec and search take any number of positionals
