@@ -123,8 +123,159 @@ signoff:
       - id: R14
         version: 1
         sha256: 9658eef2d3042cc9aa437dbaba6ca53bb92b48b79eaf7909d61d4285344457a0
-decisions: []
-tasks: []
+decisions:
+  - id: D1
+    date: 2026-10-10
+    source: owner, inputs 140-144 (chat with the architect, 2026-10-10)
+    text: The design (design.md), the schema (schema.md) and the tasks (tasks.md) live in this request folder. Assumed's design-v4-draft.md is now design.md, and schema-v4-sketch.md is now schema.md. They hold only the consolidated design and its intent, not the history of how it was reached (inputs 142-144). The research and the challenge rounds stay in the architect's working notes (input 141). This repo is public, so a private adopter's content is replaced by a neutral example.
+    sha256: a08bb47be0fc9aa09b70bf9cb47762f5baea39a09c675efe50b2a16ba8290931
+  - id: D2
+    date: 2026-10-10
+    source: the agent (architect), on the owner's words 148-149
+    text: "T6, the validation decision (validation.md parts A and B). Stay: IDs on every paragraph with hidden markers; kinds; the marker links serves, builds on and changes, with bindings for every declared link; dispositions and the close rule; exact equality with no more normalization; typo marks; path and 1d checks; the requirement-words hint; results with declared inputs; facts derived from git. Change: AI hints and declared outputs (implements, verifies, documents) become optional; a new kind, approach, keeps design text with its change, with R2 links; removals are declared with removes; the record's provenance field is source, and from stays only for requirement to owner's words; seventeen gaps found in validation are decided in design.md. Go: the hint for a rule with no check. Add: a duplicate-heading lint under one parent. Cost: the records cost 1.3 to 1.6 times the work in validation, so the flexible 20% target of R12 is not yet met; the owner chose to build and measure again (input 149); a complete cost account runs in T15 and T16."
+    sha256: 2ba52016ec6a4c0bdad9f3ff2689cdbf016c3a3e72f0f4edf1e6eb83c18c3c5d
+  - id: D3
+    date: 2026-10-10
+    source: "the agent (architect), by fleet mail to developer-175 for #175 (T9)"
+    text: Until T17 switches the command, the YAML library yaml is pinned at exactly 2.9.1 (released 2026-09-11, over 24 hours old) in devDependencies, with a committed package-lock.json; test.yml and the test job of publish.yml run npm ci before node --test; .gitignore holds node_modules/. So v1's pack test, which installs the packed package offline, stays green. T17 moves yaml to dependencies. As the architect relayed, the owner chose this over a vendored copy (owner input 151) and added the workflow scope that pushing the workflow edit needs.
+    sha256: b7b163f18fdf31912f360ed878c082e93de96700b7ab29dbac133afc9057e015
+  - id: D4
+    date: 2026-10-10
+    source: "the agent (architect), by fleet mail to developer-175 for #175 (T9)"
+    text: "An ADR is specs/adr/NNNN-<slug>.md with Status: proposed|accepted|superseded on its first line. Its heading's marker has the ID ADR-<n> and its links decides:, source: and supersedes:; its other paragraphs take the IDs ADR-<n>-<k>. decides and supersedes bind the target's text hash; source binds the hash of the decision, sign-off or owner's-words snapshot. That an accepted ADR's text does not change is a T10 check."
+    sha256: c20248ff8b27b3cb330a26ab449b432ba5fd51e05dd9dcfee267b259b4cadbe9
+  - id: D5
+    date: 2026-10-10
+    source: "the agent (architect), by fleet mail to developer-175 for #175 (T9)"
+    text: "The request record keeps one entry per requirement version {id, version, sha256, title}: al index and al record signoff append one whenever the text of ### R<n> (or Q<n>) gets a new hash, drafts included, and never edit one. A requirement's from link is declared in a marker on it in request.md, <!-- R2 from:<snapshot file in origin/> -->, not by hand in the record (input 123); the snapshot's file name is the source's ID. A serves binding keeps to_version and to_sha256. A sign-off lists the versions it covers, each with its sha256, and may name what was presented and who transcribed it (presented, transcribed_by), with no checks."
+    sha256: 003688e7ad07d19e6d515e64ed16688515a863977d3cd0cb1280c9ae9b6fe659
+  - id: D6
+    date: 2026-10-10
+    source: "the agent (architect), by fleet mail to developer-175 for #175 (T9)"
+    text: The base for a lost binding is the merge-base of HEAD with main (origin/main, else main). A link with no binding that is in the marker at the base stays binding unknown and is not bound; a link not at the base is bound when first indexed. With no main the base is HEAD, and al index says the base is unknown.
+    sha256: 7780ca1dbddaca0c10f66151919d9702c8bb98bdc4bb2451e2fcc7be0eb8f4a7
+  - id: D7
+    date: 2026-10-10
+    source: "the agent (architect), by fleet mail to developer-175 for #175 (T9)"
+    text: "For T9, results are a record format with a loader that checks it: check, outcome (pass, fail or not run), commit (a hash or unknown), declared inputs, and optional by, source and note, in .assuredloop/results/ unless config results: names another folder. Whether a result applies is T10."
+    sha256: a18b606b6e32077dac00b9104792dac80b151d91911bfd0d63ed74b428b1ad15
+  - id: D8
+    date: 2026-10-10
+    source: "the agent (architect), by fleet mail to developer-175 for #175 (T9)"
+    text: "A binding uses the field names of schema.md 8: holder, link, target, holder_sha256, target_sha256 and target_version; a hint records its basis_sha256. A disposition's source is a change paragraph (<request>/SP-n), a path-1 requirement (<request>/R<n>) or adoption; index fills its hashes once (for a requirement, the latest version's hash; for adoption, none, as the adoption record is T17's), and no index and no --align changes them after that. A new source version gets its own entry, and the old entry stays as history. --align advances link bindings only."
+    sha256: 8e99d6896e37c2d3ec5435443ae1bd1c354cc42edf2d2bd43c0c99a8e02dee17
+  - id: D9
+    date: 2026-10-10
+    source: the agent (architect), message to developer-174, 2026-10-10
+    text: 'T8 (issue #174) builds markers as follows. The docs in scope are every *.md under the spec root (root: in config.yaml, specs/ by default) except specs/adr/, the files that the docs: list of config.yaml names, and every requests/<name>/spec.md, with prefix SP and IDs local to that request. A single leading H1 is the title and is not numbered; H2 is 1, 2 and so on; a heading shows "INV-40 (2.3, Export links)" and a paragraph "INV-41 (2.3:4, in Export links)". The paragraph hash is the full SHA-256 hex of the text after line endings are normalized and the marker framing is removed. A lost ID is an ID at the base that is absent at head in every doc of its scope and is not named by removes: in a change spec; a used-again ID is absent at the base but present in an earlier commit. al spec --add-ids keeps existing markers, numbers above the highest number ever used for the prefix, gives headings the kind note and other blocks no kind, and writes config.yaml and schema.yaml when they are absent. A promise, design or approach paragraph with no link is a hint, and not ok under --strict. Link resolution is T10. The parser shape of issue #174 gains the links for, supersedes and source, headingPath is an array of heading texts, and each paragraph carries file (agreed with developer-175). src/v4/config.js exports loadConfig and loadSchema.'
+    sha256: 82044d08477ff62b18886548913aa53ee994d54863bc9d959cba9c6715309c98
+  - id: D10
+    date: 2026-10-10
+    source: the agent (architect), on the owner's input 151 ("Have a dependency is very normal"), message to developer-174, 2026-10-10
+    text: "v4 reads YAML with the npm package yaml, a normal dependency pinned at exactly 2.9.1 (published 2026-09-11), with a committed package-lock.json and npm ci in the workflows. The pull request of issue #175 (PR #178) adds the dependency, the lock file and the workflow change; the code of issue #174 only imports yaml. An earlier plan to vendor a copy into src/v4/ was dropped."
+    sha256: ffd7a8a23a7c54eaaa4a40889494d633c5a6122fc27e6c8756fa045c37837121
+  - id: D11
+    date: 2026-10-10
+    source: the agent (architect), message to developer-181, 2026-10-10
+    text: "T13-T14 (issue #181) build search as follows. al export walks the first-parent history up to the selected commit, and every paragraph and requirement version not at that commit is a history row; it walks only the commits that touched the docs in scope and reads only the changed files, and an incremental index walks only the commits after the last commit in its manifest. valid_from and superseded_by are commits; the edges and the dispositions name the change that replaced a version. The change-context query adds to the default query, so all baseline rows stay in. The index is one SQLite file at $(git rev-parse --git-path assuredloop)/search.sqlite, never committed; every row has its repo, and only the central repo is indexed until #180 adds the output repos. Level 2 is the package packages/search/, @assuredloop/search, private until T18, found by normal Node resolution (the project first, then beside al); the package holds the model, the vectors and the scan, and al only fuses the ranked lists. The level 2 tests with a fixed test embedder run in CI; the real model's runtime loads lazily, and its smoke test runs locally and skips in CI. transformers.js and the model are pinned, the model by its revision."
+    sha256: 3b0f0903c7aa6ba89374e90ffa25e719c2fc871142e52ee72ed233fb1ea0b15b
+  - id: D12
+    date: 2026-10-10
+    source: the agent (architect), message to developer-181, 2026-10-10
+    text: "Level 2's fusion (T14, issue #181): reciprocal rank fusion over the rows that have vectors; a row with no vector keeps its level 1 place, because the vector list gives it no vote and must not push it down. The default query (baseline rows only) is the same under plain RRF. developer-181 chose this after seeing the visible T2 results. The held-out measure is the honest one: level 2 equals level 1 (recall 29.2% at the top 5, 58.3% at the top 10, 8 questions); plain RRF gave 41.7% and 47.9%. On 8 questions neither fusion is clearly better, and the fusion is not tuned further on these questions."
+    sha256: 124287763bc43cfee413312e8ba58228b21f92fe73d72110fe07f1d7a2b84b76
+  - id: D13
+    date: 2026-10-10
+    source: "the agent (architect), message to developer-180 for #180 (T12)"
+    text: "The central config.yaml lists its output repos as outputs: [{name, path, url, commit}]; with no commit, al uses the clone's HEAD and shows that commit. An output repo's config names central: {path, commit}, and the qualifier is central:. al reads another repo only through git at the resolved commit, never its working tree, and never fetches; a repo with no path, no clone or an unresolved commit is unknown, with its reason. src/v4/repos.js gives crossRepo(top): the repos, the links and the results of the output repos. The link kinds are those of schema.md 6: cites (exact), named by (exact, a commit message that names a central task ID central:<request>/T<n>; other IDs in commit messages make no link), implements, verifies and documents (declared), and the PR references, which git maps to a merge (\"Merge pull request #n\" or a subject that ends in \"(#n)\" in the first-parent history at the selected commit): \"merged at <sha>\", or unknown \"no merge found\", never \"not merged\"; one function in src/v4/git.js serves the central repo and the output repos. al index binds a declared output with the output repo's commit. In an output repo, al check looks up the central IDs that the branch's changed files cite. The central repo's checks of these links are T10's; whichever of the PRs of #179 and #180 merges second wires the other's part in."
+    sha256: 3fff91f5fb988a1bdb12c18ae40d584e42a8156bccafc9faff0d5da6820f6fab
+  - id: D14
+    date: 2026-10-10
+    source: "the agent (architect), message to developer-180 on PR #185 (T12, #180)"
+    text: A repo is the central repo, so that central:X means its own X (D13), only when its config lists outputs. In a repo with no outputs, central:X stays a link to another repo and is not bound.
+    sha256: 2c230c8a21230d99b84be23445f4fc1fbb2bb18cbb57ad03b84bbbc67df93e6a
+  - id: D15
+    date: 2026-10-10
+    source: "the agent (architect), message to developer-179 for #179 (T10, T11)"
+    text: "al check reads the path claim from the newest Tier: line in the commit messages of base..HEAD, as v1 does; with none, it gives the hint \"no Tier line\" and the path checks do not run. The exit is 0; --strict exits 1 when a not ok prints, and raises only no kind, no link, an invalid disposition and the marker lints; the judgment hints stay hints. A wording decision names its pair, wording: {source, spec}, and al index fills its source_sha256 and target_sha256 once; a disposition names it with decision: Dn. A typo claim excuses a difference only on its own branch; a typo or 1d PR gets an information hint that names the open changes whose incorporated disposition it makes invalid. Path 0: a promise change with no typo claim is not ok, a kind change into a promise kind included; a non-promise spec paragraph changed with no typo claim gets the hint \"path 1d or 2?\". Path 1d: not ok when it touches a promise kind, or adds or removes a design paragraph. A near match is a word-set Dice of 0.6 or more, one named constant. Abandoned is valid by the bindings: the changes or removes target still has its bound text, or a new paragraph's text is not in specs/, or an owner decision keeps the effect. Superseded needs the later change's changes or removes binding to the incorporated version, and a valid disposition of that change; an archived change counts as recorded. A deleted accepted ADR is a change to it; a supersedes: link with no target is an unresolved link. al conclude refuses as v1 does, with exit 1, and with --yes writes the Outcome, which shows the evidence and what is unknown."
+    sha256: 9c1439b8f918fae19a13de2f5b2e3577f60568e7d2f2ad17764dfc0c29c6703b
+  - id: D16
+    date: 2026-10-10
+    source: "the agent (architect), message to developer-179 for #179"
+    text: "An adopted paragraph is a spec paragraph that a request's record names in a disposition with source: adoption, with the captured commit and the text hash (design.md 5 and 14). The no-link hint does not fire on it while its text hash equals the captured hash. source: adoption excuses no later change: after an edit the paragraph follows its path, so a typo fix keeps no link and a path-1 edit adds serves:<request>/R<n>. Until T17's command writes the adoption record, tests write it by hand in the T9 record format."
+    sha256: 808e74add76d26bc20038d0b64b25ade303a8a52bb62edcf59e1cfd43de71521
+  - id: D17
+    date: 2026-10-10
+    source: "the agent (architect), message to developer-180 for #186 (T13 with T12)"
+    text: "al export and al search in the central repo include the output repos that its config, as committed at the selected central commit, lists; each is read through git at its resolved commit, and an unknown one gives no rows and a Not known line with its reason. From an output repo come evidence rows (history for earlier versions): its result files, and its output files, which are the files that a central record declares and the files that cite a central ID. An output row does not hold the whole file: it holds the repo, the commit and the path, the central IDs it cites, the records that declare it, and each line that names a central ID with its line number; a cited file shows how: exact, which proves only that the ID is named, and a declared one how: declared; a file that is both is one row. A result row holds the result record. An output row has this one shape in every repo, the central repo's declared outputs included; paragraph rows of marked docs do not change. The central repo's output files are its declared ones and every other file that names a known ID (central:<ID>, or the bare ID of an item that the central export has at that commit), user docs included, but not the spec's own files: the spec docs in scope, specs/adr/, requests/, .assuredloop/ and the results folder; in an output repo only the qualified form counts. One cite finder serves the central repo and the output repos. al is a trace tool, not a code search engine. al search keeps one index across the repos, shows each hit's repo and commit and each repo's selected commit, walks only each repo's new commits, and drops a repo that becomes unknown from the current index; the roles and the three queries do not change."
+    sha256: 0b197b37c8e2ba248110bc2bc0c068674d70931311ae6c8bcef39f36dbbad7d1
+tasks:
+  - id: T1
+    ref: "tasks.md T1 (Fixtures); issue #170"
+    delivers: [ R1, R2, R8, R14 ]
+    prs: [ "#172" ]
+  - id: T2
+    ref: "tasks.md T2 (Golden questions, defects and controls); issue #170"
+    delivers: [ R12 ]
+    prs: [ "#172" ]
+  - id: T3
+    ref: "tasks.md T3 (Simulation); issue #170"
+    delivers: [ R4, R5, R6, R7, R9, R11, R12 ]
+    prs: [ "#172" ]
+  - id: T4
+    ref: "tasks.md T4 (OpenSpec replay); issue #171"
+    delivers: [ R1, R2, R5, R12 ]
+    prs: [ "#173" ]
+  - id: T5
+    ref: "tasks.md T5 (Private adopter on a scratch copy); issue #171"
+    delivers: [ R1, R8, R9 ]
+    prs: [ "#173" ]
+  - id: T6
+    ref: tasks.md T6 (Validation report and decision (the architect))
+    delivers: [ R12 ]
+  - id: T7
+    ref: tasks.md T7 (Bootstrap and release plan (the architect))
+    delivers: [ R9 ]
+  - id: T8
+    ref: "tasks.md T8 (Schema and markers); issue #174"
+    delivers: [ R1, R2 ]
+    prs: [ "#177" ]
+  - id: T9
+    ref: "tasks.md T9 (Records and bindings); issue #175, #182"
+    delivers: [ R1, R3, R5, R6, R8 ]
+    prs: [ "#178", "#187" ]
+  - id: T10
+    ref: "tasks.md T10 (Checks); issue #179"
+    delivers: [ R4, R5, R6, R7, R11 ]
+    prs: [ "#184" ]
+  - id: T11
+    ref: "tasks.md T11 (Views); issue #179"
+    delivers: [ R5, R9 ]
+    prs: [ "#184" ]
+  - id: T12
+    ref: "tasks.md T12 (Cross-repo); issue #180, #186"
+    delivers: [ R8, R13 ]
+    prs: [ "#185", "#192" ]
+  - id: T13
+    ref: "tasks.md T13 (Export and search level 1); issue #181, #186"
+    delivers: [ R10, R13 ]
+    prs: [ "#183", "#192" ]
+  - id: T14
+    ref: "tasks.md T14 (Search level 2); issue #181"
+    delivers: [ R10 ]
+    prs: [ "#183" ]
+  - id: T15
+    ref: "tasks.md T15 (Scale run); issue #190, #188"
+    delivers: [ R13 ]
+  - id: T16
+    ref: "tasks.md T16 (Skill and docs); issue #193"
+    delivers: [ R7, R11, R14 ]
+  - id: T17
+    ref: "tasks.md T17 (The v4 spec); issue #196"
+    delivers: [ R1, R5 ]
+  - id: T18
+    ref: tasks.md T18 (Release (the architect; a follow-on outside this request))
+    delivers: [ R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14 ]
 bindings:
   - { holder: assuredloop-v4/SP-4, link: explains, target: assuredloop-v4/SP-5, holder_sha256: be3c2ffacaaf0bfb964705cf4ec9b3d4825d00b9d8c10966481c3408238991b4, target_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25 }
   - { holder: assuredloop-v4/SP-5, link: serves, target: assuredloop-v4/R11, holder_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
