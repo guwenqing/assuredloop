@@ -74,7 +74,8 @@ The export link MUST expire 30 minutes after the email is sent.
 - A list or a table belongs to the paragraph that introduces it.
 - Headings get markers too.
 - The marker is the only machine text in a doc. The derived facts, the
-  link-time bindings and the AI hints are in the record files (section 7).
+  link-time bindings and, where a project uses them, the AI hints are in the
+  record files (section 7).
 
 ## 4. The kinds of paragraph
 
@@ -87,7 +88,7 @@ Promise kinds. A change needs a signed requirement that covers it:
 |---|---|---|---|
 | `purpose` | why the product exists | stay short | "Invoicer sends correct invoices to small businesses and keeps a record of each one." |
 | `scope` | who or what is covered | name the cases | "Invoicer covers one-off and monthly invoices in one currency." |
-| `rule` | what MUST or MUST NOT happen | read as one testable statement; have a check of some type | INV-41 "The export link MUST expire 30 minutes after the email is sent." |
+| `rule` | what MUST or MUST NOT happen | read as one testable statement | INV-41 "The export link MUST expire 30 minutes after the email is sent." |
 | `limit` | what it does not do or promise | say what is out | "Invoicer does not calculate tax." |
 | `definition` | a term or a structure; it changes what the rules mean | link to the rules that use it | "A paid invoice is one whose full amount has arrived." |
 
@@ -103,6 +104,11 @@ Design kinds, in a change spec and in `specs/`: `component`, `interface`,
 `data`, `flow` and `choice`. A change needs review only. A `choice` that is
 hard to undo becomes an ADR.
 
+The `approach` kind is design text that explains how one change is built. It
+links like the other design kinds (it serves a requirement, and builds on or
+changes spec paragraphs), and it stays with its change: it is never
+consolidated.
+
 Change-only kinds, in a change spec only: `plan`, `step` and `migration`.
 They belong to their request by default; a task reference is optional. They
 stay with the change, and are never consolidated.
@@ -110,9 +116,10 @@ stay with the change, and are never consolidated.
 The `note` kind: introductions, headings and connecting text. It needs no
 link, and a change to it needs review only.
 
-How a rule is checked, and by whom, is the project's way of working. A rule
-with no check is a hint, never a block. A paragraph that holds two rules and
-a limit gets the hint "split it"; it is only a hint.
+How a rule is checked, and by whom, is the project's way of working. `al
+context` lists each rule's checks, or "none"; there is no hint for a rule with
+no check. A paragraph that holds two rules and a limit gets the hint "split
+it"; it is only a hint.
 
 ## 5. ADRs
 
@@ -127,6 +134,11 @@ a limit gets the hint "split it"; it is only a hint.
   supersedes it.
 - A PR that changes a paragraph that an ADR governs gets a hint: "check that
   ADR-3 still holds".
+- An ADR's ID is its number. It is in the file name, for example
+  `specs/adr/0003-export-links-expire.md`, and on the markers of its
+  paragraphs. Its status is a line at the top of the file.
+- A superseded ADR keeps its `decides` links as history, even to paragraphs
+  that were removed later.
 
 ## 6. The links
 
@@ -137,14 +149,16 @@ a limit gets the hint "split it"; it is only a hint.
 | `clarifies` | decision → requirement | declared |
 | `serves` | change spec or spec paragraph → requirement | declared, in the marker |
 | `builds on`, `changes` | change spec paragraph → spec paragraph | declared, in the marker; bound with both hashes |
+| `removes` | change spec paragraph → spec paragraph | declared, in the marker; for a promise paragraph, only where a signed requirement covers the removal |
+| `source` | spec paragraph → where its text came from: a change paragraph, a path-1 requirement, or `adoption` | exact, in the request's record |
 | `delivers` | task → requirement | declared |
 | `follows` | task → decision or ADR | declared |
 | `named by` | change (PR) → task | exact, from the PRs that name the task; no task status is kept |
 | `edits` | change → paragraph | exact, from the markers in the diff |
 | `cites` | code or test → paragraph or requirement | exact, when the file names the ID; it proves only that the ID is named |
-| `implements` | code → rule or requirement | declared; a claim, never shown as proven |
-| `verifies` | test → rule or requirement | declared; a claim, never shown as proven |
-| `documents` | user doc → paragraph | declared |
+| `implements` | code → rule or requirement | declared and optional; a claim, never shown as proven |
+| `verifies` | test → rule or requirement | declared and optional; a claim, never shown as proven |
+| `documents` | user doc → paragraph | declared and optional |
 | `result` | test or review → pass, fail or not run, at a commit, with the hashes of its declared inputs | exact: "declared inputs unchanged since C1"; that those inputs are complete is a claim; inputs not given or not available give "applicability unknown" |
 | `explains`, `illustrates`, `resolved by`, `decides`, `supersedes` | as in sections 4 and 5 | declared |
 
@@ -170,13 +184,15 @@ A link to another repo uses a qualified ID: `central:INV-41`,
   mostly this one file.
 - One record per doc, mirroring the docs, for example
   `.assuredloop/records/specs/invoices.md.yaml`: only fields that the script
-  can regenerate (hash list, display numbers, derived change kinds) and the AI
-  hints. Each hint records the paragraph hash it was made from.
+  can regenerate (hash list, display numbers, derived change kinds) and, where
+  a project uses them, the AI hints. Each hint records the paragraph hash it
+  was made from.
 - A quote holds the exact text, scoped to its paragraph and source version. It
   adds `prefix` and `suffix` only when the exact text occurs more than once in
   that paragraph.
-- The developer's agent writes the markers and the AI hints in the PR, and the
-  review reads them. The script recomputes every derived field and ignores
+- The developer's agent writes the markers in the PR, and the review reads
+  them. AI hints and declared outputs are optional: a project adds them only
+  where they help (AI hints where it uses search level 2 or higher). The script recomputes every derived field and ignores
   what anyone wrote there. Ordinary indexing never advances a binding; only
   `al index --align <ID>` does.
 
@@ -189,8 +205,9 @@ spec consolidated SP-12 as INV-41 early, in part 1. The web code lives in the
 output repo `invoicer-web`. Hashes are cut short.
 
 The per-doc record. The kinds and links are in the markers, so the record
-holds only regenerable fields and the AI hints; the `kind` lines are a copy
-that the script reads from the markers:
+holds only regenerable fields and, because this project uses them, the
+optional AI hints; the `kind` lines are a copy that the script reads from the
+markers:
 
 ```yaml
 # .assuredloop/records/specs/invoices.md.yaml
@@ -201,14 +218,14 @@ paragraphs:
     kind: data                 # read from the marker
     text_sha256: 9c41…         # recomputed by the script
     hint:
-      from_sha256: 9c41…       # the paragraph hash the hint was made from
+      basis_sha256: 9c41…      # the paragraph hash the hint was made from
       summary: An invoice has a number, a customer, lines, a total and a paid date.
       quote: {exact: "An invoice has a number"}
   - id: INV-41
     kind: rule
     text_sha256: 2f07…
     hint:
-      from_sha256: 2f07…
+      basis_sha256: 2f07…
       summary: An export link expires 30 minutes after the email is sent.
       quote: {exact: "MUST expire 30 minutes"}
 ```
@@ -253,15 +270,15 @@ tasks:                          # references only; no status is kept
     delivers: [R2]
     prs: ["#33", "invoicer-web#57"]   # exact: the PRs that name this task
 
-outputs:                        # declared claims, never shown as proven
+outputs:                        # optional; this project declares them; claims, never shown as proven
   - {repo: invoicer-web, file: src/export-link.js, implements: [central:INV-41]}
   - {repo: invoicer-web, file: test/export-link.test.js, verifies: [central:INV-41]}
   - {repo: invoicer, file: docs/exports.md, documents: [INV-41]}
 
 bindings:                       # written when a link is first indexed; advanced only by --align
-  - {from: invoice-exports/SP-12, link: serves, to: invoice-exports/R2, to_version: 1, from_sha256: 2f07…}
-  - {from: invoice-exports/SP-12, link: builds-on, to: INV-12, to_sha256: 9c41…, from_sha256: 2f07…}
-  - {from: invoicer-web/test/export-link.test.js, link: verifies, to: central:INV-41, to_sha256: 2f07…, commit: invoicer-web@a81c…}
+  - {holder: invoice-exports/SP-12, link: serves, target: invoice-exports/R2, target_version: 1, holder_sha256: 2f07…}
+  - {holder: invoice-exports/SP-12, link: builds-on, target: INV-12, target_sha256: 9c41…, holder_sha256: 2f07…}
+  - {holder: invoicer-web/test/export-link.test.js, link: verifies, target: central:INV-41, target_sha256: 2f07…, commit: invoicer-web@a81c…}
 
 dispositions:                   # one per change-paragraph version with a baseline effect
   - {source: invoice-exports/SP-12, source_sha256: 2f07…, disposition: incorporated, spec: INV-41, spec_sha256: 2f07…}

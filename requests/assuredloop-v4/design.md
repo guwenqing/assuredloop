@@ -79,8 +79,10 @@ A reader must find the current system without reading past changes (R1).
   only, so they need no consolidation.
 - User documents in `docs/` are an output of a change, like code and tests
   (input 112). They carry no paragraph IDs of their own.
-- Explanations, plans and other paragraphs with no baseline effect stay with
-  the change as its history. They are never copied into `specs/`.
+- Change-only paragraphs (plan, step, migration) and `approach` paragraphs
+  stay with the change as its history; they are never copied into `specs/`.
+  Informative paragraphs that explain lasting rules (rationale, example) do
+  belong in `specs/`, beside the rules they explain.
 - A change closes and its folder moves to `requests/archive/<name>/`.
 
 ## 3. IDs, kinds and links
@@ -118,6 +120,7 @@ lines. The check flags a marker with no blank line after it.
 |---|---|---|---|
 | promise | purpose, scope, rule, limit, definition | yes | a signed requirement that covers it |
 | design | component, interface, data, flow, choice | yes | review |
+| design, kept with the change | approach: how one change is built | yes (R2 holds for all design text) | review; stays with its change, never consolidated |
 | informative | rationale, example, open | when it explains, illustrates or resolves something | review |
 | note | note: introductions, headings, connecting text | no | review |
 | change-only | plan, step, migration | no; it belongs to its request, and a task reference is optional | review; never consolidated |
@@ -126,10 +129,17 @@ lines. The check flags a marker with no blank line after it.
   words (MUST, SHOULD, MAY and their negations); nobody writes it.
 - A `definition` is a promise kind, because it changes what the rules mean.
 - A design `choice` that is hard to undo becomes an ADR.
+- `approach` is design text that explains how one change is built, as
+  OpenSpec keeps its `design.md` with the change. It links like the other
+  design kinds, and it stays with its change. Lasting design (component,
+  interface, data, flow, choice) is consolidated. Why: the OpenSpec replay
+  found delivered design that belongs to its change only (validation.md B8).
 
 **Links:**
 - `serves R<n>`: a promise or design paragraph, to the requirement;
 - `builds on <ID>` or `changes <ID>`: to a consolidated paragraph;
+- `removes <ID>`: a change declares that it removes a spec paragraph (see
+  section 5 for promise kinds);
 - `for <task>`: optional, for a project that uses tasks;
 - `explains`, `illustrates`, `resolved by`, `governed by <ADR>`.
 
@@ -148,7 +158,8 @@ versions at the time of each link are bindings that the script keeps in the
 request's record (section 4).
 
 **Who writes what:**
-- People and agents write the markers (ID, kind, links) and the AI hints.
+- People and agents write the markers (ID, kind, links), and, where a
+  project wants them, the AI hints and the declared outputs (section 10).
 - The script recomputes every derived field (files, paths, hashes, git links,
   results) from the repo, and ignores or overwrites whatever anyone wrote
   there. It does not try to prove who wrote a byte.
@@ -165,8 +176,12 @@ requirement is fully covered, or that a change is authorized in substance.
 `al context` and the review view say this in plain words; a clean check names
 semantic coverage as "not checked".
 - A code or test file that names an ID **cites** it. That is an exact fact.
-- `implements` and `verifies` are declared claims. A test can cite INV-41 and
-  check another condition, so a `verifies` claim is shown as a claim.
+- `implements`, `verifies` and `documents` are declared claims, and they are
+  optional. By default the chain to code, tests and documents comes from
+  exact `cites` and from git. A project declares an output only where it
+  helps a reviewer. A test can cite INV-41 and check another condition, so a
+  `verifies` claim is shown as a claim. Why: in validation, one review
+  question depended on declared outputs (validation.md section 9).
 - Rough links from git history and from files that change together stay
   beside the declared links. The graph is not limited to the links that the
   author chose. Studies of trace links find that declared links are often
@@ -176,7 +191,13 @@ semantic coverage as "not checked".
 **What the script checks** (no AI):
 - A paragraph with no ID: `not ok`. A promise or design paragraph with no kind
   or no link: a hint; under opt-in `--strict`, `not ok`.
-- A link to an ID that does not exist: `not ok`.
+- A link to an ID that does not exist: `not ok`. When another change removed
+  the target, the link gets the hint "target removed" instead, and the open
+  change aligns.
+- Two headings with the same text under the same parent (the same heading
+  path): a hint. The same text under different parents is valid. Why: the
+  OpenSpec CLI caught duplicate requirement names that the v4 model missed
+  (validation.md B6).
 - Per PR, the ID lint: IDs lost since the base, IDs used twice, and IDs used
   again after removal. Agents can remove comments near the lines they edit
   (claude-code issue #22530), so a lost ID must be caught.
@@ -219,8 +240,11 @@ the link was made.
     first binding when it is first indexed. A link that was in the marker at
     the base commit but whose binding record is gone stays "binding unknown".
     The script never fills a lost binding with today's value.
-  - The same rules hold for `serves R<n>` (the requirement version) and for
-    `from` (the owner's-words snapshot).
+  - The same rules hold for `serves R<n>` (the requirement version), for
+    `from` (the owner's-words snapshot), and for declared outputs where a
+    project declares them. Where a project declares no outputs, the tool
+    cannot say that an output's declared claim went stale; the context view
+    says which holds.
 - When a bound target changes, the source paragraph gets a hint until it is
   aligned: "your change builds on INV-41, which change X changed on <date>.
   Align it." Running the index again does not remove the hint.
@@ -231,6 +255,12 @@ the link was made.
   The script sees only declared `changes` links; the near-match hint (section
   3) helps where a link is missing. `al context <ID>` shows the open changes
   that build on or change it.
+- The change that holds a stale link aligns it. The PR that changes the
+  target gets an information hint that lists the open changes linking to it;
+  it is not blocked.
+- A limit: `al` works offline and cannot see other open PRs. Two open path-1
+  PRs that edit one spec paragraph surface through git's merge conflict and
+  the second PR's stale binding, not through an overlap hint.
 
 ## 5. Consolidation and the close rule
 
@@ -268,6 +298,21 @@ requirement or the scope. A design paragraph can stay `incorporated` while
 another paragraph of the same change is `abandoned`; that needs no owner
 decision.
 
+**Invalid dispositions.** `al check` shows an invalid disposition as a hint,
+and as `not ok` under `--strict`; `al conclude` refuses. A small design
+correction (path 1d) to text that an open change incorporated makes that
+change's `incorporated` disposition invalid, because the spec text no longer
+equals the incorporated version. Both sides are told: the 1d PR gets a hint
+that names the open change, and the open change's check shows the invalid
+disposition. The open change aligns by a wording decision that names the new
+text's hash, or by changing the text again.
+
+**Removals.** A change declares a removal with `removes:<ID>`. For a promise
+paragraph, a removal is allowed only where a signed requirement covers it. An
+informative paragraph needs only the declaration, and no disposition. A loss
+that nobody declared stays a lost-ID lint. Why: a whole-block replace in real
+OpenSpec history dropped scenarios with no notice (validation.md B6).
+
 **Equality.** Two texts are equal when they match exactly after only two
 steps: line endings are normalized, and the marker framing (the marker line
 and its blank line) is removed. Spaces, hard breaks, list, table and code
@@ -279,7 +324,10 @@ version and the accepted target version:
   proven.
 
 An unexplained revert does not pass: the spec text must equal the bound
-version, a valid successor's version, or a decided final text.
+version, a valid successor's version, or a decided final text. Why no more
+normalization: over 2,866 real OpenSpec paragraphs, none differed in
+whitespace only, and 6 differed in markup only (validation.md B4); those few
+take a wording decision or a typo claim.
 
 **The close rule.** `al conclude` refuses until each change paragraph with a
 baseline effect has a valid disposition for its current version, every
@@ -291,12 +339,18 @@ promise change is signed, and a spike's current question is signed (section
   main's history, not from the working tree.
 - Code or tests that still cite a removed or abandoned ID get a hint.
 
-**Path 1 and adoption.** A paragraph edited directly on path 1 records
-`from: <request>/R2`. That proves where the change came from, not that the
-spec text equals the requirement. A paragraph that existed before adoption
-records `from: adoption` with the captured baseline: the commit and its hash.
-It is not an owner approval, and it does not excuse later changes that nobody
-asked for.
+**Path 1 and adoption.** A promise paragraph edited directly on path 1
+names its requirement in its marker, `serves:<request>/R<n>`, with a binding.
+A direct edit moves that `serves` link to the new request's requirement; the
+old link stays in the binding history. A typo fix (path 0) keeps the link. The
+request's record names where the spec text came from in a `source:` field:
+`source: <request>/SP-12` for consolidated change text, `source:
+<request>/R2` on path 1, and `source: adoption` with the captured baseline
+(the commit and its hash) for a paragraph that existed before adoption. A
+source proves where the text came from, not that it equals the requirement;
+`source: adoption` is not an owner approval, and it does not excuse later
+changes that nobody asked for. The word `from` is kept only for the link from
+a requirement to the owner's words.
 
 ## 6. Sign-off
 
@@ -326,7 +380,8 @@ and changes the promise. So:
   sentence.
 - It marks as "meaning-sensitive; review the typo claim" any change to a
   normative word (MUST, SHALL, SHOULD, MAY, REQUIRED), a negation (not, never,
-  no), a number, or a quantifier (only, all, every, any, each, none, some, at
+  no), a number (number words count: zero to twenty, half, once, twice, first
+  to tenth), or a quantifier (only, all, every, any, each, none, some, at
   least, at most). "MUST MUST" to "MUST" is marked and is a true typo; "paid"
   to "unpaid" is not marked and changes the meaning. So the mark never forces
   a request or a sign-off by itself, and its absence proves nothing. The
@@ -421,12 +476,11 @@ on every old rule would only make noise.
 
 - Each `rule` stays visible on its own: `al context` lists its checks, or
   "none". One checked rule never hides an unchecked one.
-- The hint fires only on a `rule` that a change adds or changes, when no check
-  names it: a test, a review checklist item, or an evaluation. Untouched rules
-  get no hint.
-- `al context` also shows a summary per section: rules, checks, uncovered
-  rules, and a percentage. The summary groups the per-rule list; it does not
-  replace it.
+- There is no "rule with no check" hint. In validation it caught no defect
+  and fired as noise on new rules (validation.md section 9).
+- `al context` shows a summary per section, as information: rules, checks,
+  uncovered rules, and a percentage. The summary groups the per-rule list; it
+  does not replace it.
 - Three facts stay apart: a check exists; a result exists; the result applies
   to the selected material. A result records the commit it ran at and the
   hashes of its declared inputs. The exact fact the tool shows is "declared
@@ -436,14 +490,18 @@ on every old rule would only make noise.
 - When a declared input changed, the old result is shown with its commit as
   "does not apply to the current text". When inputs are not given or not
   available (for example an output repo that is not present), it shows
-  "applicability unknown". The tool never infers that an unlisted changed file
-  is unrelated, and builds no dependency graph.
+  "applicability unknown". A result at a commit that the clone does not have
+  shows the same. The tool never infers that an unlisted changed file is
+  unrelated, and builds no dependency graph.
+- Result files live where the project's `results:` setting says. A result may
+  carry `by`, `source` and `note`, and `commit: unknown` when nobody recorded
+  it. Commit IDs resolve through git, so a short and a full hash of one commit
+  match.
 - For a report review, the report's own bytes can be the whole checked
   object. For a code test, a project may declare a wide scope (the tested repo
   trees and declared outside inputs) or a narrower one. A commit that only
   adds or changes the result file never changes the checked object. Unchanged
   inputs never count as a fresh run.
-- The hint neither chooses a method nor stops closure.
 
 ## 10. Records
 
@@ -462,13 +520,18 @@ moved the main tag on close to half of the notes in one study (arXiv
     4) and its dispositions (section 5). Mostly that change's own PRs touch
     it.
   - one record per doc: only fields that the script can regenerate (hash
-    list, display numbers, derived change kinds), and the AI hints.
+    list, display numbers, derived change kinds), and the AI hints where a
+    project uses them.
 - On a merge conflict in a per-doc record: run the index again to rebuild the
   regenerable fields. Conflicting optional AI hints may be dropped and shown
   as absent; no AI refresh is required. Bindings are never in a per-doc
   record, so a re-run cannot erase them.
-- The developer's agent writes the markers and the AI hints in the PR, and the
-  review reads them (input 98). The script writes the derived facts.
+- The developer's agent writes the markers in the PR, and the review reads
+  them (input 98). The script writes the derived facts.
+- AI hints and declared outputs are optional. A PR never needs them. A
+  project fills AI hints only where it uses search level 2 or higher. Why: in
+  validation, no AI hint changed a verdict, and they were a large part of the
+  record cost (validation.md section 9).
 - **AI hints** (summaries, tags, quotes):
   - Each hint records the paragraph hash it was made from. A hint is stale
     when the paragraph's hash differs, even if its quote still matches: a
@@ -477,8 +540,9 @@ moved the main tag on close to half of the notes in one study (arXiv
     It holds the exact text by default. It adds `prefix` and `suffix` (the W3C
     Web Annotation TextQuoteSelector form) only when the exact text occurs
     more than once in that paragraph. A fuzzy re-anchor stays a hint.
-  - The agent refreshes hints only for paragraphs that the PR changed. An
-    empty or missing hint is an honest state, not a defect.
+  - Where a project uses hints, the agent refreshes them only for paragraphs
+    that the PR changed. An empty or missing hint is an honest state, not a
+    defect.
 - The kinds and the declared links are checked data, in the limited sense of
   section 3. The AI summaries and tags are hints (input 123).
 - Checks give hints by default. A project that wants blocks turns on
@@ -664,9 +728,13 @@ Why: "no need to take care of nbackward copatibility" (input 98).
   binds its whole text by SHA-256 needs a new approval after conversion.
   Validation uses a scratch copy, never an adopter's live record.
 - Adoption: `al spec --add-ids` marks every paragraph, and the baseline is
-  captured as `from: adoption` with its commit and hash (section 5).
+  captured as `source: adoption` with its commit and hash (section 5).
 
 ## 15. Validation, before the build
+
+Validation ran in October 2026: parts A and B of `validation.md` in this
+folder. Its results shaped the rules above; decision D2 in `request.md`
+records what stayed, changed and went.
 
 Why: "if things are not useful, it is a total waste" (input 111), and the
 owner chose to validate before building (inputs 117-118). Validation keeps
@@ -744,6 +812,48 @@ real defect, at an acceptable cost. A rule that only catches its own missing
 declaration does not count. If a need in the signed requirement must change,
 the owner signs again.
 
-## 16. Open points
+## 16. Cost, and the checks left for the build
 
-1. Which OpenSpec changes to replay (chosen in task T4).
+**Cost.** The records cost 1.3 to 1.6 times the tokens of the work on small
+and big changes in validation, and converting one real change cost 166k to
+294k tokens. The signed R12 asks for about a fifth, as a flexible target. So
+the target is not met, and 0.1.0 did not meet it either. The owner chose to
+build and measure again: "The cost is fine we can always try" (input 149).
+These steps aim to lower the cost; their savings are hypotheses, not
+measurements:
+- AI hints and declared outputs are optional, and the noisy rule-check hint
+  is gone.
+- `al` writes every derived field; the skill gives an agent only the rules of
+  its path; `al context` gives an agent only the paragraphs and records that
+  its change touches.
+
+The validation ratios have limits: small invented changes, one model family,
+token counts per agent run, one uncounted helper, and no work agent in the
+OpenSpec replay. A complete cost account runs on the product (T15, T16):
+record creation, reading, corrections, indexing and review across every
+agent, with small changes and epics apart, against the same flexible target.
+
+**Checks left for the build**, measured on the product, not on a model:
+scale timings (T15); Node 24 and level 1 (T13); real fallback and level 2
+(T14); every role through the change-context query at levels 0-2 (T13, T14);
+marker preservation by agents (T16); the record commands end to end, the ADR
+checks, an absent clone and a missing commit (T9, T10, T12); the cost account
+(T15, T16). Search recall at levels 0-1 was about 0.3 in the model; level 2 is
+measured in T14.
+
+## 17. Building v4
+
+Why: v1 keeps working while v4 is built, so the repo and its adopters are
+never without a working tool.
+
+- v4 is built beside v1, in `src/v4/`, with its tests in `test/v4/`.
+  `bin/al.js`, the v1 code and its tests stay untouched and green until T17.
+- v4 runs through an entry that is not published, `bin/al-v4.js`.
+- CI keeps checking this repo with the published 0.1.0 until T17.
+- T17 switches the command to v4, converts this repo's spec and records to v4,
+  and removes the v1 code.
+- Node 24 or newer. T13 tests `node:sqlite` with FTS5 on the minimum version;
+  if Node 24 lacks it, the minimum goes up.
+- Every dependency is pinned, and no release newer than 24 hours is used.
+- The release (T18) is a follow-on outside this request, and needs the
+  owner's yes.

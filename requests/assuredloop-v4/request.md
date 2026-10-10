@@ -31,6 +31,11 @@ Tier: 3 · Status: open
   the consolidated design, with its intent. Snapshot
   origin/2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14.md.
   Decision D1 below.
+- 2026-10-10: the owner's words 146-150: the scale pass marks are fine; the
+  architect carries on overnight and decides T6; the cost is fine to try; up
+  to three developers at once. Snapshot
+  origin/2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14-2.md.
+  Decision D2 below.
 
 ## Organized requirement
 
@@ -164,3 +169,4 @@ Signed off: 2026-10-10 owner, origin/2026-10-10-signoff.md
 ## Decisions
 
 - D1, 2026-10-10. Source: owner, inputs 140-144 (chat with the architect, 2026-10-10). The design (design.md), the schema (schema.md) and the tasks (tasks.md) live in this request folder. Assumed's design-v4-draft.md is now design.md, and schema-v4-sketch.md is now schema.md. They hold only the consolidated design and its intent, not the history of how it was reached (inputs 142-144). The research and the challenge rounds stay in the architect's working notes (input 141). This repo is public, so a private adopter's content is replaced by a neutral example.
+- D2, 2026-10-10. Source: the agent (architect), on the owner's words 148-149. T6, the validation decision (validation.md parts A and B). Stay: IDs on every paragraph with hidden markers; kinds; the marker links serves, builds on and changes, with bindings for every declared link; dispositions and the close rule; exact equality with no more normalization; typo marks; path and 1d checks; the requirement-words hint; results with declared inputs; facts derived from git. Change: AI hints and declared outputs (implements, verifies, documents) become optional; a new kind, approach, keeps design text with its change, with R2 links; removals are declared with removes; the record's provenance field is source, and from stays only for requirement to owner's words; seventeen gaps found in validation are decided in design.md. Go: the hint for a rule with no check. Add: a duplicate-heading lint under one parent. Cost: the records cost 1.3 to 1.6 times the work in validation, so the flexible 20% target of R12 is not yet met; the owner chose to build and measure again (input 149); a complete cost account runs in T15 and T16.

@@ -72,12 +72,13 @@ necessary for that, not proof of it: the tool does not check this task list.
   them in the three arms of design.md 15 (today's records, the lighter arm,
   the full model); formatting-only differences under exact equality counted.
 - **Boundary:** read OpenSpec only; work in a scratch copy; choose changes of
-  different sizes and say why each was chosen (design.md 16).
+  different sizes and say why each was chosen.
 - **Delivers:** evidence for R1, R2, R5, R12 on real history.
 - **Check:** a report with the conversion cost per change, the equality
   cases that needed a wording or typo claim, and the answers in all three
   arms.
-- **Read:** design.md 3, 5 (the equality rule), 15, 16 (Open points).
+- **Read:** design.md 3, 5 (the equality rule), 15.
+- **Done:** #171, PR #173; the chosen changes are in validation.md B3.
 
 ### T5 Private adopter on a scratch copy
 - **Wanted:** the open request of a private adopter converted by hand on a
@@ -127,6 +128,9 @@ necessary for that, not proof of it: the tool does not check this task list.
 - **Check:** the plan names each step and who does it; the Node 24 test has
   run.
 - **Read:** design.md 11 (the search levels), 14, 15.
+- **Done:** the plan is design.md 17 (Building v4). The Node 24 test of
+  `node:sqlite` FTS5 runs in T13, which raises the minimum if it fails. T15's
+  criteria are unchanged.
 
 ### T8 Schema and markers
 - **Wanted:** `.assuredloop/` with `config.yaml` and `schema.yaml`; the
@@ -243,8 +247,10 @@ necessary for that, not proof of it: the tool does not check this task list.
   within 10 s at 1,000 requests; `al search` answers within 2 s across 20
   repos; an incremental index after a merge within 2 minutes; a full level 1
   rebuild within 15 minutes. The architect may revise these in T7 before the
-  run, and records any change.
-- **Read:** design.md 11 (Scale), 15.
+  run, and records any change. Also the cost account of design.md 16 on
+  generated changes: record creation, reading, corrections, indexing and
+  review, against the flexible target.
+- **Read:** design.md 11 (Scale), 15, 16 (Cost).
 
 ### T16 Skill and docs
 - **Wanted:** SKILL.md and README for v4: the paths, no Was/Now copies, no
@@ -252,8 +258,10 @@ necessary for that, not proof of it: the tool does not check this task list.
   so a byte-bound sign-off needs renewal).
 - **Boundary:** describe the tool; do not prescribe a way of working.
 - **Delivers:** R7, R11, R14.
-- **Check:** a fresh agent follows the skill through each path on a fixture.
-- **Read:** design.md 1, 7, 11, 14.
+- **Check:** a fresh agent follows the skill through each path on a fixture;
+  the cost account of design.md 16 on real agent runs, with small changes and
+  epics apart; marker preservation by agents, measured apart from the lint.
+- **Read:** design.md 1, 7, 11, 14, 16 (Cost).
 
 ### T17 The v4 spec
 - **Wanted:** the consolidated v4 spec in `specs/`, with markers, from
@@ -282,14 +290,17 @@ says what it needs first.
 
 | Issue | Tasks | Opened | Ready to start when |
 |---|---|---|---|
-| A. Validation: fixtures, questions and simulation | T1-T3 | now | now: T1 and T2 first; T3 needs both |
-| B. Validation: OpenSpec replay and the private adopter | T4-T5 | now | T3 is done (the owner's order); T5 also needs its private start prompt |
-| C. Schema and markers | T8 | after T6 | T6 and T7 are done |
-| D. Records and bindings | T9 | after T6 | T8 is done (schema and markers) |
-| E. Checks and views | T10-T11 | after T6 | T9 is done (the records); T11 also needs T10 |
-| F. Cross-repo links | T12 | after T6 | T9 is done |
-| G. Export and search levels 1-2 | T13-T14 | after T6 | T9 is done; T14 also needs T13 |
-| H. Scale, skill, docs and the v4 spec | T15-T17 | after T6 | T15 needs T12-T14; T16 needs T11; T17 needs T10-T11 |
+| A. Validation: fixtures, questions and simulation | T1-T3 | #170 | done (PR #172) |
+| B. Validation: OpenSpec replay and the private adopter | T4-T5 | #171 | done (PR #173) |
+| C. Schema and markers | T8 | #174 | started; it owns the shared parser `src/v4/markers.js` |
+| D. Records and bindings | T9 | #175 | started at the same time as C, against the shared parser interface (a stub until C merges) |
+| E. Checks and views | T10-T11 | when D merges | D is done (the records); T11 also needs T10 |
+| F. Cross-repo links | T12 | when D merges | D is done |
+| G. Export and search levels 1-2 | T13-T14 | when D merges | D is done; T14 also needs T13 |
+| H. Scale, skill, docs and the v4 spec | T15-T17 | after E, F and G | T15 needs T12-T14; T16 needs T11; T17 needs T10-T11 |
+
+E, F and G may run at the same time: up to three developers at once (owner
+input 150).
 
 T6 and T7 are the architect's. T18 is the architect's follow-on, outside
 this request.
