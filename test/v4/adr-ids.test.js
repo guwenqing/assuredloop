@@ -15,7 +15,7 @@ const doc = (...ls) => ls.join('\n') + '\n';
 const ADR = doc(
   '<!-- ADR-4 note -->', '', '# 4. Pick A', '',
   '<!-- ADR-4-1 rationale -->', '', 'Because A is simpler.', '',
-  '<!-- ADR-4-2 choice serves:R1 -->', '', 'We pick A.',
+  '<!-- ADR-4-2 choice serves:inv/R1 -->', '', 'We pick A.',
 );
 
 describe('parseMarkdown and ADR-<n>-<k>', () => {

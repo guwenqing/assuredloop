@@ -1,0 +1,37 @@
+# drop-configured will remove INV-99 of scope-pre (review of d715a16). This
+# case builds the request and its note (serves R1, removes:INV-99) and
+# indexes; the test removes INV-99, records the removed disposition and
+# indexes again. Arm unsigned: R1 is not signed. Arm signed: R1 is signed.
+title: Drop the configured tax limit
+base: scope-pre
+claim: "Tier: 2 — drop-configured"
+steps:
+  - al: [new, drop-configured, --from, '-', --title, Drop the configured tax limit, --tier, '2']
+    date: 2026-08-12
+    input: |
+      remove the foreign tax limit from the tax policy.
+  - section:
+      request: drop-configured
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 No foreign tax limit
+        The spec no longer says that Invoicer does not calculate foreign tax.
+arms:
+  unsigned:
+    steps: []
+  signed:
+    steps:
+      - al: [record, drop-configured, signoff, --source, the project chat, --words, R1 ok, --yes]
+        date: 2026-08-12
+after:
+  - write:
+      file: requests/drop-configured/spec.md
+      text: |
+        <!-- SP-1 note removes:INV-99 serves:R1 -->
+
+        Remove the foreign tax limit.
+  - index: true
+    date: 2026-08-12

@@ -1,0 +1,35 @@
+# Abandoned with a changes: link (decision D15, rule a). reminder-emails/SP-2
+# declares changes:INV-11, and its disposition says abandoned, with no
+# decision. It is valid only while INV-11 still has the text that the changes
+# binding bound. Arm kept: INV-11 is unchanged. Arm applied: INV-11 now holds
+# SP-2's text. Arm changed: INV-11 changed in another way.
+title: "Reminder emails: dropped"
+base: base
+claim: "Tier: 2 — reminder-emails"
+steps:
+  - dispositions:
+      request: reminder-emails
+      add:
+        - {source: reminder-emails/SP-2, disposition: abandoned}
+arms:
+  kept:
+    steps: []
+  applied:
+    steps:
+      - edit:
+          file: specs/invoices.md
+          from: |-
+            Invoicer SHOULD send a reminder 7 days after the due date of an open
+            invoice.
+          to: |-
+            Invoicer SHOULD send up to three reminders by email for an open invoice,
+            7, 14 and 21 days after the due date.
+  changed:
+    steps:
+      - edit:
+          file: specs/invoices.md
+          from: Invoicer SHOULD send a reminder 7 days after the due date of an open
+          to: Invoicer SHOULD send a reminder 10 days after the due date of an open
+after:
+  - index: true
+    date: 2026-07-31

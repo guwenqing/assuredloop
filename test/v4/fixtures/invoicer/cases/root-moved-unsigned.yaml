@@ -1,0 +1,17 @@
+# The spec root moves after the removal (review of c74c3d0, finding 1). On
+# main: remove-merged-unsigned (drop-tax removed INV-4). The closing PR moves specs/
+# to current-specs/, updates root and every docs path, and indexes.
+title: "Move the spec root after the removal"
+base: remove-merged-unsigned
+claim: "Tier: 0 — move the spec root"
+steps:
+  - move: {from: specs, to: current-specs}
+  - write:
+      file: .assuredloop/config.yaml
+      text: |
+        root: current-specs
+        docs:
+          - {file: current-specs/invoices.md, prefix: INV}
+          - {file: current-specs/exports.md, prefix: EXP}
+  - index: true
+    date: 2026-08-10

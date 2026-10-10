@@ -1,0 +1,39 @@
+# Requirement words in a non-promise paragraph (design.md 3): MUST, SHALL,
+# SHOULD and MAY count in capitals only; never and always count in either
+# case. Each arm adds one sentence to EXP-5, a rationale.
+title: Say more about the link time
+base: base
+claim: "Tier: 2 — invoice-exports"
+arms:
+  lower:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: forwarded link soon stops working.
+          to: |-
+            forwarded link soon stops working. An accountant may open one month, and
+            should open it from the email; the link must not be shared, and shall stay private.
+  upper:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: forwarded link soon stops working.
+          to: |-
+            forwarded link soon stops working. An accountant MAY open one month.
+  never:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: forwarded link soon stops working.
+          to: |-
+            forwarded link soon stops working. A forwarded link never opens twice.
+  always:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: forwarded link soon stops working.
+          to: |-
+            forwarded link soon stops working. Always send the link to one address.
+after:
+  - index: true
+    date: 2026-07-31

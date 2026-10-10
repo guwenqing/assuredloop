@@ -1,0 +1,38 @@
+# drop-latest will remove INV-99, the limit of kind-pre (review of c74c3d0,
+# finding 2). This case builds the request and its note (serves R1,
+# removes:INV-99) and indexes; the test removes INV-99, records the removed
+# disposition and indexes again. Arm unsigned: R1 is not signed. Arm signed:
+# R1 is signed.
+title: Drop the foreign tax limit
+base: kind-pre
+claim: "Tier: 2 — drop-latest"
+steps:
+  - al: [new, drop-latest, --from, '-', --title, Drop the foreign tax limit, --tier, '2']
+    date: 2026-08-10
+    input: |
+      remove the foreign tax limit.
+  - section:
+      request: drop-latest
+      text: |
+        ## Organized requirement
+
+        <!-- R1 -->
+
+        ### R1 No foreign tax limit
+        The spec no longer says that Invoicer does not calculate foreign tax.
+arms:
+  unsigned:
+    steps: []
+  signed:
+    steps:
+      - al: [record, drop-latest, signoff, --source, the project chat, --words, R1 ok, --yes]
+        date: 2026-08-10
+after:
+  - write:
+      file: requests/drop-latest/spec.md
+      text: |
+        <!-- SP-1 note removes:INV-99 serves:R1 -->
+
+        Remove the foreign tax limit.
+  - index: true
+    date: 2026-08-10
