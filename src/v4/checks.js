@@ -286,7 +286,16 @@ export function checks(top, { base, strict = false }) {
     add('info', 'result', res.file, res.check, `${res.outcome} at ${res.commit === 'unknown' ? 'an unknown commit' : res.commit.slice(0, 7)}: ${applicability(top, res)}`);
   }
 
-  return { findings, notKnown };
+  // Adopted paragraphs (D16): a disposition with `source: adoption` names the
+  // spec paragraph and its captured hash; it stays adopted while its text is that.
+  const adopted = new Set();
+  for (const r of now.requests.values()) {
+    for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) {
+      if (d?.source === 'adoption' && d.spec && now.spec.get(d.spec)?.sha256 === d.spec_sha256) adopted.add(d.spec);
+    }
+  }
+
+  return { findings, notKnown, adopted };
 }
 
 // Whether a result applies (design.md 9): never "applies", only what is known.

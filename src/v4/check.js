@@ -38,12 +38,16 @@ export function check({ top, opts }) {
     changes.push(...diffParagraphs(before, head).filter((c) => c.changes.length));
   }
 
+  const t10 = checks(top, { base, strict: opts.strict });
+  // An adopted paragraph needs no link while its text is the captured text (D16).
+  const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/')));
+  lints.length = 0;
+  lints.push(...shown);
   const severity = (l) => (opts.strict ? 'not ok' : l.severity);
   const body = notRead(top, config);
   body.push(...lints.map((l) => `${severity(l)} ${l.code} ${l.file}:${l.line} ${l.id ?? '-'} ${l.message}`));
   if (base) body.push(...changes.map((c) => `${c.file} ${c.id} ${c.changes.join('+')}`));
   if (!lints.length) body.push('ok: no marker lint');
-  const t10 = checks(top, { base, strict: opts.strict });
   body.push(...t10.findings.map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}`));
   // Under --strict every marker lint is a not ok.
   const notOk = lints.length > 0 || t10.findings.some((f) => f.severity === 'not ok');
