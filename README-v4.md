@@ -232,6 +232,11 @@ documents only; its config names the central repo.
    `source: adoption` says where the text came from. It is not an owner
    approval, and it does not excuse a later change.
 
+   On the branch that adds the markers, `al check` reads each paragraph as
+   new, because the base has no markers: each promise paragraph gets a
+   `not ok` for sign-off coverage and for the path claim. Say in the PR why
+   they stay. Under `--strict` that branch fails.
+
 **A sign-off bound to the whole text.** Markers change a file's bytes. If a
 signed requirement, or any other record, binds the whole text of a spec file
 by its SHA-256, that hash no longer matches after the markers are added. Ask
