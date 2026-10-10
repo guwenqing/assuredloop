@@ -11,7 +11,8 @@ import { pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
 import { Fail, isName } from './base.js';
 import { git } from './git.js';
-import { exportRows, exported, newHistory, resolveCommit } from './export.js';
+import { createHash } from 'node:crypto';
+import { exportRows, exported, firstParents, newHistory, resolveCommit, sectionAt } from './export.js';
 
 // The chunk rule and the tokenizer: a change to either rebuilds the index.
 const MANIFEST = { schema: 'assuredloop-search/1', chunk: 'one paragraph version; header: file title, heading path, kind, ID', tokenizer: 'porter unicode61' };
@@ -137,28 +138,31 @@ function refresh(db, top, commit) {
   const names = new Set(records.keys());
   const live = rows.filter((r) => r.commit === commit && r.superseded_by === null);
   const now = new Map(live.map((r) => [keyOf(r), { ...r, for: evidenceFor(r, outputs, names) }]));
-  const had = new Set(db.prepare('SELECT key FROM current').all().map((x) => x.key));
+  const had = new Map(db.prepare('SELECT key, row FROM current').all().map((x) => [x.key, x.row]));
   db.exec('BEGIN');
   let added = 0;
   let removed = 0;
   let kept = 0;
   const delRow = db.prepare('DELETE FROM current WHERE key = ?');
   const delText = db.prepare('DELETE FROM current_text WHERE key = ?');
-  for (const k of had) if (!now.has(k)) { delRow.run(k); delText.run(k); removed += 1; }
+  for (const k of had.keys()) if (!now.has(k)) { delRow.run(k); delText.run(k); removed += 1; }
   const putRow = db.prepare('INSERT OR REPLACE INTO current (key, id, row) VALUES (?, ?, ?)');
   const putText = db.prepare('INSERT INTO current_text (key, body) VALUES (?, ?)');
   for (const [k, r] of now) {
     putRow.run(k, r.id, JSON.stringify(r));
     if (!had.has(k)) { putText.run(k, chunk(r)); added += 1; }
+    // The same version under a new header (a heading renamed): its chunk is written again.
+    else if (chunk(JSON.parse(had.get(k))) !== chunk(r)) { delText.run(k); putText.run(k, chunk(r)); }
   }
-  const inHistory = db.prepare('SELECT 1 FROM history WHERE key = ?');
+  const inHistory = db.prepare('SELECT row FROM history WHERE key = ?');
+  const delHistoryText = db.prepare('DELETE FROM history_text WHERE key = ?');
   const putHistory = db.prepare('INSERT OR REPLACE INTO history (key, id, row) VALUES (?, ?, ?)');
   const putHistoryText = db.prepare('INSERT INTO history_text (key, body) VALUES (?, ?)');
   for (const r of rows) {
     const k = keyOf(r);
     const known = inHistory.get(k);
     putHistory.run(k, r.id, JSON.stringify({ ...r, for: now.get(k)?.for ?? [] }));
-    if (!known) { putHistoryText.run(k, chunk(r)); kept += 1; }
+    if (!known) { putHistoryText.run(k, chunk(r)); kept += 1; } else if (chunk(JSON.parse(known.row)) !== chunk(r)) { delHistoryText.run(k); putHistoryText.run(k, chunk(r)); }
   }
   setMeta(db, 'walk', saveHistory(h));
   setMeta(db, 'commit', commit);
@@ -187,8 +191,10 @@ function wordHits(db, q, ws, limit) {
 }
 
 // A row as a query shows it, or null when the query does not take it. A
-// current row keeps its role; in a history query every other version is
-// shown as history, never as a current promise.
+// current row keeps its role; in a history query every other version on the
+// first-parent history of the selected commit (`q.chain`) is shown as
+// history, never as a current promise. The index keeps every version it
+// indexed, from other commits too; those are not shown.
 function shownRow(curText, histText, q) {
   if (curText) {
     const r = JSON.parse(curText);
@@ -196,7 +202,8 @@ function shownRow(curText, histText, q) {
     return inScope(r, q) ? r : null;
   }
   if (!histText || !q.history) return null;
-  return { ...JSON.parse(histText), role: 'history' };
+  const r = JSON.parse(histText);
+  return q.chain.has(r.valid_from) ? { ...r, role: 'history' } : null;
 }
 
 function exactHits(db, q, ids) {
@@ -207,7 +214,8 @@ function exactHits(db, q, ids) {
     if (q.history) {
       const live = new Set(rows.map(keyOf));
       for (const x of db.prepare('SELECT key, row FROM history WHERE id = ? ORDER BY key').all(id)) {
-        if (!live.has(x.key) && !db.prepare('SELECT 1 FROM current WHERE key = ?').get(x.key)) rows.push({ ...JSON.parse(x.row), role: 'history' });
+        const r = JSON.parse(x.row);
+        if (!live.has(x.key) && q.chain.has(r.valid_from) && !db.prepare('SELECT 1 FROM current WHERE key = ?').get(x.key)) rows.push({ ...r, role: 'history' });
       }
     }
     out.push(...rows);
@@ -220,7 +228,22 @@ function idsAmong(words, known) {
   return [...new Set(words.split(/\s+/).map((t) => t.replace(/^[("'`]+|[)"'`?,.;:!]+$/g, '')).filter((t) => t && known(t)))];
 }
 
-function sectionOf(rows, hit) {
+// The parent section of a hit as it was at the hit's commit. A paragraph's
+// section is read from its file at that commit, so a past version gets its
+// heading and siblings as they were then; each is the indexed row of that
+// version when there is one.
+function sectionOf(top, rows, hit, chain) {
+  if (['spec', 'adr', 'change', 'spike'].includes(hit.source_type)) {
+    const items = sectionAt(top, hit.commit, hit.file, hit.id);
+    if (items) {
+      return items.map((it) => {
+        const known = rows.find((r) => r.id === it.id && r.sha256 === it.sha256 && chain.has(r.valid_from));
+        if (known) return exported(known);
+        const { title, ...row } = it.row;
+        return exported({ repo: hit.repo, doc_or_request: it.doc, id: it.id, version: null, role: hit.role, ...row, source_type: hit.source_type, kind: row.kind ?? hit.source_type, valid_from: null, superseded_by: null, commit: hit.commit, sha256: it.sha256 });
+      });
+    }
+  }
   const path = JSON.stringify(hit.heading_path ?? []);
   return rows.filter((r) => r.file === hit.file && r.commit === hit.commit && JSON.stringify(r.heading_path ?? []) === path)
     .sort((a, b) => (a.line ?? 0) - (b.line ?? 0)).map(exported);
@@ -285,7 +308,8 @@ export async function search({ top, args, opts }) {
   if (opts.change !== undefined && !isName(opts.change)) throw new Fail(`--change ${JSON.stringify(opts.change)} is not a request name`);
   const commit = resolveCommit(top, opts.at);
   const want = opts.level === undefined ? 2 : Number(opts.level);
-  const q = { words, id: opts.id ?? null, change: opts.change ?? null, history: Boolean(opts.history) };
+  const chain = firstParents(top, commit);
+  const q = { words, id: opts.id ?? null, change: opts.change ?? null, history: Boolean(opts.history), chain };
   const ws = terms(words);
 
   // The level that answers: the strongest one installed, up to --level.
@@ -335,7 +359,9 @@ export async function search({ top, args, opts }) {
         try {
           const cur = db.prepare('SELECT key, row FROM current').all().map((x) => ({ key: x.key, r: JSON.parse(x.row) }));
           const embed = cur.filter((x) => x.r.role === 'baseline' || x.r.role === 'proposal');
-          await l2.refresh({ dir, rows: embed.map((x) => ({ key: x.key, sha256: x.r.sha256, text: [chunk(x.r), x.r.hints?.summary ?? '', ...(x.r.hints?.tags ?? [])].filter(Boolean).join('\n') })) });
+          // The hash is of the whole embedded text, header and hints included, so a renamed heading embeds again.
+          const texts = embed.map((x) => [chunk(x.r), x.r.hints?.summary ?? '', ...(x.r.hints?.tags ?? [])].filter(Boolean).join('\n'));
+          await l2.refresh({ dir, rows: embed.map((x, i) => ({ key: x.key, sha256: createHash('sha256').update(texts[i]).digest('hex'), text: texts[i] })) });
           const keys = embed.filter((x) => inScope(x.r, q)).map((x) => x.key);
           const vec = keys.length ? await l2.rank({ dir, query: words, keys, k: DEEP }) : [];
           const byKey = new Map([...ranked.map((r) => [keyOf(r), r]), ...embed.map((x) => [x.key, x.r])]);
@@ -364,11 +390,11 @@ export async function search({ top, args, opts }) {
   const fallback = falls.length && want > level ? falls.join('; ') : null;
   const out = hits.map((h, i) => {
     const { for: _, ...row } = h;
-    return { rank: i + 1, exact: h.exact, ...exported(row), ...(opts.section ? { section: sectionOf(sectionRows ?? [], h) } : {}) };
+    return { rank: i + 1, exact: h.exact, ...exported(row), ...(opts.section ? { section: sectionOf(top, sectionRows ?? [], h, chain) } : {}) };
   });
   const scope = `${q.change ? `change ${q.change}` : 'current system'}${q.history ? ' + history' : ''}`;
   if (opts.json) {
-    return { raw: `${JSON.stringify({ level, fallback, commit, query: q, not_known: NOT_KNOWN, ...(indexLine ? { index: indexLine } : {}), hits: out })}\n` };
+    return { raw: `${JSON.stringify({ level, fallback, commit, query: { words: q.words, id: q.id, change: q.change, history: q.history }, not_known: NOT_KNOWN, ...(indexLine ? { index: indexLine } : {}), hits: out })}\n` };
   }
   const body = [`Level     ${levelText}`];
   if (fallback) body.push(`Fallback  ${fallback}`);
