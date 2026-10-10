@@ -11,7 +11,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { invoicer, check } from './helpers/invoicer.js';
-import { al, baseProject, editFile, newRequest, ok, organized, appendSection, read, req, show } from './helpers/project.js';
+import { world } from './helpers/cross-repo.js';
+import { al, baseProject, editFile, git, write, newRequest, ok, organized, appendSection, read, req, show } from './helpers/project.js';
 import { word } from './helpers/views.js';
 
 // --- 1. the path-1 Outcome
@@ -127,4 +128,39 @@ test('check control: when a not ok prints, Next still says to fix it', (t) => {
   const records = check(invoicer(t, 'd01', 'defect'));
   assert.ok(printsNotOk(records), show(records));
   assert.match(nextLine(records), /not ok/, `a not ok printed:\n${show(records)}`);
+});
+
+// --- 2, in an output repo: the hint for a central ID that does not resolve
+// (review of PR #203). invoicer-web of the cross-repo world, on a branch
+// feature cut from main, with docs/feature.md written and not committed (so
+// no path-claim hint prints: the branch has no commit).
+
+function outputBranch(t, line) {
+  const w = world(t);
+  git(w.web, 'checkout', '-q', '-b', 'feature');
+  write(w.web, 'docs/feature.md', `# Feature\n\n${line}\n`);
+  return { w, r: check(w.web), strict: check(w.web, '--strict') };
+}
+const cites = (r) => r.stdout.split('\n').filter((l) => /^(info cites|hint unresolved-central) /.test(l));
+
+test('check in an output repo: when the only hint is unresolved-central, Next names the hint', (t) => {
+  const { r, strict } = outputBranch(t, 'The link requires central:EXP-20.');
+  assert.ok(cites(r).some((l) => l.startsWith('hint unresolved-central docs/feature.md:3 central:EXP-20 ')), show(r));
+  assert.ok(!printsNotOk(r), `no not ok:\n${show(r)}`);
+  assert.deepEqual(r.findings.filter((f) => f.severity === 'hint').map((f) => f.code), ['unresolved-central'], `the only hint:\n${show(r)}`);
+  assert.equal(r.code, 0, show(r));
+  assert.equal(strict.code, 0, `the hint stays a hint under --strict; the exit does not change:\n${show(strict)}`);
+  const next = nextLine(r);
+  assert.doesNotMatch(next, /not ok/i, `no not ok printed:\n${show(r)}`);
+  assert.match(next, /\bhints?\b/, `Next names what to do for the hint:\n${show(r)}`);
+});
+
+test('check in an output repo control: a central ID that resolves prints no hint, and Next asks for nothing on a hint', (t) => {
+  const { r, strict } = outputBranch(t, 'The link follows central:EXP-4.');
+  assert.ok(cites(r).some((l) => l.startsWith('info cites docs/feature.md:3 central:EXP-4 ')), `the lookup ran:\n${show(r)}`);
+  assert.ok(!cites(r).some((l) => l.startsWith('hint unresolved-central ')), show(r));
+  assert.equal(r.code, 0, show(r));
+  assert.equal(strict.code, 0, show(strict));
+  assert.ok(!printsHint(r) && !printsNotOk(r), `no hint and no not ok:\n${show(r)}`);
+  assert.doesNotMatch(nextLine(r), /\bhints?\b|not ok/i, `nothing to deal with printed:\n${show(r)}`);
 });
