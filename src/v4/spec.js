@@ -2,16 +2,13 @@
 // `--add-ids <file>` marks every paragraph that has no marker.
 import { existsSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { Fail } from './base.js';
 import { loadConfig, loadSchema, writeSetup } from './config.js';
 import { HEADING, blocksOf, lf, parseMarkdown } from './markers.js';
 import { docsInScope, idsEverUsed, isShallow, notRead, prefixOf, rootProblem, scopeOf, symlinkOn } from './scope.js';
 
-export class Fail extends Error {
-  constructor(message, next) {
-    super(message);
-    this.next = next;
-  }
-}
+// The refusal every v4 command shares (exit 2, nothing written).
+export { Fail };
 
 const PREFIX = /^[A-Z][A-Z0-9]*$/;
 const USAGE = 'al-v4 spec --add-ids <file> [--prefix <PREFIX>] [--yes]';
