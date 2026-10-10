@@ -10,7 +10,8 @@ import { index } from '../src/v4/indexer.js';
 import { exportCommand } from '../src/v4/export.js';
 import { search } from '../src/v4/search.js';
 
-// positionals: how many positional arguments a command uses; any more are refused.
+// positionals: how many positional arguments a command uses, or a function of
+// its options that says so; any more are refused. None given: it uses them all.
 const COMMANDS = {
   new: { run: newRequest, positionals: 1, options: { from: { type: 'string' }, title: { type: 'string' }, tier: { type: 'string' } } },
   record: {
@@ -23,7 +24,7 @@ const COMMANDS = {
     },
   },
   index: { run: index, positionals: 0, options: { align: { type: 'string' } } },
-  spec: { run: spec, options: { 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } } },
+  spec: { run: spec, positionals: (o) => (o['add-ids'] === undefined ? Infinity : 0), options: { 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } } },
   check: { run: check, positionals: 0, options: { strict: { type: 'boolean' } } },
   export: { run: exportCommand, positionals: 0, options: { at: { type: 'string' }, out: { type: 'string' } } },
   search: {
@@ -65,10 +66,12 @@ async function main(argv) {
     } catch (e) {
       throw new Fail(e.message, USAGE);
     }
-    const extra = parsed.positionals[command.positionals ?? Infinity];
+    const { positionals = Infinity } = command;
+    const n = typeof positionals === 'function' ? positionals(parsed.values) : positionals;
+    const extra = parsed.positionals[n];
     if (extra !== undefined) {
-      const n = command.positionals;
-      throw new Fail(`extra argument ${JSON.stringify(extra)}: ${name} takes ${n === 0 ? 'no' : n} positional argument${n === 1 ? '' : 's'}`,
+      const used = name === 'spec' ? 'spec --add-ids' : name;
+      throw new Fail(`extra argument ${JSON.stringify(extra)}: ${used} takes ${n === 0 ? 'no' : n} positional argument${n === 1 ? '' : 's'}`,
         'quote an option value that holds spaces, and leave out the extra argument');
     }
     let out;
