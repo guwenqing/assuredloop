@@ -191,9 +191,10 @@ part.
 4. Write the findings in the request folder. Open them with the answer, and
    name the question version that it answers, for example "Answer to Q1
    version 1: …". Change no spec text.
-5. Run `al conclude <name> --yes`. Work that follows from the answer is a
-   new request. Say in its `request.md` that it follows the spike:
-   `Follows: <name>`.
+5. Run `al conclude <name> --yes`. A spike may end with no follow-up. An
+   answer may also inform work that is already open. Only separately
+   authorized work needs a new request; say in its `request.md` that it
+   follows the spike: `Follows: <name>`.
 
 ## The views
 
