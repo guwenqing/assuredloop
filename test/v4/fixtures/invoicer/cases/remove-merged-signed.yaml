@@ -1,0 +1,7 @@
+# The removal of remove-promise (arm signed) merged on main in an earlier commit,
+# so INV-4 is absent at the merge-base too; the closing PR changes nothing in
+# specs/. The close rule must still know that INV-4 was a promise.
+title: "Drop the tax limit: close"
+base: remove-promise
+baseArm: signed
+claim: "Tier: 2 — drop-tax; closes the request"
