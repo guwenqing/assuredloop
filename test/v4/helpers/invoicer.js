@@ -100,6 +100,32 @@ function step(dir, caseDir, s) {
       assert.ok(found, `${request} has a disposition for ${source}`);
       Object.assign(found, set);
     });
+  } else if (s.dispositionsDrop) {
+    // Removes the dispositions of one request that name one spec ID.
+    const { request, spec } = s.dispositionsDrop;
+    editRecord(dir, request, (rec) => {
+      const before = (rec.dispositions ?? []).length;
+      rec.dispositions = (rec.dispositions ?? []).filter((d) => d.spec !== spec);
+      assert.ok(rec.dispositions.length < before, `${request} has a disposition for ${spec}`);
+    });
+  } else if (s.adoption) {
+    // The adoption record, by hand in the T9 format (decision D12): the archived
+    // request `adoption`, and one disposition per adopted paragraph with the
+    // adopting commit (HEAD) and the paragraph's text hash from the per-doc
+    // record (so run index first).
+    const { doc, ids, text } = s.adoption;
+    const rec = readYaml(dir, `.assuredloop/records/${doc}.yaml`);
+    const commit = git(dir, 'rev-parse', 'HEAD');
+    const dispositions = ids.map((id) => {
+      const p = rec.paragraphs.find((x) => x.id === id);
+      assert.ok(p, `${id} is in the record of ${doc}`);
+      return { source: 'adoption', disposition: 'incorporated', spec: id, commit, spec_sha256: p.text_sha256 };
+    });
+    put(dir, 'requests/archive/adoption/request.md', `# Adoption
+Tier: 1 · Status: concluded
+
+${text}`);
+    writeYaml(dir, recordFile('adoption'), { schema: 'assuredloop/1', request: 'adoption', status: 'concluded', dispositions });
   } else if (s.decision) {
     const { request, id, set } = s.decision;
     editRecord(dir, request, (rec) => {
