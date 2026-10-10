@@ -94,3 +94,17 @@ export function assertFrame(stdout) {
 }
 
 export const show = (r) => `exit ${r.code}${r.signal ? ` (${r.signal})` : ''}\n--- stdout\n${r.stdout}--- stderr\n${r.stderr}`;
+
+// The request that spec fixtures name with serves:inv/R<n>, in the form
+// src/v4/request-md.js reads. Written, not committed.
+export const REQUEST_MD = [
+  '# inv', '',
+  '## Organized requirement', '',
+  '### R1 Invoices are sent', '', 'Invoicer sends invoices to small businesses.', '',
+  '### R2 Export links expire', '', 'An export link expires after a set time.', '',
+  '### R3 Links are used once', '', 'An export link works once.', '',
+].join('\n');
+
+export function addRequest(repo) {
+  repo.write('requests/inv/request.md', REQUEST_MD);
+}
