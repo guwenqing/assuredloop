@@ -7,7 +7,7 @@ import { parse } from 'yaml';
 import { read, recordPath } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { fileAt, git } from './git.js';
-import { groupOf, parseMarkdown } from './markers.js';
+import { KINDS, groupOf, parseMarkdown } from './markers.js';
 import { requirements } from './request-md.js';
 import { SPEC, docsInScope, parseScopes, symlinkOn } from './scope.js';
 
@@ -32,9 +32,24 @@ function names(top, rev, dir, folders) {
 // The text after an ADR's Status line: what must not change once it is accepted.
 const adrBody = (text) => text.replace(/\r\n?/g, '\n').replace(/^\s*Status:[^\n]*\n?/, '').replace(/^\n+/, '');
 
+// The settings of a commit: its own config.yaml and schema.yaml, with the
+// defaults of config.js when a file is absent or not a mapping.
+function settingsAt(top, rev) {
+  const yamlAt = (name) => {
+    try {
+      const v = parse(fileAt(top, rev, `.assuredloop/${name}`) ?? 'null');
+      return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+    } catch {
+      return {};
+    }
+  };
+  const c = yamlAt('config.yaml');
+  const s = yamlAt('schema.yaml');
+  return { config: { ...c, root: c.root ?? 'specs', docs: Array.isArray(c.docs) ? c.docs : [] }, kinds: s.kinds ?? KINDS };
+}
+
 export function loadState(top, rev = null) {
-  const config = loadConfig(top);
-  const { kinds } = loadSchema(top);
+  const { config, kinds } = rev ? settingsAt(top, rev) : { config: loadConfig(top), kinds: loadSchema(top).kinds };
   const get = rev ? (p) => fileAt(top, rev, p) : (p) => read(top, p);
   const root = posix.normalize(String(config.root)).replace(/\/+$/, '');
   const { scopes, lints } = parseScopes(docsInScope(top, config, rev), kinds);

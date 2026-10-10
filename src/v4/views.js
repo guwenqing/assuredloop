@@ -87,14 +87,28 @@ function verifiesOf(state) {
   return out;
 }
 
-// Each rule's checks: [{ file, how }] where how is "cites it" (exact) or
-// "verifies it (a claim)".
-function checksOf(id, cites, verifies) {
-  return [
-    ...[...(cites.get(id) ?? [])].sort().map((file) => ({ file, how: 'cites it' })),
-    ...(verifies.get(id) ?? []).map((file) => ({ file, how: 'verifies it (a claim)' })),
-  ];
+// A test file, by its path: under a test/, tests/, spec/ or __tests__/
+// folder, or named *.test.*, *.spec.* or *_test.*.
+const isTest = (file) => /(^|\/)(test|tests|spec|__tests__)\//i.test(file) || /(\.(test|spec)\.[^/]+|_test\.[^/]+)$/i.test(file);
+
+// The files that result files name as their check (the working tree only).
+const resultChecks = (state) => new Set(state.rev ? [] : loadResults(state.top).map((r) => String(r.check ?? '')));
+
+// A rule's checks (design.md 9): a test file or a result's check that names
+// it (cites, exact), or a declared verifies output (a claim). Any other file
+// that names it, such as code, is listed apart and is no check.
+function checksOf(id, cites, verifies, named) {
+  const files = [...(cites.get(id) ?? [])].sort();
+  return {
+    checks: [
+      ...files.filter((f) => isTest(f) || named.has(f)).map((file) => ({ file, how: 'cites it' })),
+      ...(verifies.get(id) ?? []).map((file) => ({ file, how: 'verifies it (a claim)' })),
+    ],
+    other: files.filter((f) => !isTest(f) && !named.has(f)),
+  };
 }
+const showChecks = ({ checks, other }) => `${checks.length ? checks.map((c) => `${c.file} ${c.how}`).join(' · ') : 'none'}`
+  + `${other.length ? ` · also named in ${other.join(', ')} (not a test: no check)` : ''}`;
 
 // The section of a spec paragraph from its display number: "1 Export links".
 const sectionOf = (p) => {
@@ -106,6 +120,7 @@ const sectionOf = (p) => {
 function coverage(state, rules, perRule) {
   const cites = citesOf(state);
   const verifies = verifiesOf(state);
+  const named = resultChecks(state);
   const sections = new Map();
   for (const p of rules) {
     const key = `${p.file} ${sectionOf(p)}`;
@@ -114,12 +129,11 @@ function coverage(state, rules, perRule) {
   }
   const out = [];
   for (const [key, ps] of sections) {
-    const checked = ps.filter((p) => checksOf(p.id, cites, verifies).length);
+    const checked = ps.filter((p) => checksOf(p.id, cites, verifies, named).checks.length);
     out.push(line('Coverage', `${key}: ${ps.length} rules, ${checked.length} with a check, ${ps.length - checked.length} without (${Math.round((100 * checked.length) / ps.length)}% have a check)`));
     if (perRule) {
       for (const p of ps) {
-        const cs = checksOf(p.id, cites, verifies);
-        out.push(`  ${p.id} rule: ${cs.length ? cs.map((c) => `${c.file} ${c.how}`).join(' · ') : 'none'}`);
+        out.push(`  ${p.id} rule: ${showChecks(checksOf(p.id, cites, verifies, named))}`);
       }
     }
   }
@@ -239,6 +253,7 @@ function auditLines(state, r) {
     const p = r.paras.get(sid.id);
     let st;
     if (d?.source === 'adoption') st = 'adoption';
+    else if (!r.open) st = 'as recorded at the close; not checked again';
     else if (!p) st = 'source not found';
     else if (d.source_sha256 && d.source_sha256 !== p.sha256) st = 'history (an earlier version)';
     else { const v = judge(state, r, p, d); st = v.valid ? 'valid' : `not valid: ${v.reason}`; }
@@ -278,8 +293,9 @@ function idView(state, id) {
     }
     body.push(line('Open', changes.length ? changes.join(' · ') : 'no open change builds on or changes it'));
     {
-      const cs = checksOf(p.id, citesOf(state), verifiesOf(state));
-      body.push(line('Checks', cs.length ? cs.map((c) => `${c.file} ${c.how}`).join(' · ') : 'none'));
+      const found = checksOf(p.id, citesOf(state), verifiesOf(state), resultChecks(state));
+      const cs = found.checks;
+      body.push(line('Checks', showChecks(found)));
       if (!state.rev) {
         for (const res of loadResults(state.top)) {
           if (!cs.some((c) => c.file === res.check)) continue;
@@ -393,4 +409,3 @@ export function context({ top, args, opts }) {
   }
   return { body: out.body, read, next: out.next, notKnown };
 }
-
