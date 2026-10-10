@@ -258,9 +258,15 @@ requirements:
 
 signoff:
   - id: S1
-    covers: [R1, R2, R3, R4]
-    requirement_sha256: 7d3e…
     file: origin/2026-05-05-signoff.md
+    sha256: 7d3e…              # the signed text
+    signed: 2026-05-05T10:12:00Z
+    source: owner
+    covers:                    # the requirement versions that S1 signs
+      - {id: R1, version: 1, sha256: 0b12…}
+      - {id: R2, version: 1, sha256: 4c8a…}
+      - {id: R3, version: 1, sha256: e91f…}
+      - {id: R4, version: 1, sha256: 5d07…}
 
 decisions:
   - id: D1
@@ -296,9 +302,9 @@ inputs are unchanged since then.
 
 On these records, the tool can say, as exact facts or as hints:
 
-1. SP-12 declares that it serves R2 (a declaration). That S1 covers R2 with
-   its hash, and that INV-41's text equals SP-12's incorporated text, are
-   exact facts.
+1. SP-12 declares that it serves R2 (a declaration). That S1 covers version 1
+   of R2 with its hash, and that INV-41's text equals SP-12's incorporated
+   text, are exact facts.
 2. `test/export-link.test.js` declares that it verifies INV-41 (a claim). If
    it, or another test file, names INV-41 in its text, that citation is an
    exact fact. Its declared inputs are unchanged since `invoicer-web@a81c…`
