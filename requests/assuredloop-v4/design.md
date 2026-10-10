@@ -857,3 +857,26 @@ never without a working tool.
 - Every dependency is pinned, and no release newer than 24 hours is used.
 - The release (T18) is a follow-on outside this request, and needs the
   owner's yes.
+
+Build decisions (the architect, 2026-10-10, recorded in the build PRs too):
+- Which files carry markers: every `*.md` under the spec root except
+  `specs/adr/`, which has its own form (below); the files that config's
+  `docs:` list names, each with its prefix; and every
+  `requests/<name>/spec.md`, with prefix `SP` and IDs local to that request.
+  User documents in `docs/` are outputs and carry no markers unless config
+  names them.
+- Display numbers: a single leading H1 is the title and is not numbered; H2
+  is 1, 2, ...; H3 is 1.1, and so on. A paragraph shows as
+  "INV-41 (2.3:4, in Export links)".
+- ADRs: `specs/adr/NNNN-<slug>.md`, with `Status: proposed|accepted|superseded`
+  at the top. The heading's marker holds the ADR's own ID `ADR-<n>` and its
+  `decides`, `source` and `supersedes` links; the other paragraphs take
+  `ADR-<n>-<k>`.
+- A requirement in `request.md` carries a hidden marker too, with its links
+  to the owner's words: `<!-- R2 from:<snapshot file name> -->`. Each
+  requirement version is kept; a sign-off records the versions it covers,
+  and may name what the owner was shown (`presented`) and who wrote the
+  owner's words down (`transcribed_by`).
+- A paragraph's hash is the full SHA-256 of its text after line endings are
+  normalized and the marker framing is removed. The YAML library is `yaml`
+  2.9.1, pinned.
