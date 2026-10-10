@@ -13,6 +13,19 @@ const ctx = (t, name, arm, ...args) => {
 };
 const recordOf = (dir, name) => readYaml(dir, `.assuredloop/records/requests/${name}.yaml`);
 
+// The state of one binding in --audit: the one line that names the holder, the
+// link word and the target, in that order, and that is not a finding line
+// (hint, not ok, info); its state word is bound, stale or target not found.
+const esc = (x) => x.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+function bindingState(r, holder, link, target) {
+  const order = new RegExp(`(?<![\\w-])${esc(holder)}\\s+${esc(link)}\\s+${esc(target)}(?![\\w-])`);
+  const found = lines(r).filter((l) => order.test(l) && !/^\s*(hint|not ok|info) /.test(l));
+  assert.equal(found.length, 1, `one binding line ${holder} ${link} ${target}:\n${show(r)}`);
+  const states = found[0].match(/\b(bound|stale|target not found)\b/g) ?? [];
+  assert.equal(states.length, 1, `one state word on the binding line:\n${found[0]}`);
+  return states[0];
+}
+
 // --- 1. the project
 
 test('context: one line per open request with its tier, sign-off state and dispositions count; none for an archived one', (t) => {
@@ -235,8 +248,8 @@ test('context <name> --audit: sources and their hashes, every requirement versio
   has(r, word('D1'));
   has(r, word('D2'));
   for (const id of ['T1', 'T2', 'T3']) has(r, word(id));
-  has(r, word('invoice-exports/SP-9'), /\bstale\b/);
-  has(r, word('invoice-exports/SP-7'), word('EXP-2'), /\bbound\b/);
+  assert.equal(bindingState(r, 'invoice-exports/SP-9', 'serves', 'invoice-exports/R2'), 'stale');
+  assert.equal(bindingState(r, 'invoice-exports/SP-7', 'builds-on', 'EXP-2'), 'bound');
   has(r, word('SP-6'), /incorporated/, word('EXP-4'));
 });
 
@@ -245,7 +258,7 @@ test('context <name> --audit: declared outputs as claims, results, bindings whos
   has(v, 'test/dates.test.js', /claim/);
   has(v, 'docs/exports.md', /claim/);
   const chain = ctx(t, 'cr-chain', undefined, 'link-refresh', '--audit');
-  has(chain, word('link-refresh/SP-2'), word('EXP-4'), /target not found/);
+  assert.equal(bindingState(chain, 'link-refresh/SP-2', 'changes', 'EXP-4'), 'target not found');
   const abandon = ctx(t, 'cr-abandon', undefined, 'invoice-exports', '--audit');
   has(abandon, word('#46'));
   has(abandon, word('#47'));
