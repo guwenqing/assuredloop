@@ -1,0 +1,330 @@
+// al spec --add-ids writes the adoption record, and al check reads it on the
+// branch (#196, T17; design.md 5 and 14, decisions D8, D9 and D16). Written
+// from the requirement of issue #196 and the public commands, not from the
+// code. The text hash oracle is the text_sha256 that `al index` writes in the
+// per-doc record; the tests do not compute it themselves.
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { parse } from 'yaml';
+import {
+  al, commitAll, docRecord, editFile, exists, git, index, ok, project, read, readYaml, refused, show, write,
+  writeConfig, writeYaml, writesNothing,
+} from './helpers/project.js';
+import { check } from './helpers/invoicer.js';
+
+const SPEC = 'specs/invoices.md';
+const ADOPTION = '.assuredloop/records/requests/adoption.yaml';
+const ADOPTION_MD = 'requests/archive/adoption/request.md';
+const HEX40 = /^[0-9a-f]{40}$/;
+
+// The unmarked spec. --add-ids --prefix INV marks it in file order:
+// INV-1 heading, INV-2 data text, INV-3 heading, INV-4 rule, INV-5 rule.
+const UNMARKED = [
+  '# Invoices',
+  'An invoice has a number, a customer, lines and a total.',
+  '## Rules',
+  'An invoice MUST have at least one line.',
+  'The export link MUST expire 30 minutes after the email is sent.',
+].join('\n\n') + '\n';
+const ALL = ['INV-1', 'INV-2', 'INV-3', 'INV-4', 'INV-5'];
+
+const addIds = (dir, file = SPEC, ...rest) => al(dir, ['spec', '--add-ids', file, '--prefix', 'INV', ...rest]);
+const adopt = (dir, file = SPEC, ...rest) => ok(dir, ['spec', '--add-ids', file, '--prefix', 'INV', '--yes', ...rest]);
+const dispositions = (dir) => readYaml(dir, ADOPTION).dispositions;
+const outLines = (r) => r.stdout.split('\n');
+
+// The text hash of each ID, as `al index` writes it in the per-doc record.
+function hashes(dir, file = SPEC) {
+  index(dir);
+  return Object.fromEntries((docRecord(dir, file).paragraphs ?? []).map((p) => [p.id, p.text_sha256]));
+}
+
+// The entry the requirement asks for, for one marked paragraph.
+const entry = (id, commit, hash) => ({ source: 'adoption', disposition: 'incorporated', spec: id, commit, spec_sha256: hash });
+
+// A repo with the unmarked spec committed on main.
+function unmarkedRepo(t, text = UNMARKED) {
+  const dir = project(t);
+  write(dir, SPEC, text);
+  commitAll(dir, 'the spec, before AssuredLoop');
+  return dir;
+}
+
+describe('al spec --add-ids --yes writes the adoption record', () => {
+  test('one disposition per marked paragraph, in file order: source adoption, incorporated, the ID, the full HEAD commit, the text hash', (t) => {
+    const dir = unmarkedRepo(t);
+    const head = git(dir, 'rev-parse', 'HEAD');
+    assert.match(head, HEX40);
+    const r = adopt(dir);
+    const got = dispositions(dir);
+    const h = hashes(dir);
+    assert.deepEqual(got, ALL.map((id) => entry(id, head, h[id])), show(r));
+  });
+
+  test('a new record is a map with schema assuredloop/1, request adoption, status concluded and the dispositions list', (t) => {
+    const dir = unmarkedRepo(t);
+    const r = adopt(dir);
+    assert.ok(exists(dir, ADOPTION), show(r));
+    const rec = readYaml(dir, ADOPTION);
+    assert.equal(rec.schema, 'assuredloop/1');
+    assert.equal(rec.request, 'adoption');
+    assert.equal(rec.status, 'concluded');
+    assert.ok(Array.isArray(rec.dispositions), JSON.stringify(rec));
+    assert.equal(rec.dispositions.length, ALL.length, JSON.stringify(rec));
+  });
+
+  test('writes requests/archive/adoption/request.md with a heading when it is absent', (t) => {
+    const dir = unmarkedRepo(t);
+    const r = adopt(dir);
+    assert.ok(exists(dir, ADOPTION_MD), show(r));
+    assert.match(read(dir, ADOPTION_MD), /^#+ \S/m);
+  });
+
+  test('never changes an existing requests/archive/adoption/request.md', (t) => {
+    const dir = project(t);
+    const own = '# Adoption\n\nOur own words about the adoption, kept as they are.  \n';
+    write(dir, SPEC, UNMARKED);
+    write(dir, ADOPTION_MD, own);
+    commitAll(dir, 'spec and our own adoption note');
+    const r = adopt(dir);
+    assert.equal(read(dir, ADOPTION_MD), own, show(r));
+    assert.equal(dispositions(dir).length, ALL.length, show(r));
+  });
+
+  test('a paragraph that already had a marker gets no entry; only the paragraphs this run marked do', (t) => {
+    const text = [
+      '<!-- INV-1 note -->', '', '# Invoices', '',
+      '<!-- INV-2 data -->', '', 'An invoice has a number.', '',
+      'An invoice MUST have at least one line.', '',
+      '## Rules', '',
+      'The export link MUST expire.', '',
+    ].join('\n');
+    const dir = unmarkedRepo(t, text);
+    const head = git(dir, 'rev-parse', 'HEAD');
+    const r = adopt(dir);
+    const h = hashes(dir);
+    assert.deepEqual(dispositions(dir), ['INV-3', 'INV-4', 'INV-5'].map((id) => entry(id, head, h[id])), show(r));
+  });
+
+  test('a second run on another file appends, and the entries already there stay byte for byte', (t) => {
+    const dir = project(t);
+    write(dir, 'specs/a.md', '# Alpha\n\nAlpha text.\n');
+    write(dir, 'specs/b.md', '# Beta\n\nBeta text.\n\nBeta MUST hold.\n');
+    commitAll(dir, 'two unmarked docs');
+    ok(dir, ['spec', '--add-ids', 'specs/a.md', '--prefix', 'A', '--yes']);
+    const first = read(dir, ADOPTION);
+    const firstEntries = parse(first).dispositions;
+    assert.equal(firstEntries.length, 2, first);
+    const head = commitAll(dir, 'adopt a.md');
+    const r = ok(dir, ['spec', '--add-ids', 'specs/b.md', '--prefix', 'B', '--yes']);
+    const second = read(dir, ADOPTION);
+    assert.ok(second.startsWith(first), `the old bytes are kept and the new entries come after them:\n--- first\n${first}--- second\n${second}`);
+    const all = parse(second).dispositions;
+    assert.deepEqual(all.slice(0, 2), firstEntries, show(r));
+    const h = hashes(dir, 'specs/b.md');
+    assert.deepEqual(all.slice(2), ['B-1', 'B-2', 'B-3'].map((id) => entry(id, head, h[id])), show(r));
+  });
+
+  test('a paragraph edited in the working tree and not committed gets no entry, and the output names it as not adopted', (t) => {
+    const dir = unmarkedRepo(t);
+    const head = git(dir, 'rev-parse', 'HEAD');
+    editFile(dir, SPEC, 'at least one line', 'at least two lines');
+    const r = adopt(dir);
+    const h = hashes(dir);
+    assert.deepEqual(dispositions(dir), ['INV-1', 'INV-2', 'INV-3', 'INV-5'].map((id) => entry(id, head, h[id])), show(r));
+    assert.ok(outLines(r).some((l) => l.includes('INV-4') && /not adopted/i.test(l)), `a line names INV-4 as not adopted:\n${show(r)}`);
+    for (const id of ['INV-1', 'INV-2', 'INV-3', 'INV-5']) {
+      assert.ok(!outLines(r).some((l) => new RegExp(`\\b${id}\\b`).test(l) && /not adopted/i.test(l)), `${id} is adopted:\n${show(r)}`);
+    }
+  });
+
+  test('a paragraph added in the working tree and not committed gets no entry, and the output names it as not adopted', (t) => {
+    const dir = unmarkedRepo(t);
+    const head = git(dir, 'rev-parse', 'HEAD');
+    write(dir, SPEC, `${UNMARKED}\nA paid invoice MUST NOT change.\n`);
+    const r = adopt(dir);
+    const h = hashes(dir);
+    assert.ok(h['INV-6'], `INV-6 is the added paragraph:\n${read(dir, SPEC)}`);
+    assert.deepEqual(dispositions(dir), ALL.map((id) => entry(id, head, h[id])), show(r));
+    assert.ok(outLines(r).some((l) => l.includes('INV-6') && /not adopted/i.test(l)), `a line names INV-6 as not adopted:\n${show(r)}`);
+  });
+
+  test('without --yes nothing is written: no doc change, no record, no request.md', (t) => {
+    const dir = unmarkedRepo(t);
+    writesNothing(dir, ['spec', '--add-ids', SPEC, '--prefix', 'INV']);
+    assert.ok(!exists(dir, ADOPTION));
+    assert.ok(!exists(dir, ADOPTION_MD));
+  });
+
+  test('in a repo with no commit yet: the file is marked, no adoption record and no request.md, and the output says no adoption record was written', (t) => {
+    const dir = project(t);
+    write(dir, SPEC, UNMARKED);
+    const r = adopt(dir);
+    assert.match(read(dir, SPEC), /^<!-- INV-1 note -->$/m, show(r));
+    assert.match(read(dir, SPEC), /^<!-- INV-5 -->$/m, show(r));
+    assert.ok(!exists(dir, ADOPTION), show(r));
+    assert.ok(!exists(dir, ADOPTION_MD), show(r));
+    assert.ok(outLines(r).some((l) => /adoption record/i.test(l) && /\b(no|not)\b/i.test(l)),
+      `a line says that no adoption record was written:\n${show(r)}`);
+  });
+
+  test('an open request named adoption makes it refuse: exit 2, an al: line, nothing written', (t) => {
+    const dir = project(t);
+    write(dir, SPEC, UNMARKED);
+    write(dir, 'requests/adoption/request.md', '# Adoption\n\nAn open request that has the name adoption.\n');
+    commitAll(dir, 'spec and an open request named adoption');
+    refused(dir, ['spec', '--add-ids', SPEC, '--prefix', 'INV', '--yes']);
+  });
+
+  test('a later al index keeps the adoption entries unchanged, also after a text edit (D8)', (t) => {
+    const dir = unmarkedRepo(t);
+    adopt(dir);
+    const before = dispositions(dir);
+    index(dir);
+    assert.deepEqual(dispositions(dir), before);
+    editFile(dir, SPEC, 'at least one line', 'at least two lines');
+    commitAll(dir, 'edit INV-4');
+    index(dir);
+    assert.deepEqual(dispositions(dir), before);
+  });
+});
+
+// --- al check on the adopting branch (T16 gap 1)
+
+const CLAIM = 'Adopt AssuredLoop: al spec --add-ids\n\nTier: 0 — adds paragraph IDs; no promise changes';
+const PROMISE_CODES = ['signoff-coverage', 'path-claim'];
+
+// main: the v4 config and the unmarked spec. Then the branch `feature`.
+function adoptionBase(t) {
+  const dir = project(t);
+  writeConfig(dir);
+  write(dir, SPEC, UNMARKED);
+  commitAll(dir, 'the v4 config and the spec, before IDs');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  return dir;
+}
+
+// The kinds set by hand in the markers that --add-ids wrote.
+function setKinds(dir, kinds = { 'INV-2': 'data', 'INV-4': 'rule', 'INV-5': 'rule' }) {
+  for (const [id, kind] of Object.entries(kinds)) editFile(dir, SPEC, `<!-- ${id} -->`, `<!-- ${id} ${kind} -->`);
+}
+
+// The adoption record by hand in the T9 format (D16), naming each ID with the
+// given hash and the HEAD commit, so these tests do not depend on what
+// --add-ids writes. It replaces any record that --add-ids wrote.
+function handRecord(dir, named) {
+  const head = git(dir, 'rev-parse', 'HEAD');
+  writeYaml(dir, ADOPTION, {
+    schema: 'assuredloop/1', request: 'adoption', status: 'concluded',
+    dispositions: Object.entries(named).map(([id, hash]) => entry(id, head, hash)),
+  });
+  if (!exists(dir, ADOPTION_MD)) write(dir, ADOPTION_MD, '# Adoption\n\nThe paragraphs of specs/invoices.md as adopted.\n');
+}
+const pick = (h, ids) => Object.fromEntries(ids.map((id) => [id, h[id]]));
+
+const notOk = (r, id) => r.findings.filter((f) => f.severity === 'not ok' && f.id === id);
+const noLink = (r, id) => r.findings.filter((f) => f.code === 'no-link' && f.id === id);
+const assertPromiseFindings = (r, id) => {
+  for (const code of PROMISE_CODES) {
+    assert.ok(r.findings.some((f) => f.severity === 'not ok' && f.code === code && f.id === id), `not ok ${code} ${id}:\n${show(r)}`);
+  }
+};
+const assertClean = (r, ids) => {
+  for (const id of ids) {
+    assert.deepEqual(notOk(r, id), [], `no not ok for ${id}:\n${show(r)}`);
+    assert.deepEqual(noLink(r, id), [], `no no-link for ${id}:\n${show(r)}`);
+  }
+};
+// A hint with the ID that says the adoption record does not match the base.
+const assertMismatchHint = (r, id) => assert.ok(
+  r.findings.some((f) => f.severity === 'hint' && f.id === id && /adopt/i.test(f.line) && /\bbase\b/i.test(f.line)),
+  `a hint for ${id} says the adoption record does not match the base:\n${show(r)}`,
+);
+
+describe('al check reads the adoption record on the branch', () => {
+  test('a branch that adopts an unmarked spec: no not ok and no no-link for the adopted paragraphs, --strict exits 0', (t) => {
+    const dir = adoptionBase(t);
+    adopt(dir);
+    setKinds(dir);
+    commitAll(dir, CLAIM);
+    const r = check(dir);
+    assert.equal(r.code, 0, show(r));
+    assertClean(r, ALL);
+    const strict = check(dir, '--strict');
+    assert.equal(strict.code, 0, show(strict));
+    assertClean(strict, ALL);
+  });
+
+  test('control: the same marked branch with no adoption record still gives signoff-coverage and path-claim not ok', (t) => {
+    const dir = adoptionBase(t);
+    adopt(dir);
+    setKinds(dir);
+    for (const rel of [ADOPTION, ADOPTION_MD]) rmSync(join(dir, rel), { force: true });
+    assert.ok(!exists(dir, ADOPTION));
+    commitAll(dir, CLAIM);
+    const r = check(dir);
+    for (const id of ['INV-4', 'INV-5']) assertPromiseFindings(r, id);
+    assert.equal(check(dir, '--strict').code, 1, show(r));
+  });
+
+  test('a promise paragraph whose text the branch also changed is not adopted, even when the record names its new hash', (t) => {
+    const dir = adoptionBase(t);
+    adopt(dir);
+    setKinds(dir);
+    const atBase = hashes(dir);
+    editFile(dir, SPEC, 'at least one line', 'at least two lines');
+    const now = hashes(dir);
+    assert.notEqual(now['INV-4'], atBase['INV-4']);
+    handRecord(dir, { ...pick(atBase, ALL), 'INV-4': now['INV-4'] });
+    commitAll(dir, CLAIM);
+    const r = check(dir);
+    assertPromiseFindings(r, 'INV-4');
+    assertMismatchHint(r, 'INV-4');
+    assertClean(r, ['INV-1', 'INV-2', 'INV-3', 'INV-5']);
+    assert.equal(check(dir, '--strict').code, 1, show(r));
+  });
+
+  test('a promise paragraph edited after adoption, with the record still naming the base hash, gets its findings', (t) => {
+    const dir = adoptionBase(t);
+    adopt(dir);
+    setKinds(dir);
+    handRecord(dir, pick(hashes(dir), ALL));
+    editFile(dir, SPEC, 'at least one line', 'at least two lines');
+    commitAll(dir, CLAIM);
+    const r = check(dir);
+    assertPromiseFindings(r, 'INV-4');
+    assertClean(r, ['INV-1', 'INV-2', 'INV-3', 'INV-5']);
+  });
+
+  test('a promise paragraph that is new on the branch and named in the record is not adopted', (t) => {
+    const dir = adoptionBase(t);
+    write(dir, SPEC, `${UNMARKED}\nA paid invoice MUST NOT change.\n`);
+    adopt(dir);
+    setKinds(dir, { 'INV-2': 'data', 'INV-4': 'rule', 'INV-5': 'rule', 'INV-6': 'rule' });
+    handRecord(dir, pick(hashes(dir), [...ALL, 'INV-6']));
+    commitAll(dir, CLAIM);
+    const r = check(dir);
+    assertPromiseFindings(r, 'INV-6');
+    assertMismatchHint(r, 'INV-6');
+    assertClean(r, ALL);
+  });
+
+  test('control: a spec marked and adopted at the base behaves as before for a normal edit of a promise paragraph', (t) => {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, SPEC, UNMARKED);
+    commitAll(dir, 'the spec, before IDs');
+    adopt(dir);
+    setKinds(dir);
+    handRecord(dir, pick(hashes(dir), ALL));
+    commitAll(dir, CLAIM);
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    editFile(dir, SPEC, 'at least one line', 'at least two lines');
+    commitAll(dir, 'Two lines\n\nTier: 0 — fixes INV-4');
+    const r = check(dir);
+    assertPromiseFindings(r, 'INV-4');
+    assertClean(r, ['INV-1', 'INV-2', 'INV-3', 'INV-5']);
+  });
+});
