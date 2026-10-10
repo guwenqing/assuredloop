@@ -7,8 +7,10 @@ their shape.
 
 ## Result
 
-Four of the five criteria are met. `al check` on a PR is not: it took 40 to
-43 seconds, and the criterion is 10 seconds.
+With #199, all five criteria are met: `al check` on a PR takes 6.0 seconds
+(see "After #199" below). The first measured run, on main b4fe90e before
+#199, met four of the five. `al check` on a PR missed: it took 40 to 43
+seconds, and the criterion is 10 seconds. The table gives that first run.
 
 | Measure | Criterion | Time (largest run) | Result |
 |---|---|---|---|
@@ -20,6 +22,46 @@ Four of the five criteria are met. `al check` on a PR is not: it took 40 to
 
 Every search answered at level 1. The 10 removed paragraphs are gone from
 the current index, and a history query still finds each of them.
+
+## After #199
+
+#199 removed the causes that "Why `al check` missed" names. One git process
+for each repo now finds the PR merges and the results' commits. `al check`
+reads only the output repos and their results, so it does not load the records
+a third time. It parses an archived record only when the check needs it (D20).
+
+The two runs used the same world and the same harness, one after the other,
+on the same machine:
+- before: main 4d983cf, whose `src/` and `bin/` are those of b4fe90e;
+- after: the #199 branch at 3664249.
+
+Both runs, and the six-PR comparison below, ran before this branch was rebased
+onto main e439316. That rebase brought #198, which changes only the text of
+check's Next line and of al conclude's Outcome, not what is read or how.
+
+The harness marks the "before" al as dirty. That is only because its
+worktree holds `node_modules` as a symlink; its code is main's.
+
+| Measure | Criterion | Before (main) | After (#199) | Result after |
+|---|---|---|---|---|
+| `al check` on a PR (328dabb, 3 runs) | 10 s | 45.0, 50.1, 49.7 s | 6.03, 6.05, 6.05 s | met |
+| full level 1 rebuild | 900 s | 30.5 s | 30.0 s | met |
+| incremental index after a merge | 120 s | 16.3 s | 18.3 s | met |
+| removal of 10 rows | 120 s | 17.6 s | 17.7 s | met |
+| `al search`, 5 queries at level 1 | 2 s | 0.97 to 1.21 s | 0.70 to 1.05 s | met |
+
+- The 1-minute load average was 6.8 to 12.6 during both runs.
+- Every search answered at level 1, and the removal checks held in both runs.
+- The output of `al check` did not change. Besides the tests, I compared its
+  full output from main and from #199, byte for byte, on six PRs of this
+  world, each made off main. All six were the same. With #199 they took 6.1
+  to 7.5 s; with main they took 45 to 52 s. The six PRs:
+  - closing the oldest open request;
+  - closing another open request;
+  - removing 10 paragraphs from a spec file;
+  - editing an adopted paragraph;
+  - editing a paragraph that serves an archived request;
+  - adding a link to a spec ID that an archived request removed.
 
 ## The run
 
@@ -86,7 +128,7 @@ paragraph.
 - The index after the full rebuild: 118,003 current rows and 137,047 history
   rows.
 
-## Why `al check` misses
+## Why `al check` missed (before #199)
 
 A CPU profile of one `al check` on central's main (39 s; `node --cpu-prof`)
 shows where the time goes:
@@ -130,6 +172,14 @@ rebuild was 28 to 44 s, the incremental index 13 to 17 s, and search 0.15 to
   merged in one output repo.
 - The cost account of design.md 16: that is part of T16, after this issue.
 - Each number is from one run on a shared machine. They are not averages.
+- `al context` still loads the working tree's records twice: once in
+  `state.js`, and once in `crossRepo`, which uses the indexer's shape of the
+  state. Sharing one load could change its output for an archived folder with
+  no request.md, so #199 left it.
+- #199 reads the adoption entries, and the request that removed an ID, only
+  from records whose text names `adoption` or that ID, or holds a backslash
+  (a YAML escape can write those words another way). The records of this
+  world hold no backslash.
 
 ## How to repeat it
 
