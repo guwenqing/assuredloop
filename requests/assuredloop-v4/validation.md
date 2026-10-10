@@ -508,25 +508,32 @@ the commit named in the PR. They are not in this repository.
   paragraphs differ in markup only: 4 in a code-fence info string, 2 in
   letter case. Under exact equality these 6 need a wording decision or a
   typo claim. 70 paragraphs differ in words.
-- The agents' conversion kept the bytes. In all 33 replay states, the
-  converted spec without its markers equals the real OpenSpec spec line by
-  line, code fences included. No replayed disposition needed a wording
+- The agents' conversion kept the text. A script made 33 comparisons of a
+  converted spec with the real OpenSpec spec, over the 17 replay states that
+  have a spec. All 33 are equal in this sense: every non-blank line is equal
+  byte for byte, in order, once the markers are removed, and the lines
+  inside code fences are equal with their blank lines. Blank lines outside
+  code fences are not compared, because a marker adds them. No replayed disposition needed a wording
   decision or a typo claim: every difference that the replay met changed the
   meaning.
 - On the review questions, the three arms answered the same: 30 of 30 each.
   The questions were answerable from OpenSpec's own records and the diffs.
   The v4 records added no right answer on this real history; they added
   paragraph IDs (recall 0.64 in the full arm, 0.72 in the lighter arm).
-- The replay met seven real problems (section B6). The OpenSpec CLI 1.14.1
+- The replay met five real defects (section B6). The OpenSpec CLI 1.14.1
   (today's release, not the version that the project used then) reported
-  three of them as errors: two MODIFIED blocks that drop scenarios (one of
-  them a stale base) and a spec with duplicate requirement names. The v4
-  model showed six, and four of them only the v4 model showed: a parallel
-  edit that was lost, a consolidated text with the opposite meaning, four
-  direct promise edits, and no sign-off at all. The v4 model did not see the
-  duplicate names. The lighter arm missed the overlap hint and the
-  stale-base hint, as in validation A, and flagged declared removals of
-  headings as lost IDs.
+  three as errors: MODIFIED blocks that drop scenarios, a stale base in the
+  chain, and a spec with duplicate requirement names. The full v4 model
+  showed four: the dropped scenarios (in one of two cases, see B6), the
+  stale base, and two that only it showed: a parallel edit that was lost,
+  and a consolidated text with the opposite meaning. It did not see the
+  duplicate names. The lighter arm showed the same four, but the lost edit
+  and the stale base only at the close; it also flagged declared removals
+  of headings as lost IDs.
+- The v4 model also flagged what OpenSpec does not declare: four direct
+  promise edits with no request, and no sign-off on any change. These are
+  missing declarations, not detected defects (design.md 15: a rule that
+  only catches its own missing declaration does not count).
 - Converting one real change cost 166k to 294k tokens and 5 to 13 minutes of
   agent time, in two runs (open and close). Most of it is a fixed cost: the
   changes of 340 to 450 words cost 166k to 184k, the largest (2,221 words)
@@ -638,7 +645,8 @@ Chosen changes: 197 paragraphs, 185 equal, 12 words.
 - OpenSpec's archive command copies the delta text into the spec. So most
   text is equal. v4 consolidates by hand (design.md 5), so this measures
   the source texts, not hand copies. The fidelity check measures the hand
-  copies: 33 of 33 converted states equal the real bytes.
+  copies: 33 of 33 comparisons equal, on non-blank lines and code fences
+  (B1).
 - Most "words differ" cases are not drift of one text. Several changes
   MODIFIED one requirement and were archived in one commit, or a MODIFIED
   delta held only the new scenario and the archive kept the others. At the
@@ -682,9 +690,9 @@ judged on each request's closing state.
 
 ## B6. What each arm's tool showed on the real problems
 
-The replay met seven real problems. The OpenSpec CLI ran on the states
-before and after the last step of each episode; the model ran on every
-state. The CLI is today's release: the project archived these changes with
+The replay met five real defects and two missing declarations. The OpenSpec
+CLI ran on the states before and after the last step of each episode; the
+model ran on every state. The CLI is today's release: the project archived these changes with
 older versions, which let the problems through.
 
 | Real problem (episode) | OpenSpec CLI 1.14.1 | Lighter (model) | Full (model) |
@@ -694,8 +702,8 @@ older versions, which let the problems through.
 | Two open changes MODIFIED one requirement; one text was lost at the archive (the pair) | no finding | no overlap hint; `al conclude` refuses the lost paragraph | overlap hint while both were open; `al conclude` refuses the lost paragraph |
 | The consolidated requirement says the opposite of the change (config: unknown keys rejected, not allowed) | no finding | `al conclude` refuses 2 rules | the same |
 | A spec text changed under an open change (the chain: a rename, then a tool replaced) | error before the archive: the MODIFIED block omits the scenarios added since | nothing while open; `al conclude` refuses at the close | stale-binding hint while open; `al conclude` refuses at the close |
-| Four commits changed promise text with no change | not a concept (no change to validate) | `not ok`: no signed requirement | `not ok`: no signed requirement |
-| No change has a sign-off | not a concept | `al conclude` refuses all 9 | the same |
+| Missing declaration, not a defect: four commits changed promise text with no change | not a concept (no change to validate) | `not ok`: no signed requirement | `not ok`: no signed requirement |
+| Missing declaration, not a defect: no change has a sign-off | not a concept | `al conclude` refuses all 9 | the same |
 
 - The CLI found the stale base of the chain by structure: the old MODIFIED
   block no longer holds the scenarios that later commits added. The v4
