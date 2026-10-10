@@ -20,35 +20,50 @@ function readDoc(rel) {
 }
 
 // The code of a doc: each line of a fenced code block, and each code span of
-// the other lines, as { text, where }.
+// the other text, as { text, where }. A code span may wrap over lines inside
+// a paragraph (not over a blank line); its line breaks read as spaces, and
+// `where` is the line it starts on.
 function codeUnits(rel, md) {
   const units = [];
   let fence = null;
+  let para = [];
+  const endPara = () => {
+    if (!para.length) return;
+    const text = para.map((p) => p.line).join('\n');
+    for (const m of text.matchAll(/`([^`]+)`/g)) {
+      const at = para[text.slice(0, m.index).split('\n').length - 1].n;
+      units.push({ text: m[1].replace(/[ \t]*\n[ \t]*/g, ' '), where: `${rel}:${at}` });
+    }
+    para = [];
+  };
   md.split('\n').forEach((line, i) => {
-    const where = `${rel}:${i + 1}`;
     const f = /^\s*(```+|~~~+)/.exec(line);
     if (f && (fence === null || f[1].startsWith(fence))) {
+      endPara();
       fence = fence === null ? f[1] : null;
       return;
     }
-    if (fence !== null) units.push({ text: line, where });
-    else for (const m of line.matchAll(/`([^`]+)`/g)) units.push({ text: m[1], where });
+    if (fence !== null) units.push({ text: line, where: `${rel}:${i + 1}` });
+    else if (line.trim() === '') endPara();
+    else para.push({ line, n: i + 1 });
   });
+  endPara();
   return units;
 }
 
 // Each `al <command> ...` in a unit: the command, and the --options written
-// after it up to a shell separator or the next `al`. A placeholder such as
-// <name> or <0|1|2> stands for a value.
+// after it up to a shell separator (;, &&, ||, a | with spaces round it, #)
+// or the next `al`. A placeholder such as <name> or <0|1|2> stands for a
+// value. An option counts wherever it starts, also after [ ( | " ' or =.
 function alCommands(unit) {
   const text = unit.text.replace(/<[^<>]*>/g, 'VALUE');
   const found = [];
-  const starts = [...text.matchAll(/(?:^|[\s;&|(`$"'])al[ \t]+([a-z][a-z-]*)\b/g)];
+  const starts = [...text.matchAll(/(?:^|[\s;&|(\[`$"'])al[ \t]+([a-z][a-z-]*)\b/g)];
   starts.forEach((m, k) => {
     const from = m.index + m[0].length;
     const to = k + 1 < starts.length ? starts[k + 1].index : text.length;
-    const rest = text.slice(from, to).split(/;|\||&&|\s#/)[0];
-    const options = [...rest.matchAll(/(?:^|\s)["']?--([a-z][a-z0-9-]*)/g)].map((o) => o[1]);
+    const rest = text.slice(from, to).split(/;|&&|\|\||\s\|\s|\s#/)[0];
+    const options = [...rest.matchAll(/(?<![\w-])--([a-z][a-z0-9-]*)/g)].map((o) => o[1]);
     found.push({ command: m[1], options, where: unit.where, text: unit.text });
   });
   return found;
@@ -113,28 +128,36 @@ test('each al command and option the v4 docs name is one al-v4 accepts', (t) => 
   assert.deepEqual(bad, []);
 });
 
+// Each line of a doc, and each code unit (so a code span that wraps is read
+// whole), as { text, where }.
+const linesAndCode = (rel, md) => [
+  ...md.split('\n').map((text, i) => ({ text, where: `${rel}:${i + 1}` })),
+  ...codeUnits(rel, md),
+];
+
 test('the v4 docs do not name al consolidate or al record ... section', () => {
   const bad = [];
   for (const rel of DOCS) {
-    readDoc(rel).split('\n').forEach((line, i) => {
-      if (/\bal[ \t]+consolidate\b/.test(line)) bad.push(`${rel}:${i + 1}: ${line}`);
-      if (/\bal[ \t]+record\b[^`\n]*?(?:^|\s)section\b/.test(line)) bad.push(`${rel}:${i + 1}: ${line}`);
-    });
+    for (const { text, where } of linesAndCode(rel, readDoc(rel))) {
+      if (/\bal[ \t]+consolidate\b/.test(text)) bad.push(`${where}: ${text}`);
+      if (/\bal[ \t]+record\b[^`\n]*?(?:^|\s)section\b/.test(text)) bad.push(`${where}: ${text}`);
+    }
   }
   assert.deepEqual(bad, []);
 });
 
 // Each `Tier: <path> — <claim>` example: "Tier:", a path, a dash, a claim, up
-// to the end of the line or of the code span. A template such as
+// to the end of the line or of the code span (a wrapped span read whole), so
+// one example can show twice; the test runs each text once. A template such as
 // "Tier: <n> — <claim>" is not an example.
 function tierExamples(rel, md) {
   const out = [];
-  md.split('\n').forEach((line, i) => {
-    for (const m of line.matchAll(/Tier:[ \t]*([^\s`<][^`]*)/g)) {
+  for (const { text, where } of linesAndCode(rel, md)) {
+    for (const m of text.matchAll(/Tier:[ \t]*([^\s`<][^`]*)/g)) {
       const example = m[0].trimEnd();
-      if (/^Tier:[ \t]*\S+[ \t]*(?:—|–|--?)[ \t]*\S/.test(example)) out.push({ example, where: `${rel}:${i + 1}` });
+      if (/^Tier:[ \t]*\S+[ \t]*(?:—|–|--?)[ \t]*\S/.test(example)) out.push({ example, where });
     }
-  });
+  }
   return out;
 }
 
