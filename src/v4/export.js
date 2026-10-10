@@ -332,5 +332,6 @@ export function exportCommand({ top, opts }) {
   return {
     body: [`Wrote ${rows.length} rows to ${opts.out}, at ${commit.slice(0, 12)}: ${Object.entries(roles).sort().map(([k, n]) => `${n} ${k}`).join(', ') || 'none'}`],
     next: 'al search <words>',
+    notKnown: ['the output repos: only this repo is exported until the cross-repo config (#180)'],
   };
 }
