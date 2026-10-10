@@ -8,7 +8,7 @@ import { formatSnapshot, slug } from './snapshot.js';
 import { addDecision, decisionNumbers, requirements, setSignedOff, signedText } from './request-md.js';
 import { YAML_OPTIONS, addVersions, append, highest, latest, openRecord, recordText } from './records.js';
 
-const TIERS = ['1', '2', '3', 'S'];
+const TIERS = ['1', '1d', '2', '3', 'S'];
 
 function readInput(from, cwd) {
   if (from === undefined) throw new Fail('--from <file|-> is missing', 'pass the text with --from <file>, or --from - on standard input');
@@ -19,7 +19,7 @@ function readInput(from, cwd) {
   }
 }
 
-// al new <name> --from <file|-> [--title <t>] [--tier 1|2|3|S]
+// al new <name> --from <file|-> [--title <t>] [--tier 1|1d|2|3|S]
 export function newRequest({ top, cwd, args, opts }) {
   const [name] = args;
   oneLine(opts, ['title']);
