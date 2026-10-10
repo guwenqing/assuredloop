@@ -87,7 +87,9 @@ function addIds({ top, cwd, opts }) {
   const body = [`${verb} ${marks.length} paragraph(s) in ${path}`];
   if (marks.length) body.push(`  ${marks[0]}${marks.length > 1 ? ` to ${marks.at(-1)}` : ''}`);
   // Only spec paragraphs are adopted; a change spec's paragraphs are its own.
-  const adoption = scope === 'spec' ? adoptionOf(top, path, marked, marks) : { body: [], write: () => [] };
+  // The IDs of the scope now, in every doc of it, this one as marked.
+  const living = new Set([...docs.filter((d) => d.path !== path).flatMap((d) => parseMarkdown(d.text, d.path).paragraphs), ...parseMarkdown(marked, path).paragraphs].map((p) => p.id));
+  const adoption = scope === 'spec' ? adoptionOf(top, path, marked, marks, living) : { body: [], write: () => [] };
   body.push(...adoption.body);
   if (opts.yes) {
     writeFileSync(join(top, path), marked);
@@ -105,7 +107,7 @@ function addIds({ top, cwd, opts }) {
 // each whose text is a block of the file at HEAD, with that commit; the others
 // are named as not adopted. `write()` writes the record and, when absent, the
 // adoption request.md, and returns the paths written.
-function adoptionOf(top, path, marked, marks) {
+function adoptionOf(top, path, marked, marks, living) {
   if (exists(top, 'requests/adoption/request.md')) {
     throw new Fail('requests/adoption is an open request, and the name adoption holds the adoption record', 'give that request another name, then run it again');
   }
@@ -115,7 +117,7 @@ function adoptionOf(top, path, marked, marks) {
   if (!head) return { ...none, body: ['no adoption record written: the repo has no commit, so no commit holds the adopted text'] };
   const atHead = fileAt(top, head, path);
   const all = parseMarkdown(marked, path).paragraphs;
-  const same = atHead == null ? new Set() : sameBlocks(atHead, all, path);
+  const same = atHead == null ? new Set() : sameBlocks(atHead, all, { file: path, living });
   const ids = new Set(marks);
   const paras = all.filter((p) => ids.has(p.id));
   const adopted = paras.filter((p) => same.has(p.id));

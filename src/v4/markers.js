@@ -132,13 +132,18 @@ export function markBlocks(text, nextId) {
 // longest common subsequence of the two hash lists, as a diff keeps lines.
 // So one block there stands for one paragraph here, and of two equal
 // paragraphs only the one in the block's place matches (D16, D19, #196).
-export function sameBlocks(text, paragraphs, file = '') {
+// A block whose ID is still a paragraph of the scope here (`living`, every
+// doc of it, so a moved paragraph counts) is that paragraph's: it stands for
+// no other one, and only the other blocks are matched.
+export function sameBlocks(text, paragraphs, { file = '', living = new Set(paragraphs.map((p) => p.id)) } = {}) {
+  // The blocks with no marker get IDs of a prefix that the text does not hold.
+  let prefix = 'UNMARKED';
+  while (text.includes(`${prefix}-`)) prefix += 'X';
   let n = 0;
-  const there = parseMarkdown(markBlocks(lf(text), () => `UNMARKED-${++n}`).text, file).paragraphs;
-  // A block whose ID is still a paragraph here is that paragraph's: it stands
-  // for no other one. Only the other blocks and paragraphs are matched.
-  const ids = new Set(paragraphs.map((p) => p.id));
-  const kept = new Set(there.filter((p) => ids.has(p.id)).map((p) => p.id));
+  const { text: marked, marks } = markBlocks(lf(text), () => `${prefix}-${++n}`);
+  const temporary = new Set(marks);
+  const there = parseMarkdown(marked, file).paragraphs;
+  const kept = new Set(there.filter((p) => !temporary.has(p.id) && living.has(p.id)).map((p) => p.id));
   const a = there.filter((p) => !kept.has(p.id)).map((p) => p.sha256);
   paragraphs = paragraphs.filter((p) => !kept.has(p.id));
   const b = paragraphs.map((p) => p.sha256);
