@@ -1,6 +1,6 @@
 # On main (M9): a PR claimed as a wording fix puts the old INV-11 text back.
 # No decision explains it.
-title: Tidy the wording of invoices.md
+title: Tidy the wording of invoices.md (#49)
 base: cr-revert-m8
 claim: "Tier: 0 — typo in INV-11"
 steps:

@@ -1,5 +1,5 @@
 # On main (M9): EXP-9 is removed again; the owner dropped the ZIP.
-title: "Revert EXP-9: the ZIP is dropped"
+title: "Revert EXP-9: the ZIP is dropped (#47)"
 base: cr-abandon-m8
 claim: "Tier: 3 — invoice-exports, EXP-9 reverted"
 steps:

@@ -1,27 +1,25 @@
-# The invoicer world on main: the spec, the ADRs, two archived requests and
-# three open ones, built through al-v4 new, record and index.
+# The invoicer world on main: the adopted spec, the ADRs, the adoption record,
+# one archived request and three open ones, built through al-v4 new, record
+# and index.
 title: The invoicer world
 steps:
   - files: {from: .assuredloop, to: .assuredloop}
-  - files: {from: specs, to: specs}
 
-  # Adoption: the spec as it was, served by an unsigned requirement (README).
-  - al: [new, invoicer-baseline, --from, '-', --title, Invoicer baseline, --tier, '1']
+  # Adoption (decision D12): `al spec --add-ids` marked the spec as it was
+  # (INV-1 to INV-12), and that commit is on main. The adoption record names
+  # each adopted paragraph with the commit and its text hash; an adopted
+  # paragraph has a kind and no link.
+  - files: {from: adoption/specs, to: specs}
+  - commit: "Adopt AssuredLoop: al spec --add-ids (#10)\n\nTier: 0 — adoption, no promise changes"
+  - index: true
     date: 2026-02-20
-    input: |
-      The spec of Invoicer as it stood when AssuredLoop was adopted. Nobody
-      signed it; it is the baseline that later changes start from.
-  - section:
-      request: invoicer-baseline
+  - adoption:
+      doc: specs/invoices.md
+      ids: [INV-1, INV-2, INV-3, INV-4, INV-5, INV-6, INV-7, INV-8, INV-9, INV-10, INV-11, INV-12]
       text: |
-        ## Organized requirement
-
-        <!-- R1 -->
-
-        ### R1 The adopted baseline
-        Invoicer keeps the promises and the design that its spec held when
-        AssuredLoop was adopted.
-  - archive: invoicer-baseline
+        The paragraphs INV-1 to INV-12 of specs/invoices.md, as they were when
+        AssuredLoop was adopted (PR #10). Not an owner approval.
+  - files: {from: specs, to: specs}
 
   # invoice-numbers: concluded and archived (path 2).
   - al: [new, invoice-numbers, --from, '-', --title, Invoice numbers, --tier, '2']
