@@ -7,7 +7,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  INVOICES, doc, docRecord, git, index, paragraph, refused, tree, write, writeConfig,
+  INVOICES, appendSection, commitAll, doc, docRecord, exists, git, index, newRequest, ok, organized, paragraph, project,
+  record, refused, req, tree, write, writeConfig,
 } from './helpers/project.js';
 
 // <scratch>/a/b/project is the project; <scratch>/outside.md is a marked doc.
@@ -67,3 +68,35 @@ test('index refuses a config root with a .. part: exit 2, nothing written inside
 test('index refuses an absolute config root: exit 2, nothing written inside or outside', (t) => {
   checkRoot(t, (scratch) => join(scratch, 'a/b/outside-spec'));
 });
+
+// An open request with a draft requirement, so any write would show (a new
+// requirement version); a marked doc and an ADR at the repo top, on main.
+function rootProject(t, root) {
+  const dir = project(t);
+  writeConfig(dir, [], { root });
+  newRequest(dir, 'inv');
+  appendSection(dir, 'inv', organized([req('R1', 'Monthly CSV', 'A month MUST be one CSV file.')]));
+  ok(dir, ['record', 'inv', 'decision', '--source', 'owner', '--text', 'CSV only.', '--yes']);
+  write(dir, 'a.md', doc([['A-1 rule', 'An export MUST be a CSV file.']]));
+  write(dir, 'adr/0001-first.md', `Status: accepted\n\n${doc([['ADR-1 choice decides:A-1 source:inv/D1', '# ADR-1: CSV only']])}`);
+  commitAll(dir, 'on main');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  return dir;
+}
+
+for (const root of ['/', '///']) {
+  test(`index refuses root: ${root} (the file system root): exit 2, nothing written`, (t) => {
+    const dir = rootProject(t, root);
+    refused(dir, ['index']);
+    assert.deepEqual(record(dir, 'inv').requirements, [], 'no requirement version');
+  });
+}
+
+for (const root of ['.', './']) {
+  test(`index refuses root: ${root} (the repo top, not supported): exit 2, nothing written`, (t) => {
+    const dir = rootProject(t, root);
+    refused(dir, ['index']);
+    assert.deepEqual(record(dir, 'inv').requirements, [], 'no requirement version');
+    assert.ok(!exists(dir, '.assuredloop/records/adr/0001-first.md.yaml'));
+  });
+}

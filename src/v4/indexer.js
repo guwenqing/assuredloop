@@ -9,7 +9,7 @@ import { parseMarkdown } from './markers.js';
 import { diffParagraphs } from './ids.js';
 import { git, mergeBase, fileAt } from './git.js';
 import { loadConfig } from './config.js';
-import { SPEC, docsInScope } from './scope.js';
+import { SPEC, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
 import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
@@ -43,7 +43,7 @@ function loadState(top, at, config, names) {
   const adr = `${config.root}/adr`;
   const adrs = (at
     ? (git(top, ['ls-tree', '--name-only', at, `${adr}/`], { allowFail: true }) ?? '').split('\n')
-    : list(top, adr).filter((e) => e.isFile()).map((e) => `${adr}/${e.name}`))
+    : symlinkOn(top, adr) ? [] : list(top, adr).filter((e) => e.isFile()).map((e) => `${adr}/${e.name}`))
     .filter((f) => f.startsWith(`${adr}/`) && /^\d{4}-[^/]*\.md$/.test(f.slice(adr.length + 1))).sort();
   const open = new Set(names.open);
   const files = [
@@ -147,15 +147,23 @@ const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
 export function index({ top, opts }) {
   const loaded = loadConfig(top);
-  const names = requestNames(top);
   const body = [];
   const notes = [];
   // The spec root as a repo path, once (`./specs/` is `specs`), for the tree and for past commits alike.
   const root = posix.normalize(String(loaded.root)).replace(/\/+$/, '');
-  if (!inside(root)) throw new Fail(`config root ${loaded.root} is outside the repository; nothing was read or written`, 'set root: in .assuredloop/config.yaml to a folder in this repo');
-  // A doc that config names outside the repo is neither read nor indexed.
-  const config = { ...loaded, root, docs: loaded.docs.filter((d) => inside(String(d.file ?? ''))) };
-  for (const d of loaded.docs) if (!inside(String(d.file ?? ''))) notes.push(`not indexed: ${d.file}: outside the repository`);
+  if (!inside(String(loaded.root)) || !inside(root) || root === '.') {
+    throw new Fail(`config root ${loaded.root} is not a folder inside the repository; nothing was read or written`, 'set root: in .assuredloop/config.yaml to a folder in this repo, such as specs');
+  }
+  // Nothing is read through a symlink: it can lead out of the repo.
+  for (const dir of [root, 'requests']) {
+    if (symlinkOn(top, dir)) throw new Fail(`${dir} is reached through the symlink ${symlinkOn(top, dir)}; nothing was read or written`, `make ${symlinkOn(top, dir)} a real folder in this repo`);
+  }
+  // A doc that config names outside the repo, or through a symlink, is neither read nor indexed.
+  const why = (file) => (!inside(file) ? 'outside the repository' : symlinkOn(top, posix.normalize(file)) ? 'through a symlink' : null);
+  const config = { ...loaded, root, docs: loaded.docs.filter((d) => !why(String(d.file ?? ''))) };
+  for (const d of loaded.docs) if (why(String(d.file ?? ''))) notes.push(`not indexed: ${d.file}: ${why(String(d.file ?? ''))}`);
+  if (symlinkOn(top, `${root}/adr`)) notes.push(`not indexed: ${root}/adr: through a symlink`);
+  const names = requestNames(top);
 
   // The base: the merge-base with main; with no main, HEAD (so a committed
   // link with no binding stays unknown); with no commit, nothing.

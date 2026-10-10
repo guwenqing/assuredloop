@@ -3,12 +3,12 @@
 // inside the repo or in the symlink's target (#175, review finding).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, realpathSync, renameSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import {
-  INVOICES, appendSection, doc, editFile, exists, newRequest, ok, organized, project, read, refused, req, tree, write,
-  writeConfig,
+  INVOICES, appendSection, doc, editFile, exists, newRequest, ok, organized, project, read, record, refused, req, tree,
+  write, writeConfig,
 } from './helpers/project.js';
 
 // A folder outside the project, removed when the test ends.
@@ -90,5 +90,80 @@ test('index refuses before any write when only the request records go through a 
   assert.deepEqual(Object.keys(before), ['inv.yaml']);
   refused(dir, ['index']);
   assert.ok(!exists(dir, '.assuredloop/records/specs/more.md.yaml'));
+  assert.deepEqual(tree(external), before);
+});
+
+// --- index reads nothing through a symlinked folder (#175, review finding)
+
+// A folder outside the project with marked docs, linked in at rel.
+function linkedDocs(t, dir, rel, files) {
+  const external = outside(t);
+  for (const [name, text] of Object.entries(files)) write(external, name, text);
+  mkdirSync(dirname(join(dir, rel)), { recursive: true });
+  symlinkSync(external, join(dir, rel));
+  return external;
+}
+const OUT_DOC = doc([['X-1 rule', 'A rule outside the repo MUST hold.']]);
+const OUT_ADR = `Status: accepted\n\n${doc([['ADR-1 choice decides:INV-41 source:inv/D1', '# ADR-1: Outside']])}`;
+const recordPaths = (dir) => Object.keys(tree(dir)).filter((p) => p.startsWith('.assuredloop/records/'));
+
+test('a config docs entry through a symlinked folder is not indexed; the other docs are', (t) => {
+  const dir = project(t);
+  writeConfig(dir, [{ file: 'specs/invoices.md', prefix: 'INV' }, { file: 'specs/alias/x.md', prefix: 'X' }]);
+  write(dir, 'specs/invoices.md', INVOICES);
+  const external = linkedDocs(t, dir, 'specs/alias', { 'x.md': OUT_DOC });
+  const before = tree(external);
+  const r = ok(dir, ['index']);
+  assert.ok(r.stdout.split('\n').includes('not indexed: specs/alias/x.md: through a symlink'), r.stdout);
+  assert.deepEqual(recordPaths(dir).filter((p) => p.startsWith('.assuredloop/records/specs/alias')), []);
+  assert.ok(exists(dir, '.assuredloop/records/specs/invoices.md.yaml'), 'the other doc is indexed');
+  assert.deepEqual(tree(external), before);
+});
+
+test('index refuses when the spec root specs/ is a symlink (no config), and writes nothing', (t) => {
+  const dir = project(t);
+  newRequest(dir, 'inv');
+  const external = linkedDocs(t, dir, 'specs', { 'a.md': OUT_DOC, 'adr/0001-first.md': OUT_ADR });
+  const before = tree(external);
+  refused(dir, ['index']);
+  assert.deepEqual(tree(external), before);
+});
+
+test('index refuses when the config root is a symlink, and writes nothing', (t) => {
+  const dir = project(t);
+  writeConfig(dir, [], { root: 'docs-spec' });
+  newRequest(dir, 'inv');
+  const external = linkedDocs(t, dir, 'docs-spec', { 'a.md': OUT_DOC, 'adr/0001-first.md': OUT_ADR });
+  const before = tree(external);
+  refused(dir, ['index']);
+  assert.deepEqual(tree(external), before);
+});
+
+test('specs/adr through a symlink is not indexed: no ADR record, its links not bound', (t) => {
+  const dir = project(t);
+  write(dir, 'specs/invoices.md', INVOICES);
+  newRequest(dir, 'inv');
+  ok(dir, ['record', 'inv', 'decision', '--source', 'owner', '--text', 'Thirty minutes.', '--yes']);
+  const external = linkedDocs(t, dir, 'specs/adr', { '0001-first.md': OUT_ADR });
+  const before = tree(external);
+  const r = ok(dir, ['index']);
+  assert.ok(r.stdout.split('\n').includes('not indexed: specs/adr: through a symlink'), r.stdout);
+  assert.deepEqual(recordPaths(dir).filter((p) => p.startsWith('.assuredloop/records/specs/adr')), []);
+  assert.ok(exists(dir, '.assuredloop/records/specs/invoices.md.yaml'), 'the normal doc is indexed');
+  assert.deepEqual(record(dir, 'inv').bindings.filter((b) => b.holder === 'ADR-1'), []);
+  assert.deepEqual(tree(external), before);
+});
+
+test('index refuses when requests/ is a symlink to a folder with a request, and writes nothing', (t) => {
+  const dir = project(t);
+  write(dir, 'specs/invoices.md', INVOICES);
+  newRequest(dir, 'inv');
+  appendSection(dir, 'inv', organized([req('R1', 'Monthly CSV', 'A month MUST be one CSV file.')]));
+  write(dir, 'requests/inv/spec.md', doc([['SP-1 rule serves:R1 builds-on:INV-41', 'The link MUST expire after 20 minutes.']]));
+  const external = join(outside(t), 'requests');
+  symlinkOut(dir, 'requests', external);
+  const before = tree(external);
+  assert.deepEqual(Object.keys(before).sort(), ['inv/origin/2026-05-04-owner-words.md', 'inv/request.md', 'inv/spec.md']);
+  refused(dir, ['index']);
   assert.deepEqual(tree(external), before);
 });
