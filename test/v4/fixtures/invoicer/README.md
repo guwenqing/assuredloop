@@ -103,7 +103,7 @@ The fixtures were written before the final design. These are the changes.
 
 1. Markers have no `from:` link. `from` is not a marker link word.
 2. The adopted paragraphs (`from:adoption`) have a kind and no link
-   (decision D14). The base first commits the spec as it was at adoption
+   (decision D16). The base first commits the spec as it was at adoption
    (INV-1 to INV-12) on main. Then the `adoption` step writes, by hand in the
    T9 format, the archived request `adoption`
    (`requests/archive/adoption/request.md`) and its record

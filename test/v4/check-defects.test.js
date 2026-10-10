@@ -24,7 +24,7 @@ const PAIRS = {
   d06: { name: 'a drifted consolidation', defect: ['hint disposition invoice-exports/SP-10'], control: [] },
   d07: { name: 'a stale base after indexing', defect: ['hint stale-base reminder-emails/SP-4'], control: [] },
   d08: { name: 'a stale AI summary with a surviving quote', defect: ['hint stale-ai-hint INV-8'], control: [] },
-  // D09: INV-4 is adopted (decision D14); edited with no link on path 0, it gets no-link back.
+  // D09: INV-4 is adopted (decision D16); edited with no link on path 0, it gets no-link back.
   d09: { name: 'a wrong path claim', defect: ['hint no-link INV-4', 'not ok path-claim INV-4', 'not ok signoff-coverage INV-4'], control: [] },
   d10: { name: 'a typo claim that changes a MUST', defect: ['hint typo-mark EXP-9'], control: [] },
   d11: { name: 'a typo claim that changes "only" to "all"', defect: ['hint typo-mark EXP-10'], control: [] },

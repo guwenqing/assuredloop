@@ -5,7 +5,7 @@ title: The invoicer world
 steps:
   - files: {from: .assuredloop, to: .assuredloop}
 
-  # Adoption (decision D14): `al spec --add-ids` marked the spec as it was
+  # Adoption (decision D16): `al spec --add-ids` marked the spec as it was
   # (INV-1 to INV-12), and that commit is on main. The adoption record names
   # each adopted paragraph with the commit and its text hash; an adopted
   # paragraph has a kind and no link.
