@@ -251,3 +251,65 @@ describe('reading does not go through a symlink', () => {
     });
   }
 });
+
+// root: that is the repository top is refused (coordinator).
+describe('a root: that is the repository top is refused', () => {
+  function topRoot(t, root) {
+    const repo = makeRepo(t);
+    repo.write('.assuredloop/config.yaml', `root: ${JSON.stringify(root)}\n`);
+    repo.write('specs/a.md', '<!-- A-1 note -->\n\n# Alpha\n');
+    repo.commit('config with root at the top');
+    return repo;
+  }
+
+  for (const root of ['.', './', './/', 'specs/..']) {
+    for (const cmd of [['spec'], ['check'], ['check', '--strict']]) {
+      test(`${cmd.join(' ')} with root ${JSON.stringify(root)} exits 2 with an al: line that names root, and writes nothing`, (t) => {
+        const repo = topRoot(t, root);
+        const before = repo.git(['status', '--porcelain', '--untracked-files=all']);
+        const r = runV4(repo.dir, cmd);
+        assert.equal(r.code, 2, show(r));
+        assert.match(r.stdout + r.stderr, /^al: .*\broot\b/m, show(r));
+        assert.equal(repo.git(['status', '--porcelain', '--untracked-files=all']), before);
+      });
+    }
+  }
+
+  // Ambiguity: "<root>/" for root "/" would print "//"; any run of slashes
+  // is accepted here.
+  for (const root of ['/', '///']) {
+    test(`control: root ${JSON.stringify(root)} is outside the repository: not read, exit 0`, (t) => {
+      const repo = topRoot(t, root);
+      for (const cmd of [['spec'], ['check'], ['check', '--strict']]) {
+        const r = runV4(repo.dir, cmd);
+        assert.equal(r.code, 0, show(r));
+        assert.ok(lines(r.stdout).some((l) => /^not read: \/+: outside the repository$/.test(l)), show(r));
+      }
+    });
+  }
+
+  function dotSpecs(t) {
+    const repo = makeRepo(t);
+    repo.write('.assuredloop/config.yaml', 'root: ./specs\n');
+    repo.write('specs/a.md', '<!-- A-1 note -->\n\n# Alpha\n\n<!-- A-2 rule serves:R1 -->\n\nA rule.\n');
+    repo.commit('specs with root ./specs');
+    return repo;
+  }
+
+  test('control: root ./specs reads specs/a.md, with no ./ in the path', (t) => {
+    const repo = dotSpecs(t);
+    const r = runV4(repo.dir, ['spec']);
+    assert.equal(r.code, 0, show(r));
+    assert.ok(lines(r.stdout).includes('specs/a.md'), show(r));
+    assert.ok(!r.stdout.includes('./specs'), show(r));
+    assert.ok(lines(r.stdout).includes('  A-2 (0:1, in Alpha)  rule'), show(r));
+  });
+
+  test('control: root ./specs on a clean tree with one commit on main prints no change line', (t) => {
+    const repo = dotSpecs(t);
+    const r = runV4(repo.dir, ['check', '--strict']);
+    assert.equal(r.code, 0, show(r));
+    assert.deepEqual(lines(r.stdout).filter((l) => /^(\.\/)?specs\//.test(l)), [], show(r));
+    assert.ok(lines(r.stdout).includes('ok: no marker lint'), show(r));
+  });
+});

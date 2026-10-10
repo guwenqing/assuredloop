@@ -4,7 +4,7 @@ import { existsSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { loadConfig, loadSchema, writeSetup } from './config.js';
 import { HEADING, blocksOf, lf, parseMarkdown } from './markers.js';
-import { docsInScope, idsEverUsed, isShallow, notRead, prefixOf, scopeOf, symlinkOn } from './scope.js';
+import { docsInScope, idsEverUsed, isShallow, notRead, prefixOf, rootProblem, scopeOf, symlinkOn } from './scope.js';
 
 export class Fail extends Error {
   constructor(message, next) {
@@ -17,6 +17,8 @@ const PREFIX = /^[A-Z][A-Z0-9]*$/;
 const USAGE = 'al-v4 spec --add-ids <file> [--prefix <PREFIX>] [--yes]';
 
 export function spec({ top, cwd, args, opts }) {
+  const root = rootProblem(loadConfig(top));
+  if (root) throw new Fail(root, 'fix root: in .assuredloop/config.yaml');
   if (opts['add-ids'] !== undefined) return addIds({ top, cwd, opts });
   const config = loadConfig(top);
   const { kinds } = loadSchema(top);
