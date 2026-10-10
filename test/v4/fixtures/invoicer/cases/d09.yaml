@@ -36,7 +36,7 @@ arms:
       - edit:
           file: specs/invoices.md
           from: |-
-            <!-- INV-4 limit -->
+            <!-- INV-4 limit serves:invoicer-baseline/R1 -->
 
             Invoicer does not calculate tax.
           to: |-

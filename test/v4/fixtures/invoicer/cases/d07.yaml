@@ -25,7 +25,7 @@ steps:
   - edit:
       file: specs/invoices.md
       from: |-
-        <!-- INV-10 rule -->
+        <!-- INV-10 rule serves:invoicer-baseline/R1 -->
 
         Invoicer MUST send each invoice by email to the customer's billing address.
       to: |-

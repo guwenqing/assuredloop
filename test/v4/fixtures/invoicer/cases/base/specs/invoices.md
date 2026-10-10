@@ -2,16 +2,16 @@
 
 # Invoices
 
-<!-- INV-2 purpose -->
+<!-- INV-2 purpose serves:invoicer-baseline/R1 -->
 
 Invoicer sends correct invoices to small businesses and keeps a record of
 each one.
 
-<!-- INV-3 scope -->
+<!-- INV-3 scope serves:invoicer-baseline/R1 -->
 
 Invoicer covers one-off and monthly invoices in one one currency.
 
-<!-- INV-4 limit -->
+<!-- INV-4 limit serves:invoicer-baseline/R1 -->
 
 Invoicer does not calculate tax.
 
@@ -19,7 +19,7 @@ Invoicer does not calculate tax.
 
 ## Terms
 
-<!-- INV-6 definition -->
+<!-- INV-6 definition serves:invoicer-baseline/R1 -->
 
 A paid invoice is one whose full amount has arrived.
 
@@ -27,7 +27,7 @@ A paid invoice is one whose full amount has arrived.
 
 ## Invoice data
 
-<!-- INV-8 data -->
+<!-- INV-8 data serves:invoicer-baseline/R1 -->
 
 An invoice has a number, a customer, lines, a total and a paid date.
 
@@ -50,11 +50,11 @@ invoice is 2026-003, not 2026-002.
 
 ## Sending
 
-<!-- INV-10 rule -->
+<!-- INV-10 rule serves:invoicer-baseline/R1 -->
 
 Invoicer MUST send each invoice by email to the customer's billing address.
 
-<!-- INV-11 rule -->
+<!-- INV-11 rule serves:invoicer-baseline/R1 -->
 
 Invoicer SHOULD send a reminder 7 days after the due date of an open
 invoice.
