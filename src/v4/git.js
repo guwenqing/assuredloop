@@ -88,12 +88,12 @@ export function commitOf(dir, rev) {
 
 // Each of `revs` as a full commit hash in the repo at `dir`, or null when git
 // cannot resolve it to a commit there, as commitOf gives it, read with one
-// `git cat-file --batch-check` process. A rev that holds a newline, or ends in
-// a carriage return, cannot go on a line of the batch: it gets commitOf.
+// `git cat-file --batch-check` process. A rev that holds a newline or a NUL, or
+// ends in a carriage return, cannot go on a line of the batch: it gets commitOf.
 export function commitsOf(dir, revs) {
   const out = new Map();
   const asked = [...new Set(revs)];
-  const alone = (r) => r.includes('\n') || r.endsWith('\r');
+  const alone = (r) => r.includes('\n') || r.endsWith('\r') || r.includes('\0');
   const lines = asked.filter((r) => typeof r === 'string' && r && !alone(r));
   for (const r of asked) out.set(r, null);
   if (lines.length) {
