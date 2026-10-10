@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { parse } from 'yaml';
 import {
   ADR3, HEX64, INVOICES, binding, commitAll, doc, docRecord, docRecordPath, editFile, exists, git, hashOf, index,
-  move, newRequest, paragraph, project, read, record, tree, write, writeConfig, writeYaml,
+  move, newRequest, ok, paragraph, project, read, record, tree, write, writeConfig, writeYaml,
 } from './helpers/project.js';
 
 const SPEC = 'specs/invoices.md';
@@ -252,4 +252,30 @@ test('IDs of a change spec are local to its request: SP-1 of a and SP-1 of b eac
   index(dir);
   assert.equal(paragraph(dir, 'requests/a/spec.md', 'SP-1').change, undefined);
   assert.deepEqual(paragraph(dir, 'requests/b/spec.md', 'SP-1').change, ['Changed']);
+});
+
+test('config root written as ./docs-spec or docs-spec/ works as docs-spec: a committed ADR is not New, its lost links unknown', async (t) => {
+  for (const root of ['docs-spec', './docs-spec', 'docs-spec/']) {
+    await t.test(`root: ${root}`, (t) => {
+      const dir = project(t);
+      writeConfig(dir, [], { root });
+      newRequest(dir, 'inv');
+      ok(dir, ['record', 'inv', 'decision', '--source', 'owner', '--text', 'Export CSV only.', '--yes']);
+      write(dir, 'docs-spec/a.md', doc([['A-1 rule', 'An export MUST be a CSV file.']]));
+      const adr = 'docs-spec/adr/0001-first.md';
+      write(dir, adr, `Status: accepted\n\n${doc([
+        ['ADR-1 choice decides:A-1 source:inv/D1', '# ADR-1: CSV only'],
+        ['ADR-1-1 rationale', 'Context: one format is enough.'],
+      ])}`);
+      commitAll(dir, 'an ADR with links and no binding, on main');
+      git(dir, 'checkout', '-q', '-b', 'feature');
+      const r = index(dir);
+      assert.equal(docRecord(dir, adr).status, 'accepted');
+      for (const p of docRecord(dir, adr).paragraphs) assert.ok(!('change' in p), `${p.id} is unchanged at the base: ${p.change}`);
+      assert.ok(!('change' in paragraph(dir, 'docs-spec/a.md', 'A-1')), 'A-1 is unchanged at the base');
+      assert.match(r.stdout, /^binding unknown: ADR-1 decides A-1$/m);
+      assert.match(r.stdout, /^binding unknown: ADR-1 source inv\/D1$/m);
+      assert.deepEqual(record(dir, 'inv').bindings.filter((b) => b.holder === 'ADR-1'), []);
+    });
+  }
 });

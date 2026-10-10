@@ -3,7 +3,7 @@
 // bindings of new links and fills the hashes of new dispositions. Ordinary
 // indexing never advances a binding; only --align does (design.md 4, 10).
 import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
 import { diffParagraphs } from './ids.js';
@@ -40,7 +40,7 @@ function requestNames(top) {
 function loadState(top, at, config, names) {
   const get = at ? (p) => fileAt(top, at, p) : (p) => read(top, p);
   // The spec docs and the open change specs (docsInScope), and the ADRs in <root>/adr/.
-  const adr = `${String(config.root).replace(/\/+$/, '')}/adr`;
+  const adr = `${config.root}/adr`;
   const adrs = (at
     ? (git(top, ['ls-tree', '--name-only', at, `${adr}/`], { allowFail: true }) ?? '').split('\n')
     : list(top, adr).filter((e) => e.isFile()).map((e) => `${adr}/${e.name}`))
@@ -150,9 +150,11 @@ export function index({ top, opts }) {
   const names = requestNames(top);
   const body = [];
   const notes = [];
-  if (!inside(String(loaded.root))) throw new Fail(`config root ${loaded.root} is outside the repository; nothing was read or written`, 'set root: in .assuredloop/config.yaml to a folder in this repo');
+  // The spec root as a repo path, once (`./specs/` is `specs`), for the tree and for past commits alike.
+  const root = posix.normalize(String(loaded.root)).replace(/\/+$/, '');
+  if (!inside(root)) throw new Fail(`config root ${loaded.root} is outside the repository; nothing was read or written`, 'set root: in .assuredloop/config.yaml to a folder in this repo');
   // A doc that config names outside the repo is neither read nor indexed.
-  const config = { ...loaded, docs: loaded.docs.filter((d) => inside(String(d.file ?? ''))) };
+  const config = { ...loaded, root, docs: loaded.docs.filter((d) => inside(String(d.file ?? ''))) };
   for (const d of loaded.docs) if (!inside(String(d.file ?? ''))) notes.push(`not indexed: ${d.file}: outside the repository`);
 
   // The base: the merge-base with main; with no main, HEAD (so a committed
