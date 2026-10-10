@@ -1,0 +1,32 @@
+# The views: a test in the central repo that names EXP-4, its result, and two
+# declared outputs of invoice-exports (claims): a test that verifies EXP-3 and
+# a user document. EXP-2 has no check. Arm fresh: nothing changes after the
+# result. Arm changed: the test changes after the result, so the result does
+# not apply.
+title: Test the export link in the central repo
+base: base
+claim: "Tier: 0 — restores EXP-4"
+steps:
+  - files: {from: test, to: test}
+  - commit: "Add the export-link test"
+  - result:
+      file: export-link-test.yaml
+      check: test/export-link.test.js
+      outcome: pass
+      commit: HEAD
+      inputs: [test/export-link.test.js]
+  - recordSet:
+      request: invoice-exports
+      set:
+        outputs:
+          - {repo: invoicer, file: test/dates.test.js, verifies: [EXP-3]}
+          - {repo: invoicer, file: docs/exports.md, documents: [EXP-2, EXP-3, EXP-4]}
+arms:
+  fresh:
+    steps: []
+  changed:
+    steps:
+      - edit:
+          file: test/export-link.test.js
+          from: "test('a link works before 30 minutes and not after', () => {});"
+          to: "test('a link works before 30 minutes, and not at 30 minutes', () => {});"

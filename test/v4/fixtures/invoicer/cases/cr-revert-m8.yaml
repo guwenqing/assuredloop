@@ -1,13 +1,13 @@
 # On main (M8): reminder-emails incorporates SP-2 as INV-11, SP-3 as INV-17
 # and SP-4 as INV-18, with incorporated dispositions.
-title: "Reminder emails: the job, INV-11 replaced, INV-17 and INV-18 added"
+title: "Reminder emails: the job, INV-11 replaced, INV-17 and INV-18 added (#48)"
 base: base
 claim: "Tier: 2 — reminder-emails"
 steps:
   - edit:
       file: specs/invoices.md
       from: |-
-        <!-- INV-11 rule serves:invoicer-baseline/R1 -->
+        <!-- INV-11 rule -->
 
         Invoicer SHOULD send a reminder 7 days after the due date of an open
         invoice.
