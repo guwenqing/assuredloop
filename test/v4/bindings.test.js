@@ -30,7 +30,7 @@ function chain(t) {
   return dir;
 }
 
-const pair = (from, to) => ({ from_sha256: from, to_sha256: to });
+const pair = (holder, target) => ({ holder_sha256: holder, target_sha256: target });
 
 test('each link kind of a change spec is bound in its request record, with both hashes', (t) => {
   const dir = chain(t);
@@ -53,8 +53,8 @@ test('each link kind of a change spec is bound in its request record, with both 
   assert.equal(d1.sha256, sha(DTEXT));
 
   const expect = (from, link, to, hashes, extra = {}) =>
-    assert.deepEqual(binding(rec, from, link, to), { from, link, to, ...hashes, ...extra });
-  expect('inv/SP-1', 'serves', 'inv/R2', pair(sp('SP-1'), R2.sha256), { to_version: 1 });
+    assert.deepEqual(binding(rec, from, link, to), { holder: from, link, target: to, ...hashes, ...extra });
+  expect('inv/SP-1', 'serves', 'inv/R2', pair(sp('SP-1'), R2.sha256), { target_version: 1 });
   expect('inv/SP-1', 'builds-on', 'INV-12', pair(sp('SP-1'), inv('INV-12')));
   expect('inv/SP-2', 'changes', 'INV-41', pair(sp('SP-2'), inv('INV-41')));
   expect('inv/SP-3', 'removes', 'INV-13', pair(sp('SP-3'), inv('INV-13')));
@@ -64,7 +64,7 @@ test('each link kind of a change spec is bound in its request record, with both 
   expect('inv/SP-7', 'governed-by', 'ADR-3', pair(sp('SP-7'), hashOf(dir, ADR3, 'ADR-3')));
   expect('inv/SP-8', 'explains', 'inv/S1', pair(sp('SP-8'), s1.sha256));
   assert.equal(rec.bindings.filter((b) => b.link === 'for').length, 0, 'a for: link is not bound');
-  assert.equal(rec.bindings.filter((b) => b.from.startsWith('inv/SP-')).length, 9);
+  assert.equal(rec.bindings.filter((b) => b.holder.startsWith('inv/SP-')).length, 9);
 });
 
 test("a requirement's from: is bound to each snapshot it names", (t) => {
@@ -75,11 +75,11 @@ test("a requirement's from: is bound to each snapshot it names", (t) => {
   assert.equal(words.sha256, sha(WORDS));
   assert.equal(more.sha256, sha(MORE));
   assert.deepEqual(binding(rec, 'inv/R1', 'from', `inv/${WORDS_FILE}`),
-    { from: 'inv/R1', link: 'from', to: `inv/${WORDS_FILE}`, ...pair(R1.sha256, words.sha256) });
+    { holder: 'inv/R1', link: 'from', target: `inv/${WORDS_FILE}`, ...pair(R1.sha256, words.sha256) });
   assert.deepEqual(binding(rec, 'inv/R2', 'from', `inv/${WORDS_FILE}`),
-    { from: 'inv/R2', link: 'from', to: `inv/${WORDS_FILE}`, ...pair(R2.sha256, words.sha256) });
+    { holder: 'inv/R2', link: 'from', target: `inv/${WORDS_FILE}`, ...pair(R2.sha256, words.sha256) });
   assert.deepEqual(binding(rec, 'inv/R2', 'from', `inv/${MORE_FILE}`),
-    { from: 'inv/R2', link: 'from', to: `inv/${MORE_FILE}`, ...pair(R2.sha256, more.sha256) });
+    { holder: 'inv/R2', link: 'from', target: `inv/${MORE_FILE}`, ...pair(R2.sha256, more.sha256) });
   assert.equal(rec.bindings.filter((b) => b.link === 'from').length, 3);
 });
 
@@ -103,14 +103,14 @@ test('declared outputs are bound with the hash of the file bytes; an output of a
   const rec = record(dir, 'inv');
   const inv41 = hashOf(dir, SPEC, 'INV-41');
   assert.deepEqual(binding(rec, 'src/export-link.js', 'implements', 'INV-41'),
-    { from: 'src/export-link.js', link: 'implements', to: 'INV-41', ...pair(sha(code), inv41) });
+    { holder: 'src/export-link.js', link: 'implements', target: 'INV-41', ...pair(sha(code), inv41) });
   assert.deepEqual(binding(rec, 'test/export-link.test.js', 'verifies', 'INV-41'),
-    { from: 'test/export-link.test.js', link: 'verifies', to: 'INV-41', ...pair(sha(testFile), inv41) });
+    { holder: 'test/export-link.test.js', link: 'verifies', target: 'INV-41', ...pair(sha(testFile), inv41) });
   assert.deepEqual(binding(rec, 'test/export-link.test.js', 'verifies', 'inv/R2'),
-    { from: 'test/export-link.test.js', link: 'verifies', to: 'inv/R2', ...pair(sha(testFile), R2.sha256), to_version: 1 });
+    { holder: 'test/export-link.test.js', link: 'verifies', target: 'inv/R2', ...pair(sha(testFile), R2.sha256), target_version: 1 });
   assert.deepEqual(binding(rec, 'docs/exports.md', 'documents', 'INV-41'),
-    { from: 'docs/exports.md', link: 'documents', to: 'INV-41', ...pair(sha(userDoc), inv41) });
-  assert.equal(rec.bindings.filter((b) => b.from.includes('web-link')).length, 0, 'cross-repo is not bound here');
+    { holder: 'docs/exports.md', link: 'documents', target: 'INV-41', ...pair(sha(userDoc), inv41) });
+  assert.equal(rec.bindings.filter((b) => b.holder.includes('web-link')).length, 0, 'cross-repo is not bound here');
   assert.equal(rec.outputs.length, 4, 'the hand-written outputs stay');
 });
 
@@ -130,19 +130,19 @@ test('a specs/ paragraph link is held by every open request its targets name; wi
   const other = record(dir, 'other');
 
   assert.deepEqual(binding(rec, 'INV-42', 'serves', 'inv/R2'),
-    { from: 'INV-42', link: 'serves', to: 'inv/R2', ...pair(inv('INV-42'), R2.sha256), to_version: 1 });
+    { holder: 'INV-42', link: 'serves', target: 'inv/R2', ...pair(inv('INV-42'), R2.sha256), target_version: 1 });
   assert.deepEqual(binding(rec, 'INV-42', 'builds-on', 'INV-12'),
-    { from: 'INV-42', link: 'builds-on', to: 'INV-12', ...pair(inv('INV-42'), inv('INV-12')) });
+    { holder: 'INV-42', link: 'builds-on', target: 'INV-12', ...pair(inv('INV-42'), inv('INV-12')) });
   assert.equal(bindingsOf(other, 'INV-42', 'serves', 'inv/R2').length, 0, 'other is not named by INV-42');
 
   for (const holder of [rec, other]) {
     assert.deepEqual(binding(holder, 'INV-43', 'serves', 'inv/R1'),
-      { from: 'INV-43', link: 'serves', to: 'inv/R1', ...pair(inv('INV-43'), R1.sha256), to_version: 1 });
+      { holder: 'INV-43', link: 'serves', target: 'inv/R1', ...pair(inv('INV-43'), R1.sha256), target_version: 1 });
     assert.deepEqual(binding(holder, 'INV-43', 'serves', 'other/R1'),
-      { from: 'INV-43', link: 'serves', to: 'other/R1', ...pair(inv('INV-43'), O1.sha256), to_version: 1 });
+      { holder: 'INV-43', link: 'serves', target: 'other/R1', ...pair(inv('INV-43'), O1.sha256), target_version: 1 });
   }
 
-  for (const holder of [rec, other]) assert.equal(holder.bindings.filter((b) => b.from === 'INV-50').length, 0);
+  for (const holder of [rec, other]) assert.equal(holder.bindings.filter((b) => b.holder === 'INV-50').length, 0);
   assert.match(r.stdout, /^not bound: INV-50 builds-on INV-12: no request record holds it$/m);
 });
 
@@ -163,15 +163,15 @@ test("an ADR's decides, source and supersedes are bound in the request its sourc
   const rec = record(dir, 'inv');
   const a4 = hashOf(dir, adr4, 'ADR-4');
   assert.deepEqual(binding(rec, 'ADR-4', 'decides', 'INV-41'),
-    { from: 'ADR-4', link: 'decides', to: 'INV-41', ...pair(a4, hashOf(dir, SPEC, 'INV-41')) });
+    { holder: 'ADR-4', link: 'decides', target: 'INV-41', ...pair(a4, hashOf(dir, SPEC, 'INV-41')) });
   assert.deepEqual(binding(rec, 'ADR-4', 'source', 'inv/D1'),
-    { from: 'ADR-4', link: 'source', to: 'inv/D1', ...pair(a4, sha(DTEXT)) });
+    { holder: 'ADR-4', link: 'source', target: 'inv/D1', ...pair(a4, sha(DTEXT)) });
   assert.deepEqual(binding(rec, 'ADR-4', 'supersedes', 'ADR-3'),
-    { from: 'ADR-4', link: 'supersedes', to: 'ADR-3', ...pair(a4, hashOf(dir, ADR3, 'ADR-3')) });
+    { holder: 'ADR-4', link: 'supersedes', target: 'ADR-3', ...pair(a4, hashOf(dir, ADR3, 'ADR-3')) });
   assert.deepEqual(binding(rec, 'ADR-5', 'source', 'inv/S1'),
-    { from: 'ADR-5', link: 'source', to: 'inv/S1', ...pair(hashOf(dir, adr5, 'ADR-5'), rec.signoff[0].sha256) });
-  assert.equal(rec.bindings.filter((b) => b.from.startsWith('ADR-4-')).length, 0);
-  assert.equal(rec.bindings.filter((b) => b.from === 'ADR-6').length, 0);
+    { holder: 'ADR-5', link: 'source', target: 'inv/S1', ...pair(hashOf(dir, adr5, 'ADR-5'), rec.signoff[0].sha256) });
+  assert.equal(rec.bindings.filter((b) => b.holder.startsWith('ADR-4-')).length, 0);
+  assert.equal(rec.bindings.filter((b) => b.holder === 'ADR-6').length, 0);
   assert.match(r.stdout, /^not bound: ADR-6 decides INV-13: no request record holds it$/m);
 });
 
@@ -192,17 +192,17 @@ test('IDs in a change spec: R, D, S and its own IDs are the request\'s; <request
   const rec = record(dir, 'inv');
   const sp = (id) => hashOf(dir, CS, id);
   assert.deepEqual(binding(rec, 'inv/SP-1', 'serves', 'inv/R1'),
-    { from: 'inv/SP-1', link: 'serves', to: 'inv/R1', ...pair(sp('SP-1'), R1.sha256), to_version: 1 });
+    { holder: 'inv/SP-1', link: 'serves', target: 'inv/R1', ...pair(sp('SP-1'), R1.sha256), target_version: 1 });
   assert.deepEqual(binding(rec, 'inv/SP-10', 'serves', 'other/R1'),
-    { from: 'inv/SP-10', link: 'serves', to: 'other/R1', ...pair(sp('SP-10'), O1.sha256), to_version: 1 });
+    { holder: 'inv/SP-10', link: 'serves', target: 'other/R1', ...pair(sp('SP-10'), O1.sha256), target_version: 1 });
   assert.deepEqual(binding(rec, 'inv/SP-10', 'builds-on', 'INV-12'),
-    { from: 'inv/SP-10', link: 'builds-on', to: 'INV-12', ...pair(sp('SP-10'), hashOf(dir, SPEC, 'INV-12')) });
-  assert.equal(record(dir, 'other').bindings.filter((b) => b.from.startsWith('inv/')).length, 0,
+    { holder: 'inv/SP-10', link: 'builds-on', target: 'INV-12', ...pair(sp('SP-10'), hashOf(dir, SPEC, 'INV-12')) });
+  assert.equal(record(dir, 'other').bindings.filter((b) => b.holder.startsWith('inv/')).length, 0,
     'a change spec link is held by its own request');
   const spike = record(dir, 'spike-a');
   assert.deepEqual(binding(spike, 'spike-a/SP-1', 'serves', 'spike-a/Q1'), {
-    from: 'spike-a/SP-1', link: 'serves', to: 'spike-a/Q1',
-    ...pair(hashOf(dir, 'requests/spike-a/spec.md', 'SP-1'), Q1.sha256), to_version: 1,
+    holder: 'spike-a/SP-1', link: 'serves', target: 'spike-a/Q1',
+    ...pair(hashOf(dir, 'requests/spike-a/spec.md', 'SP-1'), Q1.sha256), target_version: 1,
   });
 });
 
@@ -219,8 +219,8 @@ test('not bound: a target that is not found, and a cross-repo ID', (t) => {
   assert.match(r.stdout, /^not bound: inv\/SP-20 builds-on INV-999: target not found$/m);
   assert.match(r.stdout, /^not bound: inv\/SP-21 serves inv\/R9: target not found$/m);
   for (const id of ['SP-20', 'SP-21', 'SP-22']) {
-    assert.equal(rec.bindings.filter((b) => b.from === `inv/${id}`).length, 0, `${id} is not bound`);
+    assert.equal(rec.bindings.filter((b) => b.holder === `inv/${id}`).length, 0, `${id} is not bound`);
   }
-  assert.equal(rec.bindings.filter((b) => String(b.to).includes('central')).length, 0);
+  assert.equal(rec.bindings.filter((b) => String(b.target).includes('central')).length, 0);
   binding(rec, 'inv/SP-23', 'serves', 'inv/R1');
 });

@@ -114,7 +114,7 @@ test('index keeps a hint as is and overwrites anything typed into the regenerabl
   const first = read(dir, docRecordPath(SPEC));
   const rec = parse(first);
   const hint = {
-    from_sha256: rec.paragraphs[1].text_sha256,
+    basis_sha256: rec.paragraphs[1].text_sha256,
     summary: 'An invoice has a number.',
     tags: ['invoice', 'number'],
     quote: { exact: 'MUST have a number' },
@@ -148,13 +148,13 @@ test('index lists each stale hint, and only those', (t) => {
   const rec = docRecord(dir, SPEC);
   const h = (i) => rec.paragraphs[i].text_sha256;
   const hints = [
-    { from_sha256: h(0), summary: 'fresh', quote: { exact: 'MUST expire' } },
-    { from_sha256: 'a'.repeat(64), summary: 'made from another text', quote: { exact: 'MUST be signed' } },
-    { from_sha256: h(2), summary: 'quote not in the text', quote: { exact: 'MUST name the customer' } },
-    { from_sha256: h(3), summary: 'quote twice, no prefix or suffix', quote: { exact: 'The total is' } },
-    { from_sha256: h(4), summary: 'quote twice, with a prefix', quote: { exact: 'The date is', prefix: 'ISO. ' } },
+    { basis_sha256: h(0), summary: 'fresh', quote: { exact: 'MUST expire' } },
+    { basis_sha256: 'a'.repeat(64), summary: 'made from another text', quote: { exact: 'MUST be signed' } },
+    { basis_sha256: h(2), summary: 'quote not in the text', quote: { exact: 'MUST name the customer' } },
+    { basis_sha256: h(3), summary: 'quote twice, no prefix or suffix', quote: { exact: 'The total is' } },
+    { basis_sha256: h(4), summary: 'quote twice, with a prefix', quote: { exact: 'The date is', prefix: 'ISO. ' } },
     undefined,
-    { from_sha256: h(6), summary: 'no quote', tags: ['hint'] },
+    { basis_sha256: h(6), summary: 'no quote', tags: ['hint'] },
   ];
   hints.forEach((hint, i) => { if (hint) rec.paragraphs[i].hint = hint; });
   writeYaml(dir, docRecordPath(SPEC), rec);
