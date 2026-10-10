@@ -15,7 +15,7 @@ import {
   hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
-import { groupOf } from './markers.js';
+import { blockHashes, groupOf } from './markers.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
 const TIER = /^[ \t]*Tier:[ \t]*(0|1d|1|2|3|S)\b[ \t]*(?:—|–|--?)?[ \t]*(.*)$/m;
@@ -71,7 +71,28 @@ export function checks(top, { base, strict = false }) {
   const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
   const promise = (k) => isPromise(now, k);
   const open = [...now.requests.values()].filter((r) => r.open);
-  const changes = was ? changesOf(now, was) : [];
+  // Adoption on the branch (D16, D19): a spec paragraph that is new at the
+  // head is adopted text, not a change, when the adoption record names it with
+  // its current hash and the same text is a block of its file at the base. An
+  // adoption record cannot cover new text.
+  const captured = adoptionEntries(now);
+  const notAdopted = new Set();
+  const atBase = new Map();
+  const adoptedHere = (c) => {
+    if (c.request || !c.head || c.base || !captured.get(c.id)?.has(c.head.sha256)) return false;
+    const file = c.head.file;
+    if (!atBase.has(file)) {
+      const text = was.get(file);
+      atBase.set(file, text == null ? new Set() : blockHashes(text, file));
+    }
+    return atBase.get(file).has(c.head.sha256);
+  };
+  const changes = [];
+  for (const c of was ? changesOf(now, was) : []) {
+    if (adoptedHere(c)) continue;
+    if (!c.request && c.head && !c.base && captured.has(c.id)) notAdopted.add(c.id);
+    changes.push(c);
+  }
   const { claim, commits } = readClaim(top, base);
   const typo = claim?.tier === '0' ? claim.typo : new Set();
 
@@ -306,16 +327,16 @@ export function checks(top, { base, strict = false }) {
     add('info', 'result', `${res.repo}/${res.file}`, res.check ?? '-', `${res.outcome ?? 'no outcome'} at ${res.repo}@${String(res.resolved ?? res.commit ?? 'unknown').slice(0, 7)}: ${res.applies}`);
   }
 
+  for (const id of notAdopted) {
+    const p = now.spec.get(id);
+    add('hint', 'adoption', p, id, `the adoption record names ${id}, but its text is not a paragraph of ${p.file} at the base, so it reads as a change`);
+  }
+
   // Adopted paragraphs (D16): a disposition with `source: adoption` names the
   // spec paragraph and its captured hash; it stays adopted while its text is that.
   // Only a record whose text holds `source: adoption` is parsed for it.
   const adopted = new Set();
-  for (const r of now.requests.values()) {
-    if (!r.mayAdopt) continue;
-    for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) {
-      if (d?.source === 'adoption' && d.spec && now.spec.get(d.spec)?.sha256 === d.spec_sha256) adopted.add(d.spec);
-    }
-  }
+  for (const [id, hashes] of captured) if (!notAdopted.has(id) && now.spec.has(id) && hashes.has(now.spec.get(id).sha256)) adopted.add(id);
 
   return { findings, notKnown, adopted };
 }
@@ -340,6 +361,21 @@ export function applicability(top, res, ran = null) {
   }
   if (changed.length) return `does not apply to the current text: ${changed.join(', ')} changed since ${res.commit.slice(0, 7)}`;
   return `declared inputs unchanged since ${res.commit.slice(0, 7)} (that they are complete is a claim)`;
+}
+
+// The spec IDs that a disposition with `source: adoption` names, each with
+// the text hashes it was captured with.
+function adoptionEntries(state) {
+  const named = new Map();
+  for (const r of state.requests.values()) {
+    if (!r.mayAdopt) continue;
+    for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) {
+      if (d?.source !== 'adoption' || !d.spec) continue;
+      if (!named.has(d.spec)) named.set(d.spec, new Set());
+      named.get(d.spec).add(d.spec_sha256);
+    }
+  }
+  return named;
 }
 
 const REQUEST_FILE = /^requests\/(?:archive\/)?([^/]+)\/spec\.md$/;

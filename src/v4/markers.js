@@ -101,6 +101,40 @@ export function blocksOf(lines) {
   return { blocks, markers };
 }
 
+// `text` (LF line endings) with a marker before each block that has none: the
+// ID from `nextId()`, kind note on a heading, with the blank lines a marker
+// needs. Returns { text, marks }, marks being the IDs given, in file order.
+export function markBlocks(text, nextId) {
+  const lines = text.split('\n');
+  const { blocks: all, markers } = blocksOf(lines);
+  const todo = all.filter((b) => !b.marked);
+  const out = [];
+  const marks = [];
+  let k = 0;
+  lines.forEach((l, i) => {
+    if (k < todo.length && todo[k].first === i) {
+      const id = nextId();
+      marks.push(id);
+      if (out.length && out.at(-1).trim() !== '') out.push('');
+      out.push(HEADING.test(l) ? `<!-- ${id} note -->` : `<!-- ${id} -->`, '');
+      k++;
+    } else if (markers.has(i) && out.length && out.at(-1).trim() !== '') {
+      out.push('');
+    }
+    out.push(l);
+    if (markers.has(i) && lines[i + 1] !== undefined && lines[i + 1].trim() !== '') out.push('');
+  });
+  return { text: out.join('\n'), marks };
+}
+
+// The text hash of every block of `text`, marked or not, as parseMarkdown
+// hashes a paragraph: what a doc held before it had markers (D16, #196).
+export function blockHashes(text, file = '') {
+  let n = 0;
+  const marked = markBlocks(lf(text), () => `UNMARKED-${++n}`).text;
+  return new Set(parseMarkdown(marked, file).paragraphs.map((p) => p.sha256));
+}
+
 const emptyLinks = () => Object.fromEntries(Object.values(LINK_WORDS).map((k) => [k, []]));
 
 export function parseMarkdown(text, file, options = {}) {
