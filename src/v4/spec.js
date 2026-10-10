@@ -6,7 +6,7 @@ import { parseDocument } from 'yaml';
 import { Fail, exists, guard, read, recordPath, write } from './base.js';
 import { loadConfig, loadSchema, writeSetup } from './config.js';
 import { fileAt, git } from './git.js';
-import { blockHashes, lf, markBlocks, parseMarkdown } from './markers.js';
+import { lf, markBlocks, parseMarkdown, sameBlocks } from './markers.js';
 import { append, openRecord, recordText } from './records.js';
 import { docsInScope, idsEverUsed, isShallow, notRead, prefixOf, rootProblem, scopeOf, symlinkOn } from './scope.js';
 
@@ -114,19 +114,21 @@ function adoptionOf(top, path, marked, marks) {
   const head = git(top, ['rev-parse', '--verify', '-q', 'HEAD^{commit}'], { allowFail: true });
   if (!head) return { ...none, body: ['no adoption record written: the repo has no commit, so no commit holds the adopted text'] };
   const atHead = fileAt(top, head, path);
-  const known = atHead == null ? new Set() : blockHashes(atHead, path);
+  const all = parseMarkdown(marked, path).paragraphs;
+  const same = atHead == null ? new Set() : sameBlocks(atHead, all, path);
   const ids = new Set(marks);
-  const paras = parseMarkdown(marked, path).paragraphs.filter((p) => ids.has(p.id));
-  const adopted = paras.filter((p) => known.has(p.sha256));
-  const body = paras.filter((p) => !known.has(p.sha256))
-    .map((p) => `not adopted: ${p.id}: its text is not in ${path} at HEAD ${head.slice(0, 7)}`);
+  const paras = all.filter((p) => ids.has(p.id));
+  const adopted = paras.filter((p) => same.has(p.id));
+  const body = paras.filter((p) => !same.has(p.id))
+    .map((p) => `not adopted: ${p.id}: its text is not a block of ${path} at HEAD ${head.slice(0, 7)} in this place`);
   if (!adopted.length) return { body: [...body, 'no adoption record written: no marked paragraph is in the file at HEAD'], write: () => [] };
   body.unshift(`adoption: ${adopted.length} paragraph(s) from commit ${head.slice(0, 7)}, in ${ADOPTION}`);
+  // Read before anything is written: a record that does not parse refuses here.
+  guard(top, [ADOPTION, ADOPTION_MD]);
+  const rec = openRecord(top, 'adoption') ?? newRecord();
   return {
     body,
     write() {
-      guard(top, [ADOPTION, ADOPTION_MD]);
-      const rec = openRecord(top, 'adoption') ?? newRecord();
       for (const p of adopted) {
         append(rec, 'dispositions', { source: 'adoption', disposition: 'incorporated', spec: p.id, commit: head, spec_sha256: p.sha256 }, true);
       }

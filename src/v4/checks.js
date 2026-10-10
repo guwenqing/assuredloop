@@ -15,7 +15,7 @@ import {
   hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
-import { blockHashes, groupOf } from './markers.js';
+import { groupOf, sameBlocks } from './markers.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
 const TIER = /^[ \t]*Tier:[ \t]*(0|1d|1|2|3|S)\b[ \t]*(?:—|–|--?)?[ \t]*(.*)$/m;
@@ -73,8 +73,9 @@ export function checks(top, { base, strict = false }) {
   const open = [...now.requests.values()].filter((r) => r.open);
   // Adoption on the branch (D16, D19): a spec paragraph that is new at the
   // head is adopted text, not a change, when the adoption record names it with
-  // its current hash and the same text is a block of its file at the base. An
-  // adoption record cannot cover new text.
+  // its current hash and the same text is a block of its file at the base, in
+  // its place (sameBlocks: one block covers one paragraph). An adoption record
+  // cannot cover new text.
   const captured = adoptionEntries(now);
   const notAdopted = new Set();
   const atBase = new Map();
@@ -83,9 +84,9 @@ export function checks(top, { base, strict = false }) {
     const file = c.head.file;
     if (!atBase.has(file)) {
       const text = was.get(file);
-      atBase.set(file, text == null ? new Set() : blockHashes(text, file));
+      atBase.set(file, text == null ? new Set() : sameBlocks(text, (now.scopes.get(c.scope) ?? []).filter((p) => p.file === file), file));
     }
-    return atBase.get(file).has(c.head.sha256);
+    return atBase.get(file).has(c.id);
   };
   const changes = [];
   for (const c of was ? changesOf(now, was) : []) {
