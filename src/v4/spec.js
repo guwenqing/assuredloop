@@ -14,7 +14,7 @@ import { docsInScope, idsEverUsed, isShallow, notRead, prefixOf, rootProblem, sc
 export { Fail };
 
 const PREFIX = /^[A-Z][A-Z0-9]*$/;
-// The adoption record (design.md 5 and 14, D16, D19): an archived request
+// The adoption record (design.md 5 and 14, D16, D21): an archived request
 // named adoption, whose dispositions say where each adopted paragraph's text
 // came from. It is not an owner approval.
 const ADOPTION = recordPath('adoption');

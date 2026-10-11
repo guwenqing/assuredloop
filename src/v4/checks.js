@@ -71,7 +71,7 @@ export function checks(top, { base, strict = false }) {
   const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
   const promise = (k) => isPromise(now, k);
   const open = [...now.requests.values()].filter((r) => r.open);
-  // Adoption on the branch (D16, D19): a spec paragraph that is new at the
+  // Adoption on the branch (D16, D21): a spec paragraph that is new at the
   // head is adopted text, not a change, when the adoption record names it with
   // its current hash and the same text is a block of its file at the base, in
   // its place (sameBlocks: one block covers one paragraph). An adoption record
