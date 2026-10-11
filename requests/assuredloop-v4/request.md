@@ -36,6 +36,12 @@ Tier: 3 · Status: open
   to three developers at once. Snapshot
   origin/2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14-2.md.
   Decision D2 below.
+- 2026-10-11: the owner's words 156-159: yes to the removal of v1's code
+  from the repo, with 0.1.0 kept on npm; a question on how the cost is
+  measured; the owner accepts the cost for this release, and it is measured
+  again on real features after the release. Snapshot
+  origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md.
+  Decisions D23 and D24 below.
 
 ## Organized requirement
 
