@@ -11,7 +11,7 @@ import { requirements } from './request-md.js';
 import { git, readObjects } from './git.js';
 import { findCites, namedIds, outputRepos, repoConfigAt } from './repos.js';
 import { SPEC, scopeOf } from './scope.js';
-import { Fail, guard, write } from './base.js';
+import { Fail, exists, guard, write } from './base.js';
 
 const OUTPUT_LINKS = ['implements', 'verifies', 'documents'];
 const sha256 = (text) => createHash('sha256').update(text).digest('hex');
@@ -449,13 +449,18 @@ export function sectionAt(top, commit, file, id) {
 // A row as the export writes it: the design's fields, in a fixed order.
 export const exported = ({ title, ...row }) => row;
 
-// al export [--at <commit>] [--out <file>]
+// al export [--at <commit>] [--out <file>] [--yes]: --out shows what it
+// would write, and writes only with --yes (#219).
 export function exportCommand({ top, opts }) {
   const commit = resolveCommit(top, opts.at);
   const { rows, repos } = exportRows(top, commit);
   const text = rows.map((r) => JSON.stringify(exported(r))).join('\n') + (rows.length ? '\n' : '');
   if (opts.out === undefined) return { raw: text };
   guard(top, [opts.out]);
+  if (!opts.yes) {
+    const replaces = exists(top, opts.out) ? 'replacing the existing file' : 'a new file';
+    return { body: [`Would write ${rows.length} rows to ${opts.out}, ${replaces}, at ${commit.slice(0, 12)}`], next: 'run the same command with --yes to write it' };
+  }
   write(top, opts.out, text);
   const roles = {};
   for (const r of rows) roles[r.role] = (roles[r.role] ?? 0) + 1;
