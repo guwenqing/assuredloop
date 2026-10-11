@@ -101,6 +101,66 @@ export function blocksOf(lines) {
   return { blocks, markers };
 }
 
+// `text` (LF line endings) with a marker before each block that has none: the
+// ID from `nextId()`, kind note on a heading, with the blank lines a marker
+// needs. Returns { text, marks }, marks being the IDs given, in file order.
+export function markBlocks(text, nextId) {
+  const lines = text.split('\n');
+  const { blocks: all, markers } = blocksOf(lines);
+  const todo = all.filter((b) => !b.marked);
+  const out = [];
+  const marks = [];
+  let k = 0;
+  lines.forEach((l, i) => {
+    if (k < todo.length && todo[k].first === i) {
+      const id = nextId();
+      marks.push(id);
+      if (out.length && out.at(-1).trim() !== '') out.push('');
+      out.push(HEADING.test(l) ? `<!-- ${id} note -->` : `<!-- ${id} -->`, '');
+      k++;
+    } else if (markers.has(i) && out.length && out.at(-1).trim() !== '') {
+      out.push('');
+    }
+    out.push(l);
+    if (markers.has(i) && lines[i + 1] !== undefined && lines[i + 1].trim() !== '') out.push('');
+  });
+  return { text: out.join('\n'), marks };
+}
+
+// The IDs of `paragraphs` (one doc's, in file order) whose text is a block of
+// `text` (that doc at another commit, marked or not) in the same order: the
+// longest common subsequence of the two hash lists, as a diff keeps lines.
+// So one block there stands for one paragraph here, and of two equal
+// paragraphs only the one in the block's place matches (D16, D21, #196).
+// A block whose ID is still a paragraph of the scope here (`living`, every
+// doc of it, so a moved paragraph counts) is that paragraph's: it stands for
+// no other one, and only the other blocks are matched.
+export function sameBlocks(text, paragraphs, { file = '', living = new Set(paragraphs.map((p) => p.id)) } = {}) {
+  // The blocks with no marker get IDs of a prefix that the text does not hold.
+  let prefix = 'UNMARKED';
+  while (text.includes(`${prefix}-`)) prefix += 'X';
+  let n = 0;
+  const { text: marked, marks } = markBlocks(lf(text), () => `${prefix}-${++n}`);
+  const temporary = new Set(marks);
+  const there = parseMarkdown(marked, file).paragraphs;
+  const kept = new Set(there.filter((p) => !temporary.has(p.id) && living.has(p.id)).map((p) => p.id));
+  const a = there.filter((p) => !kept.has(p.id)).map((p) => p.sha256);
+  paragraphs = paragraphs.filter((p) => !kept.has(p.id));
+  const b = paragraphs.map((p) => p.sha256);
+  // len[i][j]: the length of the common subsequence of a[i..] and b[j..].
+  const len = Array.from({ length: a.length + 1 }, () => new Uint32Array(b.length + 1));
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = b.length - 1; j >= 0; j--) len[i][j] = a[i] === b[j] ? len[i + 1][j + 1] + 1 : Math.max(len[i + 1][j], len[i][j + 1]);
+  }
+  const same = new Set();
+  for (let i = 0, j = 0; i < a.length && j < b.length;) {
+    if (a[i] === b[j] && len[i][j] === len[i + 1][j + 1] + 1) { same.add(paragraphs[j].id); i++; j++; }
+    else if (len[i + 1][j] > len[i][j + 1]) i++;
+    else j++;
+  }
+  return same;
+}
+
 const emptyLinks = () => Object.fromEntries(Object.values(LINK_WORDS).map((k) => [k, []]));
 
 export function parseMarkdown(text, file, options = {}) {
