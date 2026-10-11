@@ -27,14 +27,17 @@
 // scratch copy of packages/search's package files. The install has no lock, so
 // npm needs the registry metadata of each package as well as its archive. The
 // install uses that cache with --offline; when the cache lacks either, npm says
-// ENOTCACHED and this file fails with a "the fixture: ..." message.
+// ENOTCACHED and this file fails with a "the fixture: ..." message. CI fills
+// the cache with a release-age cutoff (--before) and passes the same cutoff on
+// as npm_config_before; the offline install takes it (see offlineInstallArgs).
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync,
 } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -443,6 +446,221 @@ test('#209 publish.yml, the cli steps: a pre-release not on npm is published in 
   assert.ok((i >= 0 && a[i + 1] === 'next') || a.includes('--tag=next'), `npm publish --tag next:\n${show(r)}`);
 });
 
+// --- the offline install and npm's release-age cutoff
+//
+// CI fills npm's cache with `--before <cutoff>` and writes the same cutoff to
+// $GITHUB_ENV as npm_config_before, so later steps (node --test too) have it.
+// The cached registry metadata still lists the releases after the cutoff,
+// whose archives are not cached. So the offline install takes the cutoff from
+// the environment, as --before. With no npm_config_before (a local run, by
+// default) it has no cutoff, as before.
+const cutoffOf = (from) => from.npm_config_before || from.NPM_CONFIG_BEFORE || undefined;
+function offlineInstallArgs(prefix, tarballs, from = process.env) {
+  const before = cutoffOf(from);
+  return ['install', '--global', '--prefix', prefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund',
+    ...(before ? ['--before', before] : []), ...tarballs];
+}
+
+// `cmd ...args`, not blocking the event loop (a local registry in this
+// process must answer), killed after LIMIT; its status, signal and output.
+function runAsync(cmd, args, { cwd, env }) {
+  return new Promise((done) => {
+    const p = spawn(cmd, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    p.stdout.on('data', (d) => { out += d; });
+    p.stderr.on('data', (d) => { out += d; });
+    const timer = setTimeout(() => p.kill('SIGKILL'), LIMIT);
+    p.on('close', (code, signal) => { clearTimeout(timer); done({ code, signal, out }); });
+  });
+}
+
+// A regression for the reviewer's finding (P2): a compatible release after
+// the cutoff. A local registry on 127.0.0.1 serves dep-a 1.0.0 (2020-01-01)
+// and 1.0.1 (2020-06-01). A scratch cache is filled from it as CI fills its
+// cache: `npm install --ignore-scripts --no-package-lock --before 2020-03-01`
+// of a package.json that needs dep-a ^1.0.0. The registry is then closed. The
+// offline install of a tarball that needs dep-a ^1.0.0, with the arguments
+// offlineInstallArgs gives, takes 1.0.0 when npm_config_before is the
+// cutoff; with no cutoff, npm picks 1.0.1, whose archive is not cached.
+test('#209 the offline install keeps the fill\'s cutoff (npm_config_before): a compatible release after the cutoff is not picked', async (t) => {
+  const dir = mkdtempSync(join(realpathSync(tmpdir()), 'al4-cutoff-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const CUTOFF = '2020-03-01T00:00:00.000Z';
+  const TIMES = { '1.0.0': '2020-01-01T00:00:00.000Z', '1.0.1': '2020-06-01T00:00:00.000Z' };
+  const base = {};
+  for (const [k, v] of Object.entries(process.env)) if (!k.startsWith('GIT_') && !/^npm_/i.test(k)) base[k] = v;
+  mkdirSync(join(dir, 'home'));
+  const env = (registry) => ({
+    ...base, HOME: join(dir, 'home'), npm_config_cache: join(dir, 'npm-cache'), npm_config_userconfig: join(dir, 'npmrc'),
+    npm_config_update_notifier: 'false', npm_config_registry: registry,
+    PATH: [dirname(process.execPath), process.env.PATH].join(delimiter),
+  });
+
+  // The fixture packages, packed with npm pack.
+  const pack = async (name, version, dependencies) => {
+    const src = join(dir, 'src', `${name}-${version}`);
+    mkdirSync(src, { recursive: true });
+    writeFileSync(join(src, 'package.json'), `${JSON.stringify({ name, version, license: 'MIT', ...(dependencies ? { dependencies } : {}) })}\n`);
+    writeFileSync(join(src, 'index.js'), `module.exports = ${JSON.stringify(version)};\n`);
+    // Its own cache, so that the cache the fill fills holds nothing from here.
+    const r = await runAsync('npm', ['pack', '--json', '--pack-destination', dir],
+      { cwd: src, env: { ...env('http://127.0.0.1:9/'), npm_config_cache: join(dir, 'pack-cache') } });
+    assert.equal(r.code, 0, `the fixture: npm pack of ${name} ${version}:\n${r.out}`);
+    return join(dir, JSON.parse(r.out.slice(r.out.indexOf('['))) [0].filename);
+  };
+  const tgz = { '1.0.0': await pack('dep-a', '1.0.0'), '1.0.1': await pack('dep-a', '1.0.1') };
+  const appTgz = await pack('app', '1.0.0', { 'dep-a': '^1.0.0' });
+
+  // The registry: the packument of dep-a (with publish times) and its archives.
+  const asked = [];
+  const server = createServer((req, res) => {
+    asked.push(req.url);
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const m = req.url.match(/^\/dep-a\/-\/dep-a-(\d+\.\d+\.\d+)\.tgz$/);
+    if (m && tgz[m[1]]) {
+      res.writeHead(200, { 'content-type': 'application/octet-stream' });
+      res.end(readFileSync(tgz[m[1]]));
+      return;
+    }
+    if (req.url === '/dep-a') {
+      const versions = {};
+      for (const v of Object.keys(tgz)) {
+        const bytes = readFileSync(tgz[v]);
+        versions[v] = {
+          name: 'dep-a', version: v, license: 'MIT',
+          dist: {
+            tarball: `${base}/dep-a/-/dep-a-${v}.tgz`,
+            integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
+            shasum: createHash('sha1').update(bytes).digest('hex'),
+          },
+        };
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        name: 'dep-a', 'dist-tags': { latest: '1.0.1' }, versions,
+        time: { created: TIMES['1.0.0'], modified: TIMES['1.0.1'], ...TIMES },
+      }));
+      return;
+    }
+    res.writeHead(404, { 'content-type': 'application/json' });
+    res.end('{"error":"not found"}');
+  });
+  await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
+  const registry = `http://127.0.0.1:${server.address().port}/`;
+  try {
+    const fill = join(dir, 'fill');
+    mkdirSync(fill);
+    writeFileSync(join(fill, 'package.json'), `${JSON.stringify({ name: 'fill', version: '1.0.0', dependencies: { 'dep-a': '^1.0.0' } })}\n`);
+    const f = await runAsync('npm', ['install', '--ignore-scripts', '--no-package-lock', '--no-audit', '--no-fund', '--before', CUTOFF],
+      { cwd: fill, env: env(registry) });
+    assert.equal(f.signal, null, `the fixture: the fill was killed:\n${f.out}`);
+    assert.equal(f.code, 0, `the fixture: the fill from the local registry:\n${f.out}`);
+    assert.ok(asked.includes('/dep-a/-/dep-a-1.0.0.tgz'), `the fixture: the fill fetched dep-a 1.0.0: ${asked.join(', ')}`);
+    assert.ok(!asked.includes('/dep-a/-/dep-a-1.0.1.tgz'), `the fixture: the fill did not fetch dep-a 1.0.1: ${asked.join(', ')}`);
+  } finally {
+    await new Promise((ok) => server.close(ok));
+  }
+
+  // The same offline install, with the fill's cutoff in the environment.
+  const withCut = join(dir, 'prefix-cutoff');
+  const a = await runAsync('npm', offlineInstallArgs(withCut, [appTgz], { npm_config_before: CUTOFF }), { cwd: dir, env: env(registry) });
+  assert.equal(a.signal, null, `the offline install was killed:\n${a.out}`);
+  assert.equal(a.code, 0, `with npm_config_before set to the fill's cutoff, the offline install should succeed:\n${a.out}`);
+  const depPkg = [join(withCut, 'lib', 'node_modules', 'app', 'node_modules', 'dep-a', 'package.json'),
+    join(withCut, 'lib', 'node_modules', 'dep-a', 'package.json')].find((p) => existsSync(p));
+  assert.ok(depPkg, `dep-a is installed in ${withCut}`);
+  assert.equal(readJson(depPkg).version, '1.0.0', 'the cutoff keeps dep-a at the cached 1.0.0');
+
+  // The fixture shows the fault: with no cutoff, npm picks 1.0.1.
+  const b = await runAsync('npm', offlineInstallArgs(join(dir, 'prefix-none'), [appTgz], {}), { cwd: dir, env: env(registry) });
+  assert.equal(b.signal, null, `the offline install was killed:\n${b.out}`);
+  assert.notEqual(b.code, 0, `the fixture: with no cutoff the offline install picks dep-a 1.0.1, whose archive is not cached:\n${b.out}`);
+  assert.match(b.out, /ENOTCACHED/, `the fixture: npm says ENOTCACHED:\n${b.out}`);
+});
+
+// --- the fill step of CI's test jobs (test.yml, and the test job of
+// publish.yml): it exports one cutoff as npm_config_before and uses it.
+//
+// The shape assumed: in each job that runs `node --test`, a step before it
+// whose run writes `npm_config_before=<time>` to $GITHUB_ENV. The test runs
+// that step with bash, in a scratch copy of the package files, with a stub
+// `npm` (it logs its arguments and its npm_config_before, and exits 0) and a
+// stub `date` (it prints the time one day ago, in ISO form, whatever it is
+// asked) first on PATH. The value in $GITHUB_ENV must be a time in the last
+// 7 days, and the step's `npm install` must use the same value, as --before
+// or as npm_config_before.
+const FILL_STUB = `#!/usr/bin/env node
+require('node:fs').appendFileSync(process.env.STUB_LOG, JSON.stringify({ cwd: process.cwd(), args: process.argv.slice(2), before: process.env.npm_config_before ?? null }) + '\\n');
+`;
+const DATE_STUB = `#!/usr/bin/env node
+console.log(new Date(Date.now() - 86400000).toISOString().replace(/\\.\\d+Z$/, 'Z'));
+`;
+
+function fillSteps(file) {
+  const wf = parseYaml(readFileSync(join(ROOT, '.github', 'workflows', file), 'utf8'));
+  const jobs = Object.entries(wf?.jobs ?? {}).filter(([, j]) => (j.steps ?? []).some((s) => /\bnode --test\b/.test(String(s.run ?? ''))));
+  assert.ok(jobs.length > 0, `the fixture: ${file} has a job that runs node --test`);
+  return jobs.map(([id, j]) => {
+    const testAt = j.steps.findIndex((s) => /\bnode --test\b/.test(String(s.run ?? '')));
+    const fillAt = j.steps.findIndex((s) => /\bnpm_config_before=/.test(String(s.run ?? '')) && /GITHUB_ENV/.test(String(s.run ?? '')));
+    assert.ok(fillAt >= 0, `${file}, job ${id}: a step writes npm_config_before=<time> to $GITHUB_ENV`);
+    assert.ok(fillAt < testAt, `${file}, job ${id}: the fill step comes before node --test`);
+    assert.equal(j.steps[fillAt].if, undefined, `${file}, job ${id}: this test assumes the fill step has no if:`);
+    return { id, step: j.steps[fillAt] };
+  });
+}
+
+for (const file of ['test.yml', 'publish.yml']) {
+  test(`#209 ${file}: the fill step exports one cutoff as npm_config_before to $GITHUB_ENV and installs with that same cutoff`, (t) => {
+    for (const { id, step } of fillSteps(file)) {
+      const dir = mkdtempSync(join(realpathSync(tmpdir()), 'al4-fill-'));
+      t.after(() => rmSync(dir, { recursive: true, force: true }));
+      const ws = workspace(dir);
+      const bin = join(dir, 'bin');
+      mkdirSync(bin);
+      for (const [n, body] of [['npm', FILL_STUB], ['date', DATE_STUB]]) {
+        writeFileSync(join(bin, n), body);
+        chmodSync(join(bin, n), 0o755);
+      }
+      for (const d of ['home', 'runner-temp']) mkdirSync(join(dir, d));
+      const log = join(dir, 'npm.log');
+      const ghEnv = join(dir, 'github-env');
+      writeFileSync(log, '');
+      writeFileSync(ghEnv, '');
+      const script = String(step.run);
+      assert.equal(script.match(/\$\{\{[^}]*\}\}/), null, `${file}, job ${id}: the fill step uses an expression this test does not know`);
+      const file_ = join(dir, 'fill.sh');
+      writeFileSync(file_, script);
+      const now = Date.now();
+      const r = spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', file_], {
+        cwd: step['working-directory'] ? resolve(ws, step['working-directory']) : ws, encoding: 'utf8', input: '', timeout: LIMIT,
+        env: {
+          PATH: [bin, dirname(process.execPath), '/usr/bin', '/bin'].join(delimiter), HOME: join(dir, 'home'),
+          RUNNER_TEMP: join(dir, 'runner-temp'), GITHUB_ENV: ghEnv, GITHUB_WORKSPACE: ws, GITHUB_ACTIONS: 'true',
+          STUB_LOG: log, ...(step.env ?? {}),
+        },
+      });
+      const both = `${r.stdout}\n${r.stderr}`;
+      assert.equal(r.signal, null, `${file}, job ${id}: the fill step was killed:\n${both}`);
+      assert.equal(r.status, 0, `${file}, job ${id}: the fill step should succeed:\n${both}`);
+      const exported = readFileSync(ghEnv, 'utf8').split('\n').map((l) => l.match(/^npm_config_before=(.+)$/)?.[1]).filter(Boolean);
+      assert.equal(exported.length, 1, `${file}, job ${id}: one npm_config_before line in $GITHUB_ENV:\n${readFileSync(ghEnv, 'utf8')}`);
+      const [cut] = exported;
+      const at = Date.parse(cut);
+      assert.ok(Number.isFinite(at), `${file}, job ${id}: npm_config_before is a time: ${cut}`);
+      assert.ok(at <= now && at >= now - 7 * 86400000, `${file}, job ${id}: npm_config_before is a time in the last 7 days: ${cut}`);
+      const calls = readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+      const installs = calls.filter((c) => ['install', 'i', 'ci'].includes(c.args.find((x) => !x.startsWith('-'))));
+      assert.ok(installs.length > 0, `${file}, job ${id}: the fill step runs npm install:\n${JSON.stringify(calls)}`);
+      for (const c of installs) {
+        const i = c.args.indexOf('--before');
+        const used = (i >= 0 ? c.args[i + 1] : undefined) ?? c.args.find((x) => x.startsWith('--before='))?.slice(9) ?? c.before;
+        assert.equal(used, cut, `${file}, job ${id}: npm ${c.args.join(' ')} uses the exported cutoff`);
+      }
+    }
+  });
+}
+
 // --- the packed search package, and the offline install of both packages
 
 describe('#209 the packed packages, installed together with no network', () => {
@@ -527,8 +745,7 @@ describe('#209 the packed packages, installed together with no network', () => {
     const userCache = k.stdout.trim();
 
     prefix = join(scratch, 'prefix');
-    const i = run('npm', ['install', '--global', '--prefix', prefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund',
-      cliTgz, yamlTgz, searchTgz], scratch, { npm_config_cache: userCache });
+    const i = run('npm', offlineInstallArgs(prefix, [cliTgz, yamlTgz, searchTgz]), scratch, { npm_config_cache: userCache });
     assert.ok(!(i.code !== 0 && /ENOTCACHED/.test(i.both)),
       `the fixture: npm's cache (${userCache}) holds the search package's dependencies, their archives and their registry metadata. Fill it from a scratch copy of packages/search's package files, as CI does (npm ci caches the archives only; npm install --ignore-scripts --no-package-lock on a copy of package.json caches both):\n${i.both}`);
     assert.equal(i.code, 0, `npm install --global --offline of the cli tarball, yaml and the search tarball should succeed with no network:\n${i.both}`);
