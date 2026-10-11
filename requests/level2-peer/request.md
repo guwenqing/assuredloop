@@ -25,6 +25,7 @@ Assumed:
 - The library is `@huggingface/transformers` at exactly 4.3.1, the version
   that 0.2.0 pinned. It stays pinned, and no release newer than 24 hours is
   used (DES-77).
+Signed off: 2026-10-11 owner, origin/2026-10-11-signoff.md
 
 ## Decisions
 

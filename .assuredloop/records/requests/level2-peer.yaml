@@ -12,7 +12,17 @@ requirements:
     version: 1
     sha256: 7f444d25a7d83418a632dacaeada4cd95b65018921c0ed4277d5e6e25debca5c
     title: Level 2 search with no package of ours
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-11-signoff.md
+    sha256: c7bab5e992793d24dabd6020197b5ce35797e287e5cd367da9925451e31c8807
+    signed: 2026-10-11T02:53Z
+    source: owner chat with the architect, 2026-10-11
+    words: signoff
+    presented: "R1 as shown in the chat, the same words with one difference: a full stop after 'by default' in place of the semicolon; the Out and Assumed lines were not shown."
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: 7f444d25a7d83418a632dacaeada4cd95b65018921c0ed4277d5e6e25debca5c }
 decisions:
   - id: D1
     date: 2026-10-11
