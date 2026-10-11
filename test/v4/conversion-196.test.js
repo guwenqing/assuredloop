@@ -1,5 +1,5 @@
 // Issue #196 (T17, the switch): the owner's 0.1.0 sign-off of this request
-// moves into the v4 record as S1, with no new sign-off (D19). Built from the
+// moves into the v4 record as S1, with no new sign-off (D21). Built from the
 // issue and the record format; it checks this repo's own files. The oracle
 // for the requirement hashes is v4's public reader, requirements(text) and
 // signedText(md) of src/v4/request-md.js. The one run of the command uses a
