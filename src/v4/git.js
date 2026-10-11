@@ -26,10 +26,11 @@ export function mergeBase(top) {
 // blob. A missing, ambiguous or other object is not in the Map. Every reader
 // of files at a commit uses it. It needs nothing newer than git 2.31 (no
 // `-z`): a name that holds a newline, or ends in a carriage return, cannot go
-// on a line of the batch, so it is read with its own process.
+// on a line of the batch, so it is read with its own process. A name that
+// holds a NUL is never read: no git path holds one, so it is absent (#205).
 export function readObjects(top, names) {
   const out = new Map();
-  const list = [...new Set(names.map(String))];
+  const list = [...new Set(names.map(String))].filter((n) => !n.includes('\0'));
   const alone = (n) => n.includes('\n') || n.endsWith('\r');
   const lines = list.filter((n) => !alone(n));
   let buf = null;
