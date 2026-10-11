@@ -3,19 +3,20 @@
 // invoicer world (test/v4/fixtures/invoicer, #179), search with the question's
 // words in the query chosen below, and print the recall of the expected IDs
 // in the top 5 and top 10, at level 0, level 1 and level 2 (the fixed test
-// embedder; and the real model when packages/search/node_modules is there).
+// embedder, a stand-in @huggingface/transformers; and the real model when
+// @huggingface/transformers resolves from the repo top, #212).
 // The requirement sets no threshold, so the test asserts only that it ran.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { REPO } from './helpers/search.js';
+import { REPO, besideAl } from './helpers/search.js';
 import { KS, measureOne, pct, summary, useLevel2 } from './helpers/t2.js';
 
 const QUESTIONS = parse(readFileSync(join(REPO, 'test/v4/fixtures/search/t2-questions.yaml'), 'utf8'));
 const BUILDER = join(REPO, 'test/v4/helpers/invoicer.js');
-const REAL = existsSync(join(REPO, 'packages/search/node_modules'));
+const REAL = besideAl();
 
 // The fixture case of each question's state. Q13 and Q14 are about the
 // market-report repo, whose base state is the case report-base.

@@ -1,6 +1,7 @@
 // al search across the output repos (#186, T13 with T12; design.md 11 and 12;
 // interface-186.md 4). Each test runs at level 0, level 1 and level 2 (the
-// fixed test embedder of helpers/search.js). The world: helpers/cross-search.js.
+// fixed test embedder of helpers/search.js, a stand-in
+// @huggingface/transformers). The world: helpers/cross-search.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';

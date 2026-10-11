@@ -1,13 +1,12 @@
 // Helpers for the tests of `al export` and `al search` (#181, T13 and T14).
-// They use only the public commands, the files the commands write, and
-// `createLevel2` of packages/search/index.js. They never read src/v4/export.js
-// or the search code.
+// They use only the public commands and the files the commands write. They
+// never read src/v4/export.js or the search code. Level 2 runs with a
+// stand-in @huggingface/transformers (#212): see installEmbedder.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {
   BIN, EPOCH, REPO, appendSection, commitAll, doc, docRecordPath, editRecord, git, hashOf, index, move, newRequest, ok,
   organized, project, read, readYaml, req, sha, write, writeConfig, writeYaml,
@@ -109,7 +108,16 @@ export const asRow = (hit) => {
 
 export const head = (dir) => git(dir, 'rev-parse', 'HEAD');
 
-// --- level 2: a fixed test embedder, as a package in the test project
+// --- level 2: a fixed test embedder, as a stand-in @huggingface/transformers
+
+// al's model, its pinned revision, and the Level line at level 2 (#212).
+// The model name is al's own: a stand-in cannot change it.
+export const TRANSFORMERS = '@huggingface/transformers';
+export const TRANSFORMERS_VERSION = '4.3.1';
+export const MODEL = 'Xenova/bge-small-en-v1.5';
+export const REVISION = 'ea104dacec62c0de699686887e3f920caeb4f3e3';
+export const LEVEL2_LINE = `Level     2 (hybrid: full text and ${MODEL}@${REVISION.slice(0, 12)})`;
+export const QUERY_PREFIX = 'Represent this sentence for searching relevant passages: ';
 
 // The fixed embedder: one dimension per concept, from words in the text, and
 // one small constant dimension so that no vector is zero.
@@ -121,45 +129,67 @@ export const CONCEPTS = [
   '\\b(token|tokens)\\b',
 ];
 
-// Writes <dir>/node_modules/@assuredloop/search/ (package.json, index.js).
-// mode: 'ok', 'embed-throws' or 'load-throws'. `log`: a file that gets one
-// JSON line for each text that `embed` is given.
-export function installEmbedder(dir, { model = 'test-fixed', mode = 'ok', log = null } = {}) {
-  const pkg = join(dir, 'node_modules/@assuredloop/search');
+// Writes a stand-in @huggingface/transformers into the folder `pkg`
+// (package.json and index.js). It has only what al uses: `pipeline(task,
+// model, options)` gives an extractor; `await extractor(texts, options)`
+// gives an object whose `tolist()` is one vector per text. With
+// `normalize: true` each vector has unit length, as the real library gives.
+// mode: 'ok', 'embed-throws' (the extractor throws) or 'load-throws' (the
+// import throws).
+// `log`: a file that gets one JSON line for each text the extractor is given.
+// `calls`: a file that gets one JSON line for each call of pipeline and of
+// the extractor, with its arguments (the texts as a count).
+// `marker`: a file that gets one line each time the module is imported: the
+// process id and al's arguments.
+export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = null } = {}) {
   mkdirSync(pkg, { recursive: true });
   writeFileSync(join(pkg, 'package.json'), `${JSON.stringify({
-    name: '@assuredloop/search', version: '0.0.0-test', private: true, type: 'module', exports: './index.js',
+    name: TRANSFORMERS, version: TRANSFORMERS_VERSION, private: true, description: 'a test stand-in',
+    type: 'module', main: 'index.js', exports: './index.js',
   }, null, 2)}\n`);
-  const lib = pathToFileURL(join(REPO, 'packages/search/index.js')).href;
   writeFileSync(join(pkg, 'index.js'), [
-    `import { createLevel2 } from ${JSON.stringify(lib)};`,
     "import { appendFileSync } from 'node:fs';",
+    `const LOG = ${JSON.stringify(log)};`,
+    `const CALLS = ${JSON.stringify(calls)};`,
+    `const MARKER = ${JSON.stringify(marker)};`,
+    "if (MARKER) appendFileSync(MARKER, `${process.pid} ${process.argv.slice(2).join(' ')}\\n`);",
     mode === 'load-throws' ? "throw new Error('test embedder: it does not load');" : '',
     `const CONCEPTS = ${JSON.stringify(CONCEPTS)}.map((s) => new RegExp(s, 'i'));`,
     'const vector = (t) => [...CONCEPTS.map((re) => (re.test(t) ? 1 : 0)), 0.1];',
-    `const LOG = ${JSON.stringify(log)};`,
-    'export default createLevel2({',
-    `  model: ${JSON.stringify(model)},`,
-    '  embed: async (texts) => {',
+    'const unit = (v) => { const n = Math.sqrt(v.reduce((a, x) => a + x * x, 0)); return v.map((x) => x / n); };',
+    'const call = (x) => { if (CALLS) appendFileSync(CALLS, `${JSON.stringify(x)}\\n`); };',
+    'export async function pipeline(task, model, options) {',
+    "  call({ call: 'pipeline', task, model, options: options ?? null });",
+    '  return async (input, options) => {',
+    '    const texts = Array.isArray(input) ? input : [input];',
+    "    call({ call: 'extract', count: texts.length, options: options ?? null });",
     mode === 'embed-throws' ? "    throw new Error('test embedder: embed failed');" : '',
     "    if (LOG) appendFileSync(LOG, texts.map((t) => `${JSON.stringify(t)}\\n`).join(''));",
-    '    return texts.map(vector);',
-    '  },',
-    '});',
+    '    const rows = texts.map((t) => (options?.normalize ? unit(vector(t)) : vector(t)));',
+    '    return { tolist: () => rows };',
+    '  };',
+    '}',
     '',
   ].join('\n'));
   return pkg;
 }
 
+// Writes the stand-in into <dir>/node_modules/@huggingface/transformers/:
+// the project's own copy, which al finds first.
+export const installEmbedder = (dir, opts) => standIn(join(dir, 'node_modules', TRANSFORMERS), opts);
+
 // The texts the fixed embedder was given, from its log.
 export const embedded = (log) => (existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
 export const clearLog = (log) => writeFileSync(log, '');
+// The lines of a `calls` or `marker` file; none when it is absent.
+export const callsOf = (file) => (existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+export const importsOf = (file) => (existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : []);
 
-// True when `@assuredloop/search` resolves beside al (from bin/), which the
-// fallback "no package" cannot then show.
+// True when @huggingface/transformers resolves beside al (from bin/). Then
+// "not installed" cannot be shown with this al, and the real library is there.
 export function besideAl() {
   try {
-    createRequire(BIN).resolve('@assuredloop/search');
+    createRequire(BIN).resolve(TRANSFORMERS);
     return true;
   } catch {
     return false;
