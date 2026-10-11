@@ -63,14 +63,14 @@ test('export: rows are sorted by doc_or_request, then id, then version', () => {
   }
 });
 
-test('export: the same commit gives the same bytes; --out writes those bytes', () => {
+test('export: the same commit gives the same bytes; --out --yes writes those bytes', () => {
   const { W, stdout: STDOUT } = get();
   const again = runOk(W.dir, ['export']).stdout;
   assert.equal(again, STDOUT, 'two runs, same bytes');
   const atHead = runOk(W.dir, ['export', '--at', W.D]).stdout;
   assert.equal(atHead, STDOUT, '--at HEAD gives the same bytes as the default');
-  runOk(W.dir, ['export', '--out', 'export.jsonl']);
-  assert.equal(readFileSync(join(W.dir, 'export.jsonl'), 'utf8'), STDOUT, '--out writes the JSONL');
+  runOk(W.dir, ['export', '--out', 'export.jsonl', '--yes']);
+  assert.equal(readFileSync(join(W.dir, 'export.jsonl'), 'utf8'), STDOUT, '--out --yes writes the JSONL');
   git(W.dir, 'clean', '-q', '-f', 'export.jsonl');
 });
 

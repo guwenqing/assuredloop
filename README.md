@@ -136,8 +136,11 @@ with a baseline effect has no valid disposition for its current version.
   request's whole trace; `--at <commit>` any v4 state.
 - `al conclude <name>`: the close rule; with `--yes` it writes the Outcome
   and moves the request to `requests/archive/<name>/`.
-- `al export [--at <commit>] [--out <file>]`: one JSONL row per paragraph
-  version, with its role, version, commit and links. It is not committed.
+- `al export [--at <commit>] [--out <file>] [--yes]`: one JSONL row per
+  paragraph version, with its role, version, commit and links. It is not
+  committed. With no `--out`, it writes the rows to standard output. With
+  `--out`, it shows the path, the row count and whether it replaces an
+  existing file; with `--yes`, it writes the file.
 - `al search <words>`: see "Search".
 
 Every command that changes files, except `new` and `index`, shows what it
