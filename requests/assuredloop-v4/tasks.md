@@ -15,8 +15,8 @@ sections to read.
 
 Order (owner inputs 117-118, 135): validation first (T1-T6), then the build
 (T7-T17). The build starts after T6, because validation can change rules.
-T18, the release, is a separate follow-on outside this request, because
-publishing needs the owner's yes.
+T18, the release, is a separate follow-on outside this request. The
+architect decides it (D25).
 
 Completion: this request is complete only when T1-T17 are done and every
 runtime check that T6 defers has a result. `al conclude` passing is
@@ -286,9 +286,9 @@ necessary for that, not proof of it: the tool does not check this task list.
 ### T18 Release (the architect; a follow-on outside this request)
 - **Wanted:** the breaking release of v4, after this request concludes.
 - **Boundary:** a separate follow-on, not part of this request's completion;
-  publishing needs the owner's yes.
+  the architect decides the release (D25).
 - **Delivers:** the release of R1-R14.
-- **Check:** the owner's yes is recorded; the release workflow passes.
+- **Check:** the release workflow passes.
 - **Read:** the T7 plan.
 
 ## Issues
