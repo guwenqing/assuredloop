@@ -32,6 +32,18 @@ export function signedText(md) {
   return `${kept.join('\n')}\n`;
 }
 
+// The signed text `text` (as signedText gives it) with no requirement in it:
+// its heading, the intro and the Out: and Assumed: text. Each requirement of
+// the section is signed with it, so a change to it unsigns them all (#216).
+export function frameOf(text) {
+  let inReq = false;
+  return text.split('\n').filter((l) => {
+    if (/^###\s+[RQ]\d+\b/.test(l)) inReq = true;
+    else if (/^#{1,6}\s/.test(l) || /^(Out|Assumed|Signed off):/.test(l)) inReq = false;
+    return !inReq;
+  }).join('\n');
+}
+
 // Each `### R<n> <title>` (or `### Q<n>`): { id, title, text, sha256, from }.
 // Its text runs from the heading to the next heading, or an Out:, Assumed:
 // or Signed off: line, with no marker line and no blank line at either end.
