@@ -1,4 +1,4 @@
-// Throwaway git repos for the v4 tests, and a runner for `node bin/al-v4.js`.
+// Throwaway git repos for the v4 tests, and a runner for `node bin/al.js`.
 // Deterministic: fixed identities and dates, no user or system git config.
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync, realpathSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 
-export const AL4 = fileURLToPath(new URL('../../../bin/al-v4.js', import.meta.url));
+export const AL4 = fileURLToPath(new URL('../../../bin/al.js', import.meta.url));
 
 const DATE = '2026-01-01T00:00:00Z';
 
@@ -72,7 +72,7 @@ export function makeRepo(t, { branch = 'main', commit = true } = {}) {
   return repo;
 }
 
-// Run `node bin/al-v4.js ...args` in `cwd`, killed after `timeout` ms.
+// Run `node bin/al.js ...args` in `cwd`, killed after `timeout` ms.
 export function runV4(cwd, args, { timeout = 60000 } = {}) {
   const r = spawnSync(process.execPath, [AL4, ...args],
     { cwd, input: '', env: cleanEnv(), encoding: 'utf8', timeout });
