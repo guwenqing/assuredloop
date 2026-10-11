@@ -1,7 +1,7 @@
 schema: assuredloop/1
 request: level2-peer
 tier: "2"
-status: concluded
+status: open
 sources:
   - file: 2026-10-11-owner-words.md
     kind: owner-words
