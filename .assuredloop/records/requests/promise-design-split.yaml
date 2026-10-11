@@ -28,7 +28,14 @@ signoff:
     transcribed_by: the agent (architect)
     covers:
       - { id: R1, version: 1, sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3 }
-decisions: []
+decisions:
+  - id: D1
+    date: 2026-10-11
+    source: the agent (architect), message to developer-214, 2026-10-11
+    text: "Three splits need a small wording change, and they keep the meaning: in DES-65's level 1 item the colon becomes a full stop; in DES-65's table, 'into a SQLite FTS5 (BM25) index' becomes 'into an index'; in DES-69, 'It shows' becomes '`al` shows'. ', preferably on Google Cloud' stays in DES-65's level 3 cell, because those are the owner's words in the signed assuredloop-v4/R10. The rest of the list on issue #214, and the four paragraphs kept as they are, hold."
+    sha256: 1c3310de29f990b434a4f9f62d650f6d5b4db8b2ffd370dd54c2f31ec404e261
+    clarifies:
+      - R1
 tasks: []
 bindings:
   - { holder: promise-design-split/R1, link: from, target: promise-design-split/2026-10-11-owner-words.md, holder_sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3, target_sha256: 699be05b2f6f0e351e27275a7243a4749c221bae78b0da99cd59eac1b5be05a9 }
