@@ -214,28 +214,18 @@ documents only; its config names the central repo.
    other paragraph into its marker. An adopted paragraph needs no link.
 3. Add the AGENTS.md line from "Install". Claim
    `Tier: 0 — adds paragraph IDs; no promise changes`.
-4. Record where the adopted text came from, in the commit after the one that
-   adds the markers. Run `al index` first: `.assuredloop/records/specs/<file>.md.yaml`
-   then holds each paragraph's `text_sha256`. Write
-   `requests/archive/adoption/request.md` (one line on what was adopted, and
-   that it is not an owner approval), and
-   `.assuredloop/records/requests/adoption.yaml`:
-
-   ```yaml
-   schema: assuredloop/1
-   request: adoption
-   status: concluded
-   dispositions:
-     - {source: adoption, disposition: incorporated, spec: INV-2, commit: <the marking commit>, spec_sha256: <its text_sha256>}
-   ```
-
-   `source: adoption` says where the text came from. It is not an owner
-   approval, and it does not excuse a later change.
-
-   On the branch that adds the markers, `al check` reads each paragraph as
-   new, because the base has no markers: each promise paragraph gets a
-   `not ok` for sign-off coverage and for the path claim. Say in the PR why
-   they stay. Under `--strict` that branch fails.
+4. `al spec --add-ids --yes` also records where the adopted text came from.
+   For each paragraph it marks whose text is a block of the file at HEAD, in
+   the same place, it writes an entry with HEAD's commit and the text's hash
+   to `.assuredloop/records/requests/adoption.yaml`. It writes
+   `requests/archive/adoption/request.md` when that file is absent. So commit
+   the spec unmarked before you mark it. A paragraph whose text is not at
+   HEAD is not adopted: the command names it, and it follows its path as a
+   change. `source: adoption` says where the text came from. It is not an
+   owner approval, and it does not excuse a later change.
+5. Run `al index`, and commit the markers and the records together. On that
+   branch, `al check --strict` reads the adopted paragraphs as unchanged, so
+   they need no sign-off and no path claim.
 
 **A sign-off bound to the whole text.** Markers change a file's bytes. If a
 signed requirement, or any other record, binds the whole text of a spec file
