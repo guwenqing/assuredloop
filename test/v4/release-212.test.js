@@ -16,7 +16,7 @@
 //   publish.yml publishes only @assuredloop/cli (a tag check of ./package.json
 //   alone, one npm publish step, skip when on npm, --tag next for a
 //   pre-release); neither workflow installs the library or fills npm's cache
-//   with it.
+//   with it, but one step of publish.yml's test job installs 4.3.1 (#220).
 // - Item 6: the packed cli alone, installed offline: no file of the library
 //   in the tarball, npm does not install the library, al --version names
 //   0.2.1, al check --strict runs, and the installed al finds the library in
@@ -134,18 +134,26 @@ function npmInstalls(run) {
 
 for (const file of ['test.yml', 'publish.yml']) {
   test(`#212 ${file}: no step installs @huggingface/transformers or fills npm's cache with it; npm ci and npm install --global . are the only installs`, () => {
-    for (const { id, s } of runSteps(workflow(file))) {
+    const wf = workflow(file);
+    // #220: in publish.yml's test job, one step that installs the library may
+    // install exactly @huggingface/transformers@4.3.1 and nothing else.
+    const one = file === 'publish.yml'
+      ? (wf?.jobs?.test?.steps ?? []).find((s) => typeof s.run === 'string' && /huggingface|transformers/i.test(s.run)
+        && npmInstalls(s.run).some((c) => c.cmd !== 'cache'))
+      : undefined;
+    for (const { id, s } of runSteps(wf)) {
       const where = `${file}, job ${id}, step "${s.name ?? s.run.split('\n')[0]}"`;
-      assert.ok(!/huggingface|transformers/i.test(s.run), `${where} names the library`);
+      const exempt = one !== undefined && s === one;
+      if (!exempt) assert.ok(!/huggingface|transformers/i.test(s.run), `${where} names the library`);
       assert.ok(!/packages\/search|search-deps/.test(s.run), `${where} names the search package`);
-      for (const c of npmInstalls(s.run)) {
+      for (const c of npmInstalls(exempt ? s.run.replace(/\\\n/g, ' ') : s.run)) {
         if (['ci', 'clean-install', 'install-clean'].includes(c.cmd)) continue;
         if (c.cmd === 'cache') {
           assert.notEqual(c.rest[0], 'add', `${where} fills npm's cache: ${c.line}`);
           continue;
         }
-        const named = c.rest.filter((w) => !w.startsWith('-'));
-        assert.deepEqual(named, ['.'], `${where} installs only the repo itself: ${c.line}`);
+        const named = c.rest.filter((w, i, a) => !w.startsWith('-') && !(exempt && a[i - 1] === '--before'));
+        assert.deepEqual(named, exempt ? [INSTALL] : ['.'], `${where} installs only ${exempt ? INSTALL : 'the repo itself'}: ${c.line}`);
       }
     }
   });
