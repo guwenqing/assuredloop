@@ -87,12 +87,20 @@ paragraphs:
     display: DES-21 (3:10, in 3. IDs, kinds and links)
   - id: DES-22
     kind: rule
-    text_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd
+    text_sha256: cbad1e310478b928cee8225c35c2a48bc4b5a9ef0e3c14924a98994389b2b500
     display: DES-22 (3:11, in 3. IDs, kinds and links)
+    change:
+      - Changed
+  - id: DES-81
+    kind: choice
+    text_sha256: 8de44539eedb01d463b7d6372cd958a743bb3c3bb16f5936e3cbd7fb30a6e49e
+    display: DES-81 (3:12, in 3. IDs, kinds and links)
+    change:
+      - New
   - id: DES-23
     kind: flow
     text_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c
-    display: DES-23 (3:12, in 3. IDs, kinds and links)
+    display: DES-23 (3:13, in 3. IDs, kinds and links)
   - id: DES-24
     kind: note
     text_sha256: 84947cd9438f30253fda7b8034c11f1e3ebad3c254452c836d9ade5f0e99b28e
@@ -231,8 +239,22 @@ paragraphs:
     display: DES-57 (10:1, in 10. Records)
   - id: DES-58
     kind: rule
-    text_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032
+    text_sha256: 940361acfbb321c0cf5353e60ed2be25e0399d6aec5e79c0aa4065b85f3ad1ef
     display: DES-58 (10:2, in 10. Records)
+    change:
+      - Changed
+  - id: DES-82
+    kind: data
+    text_sha256: 1ba277553e01c830fab0397f5d9266a3b7e863608e0d635166a940eb18a0912c
+    display: DES-82 (10:3, in 10. Records)
+    change:
+      - New
+  - id: DES-83
+    kind: choice
+    text_sha256: 42e0f5058ede90567525cdceb7d042806586df5a4946d73404ca23edcbcecc37
+    display: DES-83 (10:4, in 10. Records)
+    change:
+      - New
   - id: DES-59
     kind: note
     text_sha256: fb6cb2f9da61f2a205bf4268e615b635321548ed21aa30707bdf27677db3cd72
@@ -255,24 +277,36 @@ paragraphs:
     display: DES-63 (11:4, in 11. Search and the export)
   - id: DES-64
     kind: rule
-    text_sha256: 0c4c971a8428766530df37eec892756ad6ada78e026110ccbb032ae787bab1e6
+    text_sha256: dc3fb77f9fb34ebca3a260f5d13c2e5ae50e414836f803642d79f87412d321c2
     display: DES-64 (11:5, in 11. Search and the export)
-  - id: DES-65
-    kind: rule
-    text_sha256: 2154fd6f22c71d132b145f24e3151c000d4cf970d555e0a2a09eee7f3bd4ce45
-    display: DES-65 (11:6, in 11. Search and the export)
     change:
       - Changed
+  - id: DES-87
+    kind: component
+    text_sha256: 5d82ca914bc5bf1b7b933156077f8415189fd0f19ecb837d7a0c2c25f8b874d6
+    display: DES-87 (11:6, in 11. Search and the export)
+    change:
+      - New
+  - id: DES-65
+    kind: rule
+    text_sha256: d3352dfd8a0dfd3e122a5c6b3aa0ef70ddae342e65c147ab691eef2b120b082f
+    display: DES-65 (11:7, in 11. Search and the export)
+    change:
+      - Changed
+  - id: DES-88
+    kind: component
+    text_sha256: 5d81b36bcfb9247ec10585fa457f9f405d50fe8981c1386ba7e00a4808d0271d
+    display: DES-88 (11:8, in 11. Search and the export)
+    change:
+      - New
   - id: DES-80
     kind: component
     text_sha256: a04a244da31a17fd1308f97339667d137e2da6b2b7ce2a9fd4b8d92cc8284b02
-    display: DES-80 (11:7, in 11. Search and the export)
-    change:
-      - New
+    display: DES-80 (11:9, in 11. Search and the export)
   - id: DES-66
     kind: rule
     text_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6
-    display: DES-66 (11:8, in 11. Search and the export)
+    display: DES-66 (11:10, in 11. Search and the export)
   - id: DES-67
     kind: note
     text_sha256: f1361c0156d995db0f73407077a8ae6182ec0b2bfe88e5c42a6e5541e4a5e882
@@ -283,16 +317,24 @@ paragraphs:
     display: DES-68 (12:1, in 12. One central spec repo, and output repos)
   - id: DES-69
     kind: rule
-    text_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4
+    text_sha256: ef6bd873d18ab9451bb1b57df8d398c5a811c5d896a8e63fe6ee72e2acbea48e
     display: DES-69 (12:2, in 12. One central spec repo, and output repos)
+    change:
+      - Changed
+  - id: DES-84
+    kind: flow
+    text_sha256: f36ac8596669ef33a2183e83705b9bea2222d1d93a9977a0e7fbe0fb32cf973b
+    display: DES-84 (12:3, in 12. One central spec repo, and output repos)
+    change:
+      - New
   - id: DES-70
     kind: data
     text_sha256: 325504116b28a012ca83932be838bc0f3ee033b55b3b23cfd18ec39635ea2183
-    display: DES-70 (12:3, in 12. One central spec repo, and output repos)
+    display: DES-70 (12:4, in 12. One central spec repo, and output repos)
   - id: DES-79
     kind: choice
     text_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf
-    display: DES-79 (12:4, in 12. One central spec repo, and output repos)
+    display: DES-79 (12:5, in 12. One central spec repo, and output repos)
   - id: DES-71
     kind: note
     text_sha256: ce296d0bdabab1c6a0245126a50ca429bcba5a21be20af119a087b07330918f7
@@ -319,9 +361,25 @@ paragraphs:
     display: DES-76 (15, 17. Building v4)
   - id: DES-77
     kind: limit
-    text_sha256: 6cf3c8162d8e55e9439c702978952af19e4e212d8ff7be34579d167c2c723237
+    text_sha256: d8ff4a409717e5ba110dc5adf4388435a8321a861885a18772b50ea08f3eefb3
     display: DES-77 (15:1, in 17. Building v4)
+    change:
+      - Changed
+  - id: DES-85
+    kind: choice
+    text_sha256: 908bed52654ff3c21393e60232c85caa0cb48cbd038b630d14f3d7d6530ace55
+    display: DES-85 (15:2, in 17. Building v4)
+    change:
+      - New
   - id: DES-78
     kind: rule
-    text_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669
-    display: DES-78 (15:2, in 17. Building v4)
+    text_sha256: 579d3c6500aeeaffe6111b95aa199fef3d5db8b0d284249b3d25443990d30faa
+    display: DES-78 (15:3, in 17. Building v4)
+    change:
+      - Changed
+  - id: DES-86
+    kind: data
+    text_sha256: 5d5ed6675ba29172b9dda9fb0e058482e7b41da37a98203ea224d69ff8248adc
+    display: DES-86 (15:4, in 17. Building v4)
+    change:
+      - New
