@@ -936,6 +936,15 @@ declared one shows `how: declared`. One cite finder serves every repo.
   refine the central spec. The qualified-ID form leaves room for a `refines`
   link.
 
+<!-- DES-79 choice serves:assuredloop-v4/R14 -->
+
+**Projects that are not code.** No record needs code. A spec is Markdown;
+an output is any file that a record declares or that names an ID; a result
+is any named check with its outcome. So a project of documents or research
+keeps the same requests, change specs, records and paths, and its documents
+are its outputs. Validation case DC08, a report project on path 2, kept
+these records (validation.md).
+
 <!-- DES-71 note -->
 
 ## 13. Commands

@@ -19,9 +19,11 @@ import { requirements, signedText } from '../../src/v4/request-md.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const RECORD = '.assuredloop/records/requests/assuredloop-v4.yaml';
+// The request is concluded: `al conclude` moved its folder to requests/archive/.
+const DIR = 'requests/archive/assuredloop-v4';
 const SNAPSHOT_FILE = '2026-10-10-signoff.md';
-const SNAPSHOT = `requests/assuredloop-v4/origin/${SNAPSHOT_FILE}`;
-const REQUEST = 'requests/assuredloop-v4/request.md';
+const SNAPSHOT = `${DIR}/origin/${SNAPSHOT_FILE}`;
+const REQUEST = `${DIR}/request.md`;
 const MARK = '--- signed text ---\n';
 const IDS = Array.from({ length: 14 }, (_, i) => `R${i + 1}`);
 const LIMIT = 60_000;
@@ -144,7 +146,8 @@ function tree(dir) {
   return out;
 }
 
-test('#196 node bin/al.js record assuredloop-v4 signoff --source x (no --yes), from the repo top: first line starts "nothing to sign", and it writes nothing', (t) => {
+// Tests 1-3 check that S1 covers today's requirement; this one checks that the concluded request is not signed again.
+test('#196 node bin/al.js record assuredloop-v4 signoff --source x (no --yes), from the repo top: it refuses the archived request with exit 2, and it writes nothing', (t) => {
   const dir = copyRepo(t);
   const before = tree(dir);
   const status = git(dir, 'status', '--porcelain');
@@ -152,7 +155,8 @@ test('#196 node bin/al.js record assuredloop-v4 signoff --source x (no --yes), f
     { cwd: dir, env: env(), input: '', encoding: 'utf8', timeout: LIMIT });
   const show = `exit ${r.status}\n--- stdout\n${r.stdout}--- stderr\n${r.stderr}`;
   assert.equal(r.signal, null, `the run was killed:\n${show}`);
-  assert.match(r.stdout.split('\n')[0], /^nothing to sign/, show);
+  assert.match(r.stdout.split('\n')[0], /^al: assuredloop-v4 is archived/, show);
+  assert.equal(r.status, 2, show);
   assert.deepEqual(tree(dir), before, `it should write nothing:\n${show}`);
   assert.equal(git(dir, 'status', '--porcelain'), status, `git status should not change:\n${show}`);
 });
