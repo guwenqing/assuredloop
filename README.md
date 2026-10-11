@@ -148,8 +148,9 @@ tool cannot know).
 ## Settings
 
 `.assuredloop/config.yaml`, at the repo's root. Every key is optional. A
-`root:` that is outside the repository, reached through a symlink, or not a
-folder is a `not ok` in `al check`.
+spec root that is outside the repository, reached through a symlink, or not a
+folder is a `not ok` in `al check`. Only the default root, `specs`, may be
+absent.
 
 ```yaml
 root: specs                # the spec folder; every *.md in it except adr/ is a spec doc
