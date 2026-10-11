@@ -166,6 +166,17 @@ const nearNotes = (state, p) => {
   return near ? [`near-match ${near.id}: applied in another form?`] : [];
 };
 
+// Whether change paragraph `p` of request `r` is validly abandoned at its
+// current version with no kept effect, so that it needs no sign-off (design.md
+// 6). An archived request is judged here too: on the branch that archives it,
+// al check reads the paragraph as al conclude read it (#226).
+export function droppedUnsigned(state, r, p, opts = {}) {
+  const d = dispositionOf(r.data, `${r.name}/${p.id}`, p.sha256);
+  if (d?.disposition !== 'abandoned') return false;
+  const v = judge(state, r, p, d, opts);
+  return v.valid && v.kept === false;
+}
+
 // Every change paragraph of request `r` with a baseline effect, with the
 // disposition of its current version and its validity. A spike has none.
 export function judgeRequest(state, r, opts = {}) {

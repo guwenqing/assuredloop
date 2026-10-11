@@ -38,7 +38,7 @@ function reasons(state, r, branch) {
     ...[...r.paras.values()].filter((p) => isPromise(state, p.kind) && !dropped.has(p.id) && !servesSigned(state, p, r.name)).map((p) => `${r.name}/${p.id}`),
     ...[...state.spec.values()].filter((p) => isPromise(state, p.kind) && p.links.serves.some((s) => qualify(s, null).req === r.name)
       && !servesSigned(state, p, null)).map((p) => p.id),
-    ...branch.filter((c) => !(c.request === r.name && dropped.has(c.id))).map((c) => c.name),
+    ...branch.map((c) => c.name),
   ];
   if (unsigned.length) out.push(`a promise change with no signed requirement that covers it: ${[...new Set(unsigned)].join(', ')}`);
   const open = judged.filter((j) => j.status === 'pending' || !j.valid);
