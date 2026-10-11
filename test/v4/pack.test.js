@@ -14,15 +14,18 @@
 //   check and spec run in a scratch git repo.
 // - The installed package carries skills/assuredloop/SKILL.md, the same bytes.
 //
-// No network: yaml must come from somewhere local. The test packs the repo's
-// node_modules/yaml (there after npm ci, in CI too), checks that its integrity
-// is the one package-lock.json pins, and gives that tarball to the same
-// `npm install --global --offline` as the al tarball. npm puts yaml beside
+// No network: yaml must come from somewhere local. npm ci (run first, in CI
+// too) downloads the registry's yaml archive into the user's npm cache. The
+// test copies that archive out with an offline `npm pack` of the lock's
+// resolved URL, checks its bytes against the integrity package-lock.json
+// pins, and gives it to the same `npm install --global --offline` as the al
+// tarball. npm puts yaml beside
 // @assuredloop/cli in <prefix>/lib/node_modules, where al's declared
 // dependency resolves to it; `npm ls` shows that the dependency edge is met.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
@@ -71,19 +74,26 @@ before(() => {
   const [info] = JSON.parse(p.stdout);
   packed = info.files.map((f) => f.path);
 
-  // The pinned yaml, packed from the repo's node_modules (npm ci puts it there).
-  const yamlDir = join(ROOT, 'node_modules', 'yaml');
-  assert.ok(existsSync(yamlDir), `the fixture: ${yamlDir} exists (run npm ci first)`);
-  const y = run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', scratch, yamlDir], scratch);
-  assert.equal(y.code, 0, `npm pack of node_modules/yaml should succeed:\n${y.both}`);
-  const [yinfo] = JSON.parse(y.stdout);
-  assert.equal(yinfo.version, YAML_VERSION, 'the fixture: node_modules/yaml is the pinned version');
-  assert.equal(yinfo.integrity, LOCK.packages['node_modules/yaml'].integrity,
-    'the fixture: the packed yaml is the release that package-lock.json pins');
+  // The pinned yaml: the registry's own archive, which npm ci left in the
+  // user's npm cache. `npm pack --offline <the lock's resolved URL>`, run with
+  // the user's npm config (not the scratch one), copies it out of that cache
+  // and fails with ENOTCACHED when it is not there. Its bytes are checked
+  // against the lock's integrity. A repacked node_modules/yaml is not
+  // byte-equal to the registry archive.
+  const lockYaml = LOCK.packages['node_modules/yaml'];
+  assert.equal(lockYaml?.version, YAML_VERSION, 'the fixture: package-lock.json pins yaml 2.9.1');
+  assert.match(lockYaml.integrity ?? '', /^sha512-/, 'the fixture: package-lock.json gives yaml a sha512 integrity');
+  const y = spawnSync('npm', ['pack', '--offline', '--json', '--ignore-scripts', '--pack-destination', scratch, lockYaml.resolved],
+    { cwd: scratch, input: '', encoding: 'utf8', timeout: LIMIT });
+  assert.equal(y.signal, null, `npm pack of the cached yaml was killed:\n${y.stderr}`);
+  assert.equal(y.status, 0, `the fixture: npm's cache holds the pinned yaml archive ${lockYaml.resolved} (run npm ci first):\n${y.stdout}\n${y.stderr}`);
+  const yamlTgz = join(scratch, JSON.parse(y.stdout)[0].filename);
+  assert.equal(`sha512-${createHash('sha512').update(readFileSync(yamlTgz)).digest('base64')}`, lockYaml.integrity,
+    'the fixture: the yaml archive is the release that package-lock.json pins, byte for byte');
 
   prefix = join(scratch, 'prefix');
   const i = run('npm', ['install', '--global', '--prefix', prefix, '--offline', '--no-audit', '--no-fund',
-    join(scratch, info.filename), join(scratch, yinfo.filename)], scratch);
+    join(scratch, info.filename), yamlTgz], scratch);
   assert.equal(i.code, 0, `npm install --global of the tarball should succeed with no network:\n${i.both}`);
 });
 
