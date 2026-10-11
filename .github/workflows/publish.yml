@@ -42,6 +42,24 @@ jobs:
       - run: node --test
       - run: npm install --global .
       - run: al check --strict
+      # The real-model smoke test (#220; design.md 11: "plus one smoke test with
+      # a real model"). npm ci leaves out the library, the repo's optional
+      # peer, so this step installs it beside al. npm installs the repo's own
+      # peer only with --save-peer; --no-save keeps package.json and the lock
+      # as they are. No install scripts run, and no release newer than 24 hours
+      # is taken (design.md 17). It comes after node --test, whose tests of al
+      # without the library skip when the library is there.
+      - name: Install @huggingface/transformers 4.3.1 beside al
+        run: |
+          before="$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)"
+          npm install --no-save --save-peer --ignore-scripts --no-audit --no-fund --before "$before" @huggingface/transformers@4.3.1
+      # AL_REQUIRE_REAL_MODEL=1: the test fails, not skips, when the library or
+      # the model does not load, so no release goes out without it. It
+      # downloads the model.
+      - name: The real-model smoke test
+        env:
+          AL_REQUIRE_REAL_MODEL: 1
+        run: node --test test/v4/search-real-model.test.js
 
   # The only job that can prove who it is to npm, so it installs nothing.
   # Publishing packs the files package.json lists and needs no dependencies to
