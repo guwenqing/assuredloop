@@ -6,7 +6,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { git, read, write } from './helpers/project.js';
 import {
-  A_TEXT, ROW_FIELDS, asRow, buildWorld, exportRows, key, run, runOk, runRefused, search, show,
+  A_TEXT, LEVEL2_LINE, ROW_FIELDS, asRow, buildWorld, exportRows, key, run, runOk, runRefused, search, show,
 } from './helpers/search.js';
 
 const cleanups = [];
@@ -252,7 +252,7 @@ for (const level of [0, 1, 2]) {
     const r = runOk(W.dir, ['search', '--id', 'EXP-4', ...lv]);
     const lines = r.stdout.split('\n');
     assert.match(lines[0], new RegExp(`^Level\\s+${level}\\b`), show(r));
-    if (level === 2) assert.match(lines[0], /test-fixed/, 'level 2 names its model');
+    if (level === 2) assert.equal(lines[0], LEVEL2_LINE, 'level 2 names al\'s model and its revision');
     assert.ok(!lines.some((l) => /^Fallback\b/.test(l)), 'no Fallback line when no fallback happened');
     assert.ok(lines.some((l) => /^Query\b/.test(l)), show(r));
     assert.ok(lines.some((l) => /^\s*1\. EXP-4 baseline (exact )?rule specs\/exports\.md v1 @[0-9a-f]{7,40}\b/.test(l)), show(r));
