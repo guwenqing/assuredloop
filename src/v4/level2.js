@@ -1,19 +1,25 @@
-// @assuredloop/search: level 2 of `al search` (design.md 11). It holds the
-// embedding model and the vectors, which `al` itself never holds: `al` gives
-// it the rows to embed and a query, and it answers with the row keys ranked
-// by similarity. `al` fuses that list with its full-text list.
+// Level 2 of `al search` (design.md 11): the embedding model and the vectors.
+// `al search` gives it the rows to embed and a query, and it answers with the
+// row keys ranked by similarity; search.js fuses that list with its full-text
+// list.
 //
 // The vectors live beside al's index, in <dir>/vectors.sqlite. Only new or
 // changed rows are embedded; a change of model embeds everything again.
-// Nothing here imports a dependency at load time: the real model's runtime
-// is loaded on the first embed.
+// The model's library, @huggingface/transformers, is an optional peer
+// dependency: it is found by normal Node resolution (the project first, then
+// beside al) and imported only at the first embed, so no other command and no
+// search without words loads it.
 import { mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { pathToFileURL } from 'node:url';
 
 const BATCH = 32;
 
-function open(dir) {
+// node:sqlite is imported here, not at load, so a Node without it still
+// loads this file and falls back by search.js's own check.
+async function open(dir) {
+  const { DatabaseSync } = await import('node:sqlite');
   mkdirSync(dir, { recursive: true });
   const db = new DatabaseSync(join(dir, 'vectors.sqlite'));
   db.exec(`
@@ -47,9 +53,9 @@ async function embedAll(embed, texts) {
   return out;
 }
 
-// A level-2 object for `al`: `model` names it in al's output; `embed(texts)`
-// gives one vector per text. `queryPrefix` is put before a query only.
-export function createLevel2({ model, embed, queryPrefix = '' }) {
+// A level-2 object: `model` names it in al's output; `embed(texts)` gives one
+// vector per text. `queryPrefix` is put before a query only.
+function createLevel2({ model, embed, queryPrefix = '' }) {
   if (typeof model !== 'string' || !model) throw new Error('createLevel2 needs a model name');
   if (typeof embed !== 'function') throw new Error('createLevel2 needs an embed function');
   return {
@@ -58,7 +64,7 @@ export function createLevel2({ model, embed, queryPrefix = '' }) {
     // Makes the stored vectors match `rows` ([{ key, sha256, text }]):
     // embeds the new and changed rows and removes the others.
     async refresh({ dir, rows }) {
-      const db = open(dir);
+      const db = await open(dir);
       try {
         if (db.prepare("SELECT v FROM meta WHERE k = 'model'").get()?.v !== model) {
           db.exec('DELETE FROM vectors');
@@ -86,7 +92,7 @@ export function createLevel2({ model, embed, queryPrefix = '' }) {
     // this size (design.md 11).
     async rank({ dir, query, keys, k }) {
       const [q] = await embedAll(embed, [`${queryPrefix}${query}`]);
-      const db = open(dir);
+      const db = await open(dir);
       try {
         const wanted = new Set(keys);
         const scored = [];
@@ -107,24 +113,42 @@ export function createLevel2({ model, embed, queryPrefix = '' }) {
   };
 }
 
+export const LIBRARY = '@huggingface/transformers';
+const VERSION = '4.3.1';
+export const INSTALL = `npm install --global @assuredloop/cli ${LIBRARY}@${VERSION}`;
+
+// The library's path by normal Node resolution: from the project, then
+// beside al. Null when neither has it.
+export function findLibrary(top) {
+  for (const from of [join(top, 'package.json'), import.meta.url]) {
+    try { return createRequire(from).resolve(LIBRARY); } catch { /* not here */ }
+  }
+  return null;
+}
+
 // The real model: bge-small-en-v1.5 (MIT), the ONNX port, pinned by revision.
 const MODEL = 'Xenova/bge-small-en-v1.5';
 const REVISION = 'ea104dacec62c0de699686887e3f920caeb4f3e3';
-let extractor = null;
 
-async function embedReal(texts) {
-  if (!extractor) {
-    const { pipeline } = await import('@huggingface/transformers');
-    extractor = await pipeline('feature-extraction', MODEL, { revision: REVISION, dtype: 'q8' });
+// Level 2 with the library at `path`, which is imported at the first embed.
+export function level2(path) {
+  let extractor = null;
+  async function embed(texts) {
+    if (!extractor) {
+      // The path is the library's require entry; its exports may come as a default.
+      const mod = await import(pathToFileURL(path).href);
+      const pipeline = mod.pipeline ?? mod.default?.pipeline;
+      if (typeof pipeline !== 'function') throw new Error(`${path} has no pipeline function`);
+      extractor = await pipeline('feature-extraction', MODEL, { revision: REVISION, dtype: 'q8' });
+    }
+    // bge takes the first token's vector (CLS pooling).
+    const out = await extractor(texts, { pooling: 'cls', normalize: true });
+    return out.tolist();
   }
-  // bge takes the first token's vector (CLS pooling).
-  const out = await extractor(texts, { pooling: 'cls', normalize: true });
-  return out.tolist();
+  return createLevel2({
+    model: `${MODEL}@${REVISION.slice(0, 12)}`,
+    embed,
+    // bge's instruction for a short query that looks for passages.
+    queryPrefix: 'Represent this sentence for searching relevant passages: ',
+  });
 }
-
-export default createLevel2({
-  model: `${MODEL}@${REVISION.slice(0, 12)}`,
-  embed: embedReal,
-  // bge's instruction for a short query that looks for passages.
-  queryPrefix: 'Represent this sentence for searching relevant passages: ',
-});

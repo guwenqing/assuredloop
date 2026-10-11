@@ -28,13 +28,13 @@ It needs Node 24 or newer and git 2.31 or newer. Install the npm package
 
     npm install --global @assuredloop/cli
 
-The recommended install adds the optional package `@assuredloop/search`
-beside it, for search at level 2 (see "Search"):
+The recommended install adds the embedding model's library beside it, for
+search at level 2 (see "Search"). `al` names the library as an optional
+dependency, so npm installs it only when you ask:
 
-    npm install --global @assuredloop/cli @assuredloop/search
+    npm install --global @assuredloop/cli @huggingface/transformers@4.3.1
 
 To pin a version, name it: `npm install --global @assuredloop/cli@<version>`.
-Give both packages the same version.
 
 The package carries the skill, at
 `$(npm root -g)/@assuredloop/cli/skills/assuredloop/SKILL.md`. Add one line to
@@ -49,7 +49,7 @@ the skill at the pinned version into the project, for example as
 `.claude/skills/assuredloop/SKILL.md`. Name that path in the AGENTS.md line,
 and say in the commit which version it came from.
 
-Search at level 2 needs the optional package `@assuredloop/search` (see
+Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
 "Search"). Install it in the project, or beside `al`.
 
 ## The model in one page
@@ -176,7 +176,7 @@ itself (2, then 1, then 0), and says which level answered and why.
 |---|---|---|
 | 0 | a scan of the export | nothing |
 | 1 | a local full-text index (SQLite FTS5, BM25), with the ID in its own exact column | Node 24 or newer (`node:sqlite`) |
-| 2 | level 1, plus a small local embedding model; word and vector results are fused | the package `@assuredloop/search` |
+| 2 | level 1, plus a small local embedding model; word and vector results are fused | the library `@huggingface/transformers` 4.3.1, in the project or beside `al` |
 
 - The default query is the current system: the spec text at the selected
   commit. `--change <name>` adds that request's open change spec, its
@@ -199,7 +199,9 @@ itself (2, then 1, then 0), and says which level answered and why.
   brings it up to date before it answers; `--rebuild` builds it again.
 - Level 2 runs a small local model (bge-small-en-v1.5, pinned by its
   revision). The model download is the only data that leaves the machine.
-  `al` itself makes no network call.
+  `al` itself makes no network call. Without the library, `al search`
+  answers at level 1, and a `Not known` line says how to add level 2. Only
+  `al search` loads the library.
 
 ## One central repo, and output repos
 
@@ -299,15 +301,13 @@ in this repository.
 
 ## Releasing
 
-1. Bump `version` in `package.json` and in `packages/search/package.json` to
-   the same version in a PR, and merge it.
+1. Bump `version` in `package.json` in a PR, and merge it.
 2. Publish a GitHub Release tagged `v<version>` on that commit. Mark it a
    pre-release to publish under npm's `next` tag.
 
 `.github/workflows/publish.yml` does the rest: it runs the tests and
-`al check --strict`, checks that the tag matches both `package.json` files,
-and publishes @assuredloop/cli, then @assuredloop/search, to npm. It skips a
-package whose version is already on npm, so a failed run can run again. It
-stores no npm token: npm trusts the workflow by name, and adds a provenance
-statement saying which commit built the package. npm must trust the workflow
-for each package before its first publish.
+`al check --strict`, checks that the tag matches `package.json`, and
+publishes @assuredloop/cli to npm. It skips a version that is already on npm,
+so a failed run can run again. It stores no npm token: npm trusts the
+workflow by name, and adds a provenance statement saying which commit built
+the package.

@@ -801,7 +801,7 @@ closed spike, or a replaced requirement version).
   One index serves the central repo and its output repos.
 - No `llms.txt`: it has no measured benefit.
 
-<!-- DES-65 rule serves:assuredloop-v4/R10 -->
+<!-- DES-65 rule serves:assuredloop-v4/R10,level2-peer/R1 -->
 
 **The search levels** (input 130):
 
@@ -820,11 +820,9 @@ closed spike, or a replaced requirement version).
   (checked on Node 24.21.0 and 26.11.1, with SQLite 3.53.4). It lives in `al`
   itself, as `al search`, and stays deterministic and offline. The package
   declares Node 24 or newer, and CI tests level 1 on Node 24.
-- Level 2 adds an embedding model, so it lives in a separate optional package,
-  `@assuredloop/search` in `packages/search/`, private until the release. `al`
-  finds it by normal Node resolution: the project first, then beside `al`.
-  The package holds the model, the vectors and the scan; `al` only fuses the
-  ranked lists, and itself keeps no AI and no network.
+- Level 2 adds an embedding model, whose library the user installs (below).
+  Without the library, `al search` answers at level 1, and a `Not known` line
+  says how to add level 2.
 - The fusion is reciprocal rank fusion over the rows that have vectors. A row
   with no vector keeps its level 1 place, because the vector list gives it no
   vote and must not push it down.
@@ -852,6 +850,16 @@ closed spike, or a replaced requirement version).
   in the top 10. So level 2 showed no measured gain at that size. It stays
   the default (input 130), and it is measured again on a larger real corpus
   before the release.
+
+<!-- DES-80 component serves:assuredloop-v4/R10,level2-peer/R1 -->
+
+Where level 2 lives: its code is in `al`; its library,
+`@huggingface/transformers` pinned at 4.3.1, is not our code and is no
+package of ours. `al` names the library as an optional peer dependency, so
+npm installs it only when the user asks:
+`npm install --global @assuredloop/cli @huggingface/transformers@4.3.1`.
+`al` finds it by normal Node resolution: the project first, then beside
+`al`. Only `al search` loads it, at its first embed.
 
 <!-- DES-66 rule serves:assuredloop-v4/R13 -->
 

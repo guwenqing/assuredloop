@@ -1,6 +1,6 @@
 {
   "name": "@assuredloop/cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AssuredLoop keeps an AI focused on one change: the al command gathers and checks a change's requirement, spec, decisions, code and tests.",
   "license": "MIT",
   "repository": {
@@ -33,5 +33,13 @@
   },
   "dependencies": {
     "yaml": "2.9.1"
+  },
+  "peerDependencies": {
+    "@huggingface/transformers": "4.3.1"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    }
   }
 }

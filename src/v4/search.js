@@ -1,13 +1,10 @@
 // al search (design.md 11): the current system, a change's context and the
 // history, at the strongest level installed. Level 0 scans the export; level
 // 1 is a SQLite FTS5 index of it (BM25) with the ID in its own exact column;
-// level 2 fuses level 1 with the ranking of the optional package
-// @assuredloop/search (reciprocal rank fusion). `al` holds no model and no
-// vectors: the package does, and returns a ranked list.
+// level 2 fuses level 1 with the ranking of level2.js (reciprocal rank
+// fusion), which needs the optional peer dependency @huggingface/transformers.
 import { mkdirSync, rmSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { isAbsolute, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
 import { Fail, isName } from './base.js';
 import { git } from './git.js';
@@ -39,22 +36,13 @@ async function sqlite() {
   }
 }
 
-// The optional package by normal Node resolution: from the project, then
-// beside al. Null with the reason when neither has it.
+// Level 2 when its library is installed, or null with the reason. level2.js
+// is loaded only here, and the library only at its first embed.
 async function level2(top) {
-  for (const from of [join(top, 'package.json'), import.meta.url]) {
-    let path;
-    try { path = createRequire(from).resolve('@assuredloop/search'); } catch { continue; }
-    try {
-      const mod = await import(pathToFileURL(path).href);
-      const l2 = mod.default;
-      if (!l2 || typeof l2.refresh !== 'function' || typeof l2.rank !== 'function') return { reason: `${path} is not a level 2 package (no refresh and rank)` };
-      return { l2 };
-    } catch (e) {
-      return { reason: `@assuredloop/search did not load: ${e.message.split('\n')[0]}` };
-    }
-  }
-  return { reason: 'level 2 is not installed: no @assuredloop/search in the project or beside al' };
+  const { findLibrary, level2: create, LIBRARY, INSTALL } = await import('./level2.js');
+  const path = findLibrary(top);
+  if (!path) return { reason: `level 2 is not installed: no ${LIBRARY} in the project or beside al`, install: `level 2: ${LIBRARY} is not installed; to add level 2, run ${INSTALL}` };
+  return { l2: create(path) };
 }
 
 // The folder of the index: <git dir>/assuredloop, never in the working tree.
@@ -352,7 +340,7 @@ export async function search({ top, args, opts }) {
   let lite = null;
   if (level === 2) {
     found2 = await level2(top);
-    if (!found2.l2) { falls.push(found2.reason); level = 1; }
+    if (!found2.l2) { falls.push(found2.reason); notKnown.push(found2.install); level = 1; }
   }
   if (level >= 1) {
     lite = await sqlite();
