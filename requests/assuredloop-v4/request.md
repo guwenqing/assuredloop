@@ -42,6 +42,10 @@ Tier: 3 · Status: open
   again on real features after the release. Snapshot
   origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md.
   Decisions D23 and D24 below.
+- 2026-10-11: the owner's words 160: the release needs no yes from the
+  owner; the architect decides it. Snapshot
+  origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-input-160.md.
+  Decision D25 below.
 
 ## Organized requirement
 
@@ -226,3 +230,4 @@ Signed off: 2026-10-10 owner, origin/2026-10-10-signoff.md
 - D22, 2026-10-10. Source: the agent (architect), message to developer-196 for #196 (T17). A requirement marker in request.md has the one marker form of design.md 3: the marker line, then a blank line, then the `### R<n>` heading. What a sign-off binds, the signed text of the organized section, drops the marker framing (the marker line and the blank line after it), as the paragraph hash does (design.md 5). So adding the standard markers does not change the signed text, and the owner's signed file of this request keeps its SHA-256 08a9ee85… after the conversion. Until #196, the signed text dropped the marker line only.
 - D23, 2026-10-11. Source: owner, chat with the architect, 2026-10-11, input 156. Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The T17 switch removes v1's code and its tests from main; the 0.1.0 package on npm stays.
 - D24, 2026-10-11. Source: owner, chat with the architect, 2026-10-11, inputs 156-159. Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The cost account does not meet R12's flexible target of about a fifth (t16-report.md section 9): by the context at the end, one agent's records cost 0.29 of the work on small changes and 0.80 on DC04. DC04 is large in requirements (three, with a sign-off and a design), but its code is small: 163 to 318 changed lines in the output repos, in the four runs. The records grow with the requirements and the decisions, not with the code, and no case with a large code change was measured. The owner accepts the cost for the v4 release; the cost is measured again on real features after the release. D2's cost sentence stays as history.
+- D25, 2026-10-11. Source: owner, chat with the architect, 2026-10-11, input 160. Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-input-160.md. The release of v4 (T18) needs no yes from the owner: the architect decides it. tasks.md T18 and SP-128 change to say so.

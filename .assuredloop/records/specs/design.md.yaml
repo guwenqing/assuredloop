@@ -5,467 +5,317 @@ paragraphs:
     kind: note
     text_sha256: 05aa90ba3df5557d79673361a97ab2bd36e9ad5553116922bdcd3abda8e3bbf5
     display: "DES-1 (0, AssuredLoop: the design)"
-    change:
-      - New
   - id: DES-2
     kind: note
     text_sha256: eeb954670c056960be0c83a35f9f873a6f045a34e6ba3e62e56466f0a64a4611
     display: "DES-2 (0:1, in AssuredLoop: the design)"
-    change:
-      - New
   - id: DES-3
     kind: note
     text_sha256: f19b53e4ae8bf5e96207d05fd8ba1530c3ce6bbad726290b1d91800f4f95897a
     display: DES-3 (1, 1. Intent)
-    change:
-      - New
   - id: DES-4
     kind: rationale
     text_sha256: be3c2ffacaaf0bfb964705cf4ec9b3d4825d00b9d8c10966481c3408238991b4
     display: DES-4 (1:1, in 1. Intent)
-    change:
-      - New
   - id: DES-5
     kind: limit
     text_sha256: 35ecde24e10207428cb66c0f97e27682416abfe329ae3de6867bae448c797f25
     display: DES-5 (1:2, in 1. Intent)
-    change:
-      - New
   - id: DES-6
     kind: rationale
     text_sha256: 37211bbdfdea2af256cbb2ec74a59b02515a8f11238c88d111bfa2f8f3adcd57
     display: DES-6 (1:3, in 1. Intent)
-    change:
-      - New
   - id: DES-7
     kind: note
     text_sha256: 92170fb39007c7f95570f51192b1bdd08e08b2c052745b3179d0c87c99dc00e4
     display: DES-7 (2, 2. One change, and the consolidated spec)
-    change:
-      - New
   - id: DES-8
     kind: rationale
     text_sha256: 141a5b9ca63cd5d3de32d9e219ce8215f779cba680e82e7ef9d206d5f3658384
     display: DES-8 (2:1, in 2. One change, and the consolidated spec)
-    change:
-      - New
   - id: DES-9
     kind: data
     text_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38
     display: DES-9 (2:2, in 2. One change, and the consolidated spec)
-    change:
-      - New
   - id: DES-10
     kind: rule
     text_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c
     display: DES-10 (2:3, in 2. One change, and the consolidated spec)
-    change:
-      - New
   - id: DES-11
     kind: note
     text_sha256: 5d7311a56f259f483f88b41cb8122bfa3549273bf8c3518587d3fc5bb12ae952
     display: DES-11 (3, 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-12
     kind: rationale
     text_sha256: 136b5dfce10a672df026b1c057e2fdfec164a08b79bc09fa5153dcf237dbdf8b
     display: DES-12 (3:1, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-13
     kind: rule
     text_sha256: 1c533a555c55adcae6a3e51e8fe1607d896578d3fafd0d445b75f742d23ac379
     display: DES-13 (3:2, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-14
     kind: rationale
     text_sha256: 0ed9b1ae003e745fcea30d39eeaa5629d9ca97b10e0f40b91300de15752b5a8b
     display: DES-14 (3:3, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-15
     kind: definition
     text_sha256: 76988b79b9970b757bdacae7091a4b0ced5a2f398ece987eeeabbaa5de806db4
     display: DES-15 (3:4, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-16
     kind: definition
     text_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104
     display: DES-16 (3:5, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-17
     kind: rule
     text_sha256: 25d8369cce416cbcf9982de1e954b1d8cee32750413be0fe76cc25817a461f81
     display: DES-17 (3:6, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-18
     kind: definition
     text_sha256: ede0838fc5267b302ab5516bd326b4829b016823f1e37fd4881a9d1387a53b79
     display: DES-18 (3:7, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-19
     kind: rule
     text_sha256: 36b30fca090f7c91fc175a7e9eab4606d675d53504c8b20dbd0299e9fb468ced
     display: DES-19 (3:8, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-20
     kind: rationale
     text_sha256: 70fcfcd1cb964affe05662faf2bfccb5dccc5fab47cfb0cc758d0a4a35b6a712
     display: DES-20 (3:9, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-21
     kind: rule
     text_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f
     display: DES-21 (3:10, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-22
     kind: rule
     text_sha256: 29ba1635c748ee46f627a34593405da8e10ce96f84d2ce93817f918f3b699cfd
     display: DES-22 (3:11, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-23
     kind: flow
     text_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c
     display: DES-23 (3:12, in 3. IDs, kinds and links)
-    change:
-      - New
   - id: DES-24
     kind: note
     text_sha256: 84947cd9438f30253fda7b8034c11f1e3ebad3c254452c836d9ade5f0e99b28e
     display: DES-24 (4, 4. The change spec honors the consolidated spec)
-    change:
-      - New
   - id: DES-25
     kind: rationale
     text_sha256: 094b2c5ed8ee215e5acd03a0787df17967d279332b81274634a3617a121daff1
     display: DES-25 (4:1, in 4. The change spec honors the consolidated spec)
-    change:
-      - New
   - id: DES-26
     kind: rule
     text_sha256: c06513fef2ae793a469b7862116301c93f5a2cfc8be3caa8c66b95484389de31
     display: DES-26 (4:2, in 4. The change spec honors the consolidated spec)
-    change:
-      - New
   - id: DES-27
     kind: note
     text_sha256: 61a0cdd6b1fc81e1cf0a5d54f9243251dab9caea4069d048361ddb88cb954acf
     display: DES-27 (5, 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-28
     kind: rationale
     text_sha256: 2c27f16f0ad6bf9d73caf7ba5b4122ca4d49c9a0ceb94aee82e52af7091c8108
     display: DES-28 (5:1, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-29
     kind: rule
     text_sha256: 21efefe0b4b2f1c52b3a97b2260cda27575e05afc139532c3d026cb52e9a6231
     display: DES-29 (5:2, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-30
     kind: rule
     text_sha256: 86a9c1689bceae97af15e3db997f01b90b3a809fcc72c785e91165e7ececa33d
     display: DES-30 (5:3, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-31
     kind: rationale
     text_sha256: 49f37b456b6c8c0f60d07fe2485c6506b8923258622a234a59daf935fcc1656a
     display: DES-31 (5:4, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-32
     kind: rule
     text_sha256: cf0bbdc59bfa38997b100471d75583b0049047c9a4a2430fff7bef644b9ded81
     display: DES-32 (5:5, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-33
     kind: rule
     text_sha256: c41381bb6e55fbbc0604fabf6f09fd0467bdfe03756c37c222566282ba91cc9a
     display: DES-33 (5:6, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-34
     kind: rule
     text_sha256: 7446fa85534ebd532af2061e47df539061f8d2ee99c73ec6151fea0963ed9fc7
     display: DES-34 (5:7, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-35
     kind: rule
     text_sha256: 90ff02924de97259f7304b9870f5b234fc2e9c35df911978485b6b16cb10a2a5
     display: DES-35 (5:8, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-36
     kind: rule
     text_sha256: 43546d9d4d6a1712e67dc6cf505ebfd13138d0094e54f8214dfad22c2dfeddb2
     display: DES-36 (5:9, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-37
     kind: rule
     text_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f
     display: DES-37 (5:10, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-38
     kind: rule
     text_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb
     display: DES-38 (5:11, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-39
     kind: definition
     text_sha256: 87ec37b75cdfa688ec3882315992ccb13ad1d08ee06c0aa873ddbdad5b11ca55
     display: DES-39 (5:12, in 5. Consolidation and the close rule)
-    change:
-      - New
   - id: DES-40
     kind: note
     text_sha256: 16ca39d39c790d6fb8a2dd04d45c4acc820fa7c81ba2c15df50016791e229e85
     display: DES-40 (6, 6. Sign-off)
-    change:
-      - New
   - id: DES-41
     kind: rationale
     text_sha256: 0a9bf438a1bba72a3b251e050f3a18d41a54939d05ce4afc5f3bcb2fec67e157
     display: DES-41 (6:1, in 6. Sign-off)
-    change:
-      - New
   - id: DES-42
     kind: rule
     text_sha256: de1e808646d7c3a421f4f01195fed7cdea02fa49e89560863ccdb46577f60558
     display: DES-42 (6:2, in 6. Sign-off)
-    change:
-      - New
   - id: DES-43
     kind: rule
     text_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22
     display: DES-43 (6:3, in 6. Sign-off)
-    change:
-      - New
   - id: DES-44
     kind: rule
     text_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec
     display: DES-44 (6:4, in 6. Sign-off)
-    change:
-      - New
   - id: DES-45
     kind: rule
     text_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0
     display: DES-45 (6:5, in 6. Sign-off)
-    change:
-      - New
   - id: DES-46
     kind: note
     text_sha256: 9c19096853dffb1f44888c94dd08da0b2aa9a5972f3c276dbd5f219b36d27e6a
     display: DES-46 (7, 7. Paths for each kind of work)
-    change:
-      - New
   - id: DES-47
     kind: rationale
     text_sha256: ea701c4c297e0ad589e991d3f896c493a7669460997bcdbd2d9b80bd441b217d
     display: DES-47 (7:1, in 7. Paths for each kind of work)
-    change:
-      - New
   - id: DES-48
     kind: definition
     text_sha256: 2ef9134694372e285f3a3dcae57ca517fc3d760dd1e98655ddeaa43adc7b1ba5
     display: DES-48 (7:2, in 7. Paths for each kind of work)
-    change:
-      - New
   - id: DES-49
     kind: rule
     text_sha256: e1e0adf6cded6c8a3d809bcf96ecd59d0d2630d09223033e8ca9489c133b7d04
     display: DES-49 (7:3, in 7. Paths for each kind of work)
-    change:
-      - New
   - id: DES-50
     kind: note
     text_sha256: 95d1691f0b3b65f28cebf110aceb5e809fe85afcc83954b6b61f91c3ecdb8309
     display: DES-50 (8, 8. Tasks)
-    change:
-      - New
   - id: DES-51
     kind: rationale
     text_sha256: ce9139ee1a0c26cca02e300a774c52ddee07d82a16232520a756a77186d2372f
     display: DES-51 (8:1, in 8. Tasks)
-    change:
-      - New
   - id: DES-52
     kind: rule
     text_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033
     display: DES-52 (8:2, in 8. Tasks)
-    change:
-      - New
   - id: DES-53
     kind: note
     text_sha256: f91d2aec151dce2d5789fc73f56fe070d54c599c3c2faf0da191926554c8c9ab
     display: DES-53 (9, 9. Checks of rules, and results)
-    change:
-      - New
   - id: DES-54
     kind: rationale
     text_sha256: abf7847c67b4b885c35e200d64cc9b7fd2a9bb6e987b8a669a390aca806974cf
     display: DES-54 (9:1, in 9. Checks of rules, and results)
-    change:
-      - New
   - id: DES-55
     kind: rule
     text_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce
     display: DES-55 (9:2, in 9. Checks of rules, and results)
-    change:
-      - New
   - id: DES-56
     kind: note
     text_sha256: 7ca5e5e42ef25e7b60ad43f47756e67e6acd7cc6144025e53e5f4bbc90abde51
     display: DES-56 (10, 10. Records)
-    change:
-      - New
   - id: DES-57
     kind: rationale
     text_sha256: bdb142472f1f6e64cce15542b0c0a5c4e5f56a5878383854ab10db812b4faa82
     display: DES-57 (10:1, in 10. Records)
-    change:
-      - New
   - id: DES-58
     kind: rule
     text_sha256: 5beb5f21a3f2d543630748b76d41aca40377f116c3bf5359b0df7533603f4032
     display: DES-58 (10:2, in 10. Records)
-    change:
-      - New
   - id: DES-59
     kind: note
     text_sha256: fb6cb2f9da61f2a205bf4268e615b635321548ed21aa30707bdf27677db3cd72
     display: DES-59 (11, 11. Search and the export)
-    change:
-      - New
   - id: DES-60
     kind: rationale
     text_sha256: a8143235a128fb5b56ccc1c1a16a6475b0358d37356376aa17907fdf882aaefb
     display: DES-60 (11:1, in 11. Search and the export)
-    change:
-      - New
   - id: DES-61
     kind: interface
     text_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df
     display: DES-61 (11:2, in 11. Search and the export)
-    change:
-      - New
   - id: DES-62
     kind: definition
     text_sha256: de3f1d9ec2439ff5df6392079ddd63a7de32fe3f0422c135ca63b5dd8b4a1f91
     display: DES-62 (11:3, in 11. Search and the export)
-    change:
-      - New
   - id: DES-63
     kind: rule
     text_sha256: 8172772664da028db32f2b7ce58ab201c19c676a12b6c5f5e461365f3294053d
     display: DES-63 (11:4, in 11. Search and the export)
-    change:
-      - New
   - id: DES-64
     kind: rule
     text_sha256: 0c4c971a8428766530df37eec892756ad6ada78e026110ccbb032ae787bab1e6
     display: DES-64 (11:5, in 11. Search and the export)
-    change:
-      - New
   - id: DES-65
     kind: rule
     text_sha256: 641606d5e4a88fe4ed0abacd88a963cb4d2a4391c284f1f9288a580251eb0fca
     display: DES-65 (11:6, in 11. Search and the export)
-    change:
-      - New
   - id: DES-66
     kind: rule
     text_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6
     display: DES-66 (11:7, in 11. Search and the export)
-    change:
-      - New
   - id: DES-67
     kind: note
     text_sha256: f1361c0156d995db0f73407077a8ae6182ec0b2bfe88e5c42a6e5541e4a5e882
     display: DES-67 (12, 12. One central spec repo, and output repos)
-    change:
-      - New
   - id: DES-68
     kind: rationale
     text_sha256: 2a792ffe2426acecba40f3314697d54986c4598d41b7d76ab6a22a8999b71033
     display: DES-68 (12:1, in 12. One central spec repo, and output repos)
-    change:
-      - New
   - id: DES-69
     kind: rule
     text_sha256: 28faf1a699d024e1537bb82c487b692485317d9ce7bf05f43a8aeb99d76530b4
     display: DES-69 (12:2, in 12. One central spec repo, and output repos)
-    change:
-      - New
   - id: DES-70
     kind: data
     text_sha256: 325504116b28a012ca83932be838bc0f3ee033b55b3b23cfd18ec39635ea2183
     display: DES-70 (12:3, in 12. One central spec repo, and output repos)
+  - id: DES-79
+    kind: choice
+    text_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf
+    display: DES-79 (12:4, in 12. One central spec repo, and output repos)
     change:
       - New
   - id: DES-71
     kind: note
     text_sha256: ce296d0bdabab1c6a0245126a50ca429bcba5a21be20af119a087b07330918f7
     display: DES-71 (13, 13. Commands)
-    change:
-      - New
   - id: DES-72
     kind: interface
     text_sha256: 112810b3b6bd3c5a5cec7be952daa3728fa408f8b90e5b7d45e964a7a9523bc9
     display: DES-72 (13:1, in 13. Commands)
-    change:
-      - New
   - id: DES-73
     kind: note
     text_sha256: cff5efe0ec75b164e730f7c30d0ad386e7dc235828ba4911d9eaad32213f41ad
     display: DES-73 (14, 14. Migration and adoption)
-    change:
-      - New
   - id: DES-74
     kind: rationale
     text_sha256: 560f942a665086bd17d4722e77d287a00d44b58c4e43355299375cceef09c120
     display: DES-74 (14:1, in 14. Migration and adoption)
-    change:
-      - New
   - id: DES-75
     kind: rule
     text_sha256: bbc667396b67cf1fcf43b1366493a3351d370a0dd5ea21200073b8a909597131
     display: DES-75 (14:2, in 14. Migration and adoption)
-    change:
-      - New
   - id: DES-76
     kind: note
     text_sha256: 8b1e0eb2525a35669e71695ff65de98bc6699e18376cd3e0cd455485597a271b
     display: DES-76 (15, 17. Building v4)
-    change:
-      - New
   - id: DES-77
     kind: limit
     text_sha256: 6cf3c8162d8e55e9439c702978952af19e4e212d8ff7be34579d167c2c723237
     display: DES-77 (15:1, in 17. Building v4)
-    change:
-      - New
   - id: DES-78
     kind: rule
     text_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669
     display: DES-78 (15:2, in 17. Building v4)
-    change:
-      - New
