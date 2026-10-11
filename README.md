@@ -19,12 +19,22 @@ test and review is your project's way of working.
 
 ## Install
 
+Version 0.2.0 is v4. It is a breaking release: it does not read the records
+of 0.1.0. To move a project from 0.1.0, see "From 0.1.0" in "Adopting
+AssuredLoop".
+
 It needs Node 24 or newer and git 2.31 or newer. Install the npm package
 `@assuredloop/cli`, which puts `al` on your PATH:
 
     npm install --global @assuredloop/cli
 
+The recommended install adds the optional package `@assuredloop/search`
+beside it, for search at level 2 (see "Search"):
+
+    npm install --global @assuredloop/cli @assuredloop/search
+
 To pin a version, name it: `npm install --global @assuredloop/cli@<version>`.
+Give both packages the same version.
 
 The package carries the skill, at
 `$(npm root -g)/@assuredloop/cli/skills/assuredloop/SKILL.md`. Add one line to
@@ -233,10 +243,15 @@ by its SHA-256, that hash no longer matches after the markers are added. Ask
 the owner for a new approval after the conversion. The paragraph text itself
 does not change; `al` hashes each paragraph without its marker.
 
-**From 0.1.0.** v4 does not read 0.1.0 records. Keep 0.1.0 pinned until you
-move. Finish an open 0.1.0 request on its pinned copy, or start it again
-under v4. Older records stay readable as files; run the pinned 0.1.0 at
-those commits.
+**From 0.1.0.** v4 (0.2.0) does not read 0.1.0 records. Keep 0.1.0 pinned
+until you move. Older records stay readable as files; run the pinned 0.1.0 at
+those commits. To move:
+
+1. Finish each open 0.1.0 request on its pinned copy, or start it again
+   under v4.
+2. Install 0.2.0 (see "Install").
+3. Run `al spec --add-ids`, as in steps 1-5 above. It marks every paragraph
+   and writes the adoption record.
 
 ## What is enforced, and by whom
 
@@ -284,11 +299,15 @@ in this repository.
 
 ## Releasing
 
-1. Bump `version` in `package.json` in a PR, and merge it.
+1. Bump `version` in `package.json` and in `packages/search/package.json` to
+   the same version in a PR, and merge it.
 2. Publish a GitHub Release tagged `v<version>` on that commit. Mark it a
    pre-release to publish under npm's `next` tag.
 
 `.github/workflows/publish.yml` does the rest: it runs the tests and
-`al check --strict`, checks that the tag matches `package.json`, and publishes
-@assuredloop/cli to npm. It stores no npm token: npm trusts the workflow by
-name, and adds a provenance statement saying which commit built the package.
+`al check --strict`, checks that the tag matches both `package.json` files,
+and publishes @assuredloop/cli, then @assuredloop/search, to npm. It skips a
+package whose version is already on npm, so a failed run can run again. It
+stores no npm token: npm trusts the workflow by name, and adds a provenance
+statement saying which commit built the package. npm must trust the workflow
+for each package before its first publish.
