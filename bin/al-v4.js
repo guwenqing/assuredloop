@@ -3,6 +3,8 @@
 // bin, so not installed as a command. Run it as `node bin/al-v4.js <command>`.
 import { parseArgs } from 'node:util';
 import { execFileSync } from 'node:child_process';
+import { readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { check } from '../src/v4/check.js';
 import { Fail, spec } from '../src/v4/spec.js';
 import { newRequest, record } from '../src/v4/commands.js';
@@ -39,7 +41,7 @@ const COMMANDS = {
   context: { run: context, options: { diff: { type: 'string' }, for: { type: 'string' }, audit: { type: 'boolean' }, at: { type: 'string' } } },
   conclude: { run: conclude, options: { yes: { type: 'boolean' } } },
 };
-const USAGE = `node bin/al-v4.js <${Object.keys(COMMANDS).join('|')}> [options]`;
+const USAGE = `node bin/al-v4.js <${Object.keys(COMMANDS).join('|')}|--version> [options]`;
 
 const line = (label, text) => `${label.padEnd(10)}${text}`;
 // Every output line is one line: control characters but a tab show as \xNN.
@@ -55,9 +57,32 @@ function topLevel(cwd) {
   }
 }
 
+// `al --version`: the package version, and the commit of the install folder
+// when that folder is the top of a git checkout, so a run says what it runs.
+function version() {
+  const dir = realpathSync(fileURLToPath(new URL('..', import.meta.url)));
+  const pkg = JSON.parse(readFileSync(`${dir}/package.json`, 'utf8'));
+  // The caller's GIT_DIR and the like point at the caller's repo, not this folder.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  const git = (args) => {
+    try {
+      return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', env, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch {
+      return null;
+    }
+  };
+  const top = git(['rev-parse', '--show-toplevel']);
+  const sha = top && realpathSync(top) === dir ? git(['rev-parse', 'HEAD']) : null;
+  const where = sha ? `${sha.slice(0, 7)} · ${dir}` : `not a git checkout: ${dir}`;
+  print([`al ${pkg.version ?? 'unreleased'} · ${where}`], 'the install folder · no project read', 'al-v4 context',
+    [sha ? 'whether the install folder has uncommitted changes' : 'which commit it was installed from']);
+  return 0;
+}
+
 async function main(argv) {
   const cwd = process.cwd();
   let read = 'nothing';
+  if (argv.length === 1 && ['--version', '-v'].includes(argv[0])) return version();
   try {
     const top = topLevel(cwd);
     read = 'working tree';

@@ -202,11 +202,21 @@ export function organized(reqs, { heading = '## Organized requirement', intro = 
 
 // The signed text, by the rule of interface.md: the section from its heading
 // up to the next # or ## heading (here: the end of the file), with any
-// "Signed off:" line and any marker line left out, line endings made \n.
+// "Signed off:" line left out, and the marker framing left out (decision D22,
+// as design.md 5 does for paragraphs): a marker line and the one blank line
+// right after it. Line endings made \n.
 export function signedText(section) {
-  return section.replace(/\r\n?/g, '\n').split('\n')
-    .filter((l) => !l.startsWith('Signed off:') && !/^<!--.*-->\s*$/.test(l))
-    .join('\n');
+  const ls = section.replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  for (let i = 0; i < ls.length; i++) {
+    if (ls[i].startsWith('Signed off:')) continue;
+    if (/^<!--.*-->\s*$/.test(ls[i])) {
+      if (ls[i + 1] === '') i++;
+      continue;
+    }
+    out.push(ls[i]);
+  }
+  return out.join('\n');
 }
 
 // The organized section of request.md as it is now, when it is the last section.
