@@ -933,6 +933,15 @@ declared one shows `how: declared`. One cite finder serves every repo.
   refine the central spec. The qualified-ID form leaves room for a `refines`
   link.
 
+<!-- SP-129 choice serves:R14 -->
+
+**Projects that are not code.** No record needs code. A spec is Markdown;
+an output is any file that a record declares or that names an ID; a result
+is any named check with its outcome. So a project of documents or research
+keeps the same requests, change specs, records and paths, and its documents
+are its outputs. Validation case DC08, a report project on path 2, kept
+these records (validation.md).
+
 <!-- SP-61 note -->
 
 ## 13. Commands
@@ -1137,8 +1146,8 @@ never without a working tool.
 
 <!-- SP-128 plan -->
 
-- The release (T18) is a follow-on outside this request, and needs the
-  owner's yes.
+- The release (T18) is a follow-on outside this request. The architect
+  decides it (D25).
 
 <!-- SP-79 rule serves:R2,R3 -->
 

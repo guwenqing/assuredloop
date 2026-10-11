@@ -1,7 +1,7 @@
 schema: assuredloop/1
 request: assuredloop-v4
 tier: "3"
-status: open
+status: concluded
 sources:
   - file: 2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14-2.md
     kind: owner-words
@@ -20,6 +20,11 @@ sources:
     sha256: fb27860624c423918e9902472563466cf83b63cf20ddfd33a250d8f965597c03
     taken: 2026-10-11T00:11Z
     url: owner chat with the architect, 2026-10-11 (inputs 156-159)
+  - file: 2026-10-11-owner-chat-with-the-architect-2026-10-11-input-160.md
+    kind: owner-words
+    sha256: a786032da331a661f8697493c675a8a06c7c9a73bc85a2cf146ca4be88580826
+    taken: 2026-10-11T00:48Z
+    url: owner chat with the architect, 2026-10-11 (input 160)
 requirements:
   - id: R1
     version: 1
@@ -249,6 +254,11 @@ decisions:
     source: owner, chat with the architect, 2026-10-11, inputs 156-159
     text: "Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The cost account does not meet R12's flexible target of about a fifth (t16-report.md section 9): by the context at the end, one agent's records cost 0.29 of the work on small changes and 0.80 on DC04. DC04 is large in requirements (three, with a sign-off and a design), but its code is small: 163 to 318 changed lines in the output repos, in the four runs. The records grow with the requirements and the decisions, not with the code, and no case with a large code change was measured. The owner accepts the cost for the v4 release; the cost is measured again on real features after the release. D2's cost sentence stays as history."
     sha256: b0897fe64d12155021e05628b18c1193b3b6ef2310fffe36f867223b6465ada6
+  - id: D25
+    date: 2026-10-11
+    source: owner, chat with the architect, 2026-10-11, input 160
+    text: "Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-input-160.md. The release of v4 (T18) needs no yes from the owner: the architect decides it. tasks.md T18 and SP-128 change to say so."
+    sha256: de1b00b57aeb7c20d2590cc7a139603e5df0d17cddc69620824690d874a746f8
 tasks:
   - id: T1
     ref: "tasks.md T1 (Fixtures); issue #170"
@@ -523,6 +533,8 @@ bindings:
   - { holder: assuredloop-v4/R12, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
   - { holder: assuredloop-v4/R13, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: e06efd90162413499b8abef3c132b7327d6d69d694c8f0da20fa9a8ab59679bd, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
   - { holder: assuredloop-v4/R14, link: from, target: assuredloop-v4/2026-10-10-owner-words.md, holder_sha256: 9658eef2d3042cc9aa437dbaba6ca53bb92b48b79eaf7909d61d4285344457a0, target_sha256: 17ffc53c7b79cef49dab37311457f130ec057ea011a59fce9d2ca0f1aec5aa1b }
+  - { holder: assuredloop-v4/SP-129, link: serves, target: assuredloop-v4/R14, holder_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf, target_sha256: 9658eef2d3042cc9aa437dbaba6ca53bb92b48b79eaf7909d61d4285344457a0, target_version: 1 }
+  - { holder: DES-79, link: serves, target: assuredloop-v4/R14, holder_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf, target_sha256: 9658eef2d3042cc9aa437dbaba6ca53bb92b48b79eaf7909d61d4285344457a0, target_version: 1 }
 dispositions:
   - source: assuredloop-v4/SP-4
     disposition: incorporated
@@ -954,3 +966,4 @@ dispositions:
     spec: SCH-36
     source_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809
     spec_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809
+  - { source: assuredloop-v4/SP-129, disposition: incorporated, spec: DES-79, source_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf, spec_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf }

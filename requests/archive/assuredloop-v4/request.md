@@ -1,5 +1,5 @@
 # AssuredLoop v4: a traced change spec and one consolidated spec
-Tier: 3 · Status: open
+Tier: 3 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -42,6 +42,10 @@ Tier: 3 · Status: open
   again on real features after the release. Snapshot
   origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md.
   Decisions D23 and D24 below.
+- 2026-10-11: the owner's words 160: the release needs no yes from the
+  owner; the architect decides it. Snapshot
+  origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-input-160.md.
+  Decision D25 below.
 
 ## Organized requirement
 
@@ -226,3 +230,216 @@ Signed off: 2026-10-10 owner, origin/2026-10-10-signoff.md
 - D22, 2026-10-10. Source: the agent (architect), message to developer-196 for #196 (T17). A requirement marker in request.md has the one marker form of design.md 3: the marker line, then a blank line, then the `### R<n>` heading. What a sign-off binds, the signed text of the organized section, drops the marker framing (the marker line and the blank line after it), as the paragraph hash does (design.md 5). So adding the standard markers does not change the signed text, and the owner's signed file of this request keeps its SHA-256 08a9ee85… after the conversion. Until #196, the signed text dropped the marker line only.
 - D23, 2026-10-11. Source: owner, chat with the architect, 2026-10-11, input 156. Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The T17 switch removes v1's code and its tests from main; the 0.1.0 package on npm stays.
 - D24, 2026-10-11. Source: owner, chat with the architect, 2026-10-11, inputs 156-159. Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The cost account does not meet R12's flexible target of about a fifth (t16-report.md section 9): by the context at the end, one agent's records cost 0.29 of the work on small changes and 0.80 on DC04. DC04 is large in requirements (three, with a sign-off and a design), but its code is small: 163 to 318 changed lines in the output repos, in the four runs. The records grow with the requirements and the decisions, not with the code, and no case with a large code change was measured. The owner accepts the cost for the v4 release; the cost is measured again on real features after the release. D2's cost sentence stays as history.
+- D25, 2026-10-11. Source: owner, chat with the architect, 2026-10-11, input 160. Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-input-160.md. The release of v4 (T18) needs no yes from the owner: the architect decides it. tasks.md T18 and SP-128 change to say so.
+
+## Outcome
+
+Concluded 2026-10-11 with al conclude, on the working tree at 4b162e2.
+
+- R1 One current spec, and the change's own spec, version 1, signed in S1:
+  - SP-116 data: incorporated as DES-9
+  - SP-117 rule: incorporated as DES-10
+  - SP-101 rule: incorporated as SCH-22
+  - DES-9 data: in specs/design.md, serves it
+  - DES-10 rule: in specs/design.md, serves it
+  - SCH-22 rule: in specs/schema.md, serves it
+- R2 Every paragraph traced, version 1, signed in S1:
+  - SP-117 rule: incorporated as DES-10
+  - SP-11 rule: incorporated as DES-13
+  - SP-13 definition: incorporated as DES-15
+  - SP-14 definition: incorporated as DES-16
+  - SP-15 rule: incorporated as DES-17
+  - SP-16 definition: incorporated as DES-18
+  - SP-17 rule: incorporated as DES-19
+  - SP-19 rule: incorporated as DES-21
+  - SP-20 rule: incorporated as DES-22
+  - SP-21 flow: incorporated as DES-23
+  - SP-79 rule: incorporated as DES-78
+  - SP-89 rule: incorporated as SCH-10
+  - SP-91 definition: incorporated as SCH-12
+  - SP-92 definition: incorporated as SCH-13
+  - SP-93 definition: incorporated as SCH-14
+  - SP-95 definition: incorporated as SCH-16
+  - SP-96 definition: incorporated as SCH-17
+  - SP-97 definition: incorporated as SCH-18
+  - SP-98 definition: incorporated as SCH-19
+  - DES-10 rule: in specs/design.md, serves it
+  - DES-13 rule: in specs/design.md, serves it
+  - DES-15 definition: in specs/design.md, serves it
+  - DES-16 definition: in specs/design.md, serves it
+  - DES-17 rule: in specs/design.md, serves it
+  - DES-18 definition: in specs/design.md, serves it
+  - DES-19 rule: in specs/design.md, serves it
+  - DES-21 rule: in specs/design.md, serves it
+  - DES-22 rule: in specs/design.md, serves it
+  - DES-23 flow: in specs/design.md, serves it
+  - DES-78 rule: in specs/design.md, serves it
+  - SCH-10 rule: in specs/schema.md, serves it
+  - SCH-12 definition: in specs/schema.md, serves it
+  - SCH-13 definition: in specs/schema.md, serves it
+  - SCH-14 definition: in specs/schema.md, serves it
+  - SCH-16 definition: in specs/schema.md, serves it
+  - SCH-17 definition: in specs/schema.md, serves it
+  - SCH-18 definition: in specs/schema.md, serves it
+  - SCH-19 definition: in specs/schema.md, serves it
+- R3 The owner's words, and the organized requirement, version 1, signed in S1:
+  - SP-41 rule: incorporated as DES-45
+  - SP-79 rule: incorporated as DES-78
+  - SP-86 data: incorporated as SCH-7
+  - SP-107 data: incorporated as SCH-28
+  - DES-45 rule: in specs/design.md, serves it
+  - DES-78 rule: in specs/design.md, serves it
+  - SCH-7 data: in specs/schema.md, serves it
+  - SCH-28 data: in specs/schema.md, serves it
+- R4 The owner signs off promise changes, version 1, signed in S1:
+  - SP-34 rule: incorporated as DES-37
+  - SP-119 rule: incorporated as DES-42
+  - SP-39 rule: incorporated as DES-43
+  - SP-40 rule: incorporated as DES-44
+  - SP-41 rule: incorporated as DES-45
+  - SP-87 rule: incorporated as SCH-8
+  - SP-92 definition: incorporated as SCH-13
+  - DES-37 rule: in specs/design.md, serves it
+  - DES-42 rule: in specs/design.md, serves it
+  - DES-43 rule: in specs/design.md, serves it
+  - DES-44 rule: in specs/design.md, serves it
+  - DES-45 rule: in specs/design.md, serves it
+  - SCH-8 rule: in specs/schema.md, serves it
+  - SCH-13 definition: in specs/schema.md, serves it
+- R5 Consolidation by hand, and closing, version 1, signed in S1:
+  - SP-26 rule: incorporated as DES-29
+  - SP-27 rule: incorporated as DES-30
+  - SP-29 rule: incorporated as DES-32
+  - SP-30 rule: incorporated as DES-33
+  - SP-31 rule: incorporated as DES-34
+  - SP-32 rule: incorporated as DES-35
+  - SP-33 rule: incorporated as DES-36
+  - SP-34 rule: incorporated as DES-37
+  - SP-35 rule: incorporated as DES-38
+  - SP-36 definition: incorporated as DES-39
+  - SP-94 rule: incorporated as SCH-15
+  - DES-29 rule: in specs/design.md, serves it
+  - DES-30 rule: in specs/design.md, serves it
+  - DES-32 rule: in specs/design.md, serves it
+  - DES-33 rule: in specs/design.md, serves it
+  - DES-34 rule: in specs/design.md, serves it
+  - DES-35 rule: in specs/design.md, serves it
+  - DES-36 rule: in specs/design.md, serves it
+  - DES-37 rule: in specs/design.md, serves it
+  - DES-38 rule: in specs/design.md, serves it
+  - DES-39 definition: in specs/design.md, serves it
+  - SCH-15 rule: in specs/schema.md, serves it
+- R6 Parallel work aligns, version 1, signed in S1:
+  - SP-118 rule: incorporated as DES-26
+  - SP-30 rule: incorporated as DES-33
+  - DES-26 rule: in specs/design.md, serves it
+  - DES-33 rule: in specs/design.md, serves it
+- R7 Paths for each kind of work, version 1, signed in S1:
+  - SP-5 limit: incorporated as DES-5
+  - SP-35 rule: incorporated as DES-38
+  - SP-39 rule: incorporated as DES-43
+  - SP-40 rule: incorporated as DES-44
+  - SP-120 definition: incorporated as DES-48
+  - SP-121 rule: incorporated as DES-49
+  - DES-5 limit: in specs/design.md, serves it
+  - DES-38 rule: in specs/design.md, serves it
+  - DES-43 rule: in specs/design.md, serves it
+  - DES-44 rule: in specs/design.md, serves it
+  - DES-48 definition: in specs/design.md, serves it
+  - DES-49 rule: in specs/design.md, serves it
+- R8 From input to output, across repos, version 1, signed in S1:
+  - SP-14 definition: incorporated as DES-16
+  - SP-17 rule: incorporated as DES-19
+  - SP-19 rule: incorporated as DES-21
+  - SP-122 rule: incorporated as DES-52
+  - SP-123 rule: incorporated as DES-55
+  - SP-125 rule: incorporated as DES-69
+  - SP-60 data: incorporated as DES-70
+  - SP-84 flow: incorporated as SCH-5
+  - SP-86 data: incorporated as SCH-7
+  - SP-103 definition: incorporated as SCH-24
+  - SP-104 definition: incorporated as SCH-25
+  - SP-105 definition: incorporated as SCH-26
+  - SP-115 limit: incorporated as SCH-36
+  - DES-16 definition: in specs/design.md, serves it
+  - DES-19 rule: in specs/design.md, serves it
+  - DES-21 rule: in specs/design.md, serves it
+  - DES-52 rule: in specs/design.md, serves it
+  - DES-55 rule: in specs/design.md, serves it
+  - DES-69 rule: in specs/design.md, serves it
+  - DES-70 data: in specs/design.md, serves it
+  - SCH-5 flow: in specs/schema.md, serves it
+  - SCH-7 data: in specs/schema.md, serves it
+  - SCH-24 definition: in specs/schema.md, serves it
+  - SCH-25 definition: in specs/schema.md, serves it
+  - SCH-26 definition: in specs/schema.md, serves it
+  - SCH-36 limit: in specs/schema.md, serves it
+- R9 Bringing the AI back, and full audit, version 1, signed in S1:
+  - SP-62 interface: incorporated as DES-72
+  - SP-126 rule: incorporated as DES-75
+  - DES-72 interface: in specs/design.md, serves it
+  - DES-75 rule: in specs/design.md, serves it
+- R10 Search at the user's chosen strength, version 1, signed in S1:
+  - SP-124 rule: incorporated as DES-58
+  - SP-52 interface: incorporated as DES-61
+  - SP-53 definition: incorporated as DES-62
+  - SP-54 rule: incorporated as DES-63
+  - SP-55 rule: incorporated as DES-64
+  - SP-56 rule: incorporated as DES-65
+  - SP-107 data: incorporated as SCH-28
+  - DES-58 rule: in specs/design.md, serves it
+  - DES-61 interface: in specs/design.md, serves it
+  - DES-62 definition: in specs/design.md, serves it
+  - DES-63 rule: in specs/design.md, serves it
+  - DES-64 rule: in specs/design.md, serves it
+  - DES-65 rule: in specs/design.md, serves it
+  - SCH-28 data: in specs/schema.md, serves it
+- R11 Hints, not a lifecycle, version 1, signed in S1:
+  - SP-5 limit: incorporated as DES-5
+  - SP-20 rule: incorporated as DES-22
+  - SP-122 rule: incorporated as DES-52
+  - SP-123 rule: incorporated as DES-55
+  - SP-99 rule: incorporated as SCH-20
+  - DES-5 limit: in specs/design.md, serves it
+  - DES-22 rule: in specs/design.md, serves it
+  - DES-52 rule: in specs/design.md, serves it
+  - DES-55 rule: in specs/design.md, serves it
+  - SCH-20 rule: in specs/schema.md, serves it
+- R12 Light enough to pay for itself, version 1, signed in S1:
+  - SP-124 rule: incorporated as DES-58
+  - SP-127 limit: incorporated as DES-77
+  - DES-58 rule: in specs/design.md, serves it
+  - DES-77 limit: in specs/design.md, serves it
+- R13 Scale, version 1, signed in S1:
+  - SP-57 rule: incorporated as DES-66
+  - SP-125 rule: incorporated as DES-69
+  - DES-66 rule: in specs/design.md, serves it
+  - DES-69 rule: in specs/design.md, serves it
+- R14 Beyond code, version 1, signed in S1:
+  - SP-129 choice: incorporated as DES-79
+  - DES-79 choice: in specs/design.md, serves it
+- Other paragraphs with a baseline effect:
+  - SP-4 rationale: incorporated as DES-4
+  - SP-6 rationale: incorporated as DES-6
+  - SP-8 rationale: incorporated as DES-8
+  - SP-10 rationale: incorporated as DES-12
+  - SP-12 rationale: incorporated as DES-14
+  - SP-18 rationale: incorporated as DES-20
+  - SP-23 rationale: incorporated as DES-25
+  - SP-25 rationale: incorporated as DES-28
+  - SP-28 rationale: incorporated as DES-31
+  - SP-38 rationale: incorporated as DES-41
+  - SP-43 rationale: incorporated as DES-47
+  - SP-45 rationale: incorporated as DES-51
+  - SP-47 rationale: incorporated as DES-54
+  - SP-49 rationale: incorporated as DES-57
+  - SP-51 rationale: incorporated as DES-60
+  - SP-59 rationale: incorporated as DES-68
+  - SP-64 rationale: incorporated as DES-74
+  - SP-82 rationale: incorporated as SCH-3
+  - SP-109 example: incorporated as SCH-30
+  - SP-110 example: incorporated as SCH-31
+  - SP-111 example: incorporated as SCH-32
+  - SP-112 example: incorporated as SCH-33
+  - SP-114 example: incorporated as SCH-35
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.

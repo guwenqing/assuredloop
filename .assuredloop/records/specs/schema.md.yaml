@@ -5,215 +5,143 @@ paragraphs:
     kind: note
     text_sha256: 715d4619a4f66b13d68b3b33df809a3e077550fb5928148044b47be478c6283a
     display: "SCH-1 (0, AssuredLoop: the model from input to output)"
-    change:
-      - New
   - id: SCH-2
     kind: note
     text_sha256: 441f502276bdeb22ea3ec187ef3ce8dd5a53bb78eebf0ae82849251f8059dbda
     display: "SCH-2 (0:1, in AssuredLoop: the model from input to output)"
-    change:
-      - New
   - id: SCH-3
     kind: rationale
     text_sha256: 7c7aedfc62de7e08ec74def03ed221de1a671127903ca4a8fd71d594768413fe
     display: "SCH-3 (0:2, in AssuredLoop: the model from input to output)"
-    change:
-      - New
   - id: SCH-4
     kind: note
     text_sha256: 740468a9d6372f09d84afafc15599b913ca69fd3a246d4a4ff848ce4b10fe255
     display: SCH-4 (1, 1. The picture)
-    change:
-      - New
   - id: SCH-5
     kind: flow
     text_sha256: 829c20cae445860f0a2d439bda7a26dfa7821f236a4fc471a94a244784d399d9
     display: SCH-5 (1:1, in 1. The picture)
-    change:
-      - New
   - id: SCH-6
     kind: note
     text_sha256: 8d23956c1248796cedbed819739c36427d9149307a16212bbfeebdca6a9bcd4a
     display: SCH-6 (2, 2. The kinds of item)
-    change:
-      - New
   - id: SCH-7
     kind: data
     text_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2
     display: SCH-7 (2:1, in 2. The kinds of item)
-    change:
-      - New
   - id: SCH-8
     kind: rule
     text_sha256: 3d3c7699c3a6d0d45504b2c443fc7cf7732cdf9e572b47f36304f4a8f080db44
     display: SCH-8 (2:2, in 2. The kinds of item)
-    change:
-      - New
   - id: SCH-9
     kind: note
     text_sha256: b3f1cffa78be377c31a058ee561408b42b85c7a1ab8fe1e703f86f45f3cb9e56
     display: SCH-9 (3, 3. IDs in the text)
-    change:
-      - New
   - id: SCH-10
     kind: rule
     text_sha256: c1ffbb36e0fc9869bba817577ec965ada2ec3b972b4921b08a56499e16247303
     display: SCH-10 (3:1, in 3. IDs in the text)
-    change:
-      - New
   - id: SCH-11
     kind: note
     text_sha256: 9371ce000ab1026203479415981f9a02ffe3e6c342d6e4814baec2526ed3c239
     display: SCH-11 (4, 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-12
     kind: definition
     text_sha256: 93e7657001dd7919b1514b9691ebffa0dc3d170cad1142e06d627b713c0159d4
     display: SCH-12 (4:1, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-13
     kind: definition
     text_sha256: c0ae997e82a2d66e9fb32f7a0bfce4bf5c9c75b0f48f8f57bf847ec72430264f
     display: SCH-13 (4:2, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-14
     kind: definition
     text_sha256: b9b58f6fbd1bb37091bd090e773b25ad223d044a2d87b36995b6301e4f5c52a2
     display: SCH-14 (4:3, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-15
     kind: rule
     text_sha256: 995ea9ecf34f15873cec5f920aaf18842ed685f05c52499d93aac116cd75f5ba
     display: SCH-15 (4:4, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-16
     kind: definition
     text_sha256: acdecbc5175a779ebde3ab0cbbbc545809b60660728be349febf67ba26cd38fd
     display: SCH-16 (4:5, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-17
     kind: definition
     text_sha256: 52cd575fb7cce75f375dc43fabf2cb06d1be3c4d480d6db00737ce2e6dfdfba7
     display: SCH-17 (4:6, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-18
     kind: definition
     text_sha256: 7245a463b1b74bbcd686c49b5f24a6788057c67d315106edf05d647838508769
     display: SCH-18 (4:7, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-19
     kind: definition
     text_sha256: dab7994fe22b4ed54d3e0573aed474bd72609932844888a6bc15944f8cc0da94
     display: SCH-19 (4:8, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-20
     kind: rule
     text_sha256: 420459468af7e401bd9c7b0e36f48e397469abee8d404eb9345ec9b3d43f221d
     display: SCH-20 (4:9, in 4. The kinds of paragraph)
-    change:
-      - New
   - id: SCH-21
     kind: note
     text_sha256: cfd03458fbf62b7d4e32becd150f68942812489a276c11564173e1f620a66874
     display: SCH-21 (5, 5. ADRs)
-    change:
-      - New
   - id: SCH-22
     kind: rule
     text_sha256: f1af7191ac519eb21a6feaba089af474369ce5801dde1b2edc179108603c8357
     display: SCH-22 (5:1, in 5. ADRs)
-    change:
-      - New
   - id: SCH-23
     kind: note
     text_sha256: a262a3791a58348b944529cef79f2c099f5a5277b524d4e870d5b4c9e799ff0a
     display: SCH-23 (6, 6. The links)
-    change:
-      - New
   - id: SCH-24
     kind: definition
     text_sha256: 996fa12cceeca080ca058261c891d4b0bf32a16b4ff2a301e074ab0adb78327c
     display: SCH-24 (6:1, in 6. The links)
-    change:
-      - New
   - id: SCH-25
     kind: definition
     text_sha256: 948551a0901d0cd42149130f58d8b4b1333eecf4ee50fcaec35ef1e4d9e51dba
     display: SCH-25 (6:2, in 6. The links)
-    change:
-      - New
   - id: SCH-26
     kind: definition
     text_sha256: 57b555007e7895c9fba253d89dcdaf40ede19eefafb6f0b40da95b37edbfc9dc
     display: SCH-26 (6:3, in 6. The links)
-    change:
-      - New
   - id: SCH-27
     kind: note
     text_sha256: f96a7460443575f9b0efbba033bbfed20726905eeec94dd32f6f741a011ca5b1
     display: SCH-27 (7, 7. Where the model lives)
-    change:
-      - New
   - id: SCH-28
     kind: data
     text_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197
     display: SCH-28 (7:1, in 7. Where the model lives)
-    change:
-      - New
   - id: SCH-29
     kind: note
     text_sha256: e0fca82db6f459936a572a0a1e03ea567a94238c0985e2b6652bc73c46e542da
     display: SCH-29 (8, 8. A worked example as records)
-    change:
-      - New
   - id: SCH-30
     kind: example
     text_sha256: 336c0f4db5bb13884c2b8e2f1100bd9de60f9756b00ed19a6998ef8dc7622dd3
     display: SCH-30 (8:1, in 8. A worked example as records)
-    change:
-      - New
   - id: SCH-31
     kind: example
     text_sha256: d78ca860fdfa26bfa0a1bd25a0b2b5a780aa7df9a77b96257c0322591730688f
     display: SCH-31 (8:2, in 8. A worked example as records)
-    change:
-      - New
   - id: SCH-32
     kind: example
     text_sha256: 6ab63f0323fb6f27cedd312e47a22c369878293ed81f4b3667f89b92eb617f46
     display: SCH-32 (8:3, in 8. A worked example as records)
-    change:
-      - New
   - id: SCH-33
     kind: example
     text_sha256: fbcf115333eff21b9e19d1a763eed856db8dde324d6c24640a9aadb9ecedbaba
     display: SCH-33 (8:4, in 8. A worked example as records)
-    change:
-      - New
   - id: SCH-34
     kind: note
     text_sha256: 0f8e1071123d95fb1fcbd181cda4b5ddc6ff84ae1ca84a74d4877555496e5153
     display: SCH-34 (9, 9. What the graph lets the tool say)
-    change:
-      - New
   - id: SCH-35
     kind: example
     text_sha256: 59f5b645dc51eb06e44695da266f438c77a79af9be9433e0f6cae6c8068c2d93
     display: SCH-35 (9:1, in 9. What the graph lets the tool say)
-    change:
-      - New
   - id: SCH-36
     kind: limit
     text_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809
     display: SCH-36 (9:2, in 9. What the graph lets the tool say)
-    change:
-      - New
