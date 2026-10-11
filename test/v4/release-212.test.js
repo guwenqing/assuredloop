@@ -1,4 +1,6 @@
-// Issue #212: level 2 search without a second npm package, released as 0.2.1.
+// Issue #212: level 2 search without a second npm package, first released as
+// 0.2.1. The expected version is package.json's own version, so a release
+// that changes only the version does not break this file.
 // Built from the issue's requirement and the public interface only:
 // package.json and package-lock.json, the packed tarball, the two workflow
 // files as GitHub Actions files, README.md, and the installed `al`. Nothing
@@ -11,15 +13,17 @@
 //   optional in peerDependenciesMeta; dependencies is yaml 2.9.1 only;
 //   package-lock.json agrees and holds no entry for the library, so npm ci
 //   does not install it.
-// - Item 5: version 0.2.1 in package.json and package-lock.json; README.md's
+// - Item 5: package.json's version is a release version, and package-lock.json
+//   has the same version at its top and for its root package; README.md's
 //   two install lines, and no @assuredloop/search or packages/search in it;
 //   publish.yml publishes only @assuredloop/cli (a tag check of ./package.json
 //   alone, one npm publish step, skip when on npm, --tag next for a
 //   pre-release); neither workflow installs the library or fills npm's cache
 //   with it, but one step of publish.yml's test job installs 4.3.1 (#220).
 // - Item 6: the packed cli alone, installed offline: no file of the library
-//   in the tarball, npm does not install the library, al --version names
-//   0.2.1, al check --strict runs, and the installed al finds the library in
+//   in the tarball, npm does not install the library, the installed
+//   package.json, npm ls and al --version name package.json's version, al
+//   check --strict runs, and the installed al finds the library in
 //   the project first and then beside itself (a stand-in, helpers/search.js).
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,7 +44,6 @@ import {
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const CLI = '@assuredloop/cli';
 const OLD = '@assuredloop/search';
-const VERSION = '0.2.1';
 const YAML_VERSION = '2.9.1';
 const INSTALL = `${TRANSFORMERS}@${TRANSFORMERS_VERSION}`;
 // npm pack, npm install and al take seconds; a hang is killed.
@@ -49,6 +52,9 @@ const LIMIT = 120_000;
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const cliPkg = () => readJson(join(ROOT, 'package.json'));
 const lock = () => readJson(join(ROOT, 'package-lock.json'));
+// The version under test: package.json's own, the one place a release sets it.
+const VERSION = cliPkg().version;
+const VERSION_RE = String(VERSION).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // --- item 1 and item 2: one package, an optional peer dependency
 
@@ -56,9 +62,9 @@ test('#212 packages/search/ is gone', () => {
   assert.ok(!existsSync(join(ROOT, 'packages', 'search')), 'packages/search should not exist');
 });
 
-test('#212 package.json is @assuredloop/cli at 0.2.1, and package-lock.json says 0.2.1 at its top and for its root package', () => {
+test(`#212 package.json is @assuredloop/cli at a release version (${VERSION}), and package-lock.json says that version at its top and for its root package`, () => {
   assert.equal(cliPkg().name, CLI);
-  assert.equal(cliPkg().version, VERSION);
+  assert.match(String(VERSION), /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/, 'package.json: version is a release version');
   const l = lock();
   assert.equal(l.name, CLI);
   assert.equal(l.version, VERSION, 'package-lock.json: version');
@@ -313,7 +319,7 @@ test('#212 publish.yml, the publish job: a release tag that is not v<package.jso
   const r = runJob(t, { tag, prerelease: false, view: 'not-published' });
   assert.notEqual(r.code, 0, `a tag mismatch should fail:\n${showJob(r)}`);
   assert.deepEqual(r.publishes, [], `no npm publish:\n${showJob(r)}`);
-  assert.match(r.out, /v?9\.9\.9|\b0\.2\.1\b/, `the message names the tag or the version:\n${showJob(r)}`);
+  assert.match(r.out, new RegExp(`v?9\\.9\\.9|\\b${VERSION_RE}\\b`), `the message names the tag or the version:\n${showJob(r)}`);
 });
 
 test('#212 publish.yml, the publish job: the tag check reads only ./package.json: with no packages/ folder, and with a stray packages/search/package.json at 0.2.0, a matching tag publishes the root once', (t) => {
@@ -459,7 +465,7 @@ describe('#212 the packed @assuredloop/cli alone, installed with no network', ()
     }
   });
 
-  test('#212 npm ls --global: @assuredloop/cli 0.2.1 with yaml 2.9.1, all met, and no @huggingface/transformers', () => {
+  test(`#212 npm ls --global: @assuredloop/cli ${VERSION} with yaml 2.9.1, all met, and no @huggingface/transformers`, () => {
     const r = run('npm', ['ls', '--global', '--prefix', prefix, '--all', '--json'], scratch);
     assert.equal(r.code, 0, `npm ls --global should find no missing or invalid dependency:\n${r.both.slice(0, 4000)}`);
     const tree = JSON.parse(r.stdout);
@@ -470,10 +476,10 @@ describe('#212 the packed @assuredloop/cli alone, installed with no network', ()
     assert.equal(deps[CLI]?.dependencies?.[TRANSFORMERS]?.version, undefined, `${TRANSFORMERS} is not installed under the cli`);
   });
 
-  test('#212 the installed al --version: the first line names 0.2.1', () => {
+  test(`#212 the installed al --version: the first line names ${VERSION}`, () => {
     const elsewhere = join(scratch, 'elsewhere');
     mkdirSync(elsewhere, { recursive: true });
-    assert.match(lines(al(elsewhere, '--version'))[0], /^al 0\.2\.1 · not a git checkout: /);
+    assert.match(lines(al(elsewhere, '--version'))[0], new RegExp(`^al ${VERSION_RE} · not a git checkout: `));
   });
 
   test('#212 the installed al check --strict runs in a scratch git repo: exit 0, no not ok, and it does not import @huggingface/transformers from the project', (t) => {
