@@ -259,14 +259,20 @@ paragraphs:
     display: DES-64 (11:5, in 11. Search and the export)
   - id: DES-65
     kind: rule
-    text_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be
+    text_sha256: 2154fd6f22c71d132b145f24e3151c000d4cf970d555e0a2a09eee7f3bd4ce45
     display: DES-65 (11:6, in 11. Search and the export)
     change:
       - Changed
+  - id: DES-80
+    kind: component
+    text_sha256: a04a244da31a17fd1308f97339667d137e2da6b2b7ce2a9fd4b8d92cc8284b02
+    display: DES-80 (11:7, in 11. Search and the export)
+    change:
+      - New
   - id: DES-66
     kind: rule
     text_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6
-    display: DES-66 (11:7, in 11. Search and the export)
+    display: DES-66 (11:8, in 11. Search and the export)
   - id: DES-67
     kind: note
     text_sha256: f1361c0156d995db0f73407077a8ae6182ec0b2bfe88e5c42a6e5541e4a5e882

@@ -26,14 +26,9 @@ and names the embedding model's library as an optional peer dependency.
   (checked on Node 24.21.0 and 26.11.1, with SQLite 3.53.4). It lives in `al`
   itself, as `al search`, and stays deterministic and offline. The package
   declares Node 24 or newer, and CI tests level 1 on Node 24.
-- Level 2 adds an embedding model. Its code is in `al`; its library,
-  `@huggingface/transformers` pinned at 4.3.1, is not our code and is no
-  package of ours. `al` names the library as an optional peer dependency, so
-  npm installs it only when the user asks:
-  `npm install --global @assuredloop/cli @huggingface/transformers@4.3.1`.
-  `al` finds it by normal Node resolution: the project first, then beside
-  `al`. Only `al search` loads it, at its first embed. Without it, `al search`
-  answers at level 1, and a `Not known` line says how to add level 2.
+- Level 2 adds an embedding model, whose library the user installs (below).
+  Without the library, `al search` answers at level 1, and a `Not known` line
+  says how to add level 2.
 - The fusion is reciprocal rank fusion over the rows that have vectors. A row
   with no vector keeps its level 1 place, because the vector list gives it no
   vote and must not push it down.
@@ -62,6 +57,16 @@ and names the embedding model's library as an optional peer dependency.
   the default (input 130), and it is measured again on a larger real corpus
   before the release.
 
+<!-- SP-6 component serves:R1,assuredloop-v4/R10 builds-on:SP-3 -->
+
+Where level 2 lives: its code is in `al`; its library,
+`@huggingface/transformers` pinned at 4.3.1, is not our code and is no
+package of ours. `al` names the library as an optional peer dependency, so
+npm installs it only when the user asks:
+`npm install --global @assuredloop/cli @huggingface/transformers@4.3.1`.
+`al` finds it by normal Node resolution: the project first, then beside
+`al`. Only `al search` loads it, at its first embed.
+
 <!-- SP-4 approach serves:R1 builds-on:SP-3 -->
 
 How this change is built: the level 2 code of `packages/search/index.js`
@@ -78,4 +83,5 @@ The plan, in one PR (issue #212):
 2. Return `publish.yml` to one package, and take the cache fill for the
    search package out of `test.yml` and `publish.yml`.
 3. Give the README its two install lines, and set the version to 0.2.1.
-4. Consolidate the changed paragraph into `specs/design.md` as `DES-65`.
+4. Consolidate SP-3 into `specs/design.md` as `DES-65`, and SP-6 as a new
+   design paragraph after it.
