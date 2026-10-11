@@ -3,8 +3,11 @@
 // packages/search/test/smoke.test.js by #212. It runs `al search` end to end
 // with the real @huggingface/transformers, which al finds beside itself. It
 // runs only when that library resolves from the repo top (installed there by
-// hand, for example `npm install --no-save @huggingface/transformers@4.3.1`),
-// and skips otherwise, as in CI. The first run downloads the model.
+// hand: `npm install --no-save --save-peer @huggingface/transformers@4.3.1`;
+// without --save-peer npm installs nothing, as the library is the repo's own
+// peer), and skips otherwise, as in test.yml. With AL_REQUIRE_REAL_MODEL=1, as
+// in publish.yml's test job, it never skips: it fails when the library or the
+// model does not load (#220). The first run downloads the model.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
@@ -13,6 +16,7 @@ import { join } from 'node:path';
 import { LEVEL2_LINE, REPO, TRANSFORMERS, runOk, search, show, smallRepo } from './helpers/search.js';
 
 const TEN_MINUTES = 600_000;
+const required = process.env.AL_REQUIRE_REAL_MODEL === '1';
 const installed = (() => {
   try {
     createRequire(join(REPO, 'package.json')).resolve(TRANSFORMERS);
@@ -23,9 +27,10 @@ const installed = (() => {
 })();
 
 test('level 2 with the real model: al search answers at level 2 and finds the paragraph by its meaning', {
-  skip: installed ? false : `${TRANSFORMERS} does not resolve from the repo top: install it there to run the real-model smoke test`,
+  skip: installed || required ? false : `${TRANSFORMERS} does not resolve from the repo top: install it there to run the real-model smoke test`,
   timeout: TEN_MINUTES,
 }, (t) => {
+  assert.ok(installed, `${TRANSFORMERS} does not resolve from the repo top, and AL_REQUIRE_REAL_MODEL=1 asks for the real model`);
   const { dir } = smallRepo(t);
   assert.ok(!existsSync(join(dir, 'node_modules')), 'the fixture: the project has no node_modules, so al uses the library beside itself');
 
