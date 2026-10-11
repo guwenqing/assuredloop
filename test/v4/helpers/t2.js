@@ -2,25 +2,21 @@
 // questions measured by recall of the expected IDs, level 1 against level 2").
 // For one built state and a list of questions: search with each question's
 // words in the chosen query, and count the expected IDs in the top k hits.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { REPO, installEmbedder, search } from './search.js';
+import { besideAl, installEmbedder, search } from './search.js';
 
 export const KS = [5, 10];
 
 // The ID as an export row names it: "<repo>:<path>" of the central repo is its path.
 export const rowId = (id, repo) => (repo && id.startsWith(`${repo}:`) ? id.slice(repo.length + 1) : id);
 
-// Makes `dir` answer at level 2 with the fixed test embedder ('fixed') or the
-// real model of packages/search ('real').
+// Makes `dir` answer at level 2 with the fixed test embedder ('fixed', a
+// stand-in @huggingface/transformers in the project) or the real model
+// ('real': the real library resolves beside al, from the repo top, so the
+// project needs nothing).
 export function useLevel2(dir, kind) {
   if (kind === 'fixed') return installEmbedder(dir);
-  const target = join(dir, 'node_modules/@assuredloop/search');
-  mkdirSync(target, { recursive: true });
-  writeFileSync(join(target, 'package.json'), `${JSON.stringify({ name: '@assuredloop/search', version: '0.0.0-real', private: true, type: 'module', exports: './index.js' })}\n`);
-  writeFileSync(join(target, 'index.js'), `export { default } from ${JSON.stringify(pathToFileURL(join(REPO, 'packages/search/index.js')).href)};\n`);
-  return target;
+  if (!besideAl()) throw new Error('the real model needs @huggingface/transformers installed at the repo top');
+  return null;
 }
 
 // One question in one state: { id, level, fallback, recall: {5: r, 10: r}, found, missed }.

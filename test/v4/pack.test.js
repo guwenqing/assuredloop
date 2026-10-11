@@ -140,7 +140,9 @@ test('#196 npm pack holds what al needs: package.json, LICENSE, README.md, bin/a
 });
 
 test('#196 npm pack holds nothing outside package.json and the "files" entries: no test/, requests/, specs/, .assuredloop/, packages/, .github/, AGENTS.md or CLAUDE.md', () => {
-  for (const p of ['test', 'requests', 'specs', '.assuredloop', 'packages', '.github', 'AGENTS.md', 'CLAUDE.md']) {
+  // packages/ is not in the list since #212 removed packages/search; the
+  // filter below still keeps it out of the tarball.
+  for (const p of ['test', 'requests', 'specs', '.assuredloop', '.github', 'AGENTS.md', 'CLAUDE.md']) {
     assert.ok(existsSync(join(ROOT, p)), `the fixture: the repo has ${p}`);
   }
   const allowed = (p) => ['package.json', 'README.md', 'LICENSE'].includes(p) || /^(bin|src|skills)\//.test(p);
