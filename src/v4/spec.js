@@ -26,7 +26,7 @@ that each entry of \`${ADOPTION}\` names. \`source: adoption\`
 says where the text came from. It is not an owner approval, and it does not
 excuse a later change.
 `;
-const USAGE = 'al-v4 spec --add-ids <file> [--prefix <PREFIX>] [--yes]';
+const USAGE = 'al spec --add-ids <file> [--prefix <PREFIX>] [--yes]';
 
 export function spec({ top, cwd, args, opts }) {
   const root = rootProblem(loadConfig(top));
@@ -38,7 +38,7 @@ export function spec({ top, cwd, args, opts }) {
   if (args.length) {
     const wanted = args.map((a) => relative(top, resolve(cwd, a)));
     const missing = wanted.filter((p) => !docs.some((d) => d.path === p));
-    if (missing.length) throw new Fail(`not a doc in scope: ${missing.join(', ')}`, 'al-v4 spec, with no file, lists every doc in scope');
+    if (missing.length) throw new Fail(`not a doc in scope: ${missing.join(', ')}`, 'al spec, with no file, lists every doc in scope');
     docs = docs.filter((d) => wanted.includes(d.path));
   }
   const body = notRead(top, config);
@@ -47,7 +47,7 @@ export function spec({ top, cwd, args, opts }) {
     for (const p of parseMarkdown(d.text, d.path, { kinds }).paragraphs) body.push(`  ${p.displayNumber}  ${p.kind ?? '-'}`);
   }
   if (!docs.length) body.push(`no doc in scope: no *.md under ${config.root}/, no doc in .assuredloop/config.yaml, no requests/<name>/spec.md`);
-  return { body, next: 'al-v4 check', notKnown: ['whether each kind is right (the review judges that)'] };
+  return { body, next: 'al check', notKnown: ['whether each kind is right (the review judges that)'] };
 }
 
 function addIds({ top, cwd, opts }) {

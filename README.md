@@ -1,243 +1,276 @@
 # AssuredLoop
 
 AssuredLoop keeps an AI focused on one change. It holds together:
-- the owner's words;
-- the organized requirement the owner signs off;
-- the current consolidated spec, the baseline: Markdown sections in `specs/`,
-  each headed by an ID such as `## [INV-3] Dates`; and the change to it;
-- the decisions;
-- the code and tests that came with it.
+- the owner's words, as snapshots;
+- the organized requirement that the owner signs;
+- the consolidated spec in `specs/`: the system now, the promises and the
+  lasting design, each paragraph with a hidden ID;
+- each change's own design, its change spec, beside its request;
+- the decisions and the ADRs;
+- the code, the tests and the documents that came with the change.
 
-A change to a promise keeps these records in a request, the folder
-`requests/<name>/`.
+Its command, `al`, keeps these records, checks them, and says what to do
+next. It refuses only in its own `al conclude`. Every other check is a hint;
+a project that wants blocks turns on `al check --strict` in its CI.
 
-Its command, `al`, gathers and checks these records and says what to do next.
-It gives hints; it blocks nothing but its own `consolidate` and `conclude`.
+AssuredLoop is not a lifecycle tool. It has no phases, no roles, no task
+states and no approvals beyond the owner's sign-off. How and when you design,
+test and review is your project's way of working.
 
 ## Install
 
-It needs Node 24 or newer and git 2.31 or newer, and nothing else. Install
-the npm package `@assuredloop/cli`, which puts `al` on your PATH:
+It needs Node 24 or newer and git 2.31 or newer. Install the npm package
+`@assuredloop/cli`, which puts `al` on your PATH:
 
     npm install --global @assuredloop/cli
 
-To pin a version, name it: `npm install --global @assuredloop/cli@0.1.0`.
-`al --version` prints the version and the folder it runs from.
+To pin a version, name it: `npm install --global @assuredloop/cli@<version>`.
 
-The package carries the skill. Its folder, `<dir>` below, is
-`$(npm root -g)/@assuredloop/cli`, so the skill is at
-`$(npm root -g)/@assuredloop/cli/skills/assuredloop/SKILL.md`. Then add one
-line to the project's AGENTS.md:
+The package carries the skill, at
+`$(npm root -g)/@assuredloop/cli/skills/assuredloop/SKILL.md`. Add one line to
+the project's AGENTS.md:
 
 ```
-AssuredLoop keeps this project's requests and spec: before work that changes a promise, read <dir>/skills/assuredloop/SKILL.md and run `al context`.
+AssuredLoop keeps this project's requests and spec: before work that changes the spec, read <dir>/skills/assuredloop/SKILL.md and run `al context`.
 ```
 
 In a shared repo whose contributors install `al` in different places, copy
-`skills/assuredloop/SKILL.md` from `<dir>` at the pinned version into the
-project, for example as `.claude/skills/assuredloop/SKILL.md`. Name that path
-in the AGENTS.md line, say in the commit which version it came from, and copy
-it again when you re-pin.
+the skill at the pinned version into the project, for example as
+`.claude/skills/assuredloop/SKILL.md`. Name that path in the AGENTS.md line,
+and say in the commit which version it came from.
 
-To work on `al` itself, use a clone in place of the npm package:
+Search at level 2 needs the optional package `@assuredloop/search` (see
+"Search"). Install it in the project, or beside `al`.
 
-    git clone https://github.com/guwenqing/assuredloop <dir>
-    npm install --global <dir>
+## The model in one page
 
-The global `al` links to `<dir>`, so it follows whatever `<dir>` checks out.
-To pin a commit, check out its SHA in a clone of its own (`git -C <dir>
-checkout <sha>`) and run `node <dir>/bin/al.js` in place of `al`; it needs no
-install, having no dependencies. From a clone, `al --version` also prints the
-commit.
+- **Paragraphs and markers.** Every paragraph of a spec doc has an ID in a
+  hidden HTML comment on its own line before it, with a blank line before and
+  after it. The marker holds the ID, the kind and the links:
 
-To run `al check --strict` in CI, check the project out with its whole history
-(`fetch-depth: 0`), install the pinned version
-(`npm install --global @assuredloop/cli@0.1.0`), and run `al check --strict`. A
-checkout with no main ref says
-`no main to compare with, so no commits were checked`: it compares none of the
-branch's commits with main, though its other checks, such as duplicate IDs in
-the working tree, still run and can fail. A shallow clone that has
-`origin/main` does not print that line, but reads no history before its
-shallow boundary.
+  ```markdown
+  <!-- INV-41 rule serves:invoice-exports/R2 builds-on:INV-12 -->
+
+  The export link MUST expire 30 minutes after the email is sent.
+  ```
+
+  GitHub does not show the marker. The ID is one flat number per file, and
+  it is never used again. `al` computes a display number, for example
+  `INV-41 (2.3:4, in Export links)`, which can change when text moves.
+- **Kinds.** Promise kinds (purpose, scope, rule, limit, definition): a
+  change needs a signed requirement that covers it. Design kinds (component,
+  interface, data, flow, choice) and `approach` (how one change is built):
+  a change needs review. Informative kinds (rationale, example, open), `note`
+  (headings and connecting text), and the change-only kinds (plan, step,
+  migration).
+- **A request** is the folder `requests/<name>/`: `origin/` (the owner's words
+  and the sign-offs, as snapshots with SHA-256), `request.md` (the dialog, the
+  organized requirement R1…, the decisions D1…) and, from path 2, `spec.md`,
+  the change spec, with IDs SP-1, SP-2…
+- **Records** in `.assuredloop/records/`, committed to git: one per request
+  (its sources, requirement versions, sign-offs, decisions, tasks, the
+  bindings of its links and the dispositions of its paragraphs) and one per
+  doc (fields that `al index` can always rebuild). `al` writes every hash and
+  every derived field.
+- **Bindings.** When a link is first indexed, `al index` records the hash of
+  both ends. Ordinary indexing never moves a binding. When the target
+  changes, the source gets a hint until someone checks it and runs
+  `al index --align <ID>`.
+- **Consolidation is by hand.** A PR copies a change paragraph into `specs/`
+  word for word, and records its disposition: `incorporated`, `removed`,
+  `superseded` or `abandoned`. No command writes the spec.
+
+## Paths
+
+The user picks the path. The skill has the steps of each path.
+
+| Path | When | Records | Sign-off | Closes when |
+|---|---|---|---|---|
+| 0. Fix | no promise changes: it restores what the spec says, or claims a typo in any paragraph | none | no | the PR merges |
+| 1. Small promise amend | one or a few promise paragraphs change | a short request; the PR edits `specs/` directly | yes | the PR merges |
+| 1d. Small design correction | names or wording of design paragraphs only | a short request with a one-line source note; the PR edits `specs/` directly | no | the PR merges |
+| 2. Big change | a real design, one or a few PRs | a request and a change spec | if a promise kind changes | the close rule holds |
+| 3. Epic | big, in parts over time | as 2, with optional task references | as 2 | the close rule holds |
+| S. Spike | not yet clear what to build | a request with an organized question; the findings open with the answer | yes, on the question | the answer names the question version |
+
+Every PR states its path and its claim in a commit message, for example
+`Tier: 0 — typo in INV-3` or `Tier: 2 — invoice-payments, part 1`. `al check`
+reads the newest `Tier:` line in the branch's commits, and checks the claim
+against the kinds and the changed paragraphs: "path 0, but a rule paragraph
+is changed with no typo claim" is `not ok`. It checks the labels, not their
+meaning.
+
+**The close rule.** `al conclude <name>` refuses while a promise change has
+no sign-off, a spike's current question is not signed, or a change paragraph
+with a baseline effect has no valid disposition for its current version.
 
 ## The commands
 
-- `al new <name> --from <file|-> [--tier <1|2|3|S>] [--title <text>]`: start
-  a request from the owner's words (`-` reads standard input); `--title` sets
-  its heading, which is the name otherwise.
-- `al record <name> origin|signoff|decision|part|section`: write one part of
-  a record. To change a section the request already holds, write the decision
-  first, then `al record <name> section <ID> --decision Dn` adds a new version.
-- `al context [<name> | <ID> | --diff <range>]`: where the project, a request
-  or a section stands; `--audit` for the whole trace, `--at <commit>` for any
-  past state.
-- `al spec [--list]`: the design as it stands. `--add-ids <file> --prefix <P>`
-  gives IDs to the headings of a baseline file that have none.
-- `al check [--strict] [--all]`: the hints for this branch, five at most;
-  `--all` shows every one.
-- `al consolidate <name>`: write a request's pending sections into the baseline.
-- `al conclude <name>`: write the Outcome (what became of each requirement) and
-  archive the request.
+- `al new <name> --from <file|-> [--tier <1|1d|2|3|S>] [--title <text>]`:
+  start a request from the owner's words (`-` reads standard input).
+- `al record <name> origin --url <source> --from <file|->`: a snapshot of
+  later words of the owner, or of a source you rely on.
+- `al record <name> signoff --source <where> --words <their words>`: show what
+  the owner signs; with `--yes`, record the sign-off on the owner's own yes.
+- `al record <name> decision --source <who> --text <decision>
+  [--clarifies R<n>]`: add D1, D2…
+- `al spec`: every doc's IDs, display numbers and kinds.
+  `al spec --add-ids <file> [--prefix <P>]`: give each unmarked paragraph the
+  next free ID.
+- `al index`: write the derived facts and the new bindings, and list the AI
+  hints to refresh. `al index --align <ID>` moves the bindings of one
+  paragraph to its targets' current text, on purpose.
+- `al check [--strict]`: the checks of this branch against its base.
+- `al context [<name> | <ID>]`: where the project, a request or a paragraph
+  stands. `--diff <range> --for review` is the review view. `--audit` gives a
+  request's whole trace; `--at <commit>` any v4 state.
+- `al conclude <name>`: the close rule; with `--yes` it writes the Outcome
+  and moves the request to `requests/archive/<name>/`.
+- `al export [--at <commit>] [--out <file>]`: one JSONL row per paragraph
+  version, with its role, version, commit and links. It is not committed.
+- `al search <words>`: see "Search".
 
-Every command that changes files, except `new`, shows what it would write, and
-writes only with `--yes`. The skill, `skills/assuredloop/SKILL.md`, says how to
-choose a tier (0 to 3, or S for a spike) and when to use which command. The
-promises are in `specs/`.
-
-A request that follows an earlier one says so on its Status line, as in
-`Status: open · Follows: <name>`. Every word after `Follows:` is read as a
-request name, so write names only.
+Every command that changes files, except `new` and `index`, shows what it
+would write, and writes only with `--yes`. Each output ends with three lines:
+`Read` (what it read), `Next` (what to do next) and `Not known` (what the
+tool cannot know).
 
 ## Settings
 
-A project may add a file `.assuredloop` at its root, one `key: value` per line,
-each path inside the repo:
-- `root: <folder>`: the baseline's folder, `specs` when there is no such line;
-- `tests: <path>`: a test file or folder beyond the usual names;
-- `results: <path>`: a test result file or folder for `al check` to read;
-- `adrs: <folder>`: a folder of decision records; `docs/adr` is always read too.
+`.assuredloop/config.yaml`, at the repo's root. Every key is optional.
 
-`tests:`, `results:` and `adrs:` may each be given on several lines.
+```yaml
+root: specs                # the spec folder; every *.md in it except adr/ is a spec doc
+docs:                      # each file and its ID prefix; other files may be listed too
+  - {file: specs/invoices.md, prefix: INV}
+results: .assuredloop/results   # where result files are
+outputs:                   # in the central repo: its output repos
+  - {name: invoicer-web, path: ../invoicer-web, commit: <sha>}
+central: {path: ../invoicer}    # in an output repo: the central repo
+```
 
-## Common situations
+`.assuredloop/schema.yaml` holds the kinds and the link words, with a version.
+`al spec --add-ids` writes both files when they are absent.
 
-Each example gives the steps, and what `al check` says on the PR. The `Tier:`
-line goes in a commit message and in the PR.
+ADRs are `specs/adr/NNNN-<slug>.md`, with `Status: proposed`, `accepted` or
+`superseded` on the first line. The heading's marker holds `ADR-<n>` and its
+`decides:`, `source:` and `supersedes:` links. The text of an accepted ADR
+does not change; a new ADR supersedes it.
 
-### Adopting when the spec lives elsewhere
+## Search
 
-Say the design is `docs/prd.md`, and the root is to be `docs/prd/`. Use two
-PRs.
+`al search` answers at the strongest level that is installed, falls back by
+itself (2, then 1, then 0), and says which level answered and why.
 
-PR 1 moves the file, fixes each relative link the move breaks (`(adr/)`
-becomes `(../adr/)`), and sets the root. It comes before the project adopts
-AssuredLoop, so it carries no Tier line:
+| Level | What it is | Needs |
+|---|---|---|
+| 0 | a scan of the export | nothing |
+| 1 | a local full-text index (SQLite FTS5, BM25), with the ID in its own exact column | Node 24 or newer (`node:sqlite`) |
+| 2 | level 1, plus a small local embedding model; word and vector results are fused | the package `@assuredloop/search` |
 
-    mkdir docs/prd && git mv docs/prd.md docs/prd/prd.md
-    printf 'root: docs/prd\n' > .assuredloop
+- The default query is the current system: the spec text at the selected
+  commit. `--change <name>` adds that request's open change spec, its
+  sources and its evidence. `--history` adds removed, abandoned and replaced
+  text, marked as history.
+- `--id <ID>` finds one paragraph by its exact ID, never through search.
+  `--level <0|1|2>` asks for a lower level; `--at <commit>` another commit.
+- Each hit shows its role (`baseline`, `proposal`, `spike`, `source`,
+  `evidence` or `history`), its version and its commit.
+- In the central repo, search covers the output repos that its committed
+  config lists, each at its resolved commit. The `Repos` line names each repo
+  and its commit, for example
+  `Repos     invoicer@a6ac3a7785dd invoicer-web@5aa04042117b`. An output repo
+  gives `evidence` rows: its result files, and the files that cite a central
+  ID or that a record declares. Such a hit shows `<repo>:<path>`, and each
+  line that names a central ID, with its line number. A repo that is absent,
+  or a commit that cannot be found, gives no rows and a `Not known` line with
+  the reason.
+- The index is one SQLite file inside `.git`, never committed. `al search`
+  brings it up to date before it answers; `--rebuild` builds it again.
+- Level 2 runs a small local model (bge-small-en-v1.5, pinned by its
+  revision). The model download is the only data that leaves the machine.
+  `al` itself makes no network call.
 
-This is the step before the baseline exists. `al check`, if run on it, exits 0
-(`--strict` too) with two notes:
+## One central repo, and output repos
 
-    note: <sha> changes docs/prd/prd.md with no request linked (fine for tier 0; say why); git show <sha>
-    note: no Tier line in origin/main..HEAD; add "Tier: <n> — <claim>" to a commit message, e.g. with git commit --amend
+The central repo holds `specs/`, the ADRs, the requests and the records. Its
+config lists the output repos. An output repo holds code, tests and user
+documents only; its config names the central repo.
 
-A tier-0 claim here would get
-`not ok: the claim is tier 0, but origin/main..HEAD edits the baseline`: the
-fork had no baseline, so the whole file reads as new.
+- Code and tests in an output repo cite central IDs with a qualifier:
+  `central:INV-41`, `central:invoice-exports/R3`. A fix there says
+  `Tier: 0 — restores central:INV-41`.
+- `al` reads another repo only through git, at the commit that config pins
+  or at the clone's HEAD, and never fetches. A repo or a commit that is not
+  there is "unknown", never a guess.
+- In an output repo, `al check` looks up the central IDs that the branch's
+  changed files cite.
 
-PR 2, after PR 1 merges, adopts: the AGENTS.md line from Install, and IDs. It
-claims `Tier: 0 — adds section IDs; no promise changes`:
+## Adopting AssuredLoop
 
-    al spec --add-ids docs/prd/prd.md --prefix PRD --yes
+1. Put the spec under the root (`specs/` by default), or set `root:`.
+2. Mark every paragraph: `al spec --add-ids specs/<file>.md --prefix <P> --yes`
+   for each spec file. Headings get the kind `note`. Write the kind of each
+   other paragraph into its marker. An adopted paragraph needs no link.
+3. Add the AGENTS.md line from "Install". Claim
+   `Tier: 0 — adds paragraph IDs; no promise changes`.
+4. `al spec --add-ids --yes` also records where the adopted text came from.
+   For each paragraph it marks whose text is a block of the file at HEAD, in
+   the same place, it writes an entry with HEAD's commit and the text's hash
+   to `.assuredloop/records/requests/adoption.yaml`. It writes
+   `requests/archive/adoption/request.md` when that file is absent. So commit
+   the spec unmarked before you mark it. A paragraph whose text is not at
+   HEAD is not adopted: the command names it, and it follows its path as a
+   change. `source: adoption` says where the text came from. It is not an
+   owner approval, and it does not excuse a later change.
+5. Run `al index`, and commit the markers and the records together. On that
+   branch, `al check --strict` reads the adopted paragraphs as unchanged, so
+   they need no sign-off and no path claim.
 
-`al check --strict` passes, with one note: the commit changes
-`docs/prd/prd.md` with no request linked (fine for tier 0; say why). In one PR,
-the IDs read as edits too: `edits the baseline: [PRD-1], [PRD-2], [PRD-3]`.
+**A sign-off bound to the whole text.** Markers change a file's bytes. If a
+signed requirement, or any other record, binds the whole text of a spec file
+by its SHA-256, that hash no longer matches after the markers are added. Ask
+the owner for a new approval after the conversion. The paragraph text itself
+does not change; `al` hashes each paragraph without its marker.
 
-### Adding IDs to a spec file in the root
-
-    al spec --add-ids specs/api.md --prefix API --yes
-
-It numbers the headings that have no ID, with the next free numbers. Claim
-tier 0. `al check --strict` passes, with the same note.
-
-### Moving or splitting sections in the root
-
-Move each section whole, heading and text unchanged, to another file in the
-root. Claim tier 0. `al check --strict` passes, and its Evidence line says
-`moves [R-3] specs/rules.md → specs/dates.md, text unchanged`. A new file holds
-only the moved sections: a title or an intro line in it is new text, and gets
-a `not ok`.
-
-### A move that forces a text change
-
-Moving `[R-2]` from `specs/` into `specs/files/` breaks its link
-`(limits.md)`. The fix, `(../limits.md)`, changes the section's text. So does a
-heading reworded on the way. `al` follows neither. Claimed as tier 0:
-
-    not ok: the claim is tier 0, but origin/main..HEAD edits the baseline: [R-2]; al context --diff origin/main..HEAD
-
-Either keep the change out of the move: move the section where its text still
-works (a file in the same folder keeps its links), and reword in a tier-1 PR of
-its own. Or claim tier 1 for the whole PR, as in the skill's quick path, with
-`Amends: [R-2]` and the owner's sign-off. `al check --strict` then passes.
-
-### Renaming a section's ID
-
-Code, tests and requests cite a section by its ID. Rename `[R-2]` to
-`[SIZE-1]`, claim tier 0, and `al check` says
-`not ok: the claim is tier 0, but origin/main..HEAD edits the baseline: [R-2], [SIZE-1]`.
-`al context R-2` then says `[R-2] not in the baseline`, and still lists the
-code and tests that name it.
-
-Keep the ID: it names the promise, not the file it sits in. If it must change,
-claim tier 1, with the owner's sign-off and `Amends: [R-2], [SIZE-1]` (name
-both, or a note says the new one is not named). In the same PR, change the
-citations in code and tests; `al context R-2` lists them. `[R-2]` is never used
-again.
-
-Do not replace `[R-2]` across the whole repo:
-- Archived requests and the other append-only records ([REC-12]) stay as they
-  are, and keep `[R-2]` as history. Editing one gives
-  `not ok: <sha> requests/archive/<name>/request.md: changes a request archived on main ([REC-12])`.
-- An open request that holds `[R-2]` then reads it as
-  `not found; candidates SIZE-1`, shown as that request's own information. It
-  is re-aligned in that request's own work. A replace there edits its signed
-  `origin/` snapshot, which gives a `not ok`.
-
-### Starting a new repo from an already-agreed spec
-
-Adopt the agreed text as it is, with no request: the owner signs a request's
-organized requirement, never the spec text ([REC-5]). Say in the commit
-message where and when the owner agreed it. Use two steps, as in the first
-example.
-
-PR 1, before adoption, imports the agreed text under `specs/` (with
-`.assuredloop` if the root is elsewhere). It has no AGENTS.md line and no Tier
-line: AssuredLoop is not adopted yet, and its rules start at adoption.
-`al check`, if run on it, exits 0 with the two notes PR 1 above gets. In an
-empty repo, PR 1 can instead be the first commit, straight to main.
-
-PR 2 adopts: the AGENTS.md line from Install, and the IDs. It claims
-`Tier: 0 — adds section IDs and the AGENTS line; no promise changes`:
-
-    al spec --add-ids specs/<file>.md --prefix <P> --yes
-
-`al check --strict` passes, with one note: the commit changes
-`specs/<file>.md` with no request linked (fine for tier 0; say why). Requests,
-with the owner's sign-off, start at the first promise change after that.
-
-`specs/` holds promises, and each change to one needs the owner's sign-off, so
-a build or UI design belongs in `docs/`, or as ADRs in `docs/adr/`, which `al`
-reads, unless a passage is a promise the owner wants guarded.
+**From 0.1.0.** v4 does not read 0.1.0 records. Keep 0.1.0 pinned until you
+move. Finish an open 0.1.0 request on its pinned copy, or start it again
+under v4. Older records stay readable as files; run the pinned 0.1.0 at
+those commits.
 
 ## What is enforced, and by whom
 
-The way of working (tests first, review, the PR flow) belongs to the bots that
-use AssuredLoop, and is not in this table.
-
 | The tool checks | The skill asks | The owner decides |
 |---|---|---|
-| `consolidate` and `conclude` refuse while the requirement is not signed, or a section is not ready | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
-| section states: was and now against the baseline, by exact text | choose the tier, and state it in a commit message (where `al check` reads it) and the PR | whether a changed requirement is signed again |
-| append-only records, snapshot hashes, duplicate IDs, broken links, as hints | read the hints, and fix each `not ok` or say why it stands | decisions whose source is the owner, such as dropping or keeping work |
-| `check --strict` exits 1 on a `not ok` this branch owns, when a project opts in | record each later decision, with its source | |
+| `al conclude` refuses on its three conditions (see "The close rule") | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
+| IDs: missing, used twice, lost, used again; kinds and links; links that do not resolve; sign-off coverage of promise changes; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; result applicability, as hints | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
+| `check --strict` exits 1 on a `not ok`, when a project opts in | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
 
-Everything else the tool shows is a hint: an observation, not a guarantee.
-Nothing is installed in git hooks.
+`al` checks that declarations are well formed and that references resolve.
+It does not check that a kind is right, that a requirement is fully
+covered, that a test checks the rule it names, or that a change is
+authorized in substance; its views say "not checked" for these. Nothing is
+installed in git hooks.
 
-## Beyond code
+## Beyond code: results
 
-The same records work on a repo of documents alone. The documents are the
-deliverable, and `specs/` holds promises about them. "Tests" are named checks
-(a deterministic check, a checklist or a review), listed with `tests:` in
-`.assuredloop`; their results are the files they write, listed with
-`results:`, in TAP or JUnit form. A result counts as evidence for a change
-only when a `revision: <sha>` line names the commit being checked:
-`# revision: <sha>` in TAP, `<!-- revision: <sha> -->` in JUnit XML. A result
-with no such line, or at an older commit, is shown but is not evidence.
-`test/non-code.test.js` walks one through.
+A result file in `.assuredloop/results/` (or the `results:` folder) records a
+check, a test run or a review:
+
+```yaml
+check: test/export-link.test.js
+outcome: pass            # pass, fail or not run
+commit: <sha>            # or unknown
+inputs:
+  - {file: src/export-link.js, sha256: <sha256 of its bytes>}
+by: ci                   # optional, with source and note
+```
+
+`al` shows "declared inputs unchanged since <commit>" when the inputs still
+have those hashes, "does not apply to the current text" when one changed,
+and "applicability unknown" when it cannot tell. That the declared inputs
+are complete is a claim. The same works for a repo of documents: the report
+is the deliverable, and a review result names it as its input.
 
 ## This repository
 

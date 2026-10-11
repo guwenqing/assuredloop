@@ -36,8 +36,16 @@ Tier: 3 · Status: open
   to three developers at once. Snapshot
   origin/2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14-2.md.
   Decision D2 below.
+- 2026-10-11: the owner's words 156-159: yes to the removal of v1's code
+  from the repo, with 0.1.0 kept on npm; a question on how the cost is
+  measured; the owner accepts the cost for this release, and it is measured
+  again on real features after the release. Snapshot
+  origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md.
+  Decisions D23 and D24 below.
 
 ## Organized requirement
+
+<!-- R1 from:2026-10-10-owner-words.md -->
 
 ### R1 One current spec, and the change's own spec
 The project MUST keep one consolidated spec on main: the current promises,
@@ -47,12 +55,16 @@ its promises, its design and its plan. A reader, human or AI, MUST be able to
 tell the current system without reading past changes, and to find why any
 part is as it is.
 
+<!-- R2 from:2026-10-10-owner-words.md -->
+
 ### R2 Every paragraph traced
 Every paragraph of the spec and of a change spec MUST carry a stable ID that
 the rendered page does not show, and a kind (for example a rule, a limit, a
 definition, a design part, a plan, a note). Promise and design paragraphs
 MUST link to what they serve, and to the spec paragraphs they build on or
 change. No design text may live in a free, untraced document.
+
+<!-- R3 from:2026-10-10-owner-words.md -->
 
 ### R3 The owner's words, and the organized requirement
 Work that changes a promise MUST have a request record. It keeps the owner's
@@ -62,6 +74,8 @@ point at the owner's words it comes from. Both MAY change while the owner
 explores: each change is kept as a new version, and old versions stay
 readable.
 
+<!-- R4 from:2026-10-10-owner-words.md -->
+
 ### R4 The owner signs off promise changes
 When a change touches a promise, its organized requirement (for a spike, the
 organized question) MUST be signed off by the owner. Work MAY be drafted
@@ -69,6 +83,8 @@ before the sign-off, but MUST be delivered with it or after it. A later
 change MUST need a new sign-off. Changes that touch no promise, such as typo
 fixes, small design corrections and design-only changes, need no sign-off;
 the review reads them.
+
+<!-- R5 from:2026-10-10-owner-words.md -->
 
 ### R5 Consolidation by hand, and closing
 The agent MUST bring each piece of a change into the consolidated spec by
@@ -80,10 +96,14 @@ MUST require every change paragraph that affects the spec to be incorporated,
 removed, replaced by a later change, or abandoned with a reason. Nothing
 applied may be dropped silently.
 
+<!-- R6 from:2026-10-10-owner-words.md -->
+
 ### R6 Parallel work aligns
 Changes to the same paragraph MUST align: build on each other, or correct the
 earlier one. The tool MUST show overlaps, and a base that changed underneath
 a change, and MUST never silently overwrite.
+
+<!-- R7 from:2026-10-10-owner-words.md -->
 
 ### R7 Paths for each kind of work
 There MUST be paths for:
@@ -97,6 +117,8 @@ There MUST be paths for:
 The user picks the path. Every PR MUST state its path and its claim. The tool
 MUST show the evidence, and flag the contradictions it can see.
 
+<!-- R8 from:2026-10-10-owner-words.md -->
+
 ### R8 From input to output, across repos
 The tool MUST trace the chain from the owner's words, through the
 requirement, the decisions, the ADRs, the spec paragraphs, the tasks and the
@@ -109,10 +131,14 @@ a `tasks.md` in the request) or in any tracker, and several tasks MAY share
 one issue; the chain keeps only their references, and the tool enforces no
 way of dividing the work.
 
+<!-- R9 from:2026-10-10-owner-words.md -->
+
 ### R9 Bringing the AI back, and full audit
 One command MUST show, briefly, where a request stands and what to do next.
 On request it MUST return the full trace, including as of any past commit made
 under v4. History from before v4 MAY be read with the pinned 0.1.0.
+
+<!-- R10 from:2026-10-10-owner-words.md -->
 
 ### R10 Search at the user's chosen strength
 The tool MUST offer search over the spec, the changes and the outputs at
@@ -124,11 +150,15 @@ evidence and history only when asked, each hit marked with its role. The
 records MUST be committed, so that any index can be rebuilt from them. A
 hosted level, preferably on Google Cloud, is later work.
 
+<!-- R11 from:2026-10-10-owner-words.md -->
+
 ### R11 Hints, not a lifecycle
 The tool MUST give hints. It MUST NOT block commits or merges: only its own
 conclude refuses, and a strict mode is opt-in. It MUST NOT impose phases,
 stages, roles, approvals beyond the sign-off, task states, or one way of
 working. How to develop, test and review belongs to the project.
+
+<!-- R12 from:2026-10-10-owner-words.md -->
 
 ### R12 Light enough to pay for itself
 Its formality SHOULD cost no more than about a fifth of the change, as a
@@ -137,9 +167,13 @@ be dropped after validation. The core checks MUST run offline and
 deterministically, with no AI calls. AI fills hints in the PR, and the review
 reads them.
 
+<!-- R13 from:2026-10-10-owner-words.md -->
+
 ### R13 Scale
 It MUST stay usable with up to 1,000 change specs in a repo, and across 20
 repos.
+
+<!-- R14 from:2026-10-10-owner-words.md -->
 
 ### R14 Beyond code
 The same records SHOULD work for non-code projects, such as documents and
@@ -190,3 +224,5 @@ Signed off: 2026-10-10 owner, origin/2026-10-10-signoff.md
 - D20, 2026-10-10. Source: the agent (architect), message to developer-188 for #199. al check parses an archived request's record only when the check needs it: when the branch changes the record or the request's folder, or when a paragraph that the branch changes links to that request. The adoption entries are read only from records whose text names adoption. A superseded chain that ends in an archived change needs no parse, because an archived change counts as recorded (design.md 5). al check's output stays the same, byte for byte; besides the tests, this is compared on several PRs of the 1,000-request world of #188.
 - D21, 2026-10-10. Source: the agent (architect), message to developer-196 for #196 (T17). T17 lands in two PRs: first the command changes, then the v4 spec, this repo's records and the switch, which merges only after #194 and #195 merge and the owner confirms the removal of v1. The conversion keeps the signed bytes: v4's signed text of request.md has the SHA-256 of origin/2026-10-10-signoff.md, so no new sign-off is needed while the organized requirement stays as it is. The owner's sign-off moves into the v4 record as S1: it names origin/2026-10-10-signoff.md with the hash that al computes from it, covers R1-R14 version 1 with the hashes that v4 derives from that text, and notes that it was converted from 0.1.0, with no new snapshot and no new Signed off line; a check shows that the hashes match. design.md moves to spec.md, with schema.md as its last sections, with markers, kinds and serves links and no change of wording; a "Why" that explains a lasting rule is rationale and goes into specs/ with its rule; only the text on how this request was run (validation, the build steps, sections 15-17) is note or plan. v1's specs/*.md are deleted; docs/adr/ moves to requests/archive/assuredloop-v1/adr/, and specs/adr/ starts empty. src/v4/ and test/v4/ stay where they are; bin/al.js becomes the v4 entry, bin/al-v4.js goes, and al-v4 in output becomes al. al spec --add-ids --yes appends to .assuredloop/records/requests/adoption.yaml one disposition for each paragraph that it marks, {source: adoption, disposition: incorporated, spec, commit, spec_sha256}, with the HEAD commit, and only for text that is in the file at HEAD; it writes requests/archive/adoption/request.md when that file is absent; with no commit it writes no adoption record. al check reads a paragraph that is new at the head as adopted, not as a change, only when the adoption record names it with its current hash and the same text is a block of the same file at the base; an adoption record cannot cover new text.
 - D22, 2026-10-10. Source: the agent (architect), message to developer-196 for #196 (T17). A requirement marker in request.md has the one marker form of design.md 3: the marker line, then a blank line, then the `### R<n>` heading. What a sign-off binds, the signed text of the organized section, drops the marker framing (the marker line and the blank line after it), as the paragraph hash does (design.md 5). So adding the standard markers does not change the signed text, and the owner's signed file of this request keeps its SHA-256 08a9ee85… after the conversion. Until #196, the signed text dropped the marker line only.
+- D23, 2026-10-11. Source: owner, chat with the architect, 2026-10-11, input 156. Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The T17 switch removes v1's code and its tests from main; the 0.1.0 package on npm stays.
+- D24, 2026-10-11. Source: owner, chat with the architect, 2026-10-11, inputs 156-159. Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The cost account does not meet R12's flexible target of about a fifth (t16-report.md section 9): by the context at the end, one agent's records cost 0.29 of the work on small changes and 0.80 on DC04. DC04 is large in requirements (three, with a sign-off and a design), but its code is small: 163 to 318 changed lines in the output repos, in the four runs. The records grow with the requirements and the decisions, not with the code, and no case with a large code change was measured. The owner accepts the cost for the v4 release; the cost is measured again on real features after the release. D2's cost sentence stays as history.
