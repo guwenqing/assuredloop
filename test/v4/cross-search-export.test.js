@@ -30,9 +30,9 @@ function get() {
 // The resolved commit of each output repo in the shared world.
 const resolved = (w) => ({ 'invoicer-web': w.shas.web.main, 'invoicer-worker': w.shas.worker.K5 });
 
-// The run of `al export --out <file>`; the file is removed after.
+// The run of `al export --out <file> --yes`; the file is removed after.
 function exportOut(dir) {
-  const r = runOk(dir, ['export', '--out', 'cross-export.jsonl']);
+  const r = runOk(dir, ['export', '--out', 'cross-export.jsonl', '--yes']);
   const written = readFileSync(join(dir, 'cross-export.jsonl'), 'utf8');
   rmSync(join(dir, 'cross-export.jsonl'));
   return { stdout: r.stdout, written };
@@ -379,7 +379,7 @@ test('export: with no outputs in the committed config, only the central rows, th
   assert.deepEqual([...new Set(rows.map((r) => r.repo))], ['invoicer']);
   for (const name of ['invoicer-web', 'invoicer-worker']) hide(w, name);
   assert.equal(runOk(w.central, ['export', '--at', main]).stdout, withClones, 'the clones beside it change nothing');
-  const out = runOk(w.central, ['export', '--at', main, '--out', 'cross-export.jsonl']).stdout;
+  const out = runOk(w.central, ['export', '--at', main, '--out', 'cross-export.jsonl', '--yes']).stdout;
   rmSync(join(w.central, 'cross-export.jsonl'));
   assert.ok(!/invoicer-(web|worker|mobile)/.test(out), `no output repo is named:\n${out}`);
 });
