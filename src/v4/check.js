@@ -8,7 +8,7 @@
 import { loadConfig, loadSchema } from './config.js';
 import { mergeBase } from './git.js';
 import { diffParagraphs, idLints } from './ids.js';
-import { docsInScope, idsEverUsed, isShallow, notRead, parseScopes, rootProblem, SPEC } from './scope.js';
+import { docsInScope, idsEverUsed, isShallow, notRead, parseScopes, rootNotOk, rootProblem, SPEC } from './scope.js';
 import { Fail } from './spec.js';
 import { centralLookup } from './repos.js';
 import { checks } from './checks.js';
@@ -45,12 +45,15 @@ export function check({ top, opts }) {
   lints.push(...shown);
   const severity = (l) => (opts.strict ? 'not ok' : l.severity);
   const body = notRead(top, config);
+  // A root that config sets but that is not read is a not ok, as in al index (#218).
+  const rootLine = rootNotOk(top, config);
+  if (rootLine) body.push(rootLine);
   body.push(...lints.map((l) => `${severity(l)} ${l.code} ${l.file}:${l.line} ${l.id ?? '-'} ${l.message}`));
   if (base) body.push(...changes.map((c) => `${c.file} ${c.id} ${c.changes.join('+')}`));
   if (!lints.length) body.push('ok: no marker lint');
   body.push(...t10.findings.map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}`));
   // Under --strict every marker lint is a not ok.
-  const notOk = lints.length > 0 || t10.findings.some((f) => f.severity === 'not ok');
+  const notOk = Boolean(rootLine) || lints.length > 0 || t10.findings.some((f) => f.severity === 'not ok');
   // In an output repo: the central IDs that the branch's changed files cite (T12).
   const central = centralLookup(top);
   body.push(...central.body);
@@ -61,7 +64,7 @@ export function check({ top, opts }) {
   return {
     body,
     read: base ? `working tree · base ${base.slice(0, 7)} (merge-base with main)` : 'working tree · no base',
-    next: nextStep([...lints.map(severity), ...t10.findings.map((f) => f.severity),
+    next: nextStep([...(rootLine ? ['not ok'] : []), ...lints.map(severity), ...t10.findings.map((f) => f.severity),
       ...central.body.map((l) => (/^not ok /.test(l) ? 'not ok' : /^hint /.test(l) ? 'hint' : 'info'))], lints.some((l) => l.code === 'no-id')),
     notKnown,
     exit: opts.strict && notOk ? 1 : 0,

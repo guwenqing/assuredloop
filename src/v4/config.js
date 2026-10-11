@@ -25,7 +25,8 @@ function read(top, name) {
 export function loadConfig(top) {
   const c = read(top, 'config.yaml') ?? {};
   if (typeof c !== 'object' || Array.isArray(c)) throw new Error(`${DIR}/config.yaml: give a mapping of settings`);
-  return { ...c, root: c.root ?? 'specs', docs: Array.isArray(c.docs) ? c.docs : [] };
+  // rootSet: config names the root itself, so al check may hold it to that (#218).
+  return { ...c, root: c.root ?? 'specs', rootSet: c.root != null, docs: Array.isArray(c.docs) ? c.docs : [] };
 }
 
 export function loadSchema(top) {

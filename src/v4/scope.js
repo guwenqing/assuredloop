@@ -49,6 +49,18 @@ export const rootProblem = (config) => (!outside(config.root) && ['.', ''].inclu
   ? `.assuredloop/config.yaml: root: ${JSON.stringify(String(config.root))} is the repository top; give the spec folder, for example specs`
   : null);
 
+// The not ok line of al check for a root that config sets and that cannot be
+// read: outside the repository, through a symlink, or no folder; else null.
+// The default root may be absent (#218).
+export function rootNotOk(top, config) {
+  if (!config.rootSet) return null;
+  const at = join(top, clean(config.root));
+  const why = outside(config.root) ? 'outside the repository'
+    : symlinkOn(top, clean(config.root)) ? 'through a symlink'
+      : !existsSync(at) || !lstatSync(at).isDirectory() ? 'no such folder' : null;
+  return why && `not ok spec-root .assuredloop/config.yaml - ${String(config.root).replace(/\/+$/, '')}/: ${why}`;
+}
+
 // One line for each root or docs entry that is not read, and why.
 export const notRead = (top, config) => [
   ...outsideDocs(config).map((f) => `not read: ${f}: outside the repository`),
