@@ -1,7 +1,7 @@
 schema: assuredloop/1
 request: promise-design-split
 tier: "2"
-status: open
+status: concluded
 sources:
   - file: 2026-10-11-owner-words.md
     kind: owner-words
