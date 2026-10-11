@@ -131,7 +131,7 @@ export function markBlocks(text, nextId) {
 // `text` (that doc at another commit, marked or not) in the same order: the
 // longest common subsequence of the two hash lists, as a diff keeps lines.
 // So one block there stands for one paragraph here, and of two equal
-// paragraphs only the one in the block's place matches (D16, D19, #196).
+// paragraphs only the one in the block's place matches (D16, D21, #196).
 // A block whose ID is still a paragraph of the scope here (`living`, every
 // doc of it, so a moved paragraph counts) is that paragraph's: it stands for
 // no other one, and only the other blocks are matched.

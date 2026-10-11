@@ -202,7 +202,7 @@ export function organized(reqs, { heading = '## Organized requirement', intro = 
 
 // The signed text, by the rule of interface.md: the section from its heading
 // up to the next # or ## heading (here: the end of the file), with any
-// "Signed off:" line left out, and the marker framing left out (decision D20,
+// "Signed off:" line left out, and the marker framing left out (decision D22,
 // as design.md 5 does for paragraphs): a marker line and the one blank line
 // right after it. Line endings made \n.
 export function signedText(section) {
