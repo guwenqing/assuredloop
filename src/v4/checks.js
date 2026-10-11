@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { parse as parseYaml } from 'yaml';
 import { read } from './base.js';
-import { judgeRequest } from './dispositions.js';
+import { droppedUnsigned, judgeRequest } from './dispositions.js';
 import { commitsOf, git } from './git.js';
 import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
@@ -65,6 +65,7 @@ const changeWord = (c) => (c.changes.includes('New') ? 'new' : c.changes.include
 // The branch against its base, in states `now` and `was` (null with no
 // base): each paragraph's change, adoption aside, the path claim, and the
 // promise changes with no signed requirement that covers them (design.md 6).
+// A change paragraph that is validly abandoned with no kept effect needs none.
 // al check reports each of those, and al conclude refuses on them (DES-37).
 export function branchOf(top, now, was, base) {
   const promise = (k) => isPromise(now, k);
@@ -104,6 +105,8 @@ export function branchOf(top, now, was, base) {
   const uncovered = [];
   for (const c of changes.filter(isPromiseChange)) {
     if (typo.has(c.name)) continue;
+    const r = c.request && c.head ? now.requests.get(c.request) : null;
+    if (r && !r.spike && droppedUnsigned(now, r, c.head, { typo, baseSpec: was?.spec ?? null })) continue;
     let covered;
     if (!c.head) {
       if (c.request) continue; // a change spec paragraph taken out is no promise change
