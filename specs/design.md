@@ -236,7 +236,7 @@ semantic coverage as "not checked".
   incomplete (only about 60% of commits named an issue, Rath et al., ICSE
   2018).
 
-<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11 -->
+<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1 -->
 
 **What the script checks** (no AI):
 - A paragraph with no ID: `not ok`. A promise or design paragraph with no kind
@@ -264,8 +264,7 @@ semantic coverage as "not checked".
   such word.
 - A change paragraph whose text is close to an existing spec paragraph, with
   no `changes` or `builds on` link to it: the hint "does this change
-  INV-12?". Close means a word-set similarity (Dice) of 0.6 or more, one
-  named constant.
+  INV-12?".
 - A change of kind from a promise kind to any other kind counts as a promise
   change.
 - The exit code is 0 by default, even when `not ok` lines print. Under
@@ -274,6 +273,11 @@ semantic coverage as "not checked".
   disposition, and the marker lints. The hints that need judgment stay hints
   under `--strict`: near match, "promise kind?", the typo mark, overlap,
   stale base, a stale AI hint, an ADR that governs, and a removed target.
+
+<!-- DES-81 choice serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1 -->
+
+Close means a word-set similarity (Dice) of 0.6 or more, one named
+constant.
 
 <!-- DES-23 flow serves:assuredloop-v4/R2 -->
 
@@ -671,7 +675,7 @@ varied by up to 15% over ten runs (arXiv 2408.04667), and a change of model
 moved the main tag on close to half of the notes in one study (arXiv
 2606.05970).
 
-<!-- DES-58 rule serves:assuredloop-v4/R10,assuredloop-v4/R12 -->
+<!-- DES-58 rule serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
 
 - `.assuredloop/schema.yaml`: the schema, with a version. The owner and the
   architect design it. A user's extension gets the same careful review.
@@ -696,10 +700,6 @@ moved the main tag on close to half of the notes in one study (arXiv
   - Each hint records the paragraph hash it was made from. A hint is stale
     when the paragraph's hash differs, even if its quote still matches: a
     kept sentence does not keep the rest of a summary true.
-  - A quote is scoped to its paragraph ID and the paragraph's source version.
-    It holds the exact text by default. It adds `prefix` and `suffix` (the W3C
-    Web Annotation TextQuoteSelector form) only when the exact text occurs
-    more than once in that paragraph. A fuzzy re-anchor stays a hint.
   - Where a project uses hints, the agent refreshes them only for paragraphs
     that the PR changed. An empty or missing hint is an honest state, not a
     defect.
@@ -707,10 +707,20 @@ moved the main tag on close to half of the notes in one study (arXiv
   section 3. The AI summaries and tags are hints (input 123).
 - Checks give hints by default. A project that wants blocks turns on
   `--strict` in its CI, and the README advises it (input 123).
-- The core checks stay deterministic: no AI, network or database calls. The
-  search command may use a local SQLite index (section 11); no check depends
-  on it. `al` may use a pinned YAML library; zero dependencies is the least
-  important goal (input 99).
+- The core checks stay deterministic: no AI, network or database calls.
+
+<!-- DES-82 data serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
+
+A quote is scoped to its paragraph ID and the paragraph's source version.
+It holds the exact text by default. It adds `prefix` and `suffix` (the W3C
+Web Annotation TextQuoteSelector form) only when the exact text occurs more
+than once in that paragraph. A fuzzy re-anchor stays a hint.
+
+<!-- DES-83 choice serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
+
+The search command may use a local SQLite index (section 11); no check
+depends on it. `al` may use a pinned YAML library; zero dependencies is the
+least important goal (input 99).
 
 <!-- DES-59 note -->
 
@@ -774,7 +784,7 @@ These are retrieval labels, not work states. When a row fits two roles,
 `history` wins, and the row keeps its original source type (for example a
 closed spike, or a replaced requirement version).
 
-<!-- DES-64 rule serves:assuredloop-v4/R10 -->
+<!-- DES-64 rule serves:assuredloop-v4/R10,promise-design-split/R1 -->
 
 **Queries:**
 - The default query is the current system: `baseline` rows at the selected
@@ -787,6 +797,9 @@ closed spike, or a replaced requirement version).
   full-text index, so they can be found by their words even where level 2
   does not embed them.
 - IDs resolve exactly, in their own column, never through search.
+
+<!-- DES-87 component serves:assuredloop-v4/R10,promise-design-split/R1 -->
+
 - A chunk is one paragraph version, the unit that carries the ID, with a fixed
   header (file title, heading path, kind, ID). The parent section is returned
   on request.
@@ -801,28 +814,45 @@ closed spike, or a replaced requirement version).
   One index serves the central repo and its output repos.
 - No `llms.txt`: it has no measured benefit.
 
-<!-- DES-65 rule serves:assuredloop-v4/R10,level2-peer/R1 -->
+<!-- DES-65 rule serves:assuredloop-v4/R10,level2-peer/R1,promise-design-split/R1 -->
 
 **The search levels** (input 130):
 
 | Level | Setup | Status |
 |---|---|---|
 | 0 | No index: `al`'s exact views and the agent's grep. | always there |
-| 1 | Local full text: `al export` into a SQLite FTS5 (BM25) index, with the ID in its own exact column. | built in |
-| 2 | Local hybrid: level 1 plus a small local embedding model; vectors stored beside the text; word and vector results fused (reciprocal rank fusion); the same roles and queries. | **default** |
+| 1 | Local full text: `al export` into an index, with the ID in its own exact column. | built in |
+| 2 | Local hybrid: level 1 plus a small local embedding model; vectors stored beside the text; word and vector results fused; the same roles and queries. | **default** |
 | 3 | Mixed: the local index of level 2, with embeddings from a hosted service, preferably on Google Cloud; a hosted shared index may follow. | future |
 
 - One search command answers at the strongest level that is installed, falls
   back 2 → 1 → 0 by itself, and says which level answered. Every level keeps
   exact-ID lookup, the roles, the commit identity and the history scope; only
   the strength changes.
-- Level 1 needs no new dependency: Node's built-in `node:sqlite` has FTS5
-  (checked on Node 24.21.0 and 26.11.1, with SQLite 3.53.4). It lives in `al`
-  itself, as `al search`, and stays deterministic and offline. The package
-  declares Node 24 or newer, and CI tests level 1 on Node 24.
+- Level 1 needs no new dependency. It lives in `al` itself, as `al search`,
+  and stays deterministic and offline.
 - Level 2 adds an embedding model, whose library the user installs (below).
   Without the library, `al search` answers at level 1, and a `Not known` line
   says how to add level 2.
+- The only data that leaves the machine is the model download.
+- Level 2 stays optional, because it costs every user a model download and a
+  native runtime, and CI needs no search (input 131: "if it is not costing a
+  lot, optional is good for user"). The recommended install includes it, so
+  level 2 is the default in practice.
+- Level 3 is future work.
+- All levels read the same export and rebuild the same way, so a user moves
+  between levels with no change to the records.
+- The first check (T14): on 8 held-out questions over the small invoicer
+  fixture, level 2 equalled level 1, with recall of 29% in the top 5 and 58%
+  in the top 10. So level 2 showed no measured gain at that size. It stays
+  the default (input 130), and it is measured again on a larger real corpus
+  before the release.
+
+<!-- DES-88 component serves:assuredloop-v4/R10,promise-design-split/R1 -->
+
+- Level 1 is a SQLite FTS5 (BM25) index. Node's built-in `node:sqlite` has
+  FTS5 (checked on Node 24.21.0 and 26.11.1, with SQLite 3.53.4). The package
+  declares Node 24 or newer, and CI tests level 1 on Node 24.
 - The fusion is reciprocal rank fusion over the rows that have vectors. A row
   with no vector keeps its level 1 place, because the vector list gives it no
   vote and must not push it down.
@@ -830,26 +860,14 @@ closed spike, or a replaced requirement version).
   multilingual one (Qwen3-Embedding-0.6B) for specs not in English. At this
   size a plain scan of the stored vectors is fast enough, so no vector
   database is needed (an estimate: 20,000 rows of 384 numbers per query).
-  The only data that leaves the machine is the model download.
-- Level 2 stays optional, because it costs every user a model download and a
-  native runtime, and CI needs no search (input 131: "if it is not costing a
-  lot, optional is good for user"). The recommended install includes it, so
-  level 2 is the default in practice.
-- Level 3 is future work. Candidates on Google Cloud: Gemini or Vertex AI
-  embeddings for the mixed setup; later a hosted index (for example Vertex AI
-  RAG Engine, Vertex AI Vector Search, or pgvector on Cloud SQL or AlloyDB).
-  Prices and data terms are not checked yet.
-- All levels read the same export and rebuild the same way, so a user moves
-  between levels with no change to the records.
+- Level 3: candidates on Google Cloud: Gemini or Vertex AI embeddings for the
+  mixed setup; later a hosted index (for example Vertex AI RAG Engine, Vertex
+  AI Vector Search, or pgvector on Cloud SQL or AlloyDB). Prices and data
+  terms are not checked yet.
 - The tool's tests run the search tests at levels 0, 1 and 2: level 2 with a
   small fixed test embedder for exact results, plus one smoke test with a real
   model. Validation compares level 1 with level 2 on the golden questions, so
   the default is checked, not assumed.
-- The first check (T14): on 8 held-out questions over the small invoicer
-  fixture, level 2 equalled level 1, with recall of 29% in the top 5 and 58%
-  in the top 10. So level 2 showed no measured gain at that size. It stays
-  the default (input 130), and it is measured again on a larger real corpus
-  before the release.
 
 <!-- DES-80 component serves:assuredloop-v4/R10,level2-peer/R1 -->
 
@@ -886,7 +904,7 @@ Why: "many of our solutions are using multi repos" (input 134); "so far
 let's assume the spec stay in the central repo" (input 133). Links from output
 repos are a must.
 
-<!-- DES-69 rule serves:assuredloop-v4/R8,assuredloop-v4/R13 -->
+<!-- DES-69 rule serves:assuredloop-v4/R8,assuredloop-v4/R13,promise-design-split/R1 -->
 
 - The central repo holds the spec (`specs/`, `specs/adr/`), the requests and
   the records. Its `config.yaml` lists the output repos, each with a name,
@@ -917,13 +935,17 @@ repos are a must.
 - The links from an output repo are those of schema.md 6. A commit message
   that names a central task (`central:<request>/T1`) is a `named by` link.
   Other IDs in commit messages make no link.
-- Git maps a PR reference such as `invoicer-web#57` to its merge: "Merge pull
-  request #57", or a subject that ends in "(#57)", in the first-parent
-  history at the selected commit. It shows "merged at <sha>", or "no merge
-  found" as unknown, never "not merged". One function does this for the
-  central repo and the output repos.
+- `al` shows "merged at <sha>", or "no merge found" as unknown, never "not
+  merged".
 - In an output repo, `al check` looks up the central IDs that the branch's
   changed files cite.
+
+<!-- DES-84 flow serves:assuredloop-v4/R8,assuredloop-v4/R13,promise-design-split/R1 -->
+
+Git maps a PR reference such as `invoicer-web#57` to its merge: "Merge pull
+request #57", or a subject that ends in "(#57)", in the first-parent history
+at the selected commit. One function does this for the central repo and the
+output repos.
 
 <!-- DES-70 data serves:assuredloop-v4/R8 -->
 
@@ -1000,13 +1022,17 @@ Why: "no need to take care of nbackward copatibility" (input 98).
 
 ## 17. Building v4
 
-<!-- DES-77 limit serves:assuredloop-v4/R12 -->
+<!-- DES-77 limit serves:assuredloop-v4/R12,promise-design-split/R1 -->
 
-- Node 24 or newer. T13 tests `node:sqlite` with FTS5 on the minimum version;
-  if Node 24 lacks it, the minimum goes up.
+- Node 24 or newer.
 - Every dependency is pinned, and no release newer than 24 hours is used.
 
-<!-- DES-78 rule serves:assuredloop-v4/R2,assuredloop-v4/R3 -->
+<!-- DES-85 choice serves:assuredloop-v4/R12,promise-design-split/R1 -->
+
+T13 tests `node:sqlite` with FTS5 on the minimum version; if Node 24 lacks
+it, the minimum goes up.
+
+<!-- DES-78 rule serves:assuredloop-v4/R2,assuredloop-v4/R3,promise-design-split/R1 -->
 
 Build decisions (the architect, 2026-10-10, recorded in the build PRs too):
 - Which files carry markers: every `*.md` under the spec root except
@@ -1027,6 +1053,9 @@ Build decisions (the architect, 2026-10-10, recorded in the build PRs too):
   requirement version is kept; a sign-off records the versions it covers,
   and may name what the owner was shown (`presented`) and who wrote the
   owner's words down (`transcribed_by`).
-- A paragraph's hash is the full SHA-256 of its text after line endings are
-  normalized and the marker framing is removed. The YAML library is `yaml`
-  2.9.1, pinned.
+
+<!-- DES-86 data serves:assuredloop-v4/R2,assuredloop-v4/R3,promise-design-split/R1 -->
+
+A paragraph's hash is the full SHA-256 of its text after line endings are
+normalized and the marker framing is removed. The YAML library is `yaml`
+2.9.1, pinned.
