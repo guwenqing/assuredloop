@@ -3,9 +3,13 @@
 // promise change of the branch (base: the merge-base of HEAD with main) must
 // be covered by a signed requirement. While one is not, conclude refuses:
 // exit 1, nothing written, a "refused: " line that names each uncovered ID.
-// One function serves both commands, so for each ID that check --strict
-// reports as "not ok signoff-coverage", conclude names it, and when check has
-// no signoff-coverage finding, conclude has no coverage refusal.
+// One function serves both commands, so the two agree on the branch's
+// changes: each promise change of the branch that check --strict reports as
+// "not ok signoff-coverage", conclude names; a promise change of the branch
+// that check does not report, conclude does not refuse on. Conclude may refuse
+// on more: it judges the whole request, which can span several PRs (path 3),
+// so it also refuses on the request's own promise paragraphs and on the spec
+// paragraphs that serve it when this branch did not change them (DES-37).
 //
 // Each test: specs/invoices.md and the config on main (baseProject), then the
 // branch `feature` with an open path-1 request `change` and the edit under test.
@@ -147,7 +151,7 @@ test('--yes on a coverage refusal writes nothing and exits 1', (t) => {
   refuses(conclude(dir, NAME, '--yes'), 'INV-13');
 });
 
-test('check and conclude agree on one tree: conclude names exactly the IDs that check reports', (t) => {
+test('check and conclude agree on the branch\'s changes: conclude names each ID that check reports, and none of the changes that check does not report', (t) => {
   const dir = branch(t, { signed: true });
   let spec = read(dir, SPEC);
   spec = spec.replace('<!-- INV-12 data -->', '<!-- INV-12 rule -->'); // kind change into a promise kind: uncovered
