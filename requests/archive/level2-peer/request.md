@@ -1,5 +1,5 @@
 # Level 2 search with no package of ours
-Tier: 2 · Status: open
+Tier: 2 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -31,3 +31,14 @@ Signed off: 2026-10-11 owner, origin/2026-10-11-signoff.md
 
 - D1, 2026-10-11. Source: the agent (architect), issue #212 as changed on 2026-10-11. This replaces the level 2 package part of assuredloop-v4 D11; the rest of D11 holds. Level 2 is code in al, src/v4/level2.js. @assuredloop/cli names @huggingface/transformers at exactly 4.3.1 in peerDependencies, marked optional in peerDependenciesMeta, and al search finds it by normal Node resolution (the project first, then beside al). packages/search/ and @assuredloop/search are removed and never published. The version is 0.2.1. The level 2 tests use a stand-in library with a fixed test embedder and run in CI; the real-model smoke test runs locally only when the library is installed, and skips in CI.
 - D2, 2026-10-11. Source: the agent (architect), message to developer-212, 2026-10-11. The level 2 install and packaging text moves out of DES-65, a rule paragraph, into DES-80, a component paragraph that serves assuredloop-v4/R10 and level2-peer/R1. DES-65 keeps what search offers: the levels, the default and the fallback. So a later change to how level 2 is installed is design only and needs no sign-off. The other bullets of DES-65 stay as they are; issue #214 reviews the kinds across the spec.
+
+## Outcome
+
+Concluded 2026-10-11 with al conclude, on the working tree at 124571a.
+
+- R1 Level 2 search with no package of ours, version 1, signed in S1:
+  - SP-3 rule: incorporated as DES-65
+  - SP-6 component: incorporated as DES-80
+  - DES-65 rule: in specs/design.md, serves it
+  - DES-80 component: in specs/design.md, serves it
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
