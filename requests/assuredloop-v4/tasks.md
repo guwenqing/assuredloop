@@ -2,7 +2,7 @@
 
 The current design is `spec.md` in this folder, this request's change spec:
 `design.md` became its sections 1-17, and `schema.md` its last sections
-(D19). "design.md N" below means section N of spec.md, and "schema.md N" its
+(D21). "design.md N" below means section N of spec.md, and "schema.md N" its
 section N under "AssuredLoop v4: the model from input to output". Where they
 differ from anything else, they hold.
 
