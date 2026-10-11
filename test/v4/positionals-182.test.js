@@ -137,12 +137,13 @@ test('check refuses an extra positional and names it; without it, check runs', (
   ok(dir, ['check']);
 });
 
-test('export refuses an extra positional and names it; without it, export --out writes the file', (t) => {
+test('export refuses an extra positional and names it; without it, export --out --yes writes the file', (t) => {
   const dir = baseProject(t);
   refusedNaming(dir, ['export', 'stray-word'], 'stray-word');
   refusedNaming(dir, ['export', 'stray-word', '--out', 'export.jsonl'], 'stray-word');
+  refusedNaming(dir, ['export', 'stray-word', '--out', 'export.jsonl', '--yes'], 'stray-word');
   assert.ok(!exists(dir, 'export.jsonl'));
-  okAndWrites(dir, ['export', '--out', 'export.jsonl']);
+  okAndWrites(dir, ['export', '--out', 'export.jsonl', '--yes']);
   assert.ok(exists(dir, 'export.jsonl'));
 });
 
