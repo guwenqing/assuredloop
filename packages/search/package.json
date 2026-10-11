@@ -1,13 +1,29 @@
 {
   "name": "@assuredloop/search",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.2.0",
   "description": "Level 2 of al search: a local embedding model, vectors beside the text, and a ranked list for al to fuse with its full-text search.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guwenqing/assuredloop.git",
+    "directory": "packages/search"
+  },
+  "bugs": {
+    "url": "https://github.com/guwenqing/assuredloop/issues"
+  },
+  "homepage": "https://github.com/guwenqing/assuredloop/tree/main/packages/search#readme",
   "type": "module",
   "exports": "./index.js",
   "engines": {
     "node": ">=24"
+  },
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1"

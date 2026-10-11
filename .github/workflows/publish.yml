@@ -1,6 +1,6 @@
-# Publishes @assuredloop/cli to npm when a GitHub Release is published, and at
-# no other time: a release is made by hand, so a person decides every version
-# that goes out.
+# Publishes @assuredloop/cli and @assuredloop/search to npm when a GitHub
+# Release is published, and at no other time: a release is made by hand, so a
+# person decides every version that goes out.
 #
 # No npm token is stored anywhere. npm trusts this repository and this file by
 # name (npm's trusted publishing): the publish job asks GitHub for a short-lived
@@ -22,7 +22,7 @@ jobs:
   # The checks test.yml runs, against the commit the release points at, on the
   # floor `engines.node` promises and on the Node that publishes. Nothing is
   # published from a commit that does not pass them. `node --test` includes the
-  # pack check, which installs the packed tarball and runs `al` from it.
+  # pack checks, which install the packed tarballs and run `al` from them.
   test:
     name: test (node ${{ matrix.node }})
     runs-on: ubuntu-24.04
@@ -39,6 +39,23 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm ci
+      # The pack checks install the packed search package with no network, so
+      # npm's cache needs its dependencies: the archives and the registry's
+      # metadata, which only an install without a lock stores. A scratch copy
+      # keeps packages/search/node_modules absent, so the real-model tests
+      # skip. No install scripts run, and no release newer than 24 hours is
+      # taken (design.md 17). The cached metadata still lists newer releases,
+      # whose archives are not cached, so the offline install needs the same
+      # cutoff: npm_config_before carries it to the later steps.
+      - name: Fill npm's cache with the search package's dependencies
+        run: |
+          before="$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)"
+          echo "npm_config_before=$before" >> "$GITHUB_ENV"
+          deps="$RUNNER_TEMP/search-deps"
+          mkdir -p "$deps"
+          cp packages/search/package.json "$deps/"
+          cd "$deps"
+          npm install --ignore-scripts --no-package-lock --no-audit --no-fund --before "$before"
       - run: node --test
       - run: npm install --global .
       - run: al check --strict
@@ -61,19 +78,39 @@ jobs:
           registry-url: https://registry.npmjs.org
       # The release names the version; package.json is what npm publishes. They
       # have to agree, or the release says one version and npm gets another.
-      - name: The release tag is v<package.json version>
+      # One tag publishes both packages, so both are checked before either goes
+      # out.
+      - name: The release tag is v<package.json version>, for both packages
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          want="v$(node -p "require('./package.json').version")"
-          if [ "$TAG" != "$want" ]; then
-            echo "The release is tagged $TAG and package.json says $want. Make them agree, then publish the release again."
-            exit 1
-          fi
+          for dir in . packages/search; do
+            want="v$(node -p "require('./$dir/package.json').version")"
+            if [ "$TAG" != "$want" ]; then
+              echo "The release is tagged $TAG and $dir/package.json says $want. Make them agree, then publish the release again."
+              exit 1
+            fi
+          done
       # A pre-release goes out under `next`, so `npm install` keeps getting the
-      # last full release.
-      - name: npm publish
+      # last full release. A version already on npm is skipped, so a re-run
+      # after a failed publish of the search package does not fail here.
+      - name: npm publish @assuredloop/cli
         env:
           PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
-          if [ "$PRERELEASE" = "true" ]; then npm publish --tag next; else npm publish; fi
+          version="$(node -p "require('./package.json').version")"
+          if [ "$(npm view "@assuredloop/cli@$version" version 2>/dev/null || true)" = "$version" ]; then
+            echo "@assuredloop/cli $version is already on npm: skipping its publish."
+          elif [ "$PRERELEASE" = "true" ]; then npm publish --tag next; else npm publish; fi
+      # The optional level 2 package, published the same way. npm must trust
+      # this repository and this file for it too: the owner sets that up on
+      # npmjs.com before its first publish.
+      - name: npm publish @assuredloop/search
+        working-directory: packages/search
+        env:
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$(npm view "@assuredloop/search@$version" version 2>/dev/null || true)" = "$version" ]; then
+            echo "@assuredloop/search $version is already on npm: skipping its publish."
+          elif [ "$PRERELEASE" = "true" ]; then npm publish --tag next; else npm publish; fi
