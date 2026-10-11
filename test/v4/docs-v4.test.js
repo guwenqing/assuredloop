@@ -1,17 +1,17 @@
-// The v4 skill and README (#193, T16): written beside v1's, they name only
-// commands and options that al-v4 accepts, they do not name the commands v4
-// dropped, and each Tier example line is one that `al check` reads as a path
-// claim. The tests read the two doc files and run `node bin/al-v4.js` in
-// throwaway repos; they do not read or import the code under test.
+// The v4 skill and README (#193, T16; moved into v1's places at T17, #196):
+// they name only commands and options that al accepts, they do not name the
+// commands v4 dropped, and each Tier example line is one that `al check` reads
+// as a path claim. The tests read the two doc files and run `node bin/al.js`
+// (the helpers' BIN) in throwaway repos; they do not read or import the code
+// under test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { REPO, al, baseProject, git, project, show } from './helpers/project.js';
 
-const DOCS = ['skills/assuredloop/SKILL-v4.md', 'README-v4.md'];
-const V1_DOCS = ['skills/assuredloop/SKILL.md', 'README.md'];
+const DOCS = ['skills/assuredloop/SKILL.md', 'README.md'];
+const MOVED = ['skills/assuredloop/SKILL-v4.md', 'README-v4.md'];
 
 function readDoc(rel) {
   const path = join(REPO, rel);
@@ -93,11 +93,12 @@ function optionAccepted(dir, command, option) {
   return true;
 }
 
-test('the v4 skill and the v4 README exist beside v1', () => {
+test('the v4 skill and README are in the places of v1\'s, and the -v4 files are gone', () => {
   for (const rel of DOCS) assert.ok(existsSync(join(REPO, rel)), `${rel} exists`);
+  for (const rel of MOVED) assert.ok(!existsSync(join(REPO, rel)), `${rel} no longer exists`);
 });
 
-test('each al command and option the v4 docs name is one al-v4 accepts', (t) => {
+test('each al command and option the v4 docs name is one al accepts', (t) => {
   const dir = project(t);
   // The probes tell a refused name from an accepted one.
   assert.equal(commandAccepted(dir, 'check'), true, 'check is a command');
@@ -183,16 +184,4 @@ test('each Tier example line in the v4 docs is read by al check as a path claim'
     if (!read) bad.push(`${e.where}: "${e.example}" is not read as a path claim\n${show(r)}`);
   }
   assert.deepEqual(bad, []);
-});
-
-test("v1's skill and README are unchanged against origin/main", (t) => {
-  const has = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'origin/main'], { cwd: REPO, encoding: 'utf8' });
-  if (has.status !== 0) {
-    t.skip('origin/main is not in this clone, so v1 cannot be compared');
-    return;
-  }
-  for (const rel of V1_DOCS) {
-    const r = spawnSync('git', ['diff', '--quiet', 'origin/main', '--', rel], { cwd: REPO, encoding: 'utf8' });
-    assert.equal(r.status, 0, `${rel} differs from origin/main (git diff exit ${r.status}) ${r.stderr}`);
-  }
 });
