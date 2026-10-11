@@ -84,30 +84,30 @@ function withOutcome(md, block) {
 
 export function conclude({ top, args, opts }) {
   const [name] = args;
-  if (!isName(name)) throw new Fail(`${JSON.stringify(name ?? '')} is not a request name`, 'al-v4 conclude <name> [--yes]');
+  if (!isName(name)) throw new Fail(`${JSON.stringify(name ?? '')} is not a request name`, 'al conclude <name> [--yes]');
   const state = loadState(top);
   const r = state.requests.get(name);
-  if (!r) throw new Fail(`no request named ${name}`, 'al-v4 context lists the open requests');
-  if (!r.open) throw new Fail(`${name} is already archived (requests/archive/${name}); an archived request is not concluded again`, `al-v4 context ${name}`);
+  if (!r) throw new Fail(`no request named ${name}`, 'al context lists the open requests');
+  if (!r.open) throw new Fail(`${name} is already archived (requests/archive/${name}); an archived request is not concluded again`, `al context ${name}`);
   const { out, judged } = reasons(state, r);
   if (out.length) {
     return {
       body: out.map((x) => `refused: ${x}`),
       read: 'working tree',
-      next: `al-v4 context ${name}; sign, record the dispositions, or align what is named, then al-v4 index`,
+      next: `al context ${name}; sign, record the dispositions, or align what is named, then al index`,
       notKnown: NOT_KNOWN,
       exit: 1,
     };
   }
   const block = outcome(state, r, judged, top);
   const target = `requests/archive/${name}`;
-  if (exists(top, target)) throw new Fail(`${target} already exists; a request name is never reused`, `al-v4 context ${name}`);
+  if (exists(top, target)) throw new Fail(`${target} already exists; a request name is never reused`, `al context ${name}`);
   const what = `Status: concluded, the Outcome in ${target}/request.md, status: concluded in the record, and ${r.dir}/ moved to ${target}/`;
   if (!opts.yes) {
     return { body: [`Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read: 'working tree', next: 'run the same command with --yes to do it', notKnown: NOT_KNOWN };
   }
   const rec = openRecord(top, name);
-  if (!rec) throw new Fail(`${name} has no record .assuredloop/records/requests/${name}.yaml`, 'a v4 request is made with al-v4 new');
+  if (!rec) throw new Fail(`${name} has no record .assuredloop/records/requests/${name}.yaml`, 'a v4 request is made with al new');
   guard(top, [`${r.dir}/request.md`, `${target}/request.md`, rec.path]);
   const md = withOutcome(withStatus(r.md), block);
   rec.doc.set('status', 'concluded');

@@ -252,8 +252,8 @@ export function checks(top, { base, strict = false }) {
       const hq = qualify(String(b.holder), null);
       const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : now.spec.get(hq.id);
       const msg = /^[RQ]\d+$/.test(t.id ?? '')
-        ? `${b.target} changed after this paragraph was linked to it. Check that it still ${b.link} ${t.id}, then al-v4 index --align ${b.holder}`
-        : `${b.link} ${b.target}, which changed since it was bound. Align it: check it, then al-v4 index --align ${b.holder}`;
+        ? `${b.target} changed after this paragraph was linked to it. Check that it still ${b.link} ${t.id}, then al index --align ${b.holder}`
+        : `${b.link} ${b.target}, which changed since it was bound. Align it: check it, then al index --align ${b.holder}`;
       add('hint', 'stale-base', hp ?? '-', b.holder, msg);
     }
   }

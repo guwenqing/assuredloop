@@ -1,6 +1,6 @@
 // Helpers for the tests of the T15 scale run (#188): scale/generate.js and
 // scale/run.js. They use only the two scripts, the files they write, git, and
-// the public `node bin/al-v4.js` command. Nothing runs at import.
+// the public `node bin/al.js` command. Nothing runs at import.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { parse } from 'yaml';
 export const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 export const GENERATE = join(REPO, 'scale/generate.js');
 export const RUN = join(REPO, 'scale/run.js');
-export const AL4 = join(REPO, 'bin/al-v4.js');
+export const AL4 = join(REPO, 'bin/al.js');
 export const FULL = /^[0-9a-f]{40}$/;
 
 // The environment of every run: nothing that points git at another repo or

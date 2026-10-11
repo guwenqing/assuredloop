@@ -73,9 +73,9 @@ export function check({ top, opts }) {
 function nextStep(severities, noId) {
   const notOk = severities.includes('not ok');
   const hint = severities.includes('hint');
-  const addIds = noId ? '; al-v4 spec --add-ids <file> marks the paragraphs with no ID' : '';
+  const addIds = noId ? '; al spec --add-ids <file> marks the paragraphs with no ID' : '';
   if (notOk && hint) return `fix each not ok, and deal with each hint or say in the PR why it stays${addIds}`;
   if (notOk) return `fix each not ok${addIds}`;
   if (hint) return 'deal with each hint, or say in the PR why it stays';
-  return 'al-v4 context';
+  return 'al context';
 }

@@ -238,10 +238,10 @@ function projectView(state) {
   const findings = hintsNow(state);
   if (findings) {
     const n = (s) => findings.filter((f) => f.severity === s).length;
-    body.push(line('Hints', `${n('hint')} hints, ${n('not ok')} not ok (al-v4 check lists them)`));
+    body.push(line('Hints', `${n('hint')} hints, ${n('not ok')} not ok (al check lists them)`));
   }
   body.push(line('Not checked', NOT_CHECKED));
-  return { body, next: open.length ? `al-v4 context <name>, for example al-v4 context ${open[0].name}` : 'al-v4 new <name> --from <file|->', findings };
+  return { body, next: open.length ? `al context <name>, for example al context ${open[0].name}` : 'al new <name> --from <file|->', findings };
 }
 
 function requestView(state, r, audit) {
@@ -277,8 +277,8 @@ function requestView(state, r, audit) {
   const pending = judged.filter((j) => j.status === 'pending' || !j.valid);
   return {
     body,
-    next: !r.open ? `al-v4 context ${r.name} --audit` : pending.length ? `give ${pending.map((j) => j.p.id).join(', ')} a valid disposition in ${`.assuredloop/records/requests/${r.name}.yaml`}, then al-v4 index`
-      : `al-v4 conclude ${r.name}`,
+    next: !r.open ? `al context ${r.name} --audit` : pending.length ? `give ${pending.map((j) => j.p.id).join(', ')} a valid disposition in ${`.assuredloop/records/requests/${r.name}.yaml`}, then al index`
+      : `al conclude ${r.name}`,
   };
 }
 
@@ -384,19 +384,19 @@ function idView(state, id) {
   }
   const findings = hintsNow(state);
   if (findings) for (const f of findings.filter((x) => x.id === who && x.severity !== 'info')) body.push(`  ${findingLine(f)}`);
-  return { body, next: t.req ? `al-v4 context ${t.req}` : 'al-v4 check' };
+  return { body, next: t.req ? `al context ${t.req}` : 'al check' };
 }
 
 // The review view of a diff (design.md 13): each changed paragraph's text
 // beside its kind, its requirement and the baseline paragraphs it touches.
 function diffView(top, range, review) {
   const m = /^(.*?)(\.\.\.?)(.*)$/.exec(range);
-  if (!m) throw new Fail(`--diff ${range}: give a range such as main...HEAD or A..B`, 'al-v4 context --diff main...HEAD --for review');
+  if (!m) throw new Fail(`--diff ${range}: give a range such as main...HEAD or A..B`, 'al context --diff main...HEAD --for review');
   const head = m[3] || 'HEAD';
   const from = m[1] || 'HEAD';
   const base = m[2] === '...' ? git(top, ['merge-base', from, head], { allowFail: true }) : git(top, ['rev-parse', '--verify', '--quiet', `${from}^{commit}`], { allowFail: true });
   const headSha = git(top, ['rev-parse', '--verify', '--quiet', `${head}^{commit}`], { allowFail: true });
-  if (!base || !headSha) throw new Fail(`--diff ${range}: not a range of commits in this clone`, 'al-v4 context --diff main...HEAD --for review');
+  if (!base || !headSha) throw new Fail(`--diff ${range}: not a range of commits in this clone`, 'al context --diff main...HEAD --for review');
   const now = loadState(top, headSha);
   const was = loadState(top, base);
   const findings = review ? checks(top, { base }).findings : [];
@@ -442,13 +442,13 @@ function diffView(top, range, review) {
   return {
     body,
     read: `${range} (base ${base.slice(0, 7)}, head ${headSha.slice(0, 7)})${review ? '; hints from the working tree' : ''}`,
-    next: review ? 'review each paragraph against its requirement and the baseline it touches' : `al-v4 context --diff ${range} --for review`,
+    next: review ? 'review each paragraph against its requirement and the baseline it touches' : `al context --diff ${range} --for review`,
   };
 }
 
 export function context({ top, args, opts }) {
   const [what] = args;
-  if (opts.for !== undefined && opts.for !== 'review') throw new Fail(`--for ${opts.for}: only --for review`, 'al-v4 context --diff main...HEAD --for review');
+  if (opts.for !== undefined && opts.for !== 'review') throw new Fail(`--for ${opts.for}: only --for review`, 'al context --diff main...HEAD --for review');
   if (opts.diff !== undefined) {
     const out = diffView(top, opts.diff, opts.for === 'review');
     return { ...out, notKnown: ['whether each kind is right (the review judges that)', NOT_CHECKED] };
@@ -456,24 +456,24 @@ export function context({ top, args, opts }) {
   let rev = null;
   if (opts.at !== undefined) {
     rev = git(top, ['rev-parse', '--verify', '--quiet', `${opts.at}^{commit}`], { allowFail: true });
-    if (!rev) throw new Fail(`--at ${opts.at}: no such commit in this clone`, 'al-v4 context --at <commit>');
+    if (!rev) throw new Fail(`--at ${opts.at}: no such commit in this clone`, 'al context --at <commit>');
   }
   const state = loadState(top, rev);
   const read = rev ? `commit ${rev.slice(0, 7)} (--at ${opts.at})` : 'working tree';
   const notKnown = [
-    ...(rev ? ['the hints and the results at that commit (al-v4 check reads the working tree)'] : []),
+    ...(rev ? ['the hints and the results at that commit (al check reads the working tree)'] : []),
     'the PRs that never named the request in a commit message',
   ];
   let out;
   if (what === undefined) {
-    if (opts.audit) throw new Fail('--audit needs a request: al-v4 context <name> --audit', 'al-v4 context <name> --audit');
+    if (opts.audit) throw new Fail('--audit needs a request: al context <name> --audit', 'al context <name> --audit');
     out = projectView(state);
   } else if (/^[A-Z][A-Z0-9]*-\d+$/.test(what) || what.includes('/')) {
     out = idView(state, what);
-    if (!out) throw new Fail(`${what}: no such paragraph ID${rev ? ` at ${rev.slice(0, 7)}` : ''}`, 'al-v4 spec lists the IDs');
+    if (!out) throw new Fail(`${what}: no such paragraph ID${rev ? ` at ${rev.slice(0, 7)}` : ''}`, 'al spec lists the IDs');
   } else {
     const r = state.requests.get(what);
-    if (!r) throw new Fail(`${what}: no such request${rev ? ` at ${rev.slice(0, 7)}` : ''}`, 'al-v4 context lists the open requests');
+    if (!r) throw new Fail(`${what}: no such request${rev ? ` at ${rev.slice(0, 7)}` : ''}`, 'al context lists the open requests');
     out = requestView(state, r, opts.audit);
   }
   return { body: out.body, read, next: out.next, notKnown };
