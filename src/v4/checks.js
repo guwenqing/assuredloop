@@ -62,13 +62,11 @@ function changesOf(now, was) {
 
 const changeWord = (c) => (c.changes.includes('New') ? 'new' : c.changes.includes('Removed') ? 'removed' : c.changed ? 'changed' : 'given another kind');
 
-export function checks(top, { base, strict = false }) {
-  const now = loadState(top);
-  const was = base ? loadState(top, base) : null;
-  const findings = [];
-  const notKnown = [];
-  const at = (p) => (p ? `${p.file}:${p.line}` : '-');
-  const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
+// The branch against its base, in states `now` and `was` (null with no
+// base): each paragraph's change, adoption aside, the path claim, and the
+// promise changes with no signed requirement that covers them (design.md 6).
+// al check reports each of those, and al conclude refuses on them (DES-37).
+export function branchOf(top, now, was, base) {
   const promise = (k) => isPromise(now, k);
   const open = [...now.requests.values()].filter((r) => r.open);
   // Adoption on the branch (D16, D21): a spec paragraph that is new at the
@@ -102,7 +100,8 @@ export function checks(top, { base, strict = false }) {
   const isPromiseChange = (c) => (c.changed && (promise(c.head?.kind) || promise(c.base?.kind)))
     || (c.kindChange && (promise(c.head.kind) || promise(c.base.kind)));
 
-  // Sign-off coverage (design.md 6): a promise change with no signed requirement that covers it.
+  // Sign-off coverage: a promise change with no signed requirement that covers it.
+  const uncovered = [];
   for (const c of changes.filter(isPromiseChange)) {
     if (typo.has(c.name)) continue;
     let covered;
@@ -113,8 +112,25 @@ export function checks(top, { base, strict = false }) {
     } else {
       covered = servesSigned(now, c.head, c.request);
     }
-    if (!covered) add('not ok', 'signoff-coverage', c.head ?? c.base, c.name, `a ${(c.head ?? c.base).kind} paragraph is ${changeWord(c)} with no signed requirement that covers it`);
+    if (!covered) uncovered.push(c);
   }
+
+  return { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered };
+}
+
+export function checks(top, { base, strict = false }) {
+  const now = loadState(top);
+  const was = base ? loadState(top, base) : null;
+  const findings = [];
+  const notKnown = [];
+  const at = (p) => (p ? `${p.file}:${p.line}` : '-');
+  const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
+  const promise = (k) => isPromise(now, k);
+  const open = [...now.requests.values()].filter((r) => r.open);
+  const { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered } = branchOf(top, now, was, base);
+
+  // Sign-off coverage (design.md 6): a promise change with no signed requirement that covers it.
+  for (const c of uncovered) add('not ok', 'signoff-coverage', c.head ?? c.base, c.name, `a ${(c.head ?? c.base).kind} paragraph is ${changeWord(c)} with no signed requirement that covers it`);
 
   // The path claim (design.md 7), and the typo claim's words (design.md 6).
   if (!base) notKnown.push('no base, so the path claim was not read');
