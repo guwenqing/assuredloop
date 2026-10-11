@@ -259,8 +259,10 @@ paragraphs:
     display: DES-64 (11:5, in 11. Search and the export)
   - id: DES-65
     kind: rule
-    text_sha256: 641606d5e4a88fe4ed0abacd88a963cb4d2a4391c284f1f9288a580251eb0fca
+    text_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be
     display: DES-65 (11:6, in 11. Search and the export)
+    change:
+      - Changed
   - id: DES-66
     kind: rule
     text_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6
@@ -285,8 +287,6 @@ paragraphs:
     kind: choice
     text_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf
     display: DES-79 (12:4, in 12. One central spec repo, and output repos)
-    change:
-      - New
   - id: DES-71
     kind: note
     text_sha256: ce296d0bdabab1c6a0245126a50ca429bcba5a21be20af119a087b07330918f7

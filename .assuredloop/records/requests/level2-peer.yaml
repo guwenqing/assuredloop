@@ -1,0 +1,33 @@
+schema: assuredloop/1
+request: level2-peer
+tier: "2"
+status: open
+sources:
+  - file: 2026-10-11-owner-words.md
+    kind: owner-words
+    sha256: 3d92b5055da86b9d362fb85f4273141a6059e147285ae31bac326483600a0d31
+    taken: 2026-10-11T02:28Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: 7f444d25a7d83418a632dacaeada4cd95b65018921c0ed4277d5e6e25debca5c
+    title: Level 2 search with no package of ours
+signoff: []
+decisions:
+  - id: D1
+    date: 2026-10-11
+    source: "the agent (architect), issue #212 as changed on 2026-10-11"
+    text: This replaces the level 2 package part of assuredloop-v4 D11; the rest of D11 holds. Level 2 is code in al, src/v4/level2.js. @assuredloop/cli names @huggingface/transformers at exactly 4.3.1 in peerDependencies, marked optional in peerDependenciesMeta, and al search finds it by normal Node resolution (the project first, then beside al). packages/search/ and @assuredloop/search are removed and never published. The version is 0.2.1. The level 2 tests use a stand-in library with a fixed test embedder and run in CI; the real-model smoke test runs locally only when the library is installed, and skips in CI.
+    sha256: aed774d864a1b48c4a35aa393b974a803a7941dbe24866b3e3c9f4cf883903f9
+tasks: []
+bindings:
+  - { holder: level2-peer/R1, link: from, target: level2-peer/2026-10-11-owner-words.md, holder_sha256: 7f444d25a7d83418a632dacaeada4cd95b65018921c0ed4277d5e6e25debca5c, target_sha256: 3d92b5055da86b9d362fb85f4273141a6059e147285ae31bac326483600a0d31 }
+  - { holder: level2-peer/SP-3, link: serves, target: level2-peer/R1, holder_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be, target_sha256: 7f444d25a7d83418a632dacaeada4cd95b65018921c0ed4277d5e6e25debca5c, target_version: 1 }
+  - { holder: level2-peer/SP-3, link: changes, target: DES-65, holder_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be, target_sha256: 641606d5e4a88fe4ed0abacd88a963cb4d2a4391c284f1f9288a580251eb0fca }
+  - { holder: level2-peer/SP-4, link: serves, target: level2-peer/R1, holder_sha256: 855bc0b1f78b990c2f96938f1fb598d20beae2abf09028dd85c85d3768707994, target_sha256: 7f444d25a7d83418a632dacaeada4cd95b65018921c0ed4277d5e6e25debca5c, target_version: 1 }
+  - { holder: level2-peer/SP-4, link: builds-on, target: level2-peer/SP-3, holder_sha256: 855bc0b1f78b990c2f96938f1fb598d20beae2abf09028dd85c85d3768707994, target_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be }
+  - { holder: level2-peer/SP-5, link: serves, target: level2-peer/R1, holder_sha256: 2efbebd037a7c0e5d35fc5759a4720beb67cc9f5491f0a97936ab7df670ae93d, target_sha256: 7f444d25a7d83418a632dacaeada4cd95b65018921c0ed4277d5e6e25debca5c, target_version: 1 }
+  - { holder: DES-65, link: serves, target: level2-peer/R1, holder_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be, target_sha256: 7f444d25a7d83418a632dacaeada4cd95b65018921c0ed4277d5e6e25debca5c, target_version: 1 }
+  - { holder: DES-65, link: serves, target: assuredloop-v4/R10, holder_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+dispositions:
+  - { source: level2-peer/SP-3, disposition: incorporated, spec: DES-65, source_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be, spec_sha256: b5e3cea6b1cfdcf41866745e7574de0eeddf834940274cac35aa2e7eb4bd67be }
