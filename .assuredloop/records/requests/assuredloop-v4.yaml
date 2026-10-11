@@ -1,7 +1,7 @@
 schema: assuredloop/1
 request: assuredloop-v4
 tier: "3"
-status: open
+status: concluded
 sources:
   - file: 2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14-2.md
     kind: owner-words
