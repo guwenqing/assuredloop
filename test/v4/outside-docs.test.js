@@ -120,14 +120,15 @@ describe('a root: outside the repository is not walked', () => {
       assert.ok(!r.stdout.includes('bad.md') && !r.stdout.includes('deep.md'), show(r));
     });
 
-    test(`check: root ${name} gives no lint, a not read line, and exit 0 also with --strict`, (t) => {
+    // #218: the outside root is a not ok spec-root line, so --strict exits 1.
+    test(`check: root ${name} gives no lint from it, only the spec-root not ok, exit 0, and exit 1 with --strict`, (t) => {
       const { repo, root } = setupRoot(t, entry);
-      for (const args of [[], ['--strict']]) {
+      for (const [args, code] of [[[], 0], [['--strict'], 1]]) {
         const r = runV4(repo.dir, ['check', ...args]);
-        assert.equal(r.code, 0, show(r));
-        assert.ok(lines(r.stdout).includes(`not read: ${root}/: outside the repository`), show(r));
+        assert.equal(r.code, code, show(r));
         assert.ok(!r.stdout.includes('OUT-1') && !r.stdout.includes('OUT-2'), show(r));
-        assert.deepEqual(lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l)), [], show(r));
+        assert.deepEqual(lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l)),
+          [`not ok spec-root .assuredloop/config.yaml - ${root}/: outside the repository`], show(r));
       }
     });
 
@@ -174,16 +175,20 @@ describe('control: root: ./design reads design/*.md', () => {
 });
 
 // Reading does not go through a symlink (coordinator, from the reviewer).
+// #218: root: unused is made an existing folder (`dirs`), so only the docs:
+// entry is through a symlink; a root through a symlink is a spec-root not ok.
 const SYMLINK_CASES = [
   {
     name: 'a docs: file under a symlinked folder',
-    config: 'root: unused\ndocs:\n  - file: specs/alias/victim.md\n    prefix: OUT\n',
+    config: 'root: unused\ndocs:\n  - file: specs/alias/victim.md\n    prefix: OUT\n', dirs: ['unused'],
     link: 'specs/alias', inner: 'victim.md', docPath: 'specs/alias/victim.md', notRead: 'specs/alias/victim.md',
+    rootNotOk: null,
   },
   {
     name: 'a root: under a symlinked folder',
-    config: 'root: alias/sub\n',
+    config: 'root: alias/sub\n', dirs: [],
     link: 'alias', inner: 'sub/victim.md', docPath: 'alias/sub/victim.md', notRead: 'alias/sub/',
+    rootNotOk: 'not ok spec-root .assuredloop/config.yaml - alias/sub/: through a symlink',
   },
 ];
 
@@ -196,6 +201,7 @@ describe('reading does not go through a symlink', () => {
       writeFileSync(join(out, c.inner), OUTSIDE_TEXT);
       mkdirSync(dirname(join(repo.dir, c.link)), { recursive: true });
       symlinkSync(out, join(repo.dir, c.link));
+      for (const d of c.dirs) mkdirSync(join(repo.dir, d), { recursive: true });
       repo.write('.assuredloop/config.yaml', c.config);
       return repo;
     }
@@ -216,14 +222,16 @@ describe('reading does not go through a symlink', () => {
       assert.ok(!lines(r.stdout).includes(c.docPath), show(r));
     });
 
-    test(`check: ${c.name} gives no lint and no change line, prints the not read line, exit 0 also with --strict`, (t) => {
+    // #218: a root through a symlink is a spec-root not ok (exit 1 with
+    // --strict); the not read line of the root is not asserted either way.
+    test(`check: ${c.name} gives no lint and no change line from it, ${c.rootNotOk ? 'only the spec-root not ok, exit 0, and exit 1 with --strict' : 'prints the not read line, exit 0 also with --strict'}`, (t) => {
       const repo = linked(t);
-      for (const args of [[], ['--strict']]) {
+      for (const [args, code] of [[[], 0], [['--strict'], c.rootNotOk ? 1 : 0]]) {
         const r = runV4(repo.dir, ['check', ...args]);
-        assert.equal(r.code, 0, show(r));
-        assert.ok(lines(r.stdout).includes(notReadLine), show(r));
+        assert.equal(r.code, code, show(r));
+        if (!c.rootNotOk) assert.ok(lines(r.stdout).includes(notReadLine), show(r));
         assert.ok(!r.stdout.includes('OUT-1'), show(r));
-        assert.deepEqual(lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l)), [], show(r));
+        assert.deepEqual(lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l)), c.rootNotOk ? [c.rootNotOk] : [], show(r));
         assert.deepEqual(lines(r.stdout).filter((l) => l.startsWith(`${c.docPath} `)), [], show(r));
       }
     });
@@ -232,6 +240,7 @@ describe('reading does not go through a symlink', () => {
     function plain(t) {
       const repo = makeRepo(t);
       repo.write(join(c.link, c.inner), OUTSIDE_TEXT);
+      for (const d of c.dirs) mkdirSync(join(repo.dir, d), { recursive: true });
       repo.write('.assuredloop/config.yaml', c.config);
       return repo;
     }
@@ -247,6 +256,7 @@ describe('reading does not go through a symlink', () => {
       const r = runV4(repo.dir, ['check']);
       assert.equal(r.code, 0, show(r));
       assert.ok(!r.stdout.includes('not read:'), show(r));
+      assert.ok(!r.stdout.includes('not ok spec-root'), show(r));
       assert.ok(lines(r.stdout).some((l) => l.startsWith(`not ok no-blank-after ${c.docPath}:1 OUT-1 `)), show(r));
     });
   }
@@ -277,13 +287,17 @@ describe('a root: that is the repository top is refused', () => {
 
   // Ambiguity: "<root>/" for root "/" would print "//"; any run of slashes
   // is accepted here.
+  // #218: in check it is a spec-root not ok, so check --strict exits 1.
   for (const root of ['/', '///']) {
-    test(`control: root ${JSON.stringify(root)} is outside the repository: not read, exit 0`, (t) => {
+    test(`control: root ${JSON.stringify(root)} is outside the repository: spec not read, exit 0; check a spec-root not ok, exit 1 with --strict`, (t) => {
       const repo = topRoot(t, root);
-      for (const cmd of [['spec'], ['check'], ['check', '--strict']]) {
+      const s = runV4(repo.dir, ['spec']);
+      assert.equal(s.code, 0, show(s));
+      assert.ok(lines(s.stdout).some((l) => /^not read: \/+: outside the repository$/.test(l)), show(s));
+      for (const [cmd, code] of [[['check'], 0], [['check', '--strict'], 1]]) {
         const r = runV4(repo.dir, cmd);
-        assert.equal(r.code, 0, show(r));
-        assert.ok(lines(r.stdout).some((l) => /^not read: \/+: outside the repository$/.test(l)), show(r));
+        assert.equal(r.code, code, show(r));
+        assert.ok(lines(r.stdout).some((l) => /^not ok spec-root \.assuredloop\/config\.yaml - \/+: outside the repository$/.test(l)), show(r));
       }
     });
   }
