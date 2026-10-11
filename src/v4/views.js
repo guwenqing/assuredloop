@@ -8,7 +8,7 @@ import { git, mergeBase, mergesOf } from './git.js';
 import { crossRepo, findCites } from './repos.js';
 import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
-import { latestVersion, loadState, named, qualify, requestOf, resolve, signed } from './state.js';
+import { latestVersion, loadState, named, qualify, requestOf, resolve, signedBy } from './state.js';
 
 export const line = (label, text) => `${label.length < 10 ? label.padEnd(10) : `${label} `}${text}`;
 const list = (x) => (Array.isArray(x) ? x : []);
@@ -21,10 +21,8 @@ export const NOT_CHECKED = 'whether each kind is right; whether a requirement is
 // The sign-off state of one requirement or question: "signed in S1",
 // "changed since S1" or "not signed".
 export function signState(state, r, q) {
-  if (signed(state, r.name, q.id)) {
-    const s = list(r.data?.signoff).filter((x) => list(x?.covers).some((c) => c?.id === q.id && c.sha256 === q.sha256)).at(-1);
-    return `signed in ${s.id}`;
-  }
+  const s = signedBy(state, r.name, q.id);
+  if (s) return `signed in ${s.id}`;
   const before = list(r.data?.signoff).filter((x) => list(x?.covers).some((c) => c?.id === q.id)).at(-1);
   return before ? `changed since ${before.id}` : 'not signed';
 }
