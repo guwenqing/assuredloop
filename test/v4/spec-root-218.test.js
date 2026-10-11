@@ -74,6 +74,13 @@ const BAD_ROOTS = [
     make: (repo) => { repo.write('design', 'not a folder\n'); return 'design'; },
     shown: () => 'design', reason: 'no such folder',
   },
+  // Review of PR #221: a symlink is "through a symlink" also when its target
+  // does not exist; that reason comes before "no such folder".
+  {
+    name: 'a root that is a dangling symlink',
+    make: (repo) => { symlinkSync(join(dirname(repo.dir), 'missing'), join(repo.dir, 'alias')); return 'alias'; },
+    shown: () => 'alias', reason: 'through a symlink',
+  },
 ];
 
 // The repo with the bad root committed in config.yaml.
@@ -155,6 +162,11 @@ const DEFAULT_BAD = [
     name: 'specs is a regular file',
     make: (repo) => repo.write('specs', 'not a folder\n'),
     reason: 'no such folder',
+  },
+  {
+    name: 'specs is a dangling symlink',
+    make: (repo) => symlinkSync(join(dirname(repo.dir), 'missing'), join(repo.dir, 'specs')),
+    reason: 'through a symlink',
   },
 ];
 const CONFIGS = [
