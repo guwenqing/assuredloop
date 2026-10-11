@@ -1,5 +1,5 @@
 // Throwaway git projects for the v4 record tests (#175), and a runner for
-// bin/al-v4.js. Nothing here reads the code under test: the tests use only the
+// bin/al.js. Nothing here reads the code under test: the tests use only the
 // command, the files it writes and the YAML records.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { parse, stringify } from 'yaml';
 
 export const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-export const BIN = join(REPO, 'bin/al-v4.js');
+export const BIN = join(REPO, 'bin/al.js');
 
 // "Now" for every run: 2026-05-04 09:30 UTC.
 export const EPOCH = Date.UTC(2026, 4, 4, 9, 30, 0) / 1000;
@@ -97,7 +97,7 @@ export function tree(dir) {
   return out;
 }
 
-// One run of `node bin/al-v4.js ...args` in dir, with the fixed clock.
+// One run of `node bin/al.js ...args` in dir, with the fixed clock.
 export function al(dir, args, { input = '', env = {} } = {}) {
   const r = spawnSync(process.execPath, [BIN, ...args], {
     cwd: dir,

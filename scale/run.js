@@ -41,7 +41,7 @@ function options(argv) {
   if (!v.world) refuse('--world <dir> is missing');
   const world = resolve(v.world);
   if (!existsSync(join(world, 'world.json'))) refuse(`${world} has no world.json: make one with node scale/generate.js --out <dir>`);
-  const al = resolve(v.al ?? fileURLToPath(new URL('../bin/al-v4.js', import.meta.url)));
+  const al = resolve(v.al ?? fileURLToPath(new URL('../bin/al.js', import.meta.url)));
   if (!existsSync(al) || !statSync(al).isFile()) refuse(`--al ${al} is not a file`);
   const num = (key, dflt) => {
     if (v[key] === undefined) return dflt;
