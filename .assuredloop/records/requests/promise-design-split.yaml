@@ -1,0 +1,35 @@
+schema: assuredloop/1
+request: promise-design-split
+tier: "2"
+status: open
+sources:
+  - file: 2026-10-11-owner-words.md
+    kind: owner-words
+    sha256: 699be05b2f6f0e351e27275a7243a4749c221bae78b0da99cd59eac1b5be05a9
+    taken: 2026-10-11T02:59Z
+  - file: 2026-10-11-owner-chat-with-the-architect-2026-10-11-input-167.md
+    kind: owner-words
+    sha256: c4b10305ae2cab6775ea81a3144da59ddb632b6e9a805579328b8449fa1efe6f
+    taken: 2026-10-11T02:59Z
+    url: owner chat with the architect, 2026-10-11 (input 167)
+requirements:
+  - id: R1
+    version: 1
+    sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3
+    title: Promises hold no design detail
+signoff:
+  - id: S1
+    file: 2026-10-11-signoff.md
+    sha256: 925336481db7133d49ccb6f588772692df4c7bb46df8be27a359fa542c5452dc
+    signed: 2026-10-11T02:59Z
+    source: owner chat with the architect, 2026-10-11
+    words: I signoff and approve
+    presented: "issue #214 as the architect explained it in chat; the owner approved before the R1 text was written, and the architect showed R1 in its next reply."
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3 }
+decisions: []
+tasks: []
+bindings:
+  - { holder: promise-design-split/R1, link: from, target: promise-design-split/2026-10-11-owner-words.md, holder_sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3, target_sha256: 699be05b2f6f0e351e27275a7243a4749c221bae78b0da99cd59eac1b5be05a9 }
+dispositions: []
