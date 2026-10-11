@@ -142,6 +142,61 @@ describe('#218 a bad explicit root is a not ok spec-root line in al check', () =
   });
 });
 
+// Review point on #218: with no root: key the root is specs. Only a specs
+// path where nothing exists is exempt; anything at specs that cannot be read
+// as the root is a not ok, as for an explicit root.
+const DEFAULT_BAD = [
+  {
+    name: 'specs is a symlink to a folder outside',
+    make: (repo) => symlinkSync(outsideFolder(repo), join(repo.dir, 'specs')),
+    reason: 'through a symlink',
+  },
+  {
+    name: 'specs is a regular file',
+    make: (repo) => repo.write('specs', 'not a folder\n'),
+    reason: 'no such folder',
+  },
+];
+const CONFIGS = [
+  ['config.yaml with no root: key', (repo) => {
+    repo.write(CONFIG, 'docs:\n  - file: guide/a.md\n    prefix: A\n');
+    repo.write('guide/a.md', '<!-- A-1 note -->\n\n# Alpha\n');
+  }],
+  ['no config.yaml', () => {}],
+];
+
+describe('#218 the default root specs, present but not a readable folder, is a not ok spec-root line', () => {
+  for (const c of DEFAULT_BAD) {
+    for (const [configName, writeConfig] of CONFIGS) {
+      function setup(t) {
+        const repo = makeRepo(t);
+        c.make(repo);
+        writeConfig(repo);
+        repo.commit(`${c.name}, ${configName}`);
+        return repo;
+      }
+
+      test(`check: ${c.name}, ${configName}: the spec-root line once, nothing read from it, exit 0`, (t) => {
+        const repo = setup(t);
+        const r = runV4(repo.dir, ['check']);
+        assert.equal(r.code, 0, show(r));
+        assert.deepEqual(rootLines(r), [rootLine('specs', c.reason)], show(r));
+        assert.ok(!r.stdout.includes('OUT-1'), show(r));
+        assert.match(nextLine(r) ?? '', /^Next {6}fix each not ok/, show(r));
+      });
+
+      test(`check --strict: ${c.name}, ${configName}: the spec-root line once, exit 1`, (t) => {
+        const repo = setup(t);
+        const r = runV4(repo.dir, ['check', '--strict']);
+        assert.equal(r.code, 1, show(r));
+        assert.deepEqual(rootLines(r), [rootLine('specs', c.reason)], show(r));
+        assert.ok(!r.stdout.includes('OUT-1'), show(r));
+        assert.match(nextLine(r) ?? '', /^Next {6}fix each not ok/, show(r));
+      });
+    }
+  }
+});
+
 describe('#218 controls: no spec-root line', () => {
   test('control: no config.yaml and no specs/ folder: check --strict exits 0 with no spec-root line', (t) => {
     const repo = makeRepo(t);
