@@ -4,11 +4,12 @@
 import { readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { parse } from 'yaml';
-import { read, recordPath } from './base.js';
+import { read, recordPath, sha256 } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { fileAt, filesAt, git } from './git.js';
 import { KINDS, groupOf, parseMarkdown } from './markers.js';
-import { requirements } from './request-md.js';
+import { frameOf, requirements, signedText } from './request-md.js';
+import { SIGNED } from './snapshot.js';
 import { SPEC, docsInScope, parseScopes, symlinkOn } from './scope.js';
 
 const ADR_FILE = /^(\d{4})-[^/]*\.md$/;
@@ -92,6 +93,29 @@ export function loadState(top, rev = null) {
     const specFile = `${dir}/spec.md`;
     const paras = (scopes.get(`request:${name}`) ?? []).filter((p) => p.file === specFile);
     const tierOf = () => String(dataOf()?.tier ?? /^Tier:\s*(\S+)/m.exec(md)?.[1] ?? '');
+    // Whether sign-off `s` signed the intro, Out: and Assumed: text that the
+    // section has now (#216): its signed text is the section's, or its
+    // snapshot in origin/, checked against its hash, has the same frame.
+    const current = signedText(md);
+    const framed = new Map();
+    const framedBy = (s) => {
+      if (current === null) return false;
+      if (s.sha256 === sha256(current)) return true;
+      const file = typeof s.file === 'string' ? `${dir}/origin/${s.file.replace(/^origin\//, '')}` : null;
+      if (!file) return false;
+      if (!framed.has(file)) {
+        let snap = null;
+        try {
+          snap = get(file);
+        } catch {
+          snap = null;
+        }
+        const at = typeof snap === 'string' ? snap.indexOf(`\n${SIGNED}\n`) : -1;
+        const signed = at < 0 ? null : snap.slice(at + SIGNED.length + 2);
+        framed.set(file, signed !== null && sha256(signed) === s.sha256 ? frameOf(signed) : null);
+      }
+      return framed.get(file) === frameOf(current);
+    };
     requests.set(name, {
       name, open, dir, md, specFile,
       get data() { return dataOf(); },
@@ -103,7 +127,7 @@ export function loadState(top, rev = null) {
       // double-quoted string, so a record with a backslash always counts.
       mentions: (x) => typeof text === 'string' && (text.includes(x) || text.includes('\\')),
       mayAdopt: typeof text === 'string' && (text.includes('adoption') || text.includes('\\')),
-      reqs: requirements(md), paras: new Map(paras.map((p) => [p.id, p])),
+      reqs: requirements(md), paras: new Map(paras.map((p) => [p.id, p])), framedBy,
     });
   };
   for (const n of openNames) add(n, true);
@@ -183,15 +207,21 @@ export function adrParagraph(state, id) {
 export const latestVersion = (data, id) => (Array.isArray(data?.requirements) ? data.requirements : []).filter((v) => v?.id === id)
   .reduce((a, v) => (Number(v.version) > Number(a?.version ?? 0) ? v : a), null);
 
-// Whether requirement (or question) `id` of request `name` is signed at its
-// current text: a sign-off covers that id with the current text's hash.
-export function signed(state, name, id) {
+// The latest sign-off that signs requirement (or question) `id` of request
+// `name` at its current text: it covers that id with the current text's hash,
+// and it signed the section's current intro, Out: and Assumed: text. Null
+// when there is none.
+export function signedBy(state, name, id) {
   const r = state.requests.get(name);
   const q = r?.reqs.find((x) => x.id === id);
-  if (!q) return false;
+  if (!q) return null;
   return (Array.isArray(r.data?.signoff) ? r.data.signoff : [])
-    .some((s) => (Array.isArray(s?.covers) ? s.covers : []).some((c) => c?.id === id && c.sha256 === q.sha256));
+    .filter((s) => (Array.isArray(s?.covers) ? s.covers : []).some((c) => c?.id === id && c.sha256 === q.sha256) && r.framedBy(s))
+    .at(-1) ?? null;
 }
+
+// Whether requirement (or question) `id` of request `name` is signed at its current text.
+export const signed = (state, name, id) => !!signedBy(state, name, id);
 
 // Whether paragraph `p` (of request `request`, or of specs/ when null) serves a
 // requirement that is signed at its current text.
