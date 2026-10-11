@@ -2,13 +2,16 @@
 // only command that refuses. It reads the working tree, the closing PR's
 // state, and refuses while a promise change has no signed requirement, a
 // spike's current question is not signed, or a change paragraph with a
-// baseline effect has no valid disposition for its current version. With
+// baseline effect has no valid disposition for its current version. A promise
+// change of the branch, against the merge-base with main, counts as al check
+// counts it (branchOf, #217). With
 // --yes it writes the Outcome, sets the status and archives the request.
 import { mkdirSync, renameSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Fail, day, exists, guard, isName, now, write } from './base.js';
+import { branchOf } from './checks.js';
 import { judgeRequest } from './dispositions.js';
-import { git } from './git.js';
+import { git, mergeBase } from './git.js';
 import { openRecord, recordText } from './records.js';
 import { isPromise, loadState, qualify, servesSigned } from './state.js';
 import { signState } from './views.js';
@@ -17,9 +20,11 @@ const NOT_KNOWN = ['whether the code, tests and documents do what the paragraphs
   'whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that'];
 
 // The reasons the close rule refuses, each naming its IDs; [] when it holds.
-function reasons(state, r) {
+// `branch` holds the branch's promise changes that no signed requirement covers.
+function reasons(state, r, branch) {
   const out = [];
   if (r.spike) {
+    if (branch.length) out.push(`a promise change with no signed requirement that covers it: ${branch.map((c) => c.name).join(', ')}`);
     if (!r.reqs.length) out.push(`the spike has no organized question to sign in ${r.dir}/request.md`);
     const unsigned = r.reqs.filter((q) => !signState(state, r, q).startsWith('signed'));
     if (unsigned.length) out.push(`the spike's current question is not signed: ${unsigned.map((q) => `${r.name}/${q.id} (${signState(state, r, q)})`).join(', ')}`);
@@ -33,8 +38,9 @@ function reasons(state, r) {
     ...[...r.paras.values()].filter((p) => isPromise(state, p.kind) && !dropped.has(p.id) && !servesSigned(state, p, r.name)).map((p) => `${r.name}/${p.id}`),
     ...[...state.spec.values()].filter((p) => isPromise(state, p.kind) && p.links.serves.some((s) => qualify(s, null).req === r.name)
       && !servesSigned(state, p, null)).map((p) => p.id),
+    ...branch.filter((c) => !(c.request === r.name && dropped.has(c.id))).map((c) => c.name),
   ];
-  if (unsigned.length) out.push(`a promise change with no signed requirement that covers it: ${unsigned.join(', ')}`);
+  if (unsigned.length) out.push(`a promise change with no signed requirement that covers it: ${[...new Set(unsigned)].join(', ')}`);
   const open = judged.filter((j) => j.status === 'pending' || !j.valid);
   if (open.length) {
     out.push(`no valid disposition for the current version of ${open.map((j) => `${j.id} (${j.status === 'pending' ? 'none' : `${j.status}, not valid: ${j.reason}`})`).join(', ')}`);
@@ -89,13 +95,17 @@ export function conclude({ top, args, opts }) {
   const r = state.requests.get(name);
   if (!r) throw new Fail(`no request named ${name}`, 'al context lists the open requests');
   if (!r.open) throw new Fail(`${name} is already archived (requests/archive/${name}); an archived request is not concluded again`, `al context ${name}`);
-  const { out, judged } = reasons(state, r);
+  const base = mergeBase(top);
+  const branch = base ? branchOf(top, state, loadState(top, base), base).uncovered : [];
+  const read = base ? `working tree · base ${base.slice(0, 7)} (merge-base with main)` : 'working tree · no base';
+  const notKnown = base ? NOT_KNOWN : ['the promise changes of the branch: no base (no main branch, or no commit)', ...NOT_KNOWN];
+  const { out, judged } = reasons(state, r, branch);
   if (out.length) {
     return {
       body: out.map((x) => `refused: ${x}`),
-      read: 'working tree',
+      read,
       next: `al context ${name}; sign, record the dispositions, or align what is named, then al index`,
-      notKnown: NOT_KNOWN,
+      notKnown,
       exit: 1,
     };
   }
@@ -104,7 +114,7 @@ export function conclude({ top, args, opts }) {
   if (exists(top, target)) throw new Fail(`${target} already exists; a request name is never reused`, `al context ${name}`);
   const what = `Status: concluded, the Outcome in ${target}/request.md, status: concluded in the record, and ${r.dir}/ moved to ${target}/`;
   if (!opts.yes) {
-    return { body: [`Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read: 'working tree', next: 'run the same command with --yes to do it', notKnown: NOT_KNOWN };
+    return { body: [`Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read, next: 'run the same command with --yes to do it', notKnown };
   }
   const rec = openRecord(top, name);
   if (!rec) throw new Fail(`${name} has no record .assuredloop/records/requests/${name}.yaml`, 'a v4 request is made with al new');
@@ -115,5 +125,5 @@ export function conclude({ top, args, opts }) {
   renameSync(join(top, r.dir), join(top, target));
   write(top, `${target}/request.md`, md);
   write(top, rec.path, recordText(rec));
-  return { body: [`Concluded ${name}: ${what}`], read: 'working tree', next: 'commit the archive move with the closing PR', notKnown: NOT_KNOWN };
+  return { body: [`Concluded ${name}: ${what}`], read, next: 'commit the archive move with the closing PR', notKnown };
 }
