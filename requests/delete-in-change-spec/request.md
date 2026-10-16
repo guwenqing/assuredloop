@@ -13,7 +13,9 @@ Tier: 2 · Status: open
 - The dialog in brief: DES-22 makes a lost ID a marker lint, and `--strict`
   fails on it, in every scope. So a change spec cannot delete its own
   paragraphs, and `removes:` counts only for `specs/`. The architect wrote
-  R1 and asked the owner to sign it.
+  R1 and asked the owner to sign it. The owner signed R1 in the chat with
+  the architect on 2026-10-16: "Yes I sign off". The architect transcribed
+  it; `presented` in the record says what the owner was shown.
 
 ## Organized requirement
 
@@ -21,6 +23,7 @@ Tier: 2 · Status: open
 
 ### R1 Deleting a paragraph of a change spec
 In an open request's change spec, deleting a paragraph is ordinary editing: `al check --strict` does not fail on it. An ID is still never used again. In `specs/`, a removal still needs `removes:`.
+Signed off: 2026-10-16 owner, origin/2026-10-16-signoff.md
 
 ## Decisions
 
