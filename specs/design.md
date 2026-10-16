@@ -81,7 +81,7 @@ Why: the owner keeps both a change's own documents and one current set
 (inputs 92, 104-108), and wants no design text outside the trace (input 109).
 A reader must find the current system without reading past changes (R1).
 
-<!-- DES-9 data serves:assuredloop-v4/R1 -->
+<!-- DES-9 data serves:assuredloop-v4/R1,adr-links/R1 -->
 
 | Set | Where | Holds | Changes how |
 |---|---|---|---|
@@ -89,7 +89,7 @@ A reader must find the current system without reading past changes (R1).
 | | `requests/<name>/request.md` | the dialog, the organized requirement (R1...), the sign-off line, decisions (D1...), task references, the outcome | the requirement is an editable draft until it is signed (section 6); signed versions, the dialog and the decisions are append only; task references and the outcome are updated |
 | | `requests/<name>/spec.md` | **the change spec**: the promises this change adds or changes, its design (the largest part), its plan, and its explanations | edited in the change's PRs |
 | Consolidated | `specs/*.md` | the system now: the promises and the lasting design, told apart by kind | a PR replaces paragraphs by hand |
-| | `specs/adr/` | the decisions; an ADR is superseded, never edited | a new ADR file |
+| | `specs/adr/` | the decisions; an ADR is superseded, never edited, but links may be added to its marker | a new ADR file, or links added to a marker |
 | Outputs | code, tests, `docs/` | the product and its user documents | normal PRs; traced from the change's record (input 112) |
 | Tool data | `.assuredloop/` | `config.yaml`, `schema.yaml`, `records/` | the developer's agent and `al` |
 
@@ -238,12 +238,14 @@ semantic coverage as "not checked".
   incomplete (only about 60% of commits named an issue, Rath et al., ICSE
   2018).
 
-<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,design-links/R1 -->
+<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,design-links/R1,adr-links/R1 -->
 
 **What the script checks** (no AI):
 - A paragraph with no ID: `not ok`. A promise or design paragraph with no kind
   or no link: a hint; under opt-in `--strict`, `not ok`. An adopted paragraph
   (section 5) gets no link hint while its text equals the captured text.
+- A proposed or accepted ADR with no `source` or no `decides` link: a hint;
+  under `--strict`, `not ok` (schema.md 5).
 - A link to an ID that does not exist: `not ok`. When another change removed
   the target, the link gets the hint "target removed" instead, and the open
   change aligns.
@@ -285,12 +287,13 @@ semantic coverage as "not checked".
   change.
 - The exit code is 0 by default, even when `not ok` lines print. Under
   `--strict`, the exit is 1 when any `not ok` prints. `--strict` raises only
-  the findings that need no judgment: no kind, no link, an invalid
-  disposition, and the marker lints. The hints that need judgment stay hints
-  under `--strict`: near match, "promise kind?", the typo mark, overlap,
-  stale base, a stale AI hint, an ADR that governs, a removed target, a
-  paragraph deleted from an open request's change spec, "which promise does
-  it keep?", and a `for` that names no task.
+  the findings that need no judgment: no kind, no link, an ADR with no
+  `source` or no `decides`, an invalid disposition, and the marker lints.
+  The hints that need judgment stay hints under `--strict`: near match,
+  "promise kind?", the typo mark, overlap, stale base, a stale AI hint, an
+  ADR that governs, a removed target, a paragraph deleted from an open
+  request's change spec, "which promise does it keep?", and a `for` that
+  names no task.
 
 <!-- DES-81 choice serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1 -->
 
