@@ -12,7 +12,17 @@ requirements:
     version: 1
     sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879
     title: Hints for design links and task references
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-16-signoff.md
+    sha256: 43779134ffe0dbdef917a4a73455e2af58836e4a8ccc4b3c185274e620f1ac75
+    signed: 2026-10-16T20:06Z
+    source: owner chat with the architect, 2026-10-16 about 20:05Z
+    words: Yes I sign off
+    presented: R1's heading 'R1 Hints for design links and task references' and its body, word for word as in request.md; the marker line was not shown. The same reply also covered delete-in-change-spec R1.
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879 }
 decisions:
   - id: D1
     date: 2026-10-16
