@@ -77,6 +77,11 @@ The export link MUST expire 30 minutes after the email is sent.
   `governed-by:<ADR>`; `for:<task>`. A promise, design or approach paragraph
   needs at least one link. In `specs/`, the ID of a change spec paragraph
   names its request: `invoice-exports/SP-12`.
+- An ADR in `specs/adr/` has one marker on its heading: `ADR-<n>`, its kind,
+  and its `decides:`, `source:` and `supersedes:` links. Under `--strict`,
+  `al check` asks each proposed or accepted ADR for `source:` and
+  `decides:`. You may add links to the marker of an accepted ADR. Change
+  nothing else in it: its ID, its kind, its old links and its text stay.
 - `al` writes every hash and every derived field. Do not write them by hand.
 
 ## Path 0: a fix

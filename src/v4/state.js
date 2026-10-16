@@ -33,6 +33,10 @@ function names(top, rev, dir, folders) {
 // The text after an ADR's Status line: what must not change once it is accepted.
 const adrBody = (text) => text.replace(/\r\n?/g, '\n').replace(/^\s*Status:[^\n]*\n?/, '').replace(/^\n+/, '');
 
+// The same with the line of the heading marker left out: what must not change
+// when links are added to that marker (schema.md 5).
+const adrRest = (text, head) => adrBody(text.replace(/\r\n?/g, '\n').split('\n').map((l, i) => (i === head.line - 1 ? '<!-- -->' : l)).join('\n'));
+
 // The settings of a commit: its own config.yaml and schema.yaml, with the
 // defaults of config.js when a file is absent or not a mapping.
 export function settingsAt(top, rev) {
@@ -143,7 +147,8 @@ export function loadState(top, rev = null) {
     const paragraphs = parseMarkdown(text, file, { kinds }).paragraphs;
     const id = `ADR-${Number(m[1])}`;
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
-    adrs.set(id, { id, file, status, body: adrBody(text), paragraphs, head: paragraphs.find((p) => p.id === id) ?? null });
+    const head = paragraphs.find((p) => p.id === id) ?? null;
+    adrs.set(id, { id, file, status, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head });
   }
   return { top, rev, config, kinds, root, get, scopes, lints, spec, requests, adrs };
 }

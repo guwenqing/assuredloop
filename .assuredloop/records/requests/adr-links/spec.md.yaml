@@ -39,7 +39,7 @@ paragraphs:
       - New
   - id: SP-7
     kind: approach
-    text_sha256: b6a86a1b0f8cdd6d8b7e73633cb3921311e17d18251ce76a26382cf892143b9c
+    text_sha256: fe8a867284acb61600f20ce63e75a443eab24ba45abee998f41b3cb7f679178f
     display: SP-7 (1:4, in Links added to an accepted ADR, and the missing links)
     change:
       - New
