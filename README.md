@@ -79,10 +79,10 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
   and the sign-offs, as snapshots with SHA-256), `request.md` (the dialog, the
   organized requirement R1…, the decisions D1…) and, from path 2, `spec.md`,
   the change spec, with IDs SP-1, SP-2… The order of its paragraphs is
-  free. The recommended order is one section per topic: the promise
-  paragraph first, then the design that keeps it, with its rationale and
-  examples, then its open points. Cross-cutting design and decisions
-  follow.
+  free. The recommended order is one section per topic. Each section has
+  the promise paragraph first, then the design that keeps it, with its
+  rationale and examples, then its open points. Cross-cutting design and
+  decisions follow.
 - **Records** in `.assuredloop/records/`, committed to git: one per request
   (its sources, requirement versions, sign-offs, decisions, tasks, the
   bindings of its links and the dispositions of its paragraphs) and one per
