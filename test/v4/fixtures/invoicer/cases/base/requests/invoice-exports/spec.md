@@ -33,17 +33,17 @@ A user MUST be able to download the invoices of one year as one ZIP file.
 
 ## Design
 
-<!-- SP-9 component serves:R2 -->
+<!-- SP-9 component serves:R2 builds-on:SP-6 -->
 
 The link service issues a one-time token for each export and stores the
 time at which the token expires.
 
-<!-- SP-10 data serves:R3 builds-on:EXP-3 -->
+<!-- SP-10 data serves:R3 builds-on:EXP-3,SP-7 -->
 
 A yearly ZIP holds twelve monthly CSV files named YYYY-MM.csv, each in the
 format of a monthly export.
 
-<!-- SP-11 interface serves:R3 -->
+<!-- SP-11 interface serves:R3 builds-on:SP-7 -->
 
 The worker serves `GET /exports/{year}.zip` and answers 404 for a year with
 no invoices.
