@@ -66,7 +66,9 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
 
   GitHub does not show the marker. The ID is one flat number per file, and
   it is never used again. `al` computes a display number, for example
-  `INV-41 (2.3:4, in Export links)`, which can change when text moves.
+  `INV-41 (2.3:4, in Export links)`, which can change when text moves. So
+  a heading needs no number of its own: write `## The proxy`, not
+  `## 7. The proxy`.
 - **Kinds.** Promise kinds (purpose, scope, rule, limit, definition): a
   change needs a signed requirement that covers it. Design kinds (component,
   interface, data, flow, choice) and `approach` (how one change is built):
@@ -76,7 +78,11 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
 - **A request** is the folder `requests/<name>/`: `origin/` (the owner's words
   and the sign-offs, as snapshots with SHA-256), `request.md` (the dialog, the
   organized requirement R1…, the decisions D1…) and, from path 2, `spec.md`,
-  the change spec, with IDs SP-1, SP-2…
+  the change spec, with IDs SP-1, SP-2… The order of its paragraphs is
+  free. The recommended order is one section per topic: the promise
+  paragraph first, then the design that keeps it, with its rationale and
+  examples, then its open points. Cross-cutting design and decisions
+  follow.
 - **Records** in `.assuredloop/records/`, committed to git: one per request
   (its sources, requirement versions, sign-offs, decisions, tasks, the
   bindings of its links and the dispositions of its paragraphs) and one per
