@@ -171,11 +171,13 @@ lines. The check flags a marker with no blank line after it.
   interface, data, flow, choice) is consolidated. Why: the OpenSpec replay
   found delivered design that belongs to its change only (validation.md B8).
 
-<!-- DES-16 definition serves:assuredloop-v4/R2,assuredloop-v4/R8 -->
+<!-- DES-16 definition serves:assuredloop-v4/R2,assuredloop-v4/R8,design-links/R1 -->
 
 **Links:**
 - `serves R<n>`: a promise or design paragraph, to the requirement;
-- `builds on <ID>` or `changes <ID>`: to a consolidated paragraph;
+- `builds on <ID>` or `changes <ID>`: to a consolidated paragraph. In a
+  change spec, `builds on` may also name a promise paragraph of the same
+  change spec, from the design that keeps it;
 - `removes <ID>`: a change declares that it removes a spec paragraph (see
   section 5 for promise kinds);
 - `for <task>`: optional, for a project that uses tasks;
@@ -236,7 +238,7 @@ semantic coverage as "not checked".
   incomplete (only about 60% of commits named an issue, Rath et al., ICSE
   2018).
 
-<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1 -->
+<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,design-links/R1 -->
 
 **What the script checks** (no AI):
 - A paragraph with no ID: `not ok`. A promise or design paragraph with no kind
@@ -272,6 +274,13 @@ semantic coverage as "not checked".
 - A change paragraph whose text is close to an existing spec paragraph, with
   no `changes` or `builds on` link to it: the hint "does this change
   INV-12?".
+- A design or `approach` paragraph in a change spec that serves a
+  requirement, when promise paragraphs of the same change spec serve that
+  requirement and it has no `builds on` or `changes` link to one of them:
+  the hint "which promise does it keep?". Why: else the records cannot
+  say which design keeps which promise (issue #229).
+- Where the project uses tasks: a `for <task>` that names no task in the
+  record: a hint.
 - A change of kind from a promise kind to any other kind counts as a promise
   change.
 - The exit code is 0 by default, even when `not ok` lines print. Under
@@ -279,8 +288,9 @@ semantic coverage as "not checked".
   the findings that need no judgment: no kind, no link, an invalid
   disposition, and the marker lints. The hints that need judgment stay hints
   under `--strict`: near match, "promise kind?", the typo mark, overlap,
-  stale base, a stale AI hint, an ADR that governs, a removed target, and a
-  paragraph deleted from an open request's change spec.
+  stale base, a stale AI hint, an ADR that governs, a removed target, a
+  paragraph deleted from an open request's change spec, "which promise does
+  it keep?", and a `for` that names no task.
 
 <!-- DES-81 choice serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1 -->
 
@@ -306,7 +316,7 @@ Why: the change's design must honor "the existing consolidated design"
 input 25). A link is only useful if it remembers what the target said when
 the link was made.
 
-<!-- DES-26 rule serves:assuredloop-v4/R6 -->
+<!-- DES-26 rule serves:assuredloop-v4/R6,design-links/R1 -->
 
 - A change paragraph that relies on a spec paragraph says `builds on <ID>`.
   One that replaces it says `changes <ID>`. It holds no copy of the old text.
@@ -335,7 +345,8 @@ the link was made.
 - Two open changes that both `change` the same spec ID get a hint on both.
   The script sees only declared `changes` links; the near-match hint (section
   3) helps where a link is missing. `al context <ID>` shows the open changes
-  that build on or change it.
+  that build on or change it, and the paragraphs that build on, explain or
+  illustrate it.
 - The change that holds a stale link aligns it. The PR that changes the
   target gets an information hint that lists the open changes linking to it;
   it is not blocked.

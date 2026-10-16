@@ -144,7 +144,11 @@ The export link MUST expire 30 minutes after the email is sent.
    `al spec --add-ids requests/<name>/spec.md --yes` for the IDs (SP-1,
    SP-2…), then write the kinds and links. A paragraph that relies on a spec
    paragraph says `builds-on:<ID>`. One that replaces it says `changes:<ID>`.
-   One that removes it says `removes:<ID>`. Never copy the old text.
+   One that removes it says `removes:<ID>`. Never copy the old text. A
+   design or approach paragraph that keeps a promise paragraph of this
+   change spec says `builds-on:SP-n`. `al check` gives a hint when it serves
+   a requirement and links to none of that requirement's promise
+   paragraphs here.
 3. Snapshot each later word of the owner that you rely on:
    `al record <name> origin --url <where> --from - --yes`. Record each later
    decision: `al record <name> decision --source <who> --text "<it>" --yes`.
