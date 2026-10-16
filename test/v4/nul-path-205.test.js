@@ -220,6 +220,8 @@ const PINNED = {
       'hint no-link specs/invoices.md:5 INV-12 INV-12 is a data paragraph with no link',
       'hint no-link specs/invoices.md:9 INV-13 INV-13 is a rule paragraph with no link',
       'hint no-link specs/invoices.md:13 INV-41 INV-41 is a rule paragraph with no link',
+      // #234: baseProject's ADR-3 has no links, like the paragraphs above.
+      'hint adr-links specs/adr/0003-signed-links.md:3 ADR-3 ADR-3 has no source: and no decides:; add the links to its marker',
       'info result .assuredloop/results/clean.yaml test/invoices.test.js pass at {central:Test INV-13:7}: declared inputs unchanged since {central:Test INV-13:7} (that they are complete is a claim)',
       'info result .assuredloop/results/nul.yaml test/invoices.test.js pass at {central:Test INV-13:7}: applicability unknown: the declared input test/invoices.test.js\\x00 is not there',
       'Read      working tree · base {central:base:7} (merge-base with main)',
