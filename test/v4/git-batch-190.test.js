@@ -15,7 +15,9 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as gitjs from '../../src/v4/git.js';
 import { makeRepo } from './helpers/repo.js';
-import { project, write, writeYaml, commitAll, git as pgit, al, show, newRequest, tree, baseProject } from './helpers/project.js';
+import {
+  project, write, writeYaml, commitAll, git as pgit, al, show, newRequest, tree, baseProject, writeConfig, doc, WORDS_FILE,
+} from './helpers/project.js';
 import { buildWorld, run as runSearch, show as showSearch } from './helpers/search.js';
 
 const GIT_JS = fileURLToPath(new URL('../../src/v4/git.js', import.meta.url));
@@ -515,7 +517,9 @@ describe('al-v4 check and al-v4 index start about as many git processes for 60 a
 // The state of the base (#184, src/v4/state.js): each request's request.md and
 // record, and each ADR, at the merge-base. `al-v4 check` and `al-v4 context`
 // read it. A repo with n requests (al-v4 new) and n ADRs on main, then a branch.
-const adrText = (i) => `Status: accepted\n\n<!-- ADR-${i} choice -->\n\n# ADR-${i}: Choice ${i}\n\n<!-- ADR-${i}-1 rationale -->\n\nContext: reason ${i}.\n`;
+// ADR-i decides CH-i of specs/choices.md, and its source is the owner's words of
+// request ri, so that each ADR has its links (#234) and the check stays clean.
+const adrText = (i) => `Status: accepted\n\n<!-- ADR-${i} choice decides:CH-${i} source:r${i}/${WORDS_FILE} -->\n\n# ADR-${i}: Choice ${i}\n\n<!-- ADR-${i}-1 rationale -->\n\nContext: reason ${i}.\n`;
 const adrFile = (i) => `specs/adr/${String(i).padStart(4, '0')}-choice-${i}.md`;
 
 describe('al-v4 check and al-v4 context read the state of the base with about as many git processes for 60 requests as for 5', () => {
@@ -529,6 +533,8 @@ describe('al-v4 check and al-v4 context read the state of the base with about as
       write(dir, 'README.md', 'fixture\n');
       commitAll(dir, 'initial');
       for (let i = 1; i <= n; i++) newRequest(dir, `r${i}`);
+      writeConfig(dir, [{ file: 'specs/choices.md', prefix: 'CH' }]);
+      write(dir, 'specs/choices.md', doc(Array.from({ length: n }, (_, k) => [`CH-${k + 1} note`, `Choice ${k + 1} holds.`])));
       for (let i = 1; i <= n; i++) write(dir, adrFile(i), adrText(i));
       commitAll(dir, `${n} requests and ${n} ADRs`);
       pgit(dir, 'checkout', '-q', '-b', 'feature');

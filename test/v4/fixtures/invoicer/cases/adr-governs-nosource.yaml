@@ -1,0 +1,23 @@
+# #234 R1: the PR of adr-governs arm decided (EXP-6, which the accepted ADR-4
+# decides, is reworded), but ADR-4 has no source: link on main.
+title: Reword an export-link paragraph
+base: adr-governs-nosource-pre
+claim: "Tier: 1d — link-wording"
+steps:
+  # al-v4 new refuses --tier 1d (see d13.yaml).
+  - al: [new, link-wording, --from, '-', --title, Link wording]
+    date: 2026-07-26
+    input: |
+      the link paragraphs read badly, tidy the wording.
+  - archive: link-wording
+  - edit:
+      file: specs/exports.md
+      from: |-
+        The link service issues a one-time token for each export and stores the
+        time at which the token expires.
+      to: |-
+        The link service issues one one-time token for each export and stores the
+        time at which that token expires.
+after:
+  - index: true
+    date: 2026-07-26

@@ -181,7 +181,10 @@ central: {path: ../invoicer}    # in an output repo: the central repo
 ADRs are `specs/adr/NNNN-<slug>.md`, with `Status: proposed`, `accepted` or
 `superseded` on the first line. The heading's marker holds `ADR-<n>` and its
 `decides:`, `source:` and `supersedes:` links. The text of an accepted ADR
-does not change; a new ADR supersedes it.
+does not change; a new ADR supersedes it. You may add links to the marker of
+an accepted ADR when nothing else changes: keep its ID, its kind and each old
+link. `al check` gives a hint for a proposed or accepted ADR with no
+`source:` or no `decides:`; under `--strict`, it is `not ok`.
 
 ## Search
 
@@ -276,7 +279,7 @@ those commits. To move:
 | The tool checks | The skill asks | The owner decides |
 |---|---|---|
 | `al conclude` refuses on its three conditions (see "The close rule") | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
-| IDs: missing, used twice, lost, used again; kinds and links; links that do not resolve; sign-off coverage of promise changes; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task, as hints | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
+| IDs: missing, used twice, lost, used again; kinds and links; links that do not resolve; sign-off coverage of promise changes; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task, as hints | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
 | `check --strict` exits 1 on a `not ok`, when a project opts in | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
 
 `al` checks that declarations are well formed and that references resolve.

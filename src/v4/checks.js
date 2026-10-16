@@ -353,12 +353,20 @@ export function checks(top, { base, strict = false }) {
     if (pending.length) add('info', 'disposition-pending', r.specFile, r.name, `${pending.length} of ${judged.length} paragraphs with a baseline effect have no disposition for their current version: ${pending.join(', ')}`);
   }
 
-  // ADRs (schema.md 5).
+  // ADRs (schema.md 5). Links may be added to the heading marker of an
+  // accepted ADR: the same kind, each old link kept, the rest unchanged.
+  const linksAdded = (a, h) => a.status === 'accepted' && a.head && h.head && a.rest === h.rest && a.head.kind === h.head.kind
+    && Object.entries(a.head.links).every(([k, refs]) => refs.every((x) => h.head.links[k].includes(x)));
   for (const [id, a] of was?.adrs ?? []) {
     if (!['accepted', 'superseded'].includes(a.status)) continue;
     const h = now.adrs.get(id);
     if (!h) add('not ok', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone; an ADR is superseded, never edited or deleted`);
-    else if (h.body !== a.body) add('not ok', 'adr-changed', h.head ?? h.file, id, `the text of ${id} changed after it was accepted; write a new ADR that supersedes it`);
+    else if (h.body !== a.body && !linksAdded(a, h)) add('not ok', 'adr-changed', h.head ?? h.file, id, `the text of ${id} changed after it was accepted; write a new ADR that supersedes it`);
+  }
+  for (const a of now.adrs.values()) {
+    if (!['proposed', 'accepted'].includes(a.status)) continue;
+    const missing = ['source', 'decides'].filter((w) => !a.head?.links[w].length);
+    if (missing.length) add(strict ? 'not ok' : 'hint', 'adr-links', a.head ?? a.file, a.id, `${a.id} has ${missing.map((w) => `no ${w}:`).join(' and ')}; add the links to its marker`);
   }
   for (const a of now.adrs.values()) {
     for (const old of a.head?.links.supersedes ?? []) {
