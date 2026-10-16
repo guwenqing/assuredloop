@@ -1,0 +1,69 @@
+schema: assuredloop/1
+request: adr-links
+tier: "2"
+status: open
+sources:
+  - file: 2026-10-16-owner-words.md
+    kind: owner-words
+    sha256: 020bae6a9687124dba163ce652a7ddf51993ab1c0ddcc1c0c0e4bcfab48c90c1
+    taken: 2026-10-16T20:51Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644
+    title: Trace links on ADRs
+signoff: []
+decisions:
+  - id: D1
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: '"Nothing else changes" means: the same ID and kind, every old link still there with the same target, only new links added, and the text below the marker unchanged as `adrBody` compares it today. A changed or removed link stays `adr-changed`.'
+    sha256: d7d5117d73a8c2d992750065fe25056691add2cec8ae3382e568ceca100368d7
+  - id: D2
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: "A superseded ADR gets no missing-link hint: it is history."
+    sha256: a72c45b467477ec319bbca7642813318e6c0e3f8cc19c67a67720897fb5b67cd
+  - id: D3
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: "No config setting. The missing-link finding follows the existing pattern for a paragraph with no link: a hint by default, `not ok` under `--strict`."
+    sha256: bb6801e36f57868c06ed72849d941305bb1c0c35daf771d032a2bdd5abb6364b
+  - id: D4
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: The review view is the one `al context --for review` gives. Where it names an ADR (for example "check that ADR-3 still holds"), it says that the ADR has no `source:` when that is so. Nothing else is added to it.
+    sha256: d1cc2edcee0065411e510ec9b88ee49a78ad9ecb958d36f949c26e468b4207f6
+  - id: D5
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: "Design paragraphs are out: in this model a design paragraph has no `source:` link, and its authority is the signed requirement it serves. Write that as an Out: line in the request."
+    sha256: 9b5edab048b0b15f984af15a952ee164752263b3c08d3671caf1feb2ec747d48
+  - id: D6
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: "Docs: the README and the skill say that links can be added to an accepted ADR, and that `--strict` asks each proposed or accepted ADR for `source:` and `decides:`. Release notes will say that a project with ADRs that lack them fails `--strict` until it adds them."
+    sha256: 9c2a0fea8db3a02ae09d335abdc42cce34e9bd1ab65a08dfe17b237bbb3d8c86
+  - id: D7
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: In the PR body, say what SCH-22, DES-22 and any other changed paragraph said before and after.
+    sha256: 9ee99502b7ac2bb0d8186ed072685fe3551d335ab3e6ca8790d31f42e78f8cb7
+tasks: []
+bindings:
+  - { holder: adr-links/R1, link: from, target: adr-links/2026-10-16-owner-words.md, holder_sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644, target_sha256: 020bae6a9687124dba163ce652a7ddf51993ab1c0ddcc1c0c0e4bcfab48c90c1 }
+  - { holder: adr-links/SP-4, link: serves, target: adr-links/R1, holder_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4, target_sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644, target_version: 1 }
+  - { holder: adr-links/SP-4, link: changes, target: SCH-22, holder_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4, target_sha256: f1af7191ac519eb21a6feaba089af474369ce5801dde1b2edc179108603c8357 }
+  - { holder: adr-links/SP-5, link: serves, target: adr-links/R1, holder_sha256: 346d2f9458bc46b098f28e357e71124d1d05f7701e74854872e946ce11f3717f, target_sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644, target_version: 1 }
+  - { holder: adr-links/SP-5, link: builds-on, target: adr-links/SP-4, holder_sha256: 346d2f9458bc46b098f28e357e71124d1d05f7701e74854872e946ce11f3717f, target_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4 }
+  - { holder: adr-links/SP-6, link: serves, target: adr-links/R1, holder_sha256: 4a115cf8844bda087f85c5184180a58049966fcb665777a75881096f1e021727, target_sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644, target_version: 1 }
+  - { holder: adr-links/SP-6, link: builds-on, target: adr-links/SP-4, holder_sha256: 4a115cf8844bda087f85c5184180a58049966fcb665777a75881096f1e021727, target_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4 }
+  - { holder: adr-links/SP-6, link: builds-on, target: adr-links/SP-9, holder_sha256: 4a115cf8844bda087f85c5184180a58049966fcb665777a75881096f1e021727, target_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341 }
+  - { holder: adr-links/SP-7, link: serves, target: adr-links/R1, holder_sha256: b6a86a1b0f8cdd6d8b7e73633cb3921311e17d18251ce76a26382cf892143b9c, target_sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644, target_version: 1 }
+  - { holder: adr-links/SP-7, link: builds-on, target: adr-links/SP-4, holder_sha256: b6a86a1b0f8cdd6d8b7e73633cb3921311e17d18251ce76a26382cf892143b9c, target_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4 }
+  - { holder: adr-links/SP-9, link: serves, target: adr-links/R1, holder_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341, target_sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644, target_version: 1 }
+  - { holder: adr-links/SP-9, link: changes, target: DES-22, holder_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341, target_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d }
+  - { holder: adr-links/SP-11, link: serves, target: adr-links/R1, holder_sha256: c0269d4e11ffeebf119fad012b628080497447e10f0447c853083aebf25c06d5, target_sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644, target_version: 1 }
+  - { holder: adr-links/SP-11, link: builds-on, target: adr-links/SP-4, holder_sha256: c0269d4e11ffeebf119fad012b628080497447e10f0447c853083aebf25c06d5, target_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4 }
+  - { holder: adr-links/SP-11, link: changes, target: DES-9, holder_sha256: c0269d4e11ffeebf119fad012b628080497447e10f0447c853083aebf25c06d5, target_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38 }
+dispositions: []
