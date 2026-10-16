@@ -256,6 +256,47 @@ export function checks(top, { base, strict = false }) {
     }
   }
 
+  // Design links (design.md 3): a design or approach paragraph of a change
+  // spec that serves a requirement, where promise paragraphs of the same
+  // change spec serve it, and that builds on or changes none of them.
+  for (const r of open) {
+    const own = new Set(r.paras.keys());
+    const key = (ref) => qualify(ref, r.name, own).key;
+    const promises = new Map();
+    for (const p of r.paras.values()) {
+      if (!promise(p.kind)) continue;
+      for (const k of new Set(p.links.serves.map(key))) {
+        if (!promises.has(k)) promises.set(k, []);
+        promises.get(k).push(p.id);
+      }
+    }
+    if (!promises.size) continue;
+    for (const p of r.paras.values()) {
+      if (groupOf(p.kind, now.kinds) !== 'design') continue;
+      const linked = new Set([...p.links.buildsOn, ...p.links.changes].map(key));
+      for (const k of new Set(p.links.serves.map(key))) {
+        const ids = promises.get(k);
+        if (!ids || ids.some((id) => linked.has(`${r.name}/${id}`))) continue;
+        add('hint', 'design-link', p, `${r.name}/${p.id}`, `serves ${k}, but links to none of its promise paragraphs in this change spec (${ids.join(', ')}): which promise does it keep?`);
+      }
+    }
+  }
+
+  // Task references (design.md 8): where the project uses tasks, a `for:`
+  // that names no task in the record. A bare task is the paragraph's own
+  // request's. The records are read only when an open change spec has a `for:`.
+  const tasksOf = (r) => (Array.isArray(r?.data?.tasks) ? r.data.tasks : []);
+  const fors = open.flatMap((r) => [...r.paras.values()].flatMap((p) => p.links.for.map((ref) => ({ r, p, ref }))));
+  if (fors.length && [...now.requests.values()].some((r) => tasksOf(r).length)) {
+    for (const { r, p, ref } of fors) {
+      if (ref.includes(':')) continue;
+      const slash = ref.indexOf('/');
+      const [name, id] = slash > 0 ? [ref.slice(0, slash), ref.slice(slash + 1)] : [r.name, ref];
+      if (tasksOf(now.requests.get(name)).some((x) => String(x?.id) === id)) continue;
+      add('hint', 'unknown-task', p, `${r.name}/${p.id}`, `for:${ref}: no task ${id} in the record of ${name}`);
+    }
+  }
+
   // Bindings whose target changed since they were bound (design.md 4, 6).
   for (const r of open) {
     for (const b of Array.isArray(r.data?.bindings) ? r.data.bindings : []) {

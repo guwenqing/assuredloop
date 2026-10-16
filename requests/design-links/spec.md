@@ -48,6 +48,13 @@ promise paragraph first, then the design that keeps it.
   base, absent at the head in every doc of its scope, and named by no
   `removes:`. An ID used again is absent at the base but was used in an
   earlier commit.
+- In an open request's change spec, deleting a paragraph is ordinary
+  editing. Its lost ID is a hint that names the deletion, and each
+  disposition or wording decision of the request that names the ID. When the
+  deletion is on purpose, nothing more is needed: the ID is retired and never
+  used again. A marker removed by accident, with its text kept, still leaves
+  a paragraph with no ID, which is `not ok`. In `specs/` and in an archived
+  change spec, a lost ID is `not ok`.
 - A per-paragraph hash list, from which the script derives each paragraph's
   change in the PR: Changed, Moved, New or Removed.
 - A non-promise kind whose text holds requirement words (MUST, SHALL, MUST
@@ -72,8 +79,9 @@ promise paragraph first, then the design that keeps it.
   the findings that need no judgment: no kind, no link, an invalid
   disposition, and the marker lints. The hints that need judgment stay hints
   under `--strict`: near match, "promise kind?", the typo mark, overlap,
-  stale base, a stale AI hint, an ADR that governs, a removed target,
-  "which promise does it keep?", and a `for` that names no task.
+  stale base, a stale AI hint, an ADR that governs, a removed target, a
+  paragraph deleted from an open request's change spec, "which promise does
+  it keep?", and a `for` that names no task.
 
 <!-- SP-7 approach serves:R1 builds-on:SP-6 -->
 

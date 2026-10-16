@@ -33,7 +33,7 @@ paragraphs:
       - New
   - id: SP-6
     kind: rule
-    text_sha256: b9526073656c850d2fd4d9fb51623744a2e5578e82b2102e70bcb25d3ef31e89
+    text_sha256: 32b2ecfbdda4c25339bb25fcd91a8880219c6a4e58762c572be9a50770342628
     display: SP-6 (2:1, in The two hints)
     change:
       - New
