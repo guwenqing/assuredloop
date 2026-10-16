@@ -22,7 +22,17 @@ requirements:
     version: 1
     sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33
     title: Deleting a paragraph of a change spec
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-16-signoff.md
+    sha256: e8e7fa2958b23b111a8e684be19d241afd3be61d03fa27591bf689be7e55dc49
+    signed: 2026-10-16T20:06Z
+    source: owner chat with the architect, 2026-10-16 about 20:05Z
+    words: Yes I sign off
+    presented: R1's heading 'R1 Deleting a paragraph of a change spec' and its body, word for word as in request.md; not the section's marker line. The same reply also covered design-links R1.
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33 }
 decisions:
   - id: D1
     date: 2026-10-16
