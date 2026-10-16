@@ -4,7 +4,10 @@
 // checks that read records (T10, checks.js). The base is the merge-base of
 // HEAD with main; the head is the working tree. It exits 0; with --strict, 1
 // when it prints a `not ok`. --strict raises every marker lint and an invalid
-// disposition to `not ok`; the hints that need judgment stay hints.
+// disposition to `not ok`; the hints that need judgment stay hints. A lost ID
+// of an open request's change spec is a hint, also under --strict (#230).
+import { parse as parseYaml } from 'yaml';
+import { read, recordPath } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { mergeBase } from './git.js';
 import { diffParagraphs, idLints } from './ids.js';
@@ -34,7 +37,7 @@ export function check({ top, opts }) {
       lints.push(...idLints(head, head));
       continue;
     }
-    lints.push(...idLints(before, head, { everUsed: used.get(scope) ?? [], removes: scope === SPEC ? removes : [] }));
+    lints.push(...idLints(before, head, { everUsed: used.get(scope) ?? [], removes: scope === SPEC ? removes : [] }).map((l) => deleted(top, l)));
     changes.push(...diffParagraphs(before, head).filter((c) => c.changes.length));
   }
 
@@ -43,7 +46,7 @@ export function check({ top, opts }) {
   const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/')));
   lints.length = 0;
   lints.push(...shown);
-  const severity = (l) => (opts.strict ? 'not ok' : l.severity);
+  const severity = (l) => (opts.strict && !l.staysHint ? 'not ok' : l.severity);
   const body = notRead(top, config);
   // A root that config sets but that is not read is a not ok, as in al index (#218).
   const rootLine = rootNotOk(top, config);
@@ -53,7 +56,7 @@ export function check({ top, opts }) {
   if (!lints.length) body.push('ok: no marker lint');
   body.push(...t10.findings.map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}`));
   // Under --strict every marker lint is a not ok.
-  const notOk = Boolean(rootLine) || lints.length > 0 || t10.findings.some((f) => f.severity === 'not ok');
+  const notOk = Boolean(rootLine) || lints.some((l) => severity(l) === 'not ok') || t10.findings.some((f) => f.severity === 'not ok');
   // In an output repo: the central IDs that the branch's changed files cite (T12).
   const central = centralLookup(top);
   body.push(...central.body);
@@ -69,6 +72,31 @@ export function check({ top, opts }) {
     notKnown,
     exit: opts.strict && notOk ? 1 : 0,
   };
+}
+
+// A lost ID of an open request's change spec (its file at the base is
+// requests/<name>/spec.md): deleting a paragraph there is ordinary editing,
+// so it is a hint that names the deletion and each disposition or wording
+// decision of the request's record that names the ID (#230, D1-D4).
+const OPEN_SPEC = /^requests\/(?!archive\/)([^/]+)\/spec\.md$/;
+function deleted(top, l) {
+  const name = l.code === 'lost-id' && OPEN_SPEC.exec(l.file)?.[1];
+  if (!name) return l;
+  const source = `${name}/${l.id}`;
+  let rec;
+  try {
+    rec = parseYaml(read(top, recordPath(name)) ?? 'null');
+  } catch {
+    rec = null;
+  }
+  const list = (x) => (Array.isArray(x) ? x : []);
+  const says = { incorporated: (d) => `incorporated as ${d.spec}`, removed: (d) => `removed ${d.spec}`, superseded: (d) => `superseded by ${d.by}` };
+  const facts = [
+    ...list(rec?.dispositions).filter((d) => d?.source === source && says[d.disposition]).map((d) => `its disposition says ${says[d.disposition](d)}`),
+    ...list(rec?.decisions).filter((d) => d?.wording?.source === source).map((d) => `decision ${d.id} names its wording`),
+  ];
+  const message = `${source} is deleted${facts.map((f) => `; ${f}`).join('')}. If that is on purpose, nothing more is needed: the ID is retired and never used again.`;
+  return { ...l, severity: 'hint', staysHint: true, message };
 }
 
 // The Next line names what to do for what printed: a not ok, a hint, both, or
