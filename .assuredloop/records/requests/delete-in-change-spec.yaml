@@ -62,4 +62,6 @@ decisions:
 tasks: []
 bindings:
   - { holder: delete-in-change-spec/R1, link: from, target: delete-in-change-spec/2026-10-16-github-com-guwenqing-assuredloop-issues-230.md, holder_sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33, target_sha256: 865be3272dcb18ac5c448c1ec49350af9e303749e1203c58855ad9b998eec044 }
+  - { holder: delete-in-change-spec/SP-3, link: serves, target: delete-in-change-spec/R1, holder_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, target_sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33, target_version: 1 }
+  - { holder: delete-in-change-spec/SP-3, link: changes, target: DES-22, holder_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, target_sha256: cbad1e310478b928cee8225c35c2a48bc4b5a9ef0e3c14924a98994389b2b500 }
 dispositions: []
