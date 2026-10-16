@@ -1,0 +1,112 @@
+# #234 R1: links added to an accepted ADR's marker, and ADRs with missing
+# links. On main (adr-links-pre): ADR-1 has no decides:, ADR-2 has no
+# source:, the superseded ADR-3 has no link, the proposed ADR-5 has no link.
+# Arm untouched: the PR changes no ADR.
+# Arms with links added only: word (source: added after decides:), order
+# (source: added before decides:), target (EXP-4 added to decides:), status
+# (ADR-2 becomes superseded and gets source:).
+# Arm superseded: only ADR-2's Status line changes, to superseded.
+# Arms that stay adr-changed: removed (ADR-4 loses the EXP-6 target), swapped
+# (ADR-1's source: becomes decides:), retarget (ADR-2's EXP-2 becomes EXP-4),
+# kind (ADR-2 choice becomes rule, and gets source:), text (ADR-2 gets
+# source: and one word of its decision changes), para (a link added to the
+# marker of ADR-2-2), frozen (the superseded ADR-3 gets a source: link).
+# Arm proposed: the proposed ADR-5 gets source: and its text changes.
+title: Add trace links to ADRs
+base: adr-links-pre
+claim: "Tier: 2 — invoice-exports"
+arms:
+  untouched: {}
+  word:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+  order:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 -->"
+          to: "<!-- ADR-2 choice source:invoice-exports/S1 decides:EXP-2 -->"
+  target:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2,EXP-4 -->"
+  status:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n"
+          to: "Status: superseded\n"
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+  superseded:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n"
+          to: "Status: superseded\n"
+  removed:
+    steps:
+      - edit:
+          file: specs/adr/0004-one-time-tokens.md
+          from: "<!-- ADR-4 choice decides:EXP-4,EXP-6 source:invoice-exports/D2 supersedes:ADR-3 -->"
+          to: "<!-- ADR-4 choice decides:EXP-4 source:invoice-exports/D2 supersedes:ADR-3 -->"
+  swapped:
+    steps:
+      - edit:
+          file: specs/adr/0001-gap-free-numbers.md
+          from: "<!-- ADR-1 choice source:invoice-numbers/S1 -->"
+          to: "<!-- ADR-1 choice decides:INV-13 -->"
+  retarget:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 -->"
+          to: "<!-- ADR-2 choice decides:EXP-4 -->"
+  kind:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 -->"
+          to: "<!-- ADR-2 rule decides:EXP-2 source:invoice-exports/S1 -->"
+  text:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "UTF-8, comma separated"
+          to: "UTF-8, comma delimited"
+  para:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2-2 rationale -->"
+          to: "<!-- ADR-2-2 rationale source:invoice-exports/S1 -->"
+  frozen:
+    steps:
+      - edit:
+          file: specs/adr/0003-signed-urls.md
+          from: "<!-- ADR-3 choice -->"
+          to: "<!-- ADR-3 choice source:invoice-exports/D1 -->"
+  proposed:
+    steps:
+      - edit:
+          file: specs/adr/0005-pdf-invoices.md
+          from: "<!-- ADR-5 choice -->"
+          to: "<!-- ADR-5 choice source:invoice-exports/S1 -->"
+      - edit:
+          file: specs/adr/0005-pdf-invoices.md
+          from: "carries the invoice as one PDF file."
+          to: "carries the invoice as one PDF/A file."
+after:
+  - index: true
+    date: 2026-07-25
