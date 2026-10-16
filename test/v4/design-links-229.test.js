@@ -21,7 +21,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { check } from './helpers/invoicer.js';
 import {
-  WORDS_FILE, appendSection, baseProject, commitAll, doc, editFile, editRecord, git, index, move, newRequest, ok,
+  INVOICES, WORDS_FILE, appendSection, baseProject, commitAll, doc, editFile, editRecord, git, index, move, newRequest, ok,
   organized, project, read, req, write, writeConfig,
 } from './helpers/project.js';
 import { lines, show, view, word } from './helpers/views.js';
@@ -455,4 +455,81 @@ test('context INV-12 --at <main>: reads that commit, where no paragraph links to
   const main = git(dir, 'rev-parse', 'main');
   assert.deepEqual(linked(view(dir, ['context', 'INV-12', '--at', main])), NONE);
   assert.ok(linked(view(dir, ['context', 'INV-12', '--at', 'HEAD'])).includes('INV-70 explains it'));
+});
+
+// --- a central repo: central:X means this repo's own X (DES-69)
+//
+// The central repo lists one output repo (a sibling clone) in its config, so
+// it is the central repo. specs/ gets INV-70 to INV-73; x's change spec links
+// with central: IDs. Review of PR #233.
+function centralWorld(t) {
+  const output = project(t);
+  write(output, 'README.md', '# An output repository\n');
+  commitAll(output, 'The output base');
+  const dir = project(t);
+  writeConfig(dir, [{ file: SPEC, prefix: 'INV' }], {
+    repo: 'invoicer',
+    outputs: [{ name: 'invoicer-worker', path: `../${output.split('/').at(-1)}`, commit: 'HEAD' }],
+  });
+  write(dir, SPEC, INVOICES);
+  commitAll(dir, 'base');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  addToSpec(dir, [
+    ['INV-70 component builds-on:central:INV-12', 'The invoice store keeps each invoice as one row.'],
+    ['INV-71 rationale explains:central:INV-12', 'The paid date tells the export which month an invoice is in.'],
+    ['INV-72 example illustrates:central:INV-12', 'Invoice 2026-0042 for ACME, two lines, total 120.00, paid 2026-04-30.'],
+    ['INV-73 rationale explains:INV-12', 'The total is stored so that no export computes it again.'],
+  ]);
+  request(dir, 'x', [R1], [
+    ['SP-1 rule serves:R1', 'An export MUST hold the invoices of one calendar month.'],
+    ['SP-2 component serves:R1 builds-on:central:x/SP-1', 'The month reader loads the invoices of the month.'],
+    ['SP-3 rationale explains:SP-1', 'Owners close their books by month.'],
+    ['SP-4 component serves:R1', 'The export queue runs one export at a time.'],
+    ['SP-5 rationale builds-on:central:INV-12', 'The month of an invoice is the month of its paid date.'],
+    ['SP-6 step for:central:x/T1', 'Build the month reader.'],
+    ['SP-7 step for:central:x/T9', 'Build the CSV writer.'],
+    ['SP-8 step for:T9', 'Ship the export page.'],
+  ]);
+  index(dir);
+  editRecord(dir, 'x', (rec) => { rec.tasks = [{ id: 'T1', ref: 'tasks.md T1', delivers: ['R1'] }]; });
+  index(dir);
+  commitAll(dir, `x\n\n${claim('x')}`);
+  return dir;
+}
+
+test('central repo: context INV-12 lists builds-on, explains and illustrates links written central:INV-12, beside a plain explains:INV-12', (t) => {
+  const r = view(centralWorld(t), ['context', 'INV-12']);
+  assert.deepEqual(linked(r), [
+    'INV-70 builds on it', 'INV-71 explains it', 'INV-72 illustrates it', 'INV-73 explains it', 'x/SP-5 builds on it',
+  ].sort(), show(r));
+});
+
+test('central repo: the Open line of INV-12 lists x/SP-5, which builds on central:INV-12 (a guard: the link resolves)', (t) => {
+  const r = view(centralWorld(t), ['context', 'INV-12']);
+  const open = lines(r).filter((l) => l.startsWith('Open      '));
+  assert.equal(open.length, 1, show(r));
+  assert.ok(open[0].includes('x/SP-5 builds on it'), show(r));
+});
+
+test('central repo: context x/SP-1 lists x/SP-2, which builds on central:x/SP-1, beside x/SP-3 (explains:SP-1)', (t) => {
+  const r = view(centralWorld(t), ['context', 'x/SP-1']);
+  assert.deepEqual(linked(r), ['x/SP-2 builds on it', 'x/SP-3 explains it'], show(r));
+});
+
+test('central repo: builds-on:central:x/SP-1 keeps R1\'s promise: no design-link on x/SP-2; x/SP-4 with no link gets one', (t) => {
+  const r = check(centralWorld(t));
+  none(r, 'design-link', 'x/SP-2');
+  assert.deepEqual(r.findings.filter((f) => f.code === 'unresolved-link' && word('SP-2').test(f.id)).map((f) => f.line), [], show(r));
+  const f = one(r, 'design-link', 'x/SP-4');
+  assert.equal(f.severity, 'hint', show(r));
+  assert.match(f.msg, word('SP-1'), show(r));
+});
+
+test('central repo: for:central:x/T1 names x\'s own task T1: no hint; for:central:x/T9 gets one naming it, as plain for:T9 does', (t) => {
+  const r = check(centralWorld(t));
+  none(r, 'unknown-task', 'x/SP-6');
+  const f = one(r, 'unknown-task', 'x/SP-7');
+  assert.equal(f.severity, 'hint', show(r));
+  assert.ok(f.msg.includes('for:central:x/T9'), show(r));
+  assert.ok(one(r, 'unknown-task', 'x/SP-8').msg.includes('for:T9'), show(r)); // control
 });
