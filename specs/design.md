@@ -274,11 +274,11 @@ semantic coverage as "not checked".
 - A change paragraph whose text is close to an existing spec paragraph, with
   no `changes` or `builds on` link to it: the hint "does this change
   INV-12?".
-- A design or `approach` paragraph in a change spec that serves a
-  requirement, when promise paragraphs of the same change spec serve that
-  requirement and it has no `builds on` or `changes` link to one of them:
-  the hint "which promise does it keep?". Why: else the records cannot
-  say which design keeps which promise (issue #229).
+- A design or `approach` paragraph in a change spec can serve a
+  requirement that promise paragraphs of the same change spec also serve.
+  When it has no `builds on` or `changes` link to one of them, it gets the
+  hint "which promise does it keep?". Why: else the records cannot say
+  which design keeps which promise (issue #229).
 - Where the project uses tasks: a `for <task>` that names no task in the
   record: a hint.
 - A change of kind from a promise kind to any other kind counts as a promise

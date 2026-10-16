@@ -89,7 +89,7 @@ paragraphs:
     display: DES-21 (3:10, in 3. IDs, kinds and links)
   - id: DES-22
     kind: rule
-    text_sha256: 32b2ecfbdda4c25339bb25fcd91a8880219c6a4e58762c572be9a50770342628
+    text_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d
     display: DES-22 (3:11, in 3. IDs, kinds and links)
     change:
       - Changed

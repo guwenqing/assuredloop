@@ -16,6 +16,7 @@ import {
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { groupOf, sameBlocks } from './markers.js';
+import { isCentral } from './indexer.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
 const TIER = /^[ \t]*Tier:[ \t]*(0|1d|1|2|3|S)\b[ \t]*(?:—|–|--?)?[ \t]*(.*)$/m;
@@ -258,10 +259,12 @@ export function checks(top, { base, strict = false }) {
 
   // Design links (design.md 3): a design or approach paragraph of a change
   // spec that serves a requirement, where promise paragraphs of the same
-  // change spec serve it, and that builds on or changes none of them.
+  // change spec serve it, and that builds on or changes none of them. In the
+  // central repo, `central:X` is its own X (design.md 12).
+  const self = (ref) => (isCentral(now.config) && ref.startsWith('central:') ? ref.slice('central:'.length) : ref);
   for (const r of open) {
     const own = new Set(r.paras.keys());
-    const key = (ref) => qualify(ref, r.name, own).key;
+    const key = (ref) => qualify(self(ref), r.name, own).key;
     const promises = new Map();
     for (const p of r.paras.values()) {
       if (!promise(p.kind)) continue;
@@ -289,9 +292,10 @@ export function checks(top, { base, strict = false }) {
   const fors = open.flatMap((r) => [...r.paras.values()].flatMap((p) => p.links.for.map((ref) => ({ r, p, ref }))));
   if (fors.length && [...now.requests.values()].some((r) => tasksOf(r).length)) {
     for (const { r, p, ref } of fors) {
-      if (ref.includes(':')) continue;
-      const slash = ref.indexOf('/');
-      const [name, id] = slash > 0 ? [ref.slice(0, slash), ref.slice(slash + 1)] : [r.name, ref];
+      const t = self(ref);
+      if (t.includes(':')) continue;
+      const slash = t.indexOf('/');
+      const [name, id] = slash > 0 ? [t.slice(0, slash), t.slice(slash + 1)] : [r.name, t];
       if (tasksOf(now.requests.get(name)).some((x) => String(x?.id) === id)) continue;
       add('hint', 'unknown-task', p, `${r.name}/${p.id}`, `for:${ref}: no task ${id} in the record of ${name}`);
     }
