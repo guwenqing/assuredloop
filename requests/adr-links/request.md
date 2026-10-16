@@ -21,6 +21,7 @@ Links may be added to the marker of an accepted ADR when nothing else changes: t
 
 Out: design paragraphs with no source. In this model a design paragraph has
 no `source:` link. Its authority is the signed requirement that it serves.
+Signed off: 2026-10-16 owner, origin/2026-10-16-signoff.md
 
 ## Decisions
 
