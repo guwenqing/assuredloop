@@ -1,0 +1,11 @@
+# On main (#234): ADR-4's heading marker has no source: link.
+title: "ADR-4 without its source link"
+base: base
+claim: "Tier: 2 — invoice-exports"
+steps:
+  - edit:
+      file: specs/adr/0004-one-time-tokens.md
+      from: "<!-- ADR-4 choice decides:EXP-4,EXP-6 source:invoice-exports/D2 supersedes:ADR-3 -->"
+      to: "<!-- ADR-4 choice decides:EXP-4,EXP-6 supersedes:ADR-3 -->"
+  - index: true
+    date: 2026-07-24

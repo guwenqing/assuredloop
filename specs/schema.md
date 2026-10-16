@@ -170,7 +170,7 @@ it"; it is only a hint.
 
 ## 5. ADRs
 
-<!-- SCH-22 rule serves:assuredloop-v4/R1 -->
+<!-- SCH-22 rule serves:assuredloop-v4/R1,adr-links/R1 -->
 
 - One file per decision, numbered, in `specs/adr/`. Its text does not change
   after it is accepted. Only its status changes: proposed → accepted →
@@ -181,8 +181,16 @@ it"; it is only a hint.
   alternatives that were considered.
 - A change to an accepted ADR's text is `not ok`. Write a new ADR that
   supersedes it.
+- Links may be added to the marker of an accepted ADR when nothing else
+  changes: the same ID and kind, each old link kept with the same target,
+  and the text below the marker unchanged. A changed or removed link is a
+  change to its text.
+- A proposed or accepted ADR with no `source` or no `decides` link gets a
+  hint; under `--strict`, `not ok`. A superseded ADR gets none: it is
+  history.
 - A PR that changes a paragraph that an ADR governs gets a hint: "check that
-  ADR-3 still holds".
+  ADR-3 still holds". The review view marks each ADR that it names that has
+  no `source` link.
 - An ADR's ID is its number. It is in the file name, for example
   `specs/adr/0003-export-links-expire.md`, and on the markers of its
   paragraphs. Its status is a line at the top of the file.

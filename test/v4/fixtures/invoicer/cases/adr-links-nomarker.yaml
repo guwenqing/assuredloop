@@ -1,0 +1,9 @@
+# #234 R1: an accepted ADR-5 whose file has no ADR-5 marker at all.
+title: "ADR-5 accepted: invoices are sent as PDF files"
+base: base
+claim: "Tier: 2 — invoice-exports"
+steps:
+  - write: {file: specs/adr/0005-no-marker.md, text: {file: 0005-no-marker.md}}
+after:
+  - index: true
+    date: 2026-07-25
