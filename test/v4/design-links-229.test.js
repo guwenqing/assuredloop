@@ -462,15 +462,21 @@ test('context INV-12 --at <main>: reads that commit, where no paragraph links to
 // The central repo lists one output repo (a sibling clone) in its config, so
 // it is the central repo. specs/ gets INV-70 to INV-73; x's change spec links
 // with central: IDs. Review of PR #233.
-function centralWorld(t) {
-  const output = project(t);
-  write(output, 'README.md', '# An output repository\n');
-  commitAll(output, 'The output base');
+// With { central: false }, the same repo lists no outputs, so it is not the
+// central repo, and central:X names another repo's X.
+function centralWorld(t, { central = true } = {}) {
   const dir = project(t);
-  writeConfig(dir, [{ file: SPEC, prefix: 'INV' }], {
-    repo: 'invoicer',
-    outputs: [{ name: 'invoicer-worker', path: `../${output.split('/').at(-1)}`, commit: 'HEAD' }],
-  });
+  if (central) {
+    const output = project(t);
+    write(output, 'README.md', '# An output repository\n');
+    commitAll(output, 'The output base');
+    writeConfig(dir, [{ file: SPEC, prefix: 'INV' }], {
+      repo: 'invoicer',
+      outputs: [{ name: 'invoicer-worker', path: `../${output.split('/').at(-1)}`, commit: 'HEAD' }],
+    });
+  } else {
+    writeConfig(dir, [{ file: SPEC, prefix: 'INV' }]);
+  }
   write(dir, SPEC, INVOICES);
   commitAll(dir, 'base');
   git(dir, 'checkout', '-q', '-b', 'feature');
@@ -532,4 +538,23 @@ test('central repo: for:central:x/T1 names x\'s own task T1: no hint; for:centra
   assert.equal(f.severity, 'hint', show(r));
   assert.ok(f.msg.includes('for:central:x/T9'), show(r));
   assert.ok(one(r, 'unknown-task', 'x/SP-8').msg.includes('for:T9'), show(r)); // control
+});
+
+// --- the control: a repo that is not central (no outputs in its config)
+
+test('not central: central:INV-12 names another repo\'s INV-12, so Linked lists INV-73 (explains:INV-12) and not INV-70', (t) => {
+  const dir = centralWorld(t, { central: false });
+  assert.ok(!/outputs/.test(read(dir, '.assuredloop/config.yaml')), 'the config lists no outputs');
+  const r = view(dir, ['context', 'INV-12']);
+  const entries = linked(r);
+  assert.ok(entries.includes('INV-73 explains it'), show(r));
+  assert.deepEqual(entries.filter((e) => /^INV-7[0-2] /.test(e)), [], `INV-70, INV-71 and INV-72 link to central:INV-12:\n${show(r)}`);
+});
+
+test('not central: builds-on:central:x/SP-1 is not a link to x\'s own SP-1, so x/SP-2 gets design-link, as x/SP-4 does', (t) => {
+  const r = check(centralWorld(t, { central: false }));
+  const f = one(r, 'design-link', 'x/SP-2');
+  assert.equal(f.severity, 'hint', show(r));
+  assert.match(f.msg, word('SP-1'), show(r));
+  one(r, 'design-link', 'x/SP-4');
 });
