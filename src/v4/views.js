@@ -9,6 +9,7 @@ import { crossRepo, findCites } from './repos.js';
 import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
 import { latestVersion, loadState, named, qualify, requestOf, resolve, signedBy } from './state.js';
+import { isCentral } from './indexer.js';
 
 export const line = (label, text) => `${label.length < 10 ? label.padEnd(10) : `${label} `}${text}`;
 const list = (x) => (Array.isArray(x) ? x : []);
@@ -340,8 +341,10 @@ function checkLines(state, id, local) {
 }
 
 // The paragraphs of specs/ and of the open change specs that build on,
-// explain or illustrate the paragraph named `who`.
+// explain or illustrate the paragraph named `who`. In the central repo,
+// `central:X` is its own X (design.md 12).
 function linkedTo(state, who) {
+  const self = (ref) => (isCentral(state.config) && ref.startsWith('central:') ? ref.slice('central:'.length) : ref);
   const holders = [
     ...[...state.spec.values()].map((p) => ({ p, r: null })),
     ...[...state.requests.values()].filter((r) => r.open).flatMap((r) => [...r.paras.values()].map((p) => ({ p, r }))),
@@ -350,7 +353,7 @@ function linkedTo(state, who) {
   for (const { p, r } of holders) {
     const own = r ? new Set(r.paras.keys()) : new Set();
     for (const [key, verb] of [['buildsOn', 'builds on it'], ['explains', 'explains it'], ['illustrates', 'illustrates it']]) {
-      if (p.links[key].some((ref) => qualify(ref, r?.name ?? null, own).key === who)) out.push(`${named(r?.name ?? null, p.id)} ${verb}`);
+      if (p.links[key].some((ref) => qualify(self(ref), r?.name ?? null, own).key === who)) out.push(`${named(r?.name ?? null, p.id)} ${verb}`);
     }
   }
   return out.length ? out.join(' · ') : 'no paragraph builds on, explains or illustrates it';

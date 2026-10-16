@@ -65,11 +65,11 @@ promise paragraph first, then the design that keeps it.
 - A change paragraph whose text is close to an existing spec paragraph, with
   no `changes` or `builds on` link to it: the hint "does this change
   INV-12?".
-- A design or `approach` paragraph in a change spec that serves a
-  requirement, when promise paragraphs of the same change spec serve that
-  requirement and it has no `builds on` or `changes` link to one of them:
-  the hint "which promise does it keep?". Why: else the records cannot
-  say which design keeps which promise (issue #229).
+- A design or `approach` paragraph in a change spec can serve a
+  requirement that promise paragraphs of the same change spec also serve.
+  When it has no `builds on` or `changes` link to one of them, it gets the
+  hint "which promise does it keep?". Why: else the records cannot say
+  which design keeps which promise (issue #229).
 - Where the project uses tasks: a `for <task>` that names no task in the
   record: a hint.
 - A change of kind from a promise kind to any other kind counts as a promise
@@ -86,15 +86,19 @@ promise paragraph first, then the design that keeps it.
 <!-- SP-7 approach serves:R1 builds-on:SP-6 -->
 
 `al check` reads each open request's change spec. For each paragraph of a
-design kind or `approach`, and each requirement that it serves, it collects
-the promise paragraphs of the same change spec that serve the same
-requirement. When there is one or more, and the paragraph has no
-`builds-on` or `changes` link to one of them, it prints the hint
-`design-link`, once for each such requirement. The project uses tasks when
-the record of any request, open or concluded, has a task in `tasks:`. Then
-each `for:` in an open change spec that names no task in its request's
-record gets the hint `unknown-task`. A bare task ID names the paragraph's
-own request. Both are hints, also under `--strict`.
+design kind or `approach`, it takes each requirement that the paragraph
+serves. It collects the promise paragraphs of the same change spec that
+serve that requirement. When there is one or more, and the paragraph links
+to none of them by `builds-on` or `changes`, it prints the hint
+`design-link`. It prints one hint for each such requirement, also under
+`--strict`.
+
+<!-- SP-11 approach serves:R1 builds-on:SP-6 -->
+
+The project uses tasks when the record of any request, open or concluded,
+has a task in `tasks:`. Then each `for:` in an open change spec that names
+no task in its request's record gets the hint `unknown-task`. A bare task
+ID names the paragraph's own request. It is a hint, also under `--strict`.
 
 <!-- SP-8 note -->
 

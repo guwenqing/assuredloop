@@ -33,14 +33,20 @@ paragraphs:
       - New
   - id: SP-6
     kind: rule
-    text_sha256: 32b2ecfbdda4c25339bb25fcd91a8880219c6a4e58762c572be9a50770342628
+    text_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d
     display: SP-6 (2:1, in The two hints)
     change:
       - New
   - id: SP-7
     kind: approach
-    text_sha256: 593819572f23dd781997ae5a945fa799f291a70a3d988993e9c3126ad2c4cd03
+    text_sha256: c40dfcf33378804628759f28b894597e5a98c51a3cf144fafeabdd6c75a07e82
     display: SP-7 (2:2, in The two hints)
+    change:
+      - New
+  - id: SP-11
+    kind: approach
+    text_sha256: 553f558130bcb27e7c74534bc48a02ef148474e0bd2a3b356473bad77a6d04f5
+    display: SP-11 (2:3, in The two hints)
     change:
       - New
   - id: SP-8
