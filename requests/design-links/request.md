@@ -19,6 +19,7 @@ Tier: 2 · Status: open
 
 ### R1 Hints for design links and task references
 `al` points out a design paragraph in a change spec that serves a requirement but links to none of that requirement's promise paragraphs in the same change spec, and a `for:` that names no task in the record. Each is a hint and never fails a check, `--strict` included. `al context <ID>` lists the paragraphs that build on, explain or illustrate it.
+Signed off: 2026-10-16 owner, origin/2026-10-16-signoff.md
 
 ## Decisions
 
