@@ -1,5 +1,5 @@
 # Design links and task references
-Tier: 2 · Status: open
+Tier: 2 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -28,3 +28,16 @@ Signed off: 2026-10-16 owner, origin/2026-10-16-signoff.md
 - D3, 2026-10-16. Source: the agent (architect), session prompt of developer-229, 2026-10-16. The `for:` hint fires when `for:<task>` names no task in the record's `tasks:`. A project with no `tasks:` at all gets no hint: tasks stay optional.
 - D4, 2026-10-16. Source: the agent (architect), session prompt of developer-229, 2026-10-16. `al context <ID>` adds the paragraphs that build on, explain or illustrate the ID, in the style of its other lines.
 - D5, 2026-10-16. Source: the agent (architect), session prompt of developer-229, 2026-10-16. In the PR body, say what each changed paragraph said before and after.
+
+## Outcome
+
+Concluded 2026-10-16 with al conclude, on the working tree at aeb3be5.
+
+- R1 Hints for design links and task references, version 1, signed in S1:
+  - SP-4 definition: incorporated as DES-16
+  - SP-6 rule: incorporated as DES-22
+  - SP-9 rule: incorporated as DES-26
+  - DES-16 definition: in specs/design.md, serves it
+  - DES-22 rule: in specs/design.md, serves it
+  - DES-26 rule: in specs/design.md, serves it
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
