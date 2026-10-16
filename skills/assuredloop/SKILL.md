@@ -131,7 +131,11 @@ The export link MUST expire 30 minutes after the email is sent.
    deliver with the owner's sign-off or after it. A change that touches no
    promise kind needs no sign-off.
 2. Write the design in `requests/<name>/spec.md`, the change spec: the
-   promises this change adds or changes, its design, its plan. Run
+   promises this change adds or changes, its design, its plan. The order
+   of the paragraphs is free. The recommended order is one section per
+   topic: the promise paragraph first, then the design that keeps it, with
+   its rationale and examples, then its open points. Cross-cutting design
+   and decisions follow. Run
    `al spec --add-ids requests/<name>/spec.md --yes` for the IDs (SP-1,
    SP-2…), then write the kinds and links. A paragraph that relies on a spec
    paragraph says `builds-on:<ID>`. One that replaces it says `changes:<ID>`.
