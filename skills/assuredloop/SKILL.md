@@ -57,8 +57,13 @@ The export link MUST expire 30 minutes after the email is sent.
 ```
 
 - When you edit a marked paragraph, keep its marker line and the blank lines
-  around it. Keep the ID when you move the paragraph. Never renumber or
-  delete an ID: a lost ID is `not ok`.
+  around it. Keep the ID when you move the paragraph. Never renumber an ID,
+  and never use one again.
+- In an open request's change spec, you may delete a paragraph with its
+  marker. Its ID is retired and never used again. `al check` gives a hint
+  that names the deletion; when it is on purpose, nothing more is needed. In
+  `specs/`, a removal needs `removes:<ID>` in a change spec: a lost ID there
+  is `not ok`.
 - For a new paragraph, write the text with no marker. Then run
   `al spec --add-ids <file> --yes`: it gives each unmarked paragraph the next
   free ID. Then write the kind and the links into each new marker.
@@ -182,8 +187,9 @@ As path 2, in parts. Each part consolidates the paragraphs it delivers,
 with their dispositions, in its own PR. Tasks are optional: where the
 project uses them, list them in the record as
 `tasks: [{id: T2, ref: "issue #34", delivers: [R3]}]`, and name the task in
-the commit messages of its PRs. Run `al conclude <name> --yes` with the last
-part.
+the commit messages of its PRs. Plan, step and migration paragraphs may live
+in the tracker issue that the task's `ref` names, instead of in the change
+spec. Run `al conclude <name> --yes` with the last part.
 
 ## Path S: a spike
 

@@ -1,0 +1,82 @@
+schema: assuredloop/1
+request: delete-in-change-spec
+tier: "2"
+status: concluded
+sources:
+  - file: 2026-10-16-owner-words.md
+    kind: owner-words
+    sha256: 7b5ef77ab7e37cc46dd7e8483160e1d2a80be84e41b0facb4883454bd1896e9f
+    taken: 2026-10-16T18:42Z
+  - file: 2026-10-16-github-com-guwenqing-assuredloop-issues-230.md
+    kind: owner-words
+    sha256: 865be3272dcb18ac5c448c1ec49350af9e303749e1203c58855ad9b998eec044
+    taken: 2026-10-16T18:42Z
+    url: https://github.com/guwenqing/assuredloop/issues/230
+  - file: 2026-10-16-github-com-guwenqing-assuredloop-issues-229-issuec.md
+    kind: owner-words
+    sha256: 04d84973ba7f2686680bae0a1579dc9d190bbad010076371c50afa83050776ad
+    taken: 2026-10-16T18:42Z
+    url: https://github.com/guwenqing/assuredloop/issues/229#issuecomment-6174613322
+requirements:
+  - id: R1
+    version: 1
+    sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33
+    title: Deleting a paragraph of a change spec
+signoff:
+  - id: S1
+    file: 2026-10-16-signoff.md
+    sha256: e8e7fa2958b23b111a8e684be19d241afd3be61d03fa27591bf689be7e55dc49
+    signed: 2026-10-16T20:06Z
+    source: owner chat with the architect, 2026-10-16 about 20:05Z
+    words: Yes I sign off
+    presented: R1's heading 'R1 Deleting a paragraph of a change spec' and its body, word for word as in request.md; not the section's marker line. The same reply also covered design-links R1.
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33 }
+decisions:
+  - id: D1
+    date: 2026-10-16
+    source: the agent (architect), message to developer-230, 2026-10-16
+    text: In the scope of an open request (its change spec), a lost ID is a hint, not a not ok, also under --strict. The hint names the deletion, and says that nothing more is needed when the deletion is on purpose.
+    sha256: 9b679f4d5af5d359650e4e1e795b63a81a8e2d0566a815e6e91d807925751d24
+    clarifies:
+      - R1
+  - id: D2
+    date: 2026-10-16
+    source: the agent (architect), message to developer-230, 2026-10-16
+    text: "In specs/, nothing changes: a lost ID with no removes: stays not ok."
+    sha256: dce17cd56f9e7b6311e9211bfc3c878638f48e086fd718b7efc97d93b6f20e60
+    clarifies:
+      - R1
+  - id: D3
+    date: 2026-10-16
+    source: the agent (architect), message to developer-230, 2026-10-16
+    text: "These stay not ok in every scope: an ID used again, a paragraph with no ID (this still catches a marker that an agent removed by accident while the text stayed), and a link to an ID that does not exist."
+    sha256: de32020738631e482c7373518ab47cb2c60b80f7c5a9f2f338666799862b9614
+    clarifies:
+      - R1
+  - id: D4
+    date: 2026-10-16
+    source: the agent (architect), message to developer-230, 2026-10-16
+    text: No new hint for a record entry that names a deleted change-spec ID. When a disposition (incorporated, removed, superseded) or a wording decision of the request names the deleted ID, the same lost-ID hint says so in its text, for example '<name>/SP-3 is deleted; its disposition says incorporated as INV-2'. Bindings, and the audit's 'source not found', stay as they are.
+    sha256: e2bf87ab124b60db077e1f6217887f5a0efb784069229403130c52401a2224d4
+    clarifies:
+      - R1
+  - id: D5
+    date: 2026-10-16
+    source: the agent (architect), message to developer-230, 2026-10-16
+    text: The skill and the README say that a paragraph of a change spec may be deleted, that its ID is retired and never used again, and that plan, step and migration paragraphs may live in the tracker issue named by the task's ref instead of in the change spec (#229, point 3).
+    sha256: 2dc3dff8970fee3a8f6274f38b6d57e511d4e59325209afa1198cd276ea0596a
+    clarifies:
+      - R1
+tasks: []
+bindings:
+  - { holder: delete-in-change-spec/R1, link: from, target: delete-in-change-spec/2026-10-16-github-com-guwenqing-assuredloop-issues-230.md, holder_sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33, target_sha256: 865be3272dcb18ac5c448c1ec49350af9e303749e1203c58855ad9b998eec044 }
+  - { holder: delete-in-change-spec/SP-3, link: serves, target: delete-in-change-spec/R1, holder_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, target_sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33, target_version: 1 }
+  - { holder: delete-in-change-spec/SP-3, link: changes, target: DES-22, holder_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, target_sha256: cbad1e310478b928cee8225c35c2a48bc4b5a9ef0e3c14924a98994389b2b500 }
+  - { holder: DES-22, link: serves, target: delete-in-change-spec/R1, holder_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, target_sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33, target_version: 1 }
+  - { holder: DES-22, link: serves, target: assuredloop-v4/R2, holder_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-22, link: serves, target: assuredloop-v4/R11, holder_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: DES-22, link: serves, target: promise-design-split/R1, holder_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, target_sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3, target_version: 1 }
+dispositions:
+  - { source: delete-in-change-spec/SP-3, disposition: incorporated, spec: DES-22, source_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9, spec_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9 }
