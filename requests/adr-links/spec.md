@@ -61,11 +61,11 @@ heading marker. It is a hint, and `not ok` under `--strict`.
 
 <!-- SP-7 approach serves:R1 builds-on:SP-4 -->
 
-`al context --diff <range> --for review` reads the ADRs of the working tree.
-When ADR-n's heading marker has no `source` link, its line `governed by
-ADR-n (<status>)` gets `; no source:` inside the brackets. Each finding line
-of the view whose message names ADR-n ends with `; ADR-n has no source:`.
-The lines of `al check` do not change.
+`al context --diff <range> --for review` reads the ADRs at the head of the
+range. When ADR-n's heading marker has no `source` link, its line `governed
+by ADR-n (<status>)` gets `; no source:` inside the brackets. Each finding
+line of the view whose message names ADR-n ends with `; ADR-n has no
+source:`. The lines of `al check` do not change.
 
 <!-- SP-8 note -->
 
