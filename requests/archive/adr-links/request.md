@@ -1,5 +1,5 @@
 # Trace links on ADRs
-Tier: 2 · Status: open
+Tier: 2 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -32,3 +32,16 @@ Signed off: 2026-10-16 owner, origin/2026-10-16-signoff.md
 - D5, 2026-10-16. Source: the agent (architect), session prompt of developer, 2026-10-16. Design paragraphs are out: in this model a design paragraph has no `source:` link, and its authority is the signed requirement it serves. Write that as an Out: line in the request.
 - D6, 2026-10-16. Source: the agent (architect), session prompt of developer, 2026-10-16. Docs: the README and the skill say that links can be added to an accepted ADR, and that `--strict` asks each proposed or accepted ADR for `source:` and `decides:`. Release notes will say that a project with ADRs that lack them fails `--strict` until it adds them.
 - D7, 2026-10-16. Source: the agent (architect), session prompt of developer, 2026-10-16. In the PR body, say what SCH-22, DES-22 and any other changed paragraph said before and after.
+
+## Outcome
+
+Concluded 2026-10-16 with al conclude, on the working tree at 29a24be.
+
+- R1 Trace links on ADRs, version 1, signed in S1:
+  - SP-4 rule: incorporated as SCH-22
+  - SP-9 rule: incorporated as DES-22
+  - SP-11 data: incorporated as DES-9
+  - DES-9 data: in specs/design.md, serves it
+  - DES-22 rule: in specs/design.md, serves it
+  - SCH-22 rule: in specs/schema.md, serves it
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
