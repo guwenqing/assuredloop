@@ -1,0 +1,69 @@
+schema: assuredloop/1
+file: requests/design-links/spec.md
+paragraphs:
+  - id: SP-1
+    kind: note
+    text_sha256: 11eb8f61dabf79d31307ab9a25a921b80e5c79dde9677d5519aa98282a3766b2
+    display: "SP-1 (0, Design links and task references: the change spec)"
+    change:
+      - New
+  - id: SP-2
+    kind: note
+    text_sha256: a6e297a65d40695f50243907dd4649f3687aac85375e815be467228b5f052187
+    display: "SP-2 (0:1, in Design links and task references: the change spec)"
+    change:
+      - New
+  - id: SP-3
+    kind: note
+    text_sha256: de78045b310133787b8a7bd12b2ef3914da599dcef404d03f867bd54218bd449
+    display: SP-3 (1, Links to a promise of the same change spec)
+    change:
+      - New
+  - id: SP-4
+    kind: definition
+    text_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe
+    display: SP-4 (1:1, in Links to a promise of the same change spec)
+    change:
+      - New
+  - id: SP-5
+    kind: note
+    text_sha256: 293ee00fc9a8259753a905bba9266f6221a42d785303ac488a2916e713b66a2e
+    display: SP-5 (2, The two hints)
+    change:
+      - New
+  - id: SP-6
+    kind: rule
+    text_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d
+    display: SP-6 (2:1, in The two hints)
+    change:
+      - New
+  - id: SP-7
+    kind: approach
+    text_sha256: c40dfcf33378804628759f28b894597e5a98c51a3cf144fafeabdd6c75a07e82
+    display: SP-7 (2:2, in The two hints)
+    change:
+      - New
+  - id: SP-11
+    kind: approach
+    text_sha256: 553f558130bcb27e7c74534bc48a02ef148474e0bd2a3b356473bad77a6d04f5
+    display: SP-11 (2:3, in The two hints)
+    change:
+      - New
+  - id: SP-8
+    kind: note
+    text_sha256: 26b6df643e343cf4c23031aa1084aa1001690f5f658f560fbc5da570a23eb55a
+    display: SP-8 (3, What `al context <ID>` shows)
+    change:
+      - New
+  - id: SP-9
+    kind: rule
+    text_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464
+    display: SP-9 (3:1, in What `al context <ID>` shows)
+    change:
+      - New
+  - id: SP-10
+    kind: approach
+    text_sha256: ccb6ca39bbecf4669f3fd9beb4f643be09cbac33bcaad01879337e980dd74c91
+    display: SP-10 (3:2, in What `al context <ID>` shows)
+    change:
+      - New

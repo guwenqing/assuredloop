@@ -9,6 +9,7 @@ import { crossRepo, findCites } from './repos.js';
 import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
 import { latestVersion, loadState, named, qualify, requestOf, resolve, signedBy } from './state.js';
+import { isCentral } from './indexer.js';
 
 export const line = (label, text) => `${label.length < 10 ? label.padEnd(10) : `${label} `}${text}`;
 const list = (x) => (Array.isArray(x) ? x : []);
@@ -339,6 +340,25 @@ function checkLines(state, id, local) {
   return out;
 }
 
+// The paragraphs of specs/ and of the open change specs that build on,
+// explain or illustrate the paragraph named `who`. In the central repo,
+// `central:X` is its own X (design.md 12).
+function linkedTo(state, who) {
+  const self = (ref) => (isCentral(state.config) && ref.startsWith('central:') ? ref.slice('central:'.length) : ref);
+  const holders = [
+    ...[...state.spec.values()].map((p) => ({ p, r: null })),
+    ...[...state.requests.values()].filter((r) => r.open).flatMap((r) => [...r.paras.values()].map((p) => ({ p, r }))),
+  ];
+  const out = [];
+  for (const { p, r } of holders) {
+    const own = r ? new Set(r.paras.keys()) : new Set();
+    for (const [key, verb] of [['buildsOn', 'builds on it'], ['explains', 'explains it'], ['illustrates', 'illustrates it']]) {
+      if (p.links[key].some((ref) => qualify(self(ref), r?.name ?? null, own).key === who)) out.push(`${named(r?.name ?? null, p.id)} ${verb}`);
+    }
+  }
+  return out.length ? out.join(' · ') : 'no paragraph builds on, explains or illustrates it';
+}
+
 function idView(state, id) {
   const t = qualify(id, null);
   const r = t.req ? state.requests.get(t.req) : null;
@@ -356,6 +376,7 @@ function idView(state, id) {
     if (word === 'serves' || !refs.length) continue;
     body.push(line('Links', `${word} ${refs.join(', ')}`));
   }
+  body.push(line('Linked', linkedTo(state, who)));
   if (!t.req) {
     const govern = [...state.adrs.values()].filter((a) => (a.head?.links.decides ?? []).includes(p.id) || p.links.governedBy.includes(a.id));
     body.push(line('Governed', govern.length ? `by ${govern.map((a) => `${a.id} (${a.status ?? 'no status'}${a.status === 'superseded' ? ': history' : ''})`).join(' · ')}` : 'by no ADR'));

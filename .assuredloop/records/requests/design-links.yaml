@@ -1,0 +1,88 @@
+schema: assuredloop/1
+request: design-links
+tier: "2"
+status: concluded
+sources:
+  - file: 2026-10-16-owner-words.md
+    kind: owner-words
+    sha256: 85230704e16272e914de9a8c437992691986f5514e4acf95a9bc2f0da3e3f8c9
+    taken: 2026-10-16T18:44Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879
+    title: Hints for design links and task references
+signoff:
+  - id: S1
+    file: 2026-10-16-signoff.md
+    sha256: 43779134ffe0dbdef917a4a73455e2af58836e4a8ccc4b3c185274e620f1ac75
+    signed: 2026-10-16T20:06Z
+    source: owner chat with the architect, 2026-10-16 about 20:05Z
+    words: Yes I sign off
+    presented: R1's heading 'R1 Hints for design links and task references' and its body, word for word as in request.md; the marker line was not shown. The same reply also covered delete-in-change-spec R1.
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879 }
+decisions:
+  - id: D1
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: "`builds-on` may name a promise paragraph of the same change spec. DES-16 changes to say so."
+    sha256: dd81fef0a39b62d20258c8b218f7d9933e555074e9292b8d5a533e0cf3e58371
+    clarifies:
+      - R1
+  - id: D2
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: The design-link hint applies to the design kinds and `approach` in a change spec. It fires only where the requirement the paragraph serves has promise paragraphs in the same change spec. A `builds-on` or `changes` link to any one of them is enough.
+    sha256: be8134ee9a26df12b7b0a1426fc3fce396e7985088c16cfcb0d509589610e6c2
+    clarifies:
+      - R1
+  - id: D3
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: "The `for:` hint fires when `for:<task>` names no task in the record's `tasks:`. A project with no `tasks:` at all gets no hint: tasks stay optional."
+    sha256: ac2ee19e345fa91468f35972db5268b80f8757130b6e12e938f743b3b9aa07b7
+    clarifies:
+      - R1
+  - id: D4
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: "`al context <ID>` adds the paragraphs that build on, explain or illustrate the ID, in the style of its other lines."
+    sha256: 2d96b3ac7a85e153a6f68644639b707fd18d47874e0f74a885e3fd0225152767
+    clarifies:
+      - R1
+  - id: D5
+    date: 2026-10-16
+    source: the agent (architect), session prompt of developer, 2026-10-16
+    text: In the PR body, say what each changed paragraph said before and after.
+    sha256: dd7543f44e354f726e91bf981c623c6bb6279c7552c731544846f0d4700ace62
+tasks: []
+bindings:
+  - { holder: design-links/R1, link: from, target: design-links/2026-10-16-owner-words.md, holder_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_sha256: 85230704e16272e914de9a8c437992691986f5514e4acf95a9bc2f0da3e3f8c9 }
+  - { holder: design-links/SP-4, link: serves, target: design-links/R1, holder_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: design-links/SP-4, link: changes, target: DES-16, holder_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe, target_sha256: a2dec75a2ea4578cd91cdd3875c21023a10ba649def88f1768a5aa9752228104 }
+  - { holder: design-links/SP-6, link: serves, target: design-links/R1, holder_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: design-links/SP-6, link: changes, target: DES-22, holder_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d, target_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d }
+  - { holder: design-links/SP-7, link: serves, target: design-links/R1, holder_sha256: c40dfcf33378804628759f28b894597e5a98c51a3cf144fafeabdd6c75a07e82, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: design-links/SP-7, link: builds-on, target: design-links/SP-6, holder_sha256: c40dfcf33378804628759f28b894597e5a98c51a3cf144fafeabdd6c75a07e82, target_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d }
+  - { holder: design-links/SP-9, link: serves, target: design-links/R1, holder_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: design-links/SP-9, link: changes, target: DES-26, holder_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464, target_sha256: c06513fef2ae793a469b7862116301c93f5a2cfc8be3caa8c66b95484389de31 }
+  - { holder: design-links/SP-10, link: serves, target: design-links/R1, holder_sha256: ccb6ca39bbecf4669f3fd9beb4f643be09cbac33bcaad01879337e980dd74c91, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: design-links/SP-10, link: builds-on, target: design-links/SP-9, holder_sha256: ccb6ca39bbecf4669f3fd9beb4f643be09cbac33bcaad01879337e980dd74c91, target_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464 }
+  - { holder: DES-16, link: serves, target: design-links/R1, holder_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: DES-22, link: serves, target: design-links/R1, holder_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: DES-26, link: serves, target: design-links/R1, holder_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: DES-22, link: serves, target: delete-in-change-spec/R1, holder_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d, target_sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33, target_version: 1 }
+  - { holder: DES-16, link: serves, target: assuredloop-v4/R2, holder_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-16, link: serves, target: assuredloop-v4/R8, holder_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-22, link: serves, target: assuredloop-v4/R2, holder_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-22, link: serves, target: assuredloop-v4/R11, holder_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: DES-22, link: serves, target: promise-design-split/R1, holder_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d, target_sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3, target_version: 1 }
+  - { holder: DES-26, link: serves, target: assuredloop-v4/R6, holder_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464, target_sha256: 3cb0fd2926871cde6807a61ef5bdff70e66be34f8668240a4bf2acfeac687e6e, target_version: 1 }
+  - { holder: design-links/SP-11, link: serves, target: design-links/R1, holder_sha256: 553f558130bcb27e7c74534bc48a02ef148474e0bd2a3b356473bad77a6d04f5, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: design-links/SP-11, link: builds-on, target: design-links/SP-6, holder_sha256: 553f558130bcb27e7c74534bc48a02ef148474e0bd2a3b356473bad77a6d04f5, target_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d }
+dispositions:
+  - { source: design-links/SP-4, disposition: incorporated, spec: DES-16, source_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe, spec_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe }
+  - { source: design-links/SP-6, disposition: incorporated, spec: DES-22, source_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d, spec_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d }
+  - { source: design-links/SP-9, disposition: incorporated, spec: DES-26, source_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464, spec_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464 }
