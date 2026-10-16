@@ -65,8 +65,6 @@ paragraphs:
     kind: definition
     text_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe
     display: DES-16 (3:5, in 3. IDs, kinds and links)
-    change:
-      - Changed
   - id: DES-17
     kind: rule
     text_sha256: 25d8369cce416cbcf9982de1e954b1d8cee32750413be0fe76cc25817a461f81
@@ -91,8 +89,6 @@ paragraphs:
     kind: rule
     text_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d
     display: DES-22 (3:11, in 3. IDs, kinds and links)
-    change:
-      - Changed
   - id: DES-81
     kind: choice
     text_sha256: 8de44539eedb01d463b7d6372cd958a743bb3c3bb16f5936e3cbd7fb30a6e49e
@@ -113,8 +109,6 @@ paragraphs:
     kind: rule
     text_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464
     display: DES-26 (4:2, in 4. The change spec honors the consolidated spec)
-    change:
-      - Changed
   - id: DES-27
     kind: note
     text_sha256: 61a0cdd6b1fc81e1cf0a5d54f9243251dab9caea4069d048361ddb88cb954acf
