@@ -82,7 +82,11 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
   free. The recommended order is one section per topic. Each section has
   the promise paragraph first, then the design that keeps it, with its
   rationale and examples, then its open points. Cross-cutting design and
-  decisions follow.
+  decisions follow. While the request is open, a paragraph of its change
+  spec may be deleted: its ID is retired and never used again, and
+  `al check` gives a hint. In `specs/`, a removal needs `removes:`. Plan,
+  step and migration paragraphs may live in the tracker issue that a task's
+  `ref` names, instead of in the change spec.
 - **Records** in `.assuredloop/records/`, committed to git: one per request
   (its sources, requirement versions, sign-offs, decisions, tasks, the
   bindings of its links and the dispositions of its paragraphs) and one per
