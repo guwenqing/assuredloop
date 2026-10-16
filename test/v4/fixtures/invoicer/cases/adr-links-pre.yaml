@@ -1,0 +1,23 @@
+# On main (#234): ADRs with missing trace links. ADR-1 (accepted) has no
+# decides: link, ADR-2 (accepted) has no source: link, the superseded ADR-3
+# has no link at all, and a new proposed ADR-5 has no link at all. ADR-4
+# keeps all its links.
+title: "ADRs with missing trace links"
+base: base
+claim: "Tier: 2 — invoice-exports"
+steps:
+  - edit:
+      file: specs/adr/0001-gap-free-numbers.md
+      from: "<!-- ADR-1 choice decides:INV-13 source:invoice-numbers/S1 -->"
+      to: "<!-- ADR-1 choice source:invoice-numbers/S1 -->"
+  - edit:
+      file: specs/adr/0002-csv-not-xlsx.md
+      from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+      to: "<!-- ADR-2 choice decides:EXP-2 -->"
+  - edit:
+      file: specs/adr/0003-signed-urls.md
+      from: "<!-- ADR-3 choice decides:EXP-4 source:invoice-exports/D1 -->"
+      to: "<!-- ADR-3 choice -->"
+  - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: 0005-pdf-invoices.md}}
+  - index: true
+    date: 2026-07-24

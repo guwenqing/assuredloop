@@ -1,0 +1,69 @@
+schema: assuredloop/1
+file: requests/adr-links/spec.md
+paragraphs:
+  - id: SP-1
+    kind: note
+    text_sha256: a6fd95d799570e957519d3a4db2a91c23a07e1d3d97a827610ae08669d78b7e9
+    display: "SP-1 (0, Trace links on ADRs: the change spec)"
+    change:
+      - New
+  - id: SP-2
+    kind: note
+    text_sha256: aed7e08ce07681ecaca3e535afc4ebcdd4f1728f49bd7108fa2498b7b9971a6b
+    display: "SP-2 (0:1, in Trace links on ADRs: the change spec)"
+    change:
+      - New
+  - id: SP-3
+    kind: note
+    text_sha256: b9ea9305a64b02a86defc24ac4e57879261b5c387f6622d7daad0ff0d08bf2fb
+    display: SP-3 (1, Links added to an accepted ADR, and the missing links)
+    change:
+      - New
+  - id: SP-4
+    kind: rule
+    text_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4
+    display: SP-4 (1:1, in Links added to an accepted ADR, and the missing links)
+    change:
+      - New
+  - id: SP-5
+    kind: approach
+    text_sha256: 346d2f9458bc46b098f28e357e71124d1d05f7701e74854872e946ce11f3717f
+    display: SP-5 (1:2, in Links added to an accepted ADR, and the missing links)
+    change:
+      - New
+  - id: SP-6
+    kind: approach
+    text_sha256: 4a115cf8844bda087f85c5184180a58049966fcb665777a75881096f1e021727
+    display: SP-6 (1:3, in Links added to an accepted ADR, and the missing links)
+    change:
+      - New
+  - id: SP-7
+    kind: approach
+    text_sha256: fe8a867284acb61600f20ce63e75a443eab24ba45abee998f41b3cb7f679178f
+    display: SP-7 (1:4, in Links added to an accepted ADR, and the missing links)
+    change:
+      - New
+  - id: SP-8
+    kind: note
+    text_sha256: 5fa52f568fc6972923ad1b0f772206e28dd1dac7af4eed5fb12ffa7afed25532
+    display: SP-8 (2, What the script checks)
+    change:
+      - New
+  - id: SP-9
+    kind: rule
+    text_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341
+    display: SP-9 (2:1, in What the script checks)
+    change:
+      - New
+  - id: SP-10
+    kind: note
+    text_sha256: a2f0f454e60a1624f82c14493846d2634f1d5333b44fa0ed583408478fdb4cb4
+    display: SP-10 (3, The sets of files)
+    change:
+      - New
+  - id: SP-11
+    kind: data
+    text_sha256: c0269d4e11ffeebf119fad012b628080497447e10f0447c853083aebf25c06d5
+    display: SP-11 (3:1, in The sets of files)
+    change:
+      - New

@@ -78,6 +78,9 @@ Each step is a map with one key.
 | `adr-supersede` | arms `ok`, `missing`, `accepted`: ADR-5 supersedes ADR-2 (or the missing ADR-9) |
 | `adr-governs` | arms `decided` (EXP-6, decided by ADR-4) and `free` (EXP-5) |
 | `adr-history-pre`, `adr-history` | EXP-7, decided only by ADR-5, which ADR-6 superseded |
+| `adr-links-pre`, `adr-links` | on main, ADR-1 has no `decides:`, ADR-2 no `source:`, the superseded ADR-3 and a proposed ADR-5 no link (#234); arms `untouched`, links added only (`word`, `order`, `target`, `status`), `superseded` (ADR-2's status only), other changes (`removed`, `swapped`, `retarget`, `kind`, `text`, `para`, `frozen`), `proposed` (ADR-5 changes) |
+| `adr-links-nomarker` | an accepted ADR-5 whose file has no `ADR-5` marker |
+| `adr-governs-nosource-pre`, `adr-governs-nosource` | ADR-4 has no `source:` on main; then the PR of `adr-governs` arm `decided` |
 | `cr-wording` | part 2 of invoice-exports, with a wording decision D3 |
 | `cr-supersede`, `cr-chain` | A→B (link-refresh) and A→B→C (portal-downloads removes EXP-4) |
 | `cr-revert-m8`, `cr-revert-m9`, `cr-revert` | an incorporation, an unexplained revert on main, then the closing PR |

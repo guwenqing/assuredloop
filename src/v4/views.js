@@ -419,6 +419,9 @@ function diffView(top, range, review) {
   const now = loadState(top, headSha);
   const was = loadState(top, base);
   const findings = review ? checks(top, { base }).findings : [];
+  // The ADRs with no source link, which the view marks where it names them (schema.md 5).
+  const unsourced = new Set([...now.adrs.values()].filter((a) => !a.head?.links.source.length).map((a) => a.id));
+  const marks = (message) => [...new Set(message.match(/\bADR-\d+\b/g) ?? [])].filter((id) => unsourced.has(id)).map((id) => `; ${id} has no source:`).join('');
   const body = [];
   for (const scope of new Set([...now.scopes.keys(), ...was.scopes.keys()])) {
     const request = requestOf(scope);
@@ -451,10 +454,10 @@ function diffView(top, range, review) {
       }
       if (!request) {
         for (const a of now.adrs.values()) {
-          if ((a.head?.links.decides ?? []).includes(c.id) || p.links.governedBy.includes(a.id)) body.push(`  governed by ${a.id} (${a.status ?? 'no status'})`);
+          if ((a.head?.links.decides ?? []).includes(c.id) || p.links.governedBy.includes(a.id)) body.push(`  governed by ${a.id} (${a.status ?? 'no status'}${unsourced.has(a.id) ? '; no source:' : ''})`);
         }
       }
-      for (const f of findings.filter((x) => x.id === who && x.severity !== 'info')) body.push(`  ${findingLine(f)}`);
+      for (const f of findings.filter((x) => x.id === who && x.severity !== 'info')) body.push(`  ${findingLine(f)}${marks(f.message)}`);
     }
   }
   if (!body.length) body.push('no paragraph changed in the range');
