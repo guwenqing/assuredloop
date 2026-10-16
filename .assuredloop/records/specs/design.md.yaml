@@ -35,8 +35,10 @@ paragraphs:
     display: DES-8 (2:1, in 2. One change, and the consolidated spec)
   - id: DES-9
     kind: data
-    text_sha256: c0bb874242640b15853ee19176f8ffca593fa3e28e8e73adcdf9b225ff6f5c38
+    text_sha256: c0269d4e11ffeebf119fad012b628080497447e10f0447c853083aebf25c06d5
     display: DES-9 (2:2, in 2. One change, and the consolidated spec)
+    change:
+      - Changed
   - id: DES-10
     kind: rule
     text_sha256: 9b0da0f045512d606dfc1e0816aea669ad1aa0d041b99530e08070ee51a2588c
@@ -87,8 +89,10 @@ paragraphs:
     display: DES-21 (3:10, in 3. IDs, kinds and links)
   - id: DES-22
     kind: rule
-    text_sha256: d7307ad174b2ebcdf5d7a464caaedaead59d5694bff195c3c68e04dbf7a67c5d
+    text_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341
     display: DES-22 (3:11, in 3. IDs, kinds and links)
+    change:
+      - Changed
   - id: DES-81
     kind: choice
     text_sha256: 8de44539eedb01d463b7d6372cd958a743bb3c3bb16f5936e3cbd7fb30a6e49e
