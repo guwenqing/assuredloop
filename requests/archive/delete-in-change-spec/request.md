@@ -1,5 +1,5 @@
 # Deleting a paragraph of a change spec
-Tier: 2 · Status: open
+Tier: 2 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -32,3 +32,12 @@ Signed off: 2026-10-16 owner, origin/2026-10-16-signoff.md
 - D3, 2026-10-16. Source: the agent (architect), message to developer, 2026-10-16. These stay not ok in every scope: an ID used again, a paragraph with no ID (this still catches a marker that an agent removed by accident while the text stayed), and a link to an ID that does not exist.
 - D4, 2026-10-16. Source: the agent (architect), message to developer, 2026-10-16. No new hint for a record entry that names a deleted change-spec ID. When a disposition (incorporated, removed, superseded) or a wording decision of the request names the deleted ID, the same lost-ID hint says so in its text, for example '<name>/SP-3 is deleted; its disposition says incorporated as INV-2'. Bindings, and the audit's 'source not found', stay as they are.
 - D5, 2026-10-16. Source: the agent (architect), message to developer, 2026-10-16. The skill and the README say that a paragraph of a change spec may be deleted, that its ID is retired and never used again, and that plan, step and migration paragraphs may live in the tracker issue named by the task's ref instead of in the change spec (#229, point 3).
+
+## Outcome
+
+Concluded 2026-10-16 with al conclude, on the working tree at 4dced17.
+
+- R1 Deleting a paragraph of a change spec, version 1, signed in S1:
+  - SP-3 rule: incorporated as DES-22
+  - DES-22 rule: in specs/design.md, serves it
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
