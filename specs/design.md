@@ -743,12 +743,14 @@ same without one.
 - a URL of the form `https://<host>/owner/repo/issues/n`, on any host: that
   item;
 - the `ref` of an item in the folder (for example `PROJ-12`), where the
-  task's `ref` holds it as a whole word.
+  task's `ref` holds it as a whole word: with no letter, digit, `_` or `-`
+  beside it.
 
 <!-- DES-94 data serves:issue-hints/R1 builds-on:DES-91 -->
 
 An item that a task names in one of these forms, and that is not in the
-folder, gets `issue-missing`. A task whose `ref` names no item in the folder
+folder, gets `issue-missing`; so does a `#n` when the request's own
+repository is not known. A task whose `ref` names no item in the folder
 gets `issue-missing` too. An item that several tasks name is checked once.
 The items in the folder that no task names are not checked, and the
 `Not known` line counts them.
@@ -807,8 +809,9 @@ An item needs a `body`, and a `url` of the form above, a `number` with a
 **The folder.** `al check --issues <folder>` reads each `*.json` file in
 the folder, but not its subfolders. A file holds one item, or a list of
 items, as `gh issue view` and `gh issue list` print them. A file that is
-not valid JSON, and an entry that is not an item, get `issue-unread` at the
-file, and the `Not known` line names the file. The folder is a path from
+not valid JSON gets `issue-unread` at the file. In a list, each entry that
+is not an item gets `issue-unread` at the file, and the other entries are
+read. The `Not known` line names each such file. The folder is a path from
 the current directory. A folder that is not there stops `al check` with a
 refusal: exit 2, and a line that names it.
 
@@ -825,9 +828,12 @@ each line that holds a bare `#n`. `issue-not-sub` is at `<key>`, once for
 each request and item, with the ID of that request's first task that names
 the item. `issue-missing` is at the reference as the task wrote it, for
 example `acme/web#5`, or at the request's record when the task's `ref`
-names no item. `issue-unread` is at the file. A `phrase` hint in a file has
-the ID `-`. `al check --issues <folder>` adds the line
-`info issues - - checked <c> items for the tasks of the open requests, from <folder>`.
+names no item. `issue-unread` is at `<folder>/<file>`, with the folder as
+the caller wrote it, and the ID `-`. A `phrase` hint in a file has the ID
+`-`. `al check --issues <folder>` adds the line
+`info issues - - checked <c> items for the tasks of the open requests, from <folder>`,
+where c counts the named items that are in the folder, and the folder is as
+the caller wrote it.
 
 <!-- DES-99 data serves:issue-hints/R1 builds-on:DES-91 -->
 
