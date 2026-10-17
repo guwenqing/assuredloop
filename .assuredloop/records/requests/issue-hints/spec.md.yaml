@@ -27,7 +27,7 @@ paragraphs:
       - New
   - id: SP-5
     kind: rule
-    text_sha256: 65d7b300cebd2ed3518e63bed56d90539cdb44e022c827cb2bcc419cbcde914d
+    text_sha256: 3fe7761cfe7d05dc5086ccdbb91aa5ede8b25df05de8eab66c9489c5d98936fd
     display: SP-5 (1:2, in Hints from the linked issues)
     change:
       - New

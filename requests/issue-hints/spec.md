@@ -36,7 +36,9 @@ that it reads, it gives a hint:
 When it cannot read an issue, it gives the hint `issue-unread` with the
 reason, and the `Not known` line names the issue. Each of these is a hint in
 every mode; none is `not ok`. Without `--issues`, `al check` reads no issue.
-Archived requests are history, and their issues are not read.
+Archived requests are history, and their issues are not read. Reading
+issues is optional: a project needs no GitHub issues, and every other check
+works the same without them.
 
 <!-- SP-6 rule serves:R1 changes:DES-52 -->
 

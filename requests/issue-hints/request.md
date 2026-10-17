@@ -19,7 +19,7 @@ From issue #239. Each finding here is a hint in every mode (hints-and-blocks R2)
 <!-- R1 from:2026-10-17-owner-words.md -->
 
 ### R1 Hints from the linked issues
-With `al check --issues`, `al check` reads the GitHub issues that the `tasks:` of each open request name. It only reads, and it changes nothing on GitHub. It gives a hint for an issue when its body, or a comment that is not hidden, names a superseded ADR without the ADR that supersedes it, as in hints-and-blocks R5. It gives a hint when a bare `#n` is in an issue of a repository other than the request's own. It gives a hint when the issue is not a sub-issue of the request's own issue, where GitHub has sub-issues. It gives a hint when a phrase of R2 matches. Without `--issues`, `al check` reads no issue. When it cannot read an issue, it says so in a hint.
+With `al check --issues`, `al check` reads the GitHub issues that the `tasks:` of each open request name. It only reads, and it changes nothing on GitHub. It gives a hint for an issue when its body, or a comment that is not hidden, names a superseded ADR without the ADR that supersedes it, as in hints-and-blocks R5. It gives a hint when a bare `#n` is in an issue of a repository other than the request's own. It gives a hint when the issue is not a sub-issue of the request's own issue, where GitHub has sub-issues. It gives a hint when a phrase of R2 matches. Without `--issues`, `al check` reads no issue. When it cannot read an issue, it says so in a hint. Reading issues is optional: a project needs no GitHub issues, and every other check works the same without them.
 
 <!-- R2 from:2026-10-17-owner-words.md -->
 
