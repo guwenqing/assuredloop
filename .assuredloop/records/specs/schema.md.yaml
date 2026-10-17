@@ -87,8 +87,16 @@ paragraphs:
     display: SCH-21 (5, 5. ADRs)
   - id: SCH-22
     kind: rule
-    text_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4
+    text_sha256: d7f1bc21627de85fa3c16875d1cebe763183d6ca293cc363299ed9df80c4075a
     display: SCH-22 (5:1, in 5. ADRs)
+    change:
+      - Changed
+  - id: SCH-37
+    kind: rule
+    text_sha256: 8b8fcc9a17783a2c319b8a338d83208a883d9c5a0f0bbe75c557814a3733b1ab
+    display: SCH-37 (5:2, in 5. ADRs)
+    change:
+      - New
   - id: SCH-23
     kind: note
     text_sha256: a262a3791a58348b944529cef79f2c099f5a5277b524d4e870d5b4c9e799ff0a
@@ -145,3 +153,9 @@ paragraphs:
     kind: limit
     text_sha256: c110b5ceea27b4a2d6c9642bc9af1e16ffc2612d4ef3e22a0c0b2a73f15f1809
     display: SCH-36 (9:2, in 9. What the graph lets the tool say)
+  - id: SCH-38
+    kind: rule
+    text_sha256: 55dd98f0ca990a3a7f546d692e41474f6e6b9c1f314911dcd65d4ce94e44dbba
+    display: SCH-38 (9:3, in 9. What the graph lets the tool say)
+    change:
+      - New
