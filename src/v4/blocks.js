@@ -10,7 +10,7 @@
 // - record-unreadable: a request record that cannot be read or is not a YAML
 //   mapping, or whose request has no request.md.
 // Each finding is { severity, code, where, id, message }, as in checks.js.
-import { readdirSync } from 'node:fs';
+import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { read, recordPath, sha256 } from './base.js';
 import { SIGNED } from './snapshot.js';
@@ -21,6 +21,16 @@ const text = (x) => typeof x === 'string' && x.length > 0;
 const whole = (x) => Number.isInteger(x) && x > 0;
 const REQ = /^[RQ]\d+$/;
 const SYMLINK = 'it is a symlink, and al does not read through a symlink';
+// A symlink that stands for a current place: to a Markdown file, or to a
+// folder (its type is read from the link, nothing through it).
+const placeLink = (top, path) => {
+  if (path.endsWith('.md')) return true;
+  try {
+    return statSync(join(top, path)).isDirectory();
+  } catch {
+    return false;
+  }
+};
 
 // The bytes of a snapshot after its separator line, as al new and al record
 // hashed them: the first line that is `---` (or `--- signed text ---`), or
@@ -239,7 +249,7 @@ export function supersededBlocks(top, state, add) {
   // A current place that cannot be read: its citations are not checked, and
   // a read failure never hides a block (SCH-37).
   const unreadable = (path, why) => add('not ok', 'superseded-cited', path, '-', `${path} cannot be read (${why}), so its citations of superseded ADRs are not checked`);
-  // A symlinked Markdown file under the spec root (the ADRs too) is not read.
+  // A symlinked Markdown file or folder under the spec root (the ADRs too) is not read.
   const linked = (dir) => {
     let entries = [];
     try {
@@ -247,7 +257,7 @@ export function supersededBlocks(top, state, add) {
     } catch {
       entries = [];
     }
-    return entries.flatMap((e) => (e.isSymbolicLink() ? (e.name.endsWith('.md') ? [`${dir}/${e.name}`] : []) : e.isDirectory() ? linked(`${dir}/${e.name}`) : []));
+    return entries.flatMap((e) => (e.isSymbolicLink() ? (placeLink(top, `${dir}/${e.name}`) ? [`${dir}/${e.name}`] : []) : e.isDirectory() ? linked(`${dir}/${e.name}`) : []));
   };
   for (const f of linked(state.root).sort()) unreadable(f, SYMLINK);
   // The spec docs, each paragraph with its marker.
@@ -264,7 +274,7 @@ export function supersededBlocks(top, state, add) {
     }
     return entries.sort((a, b) => (a.name < b.name ? -1 : 1)).flatMap((e) => {
       const f = sub ? `${sub}/${e.name}` : e.name;
-      if (e.isSymbolicLink()) return f !== 'origin' && e.name.endsWith('.md') ? [{ unreadable: f, why: SYMLINK }] : [];
+      if (e.isSymbolicLink()) return f !== 'origin' && placeLink(top, `${dir}/${f}`) ? [{ unreadable: f, why: SYMLINK }] : [];
       if (e.isDirectory()) return f === 'origin' ? [] : markdown(dir, f);
       return e.isFile() && e.name.endsWith('.md') ? [f] : [];
     });
