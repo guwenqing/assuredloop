@@ -6,6 +6,7 @@
 // when it prints a `not ok`. A finding has the same severity in both modes:
 // the marker and ID lints are hints for the review, and only the exact rules
 // of checks.js are `not ok` (#238).
+import { relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { read, recordPath } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
@@ -16,7 +17,19 @@ import { Fail } from './spec.js';
 import { centralLookup } from './repos.js';
 import { checks } from './checks.js';
 
-export function check({ top, opts }) {
+// A file or folder that al check cannot read, and that no check reports as
+// not ok, stops it with a refusal: never an internal error, never a pass (#238).
+const UNREADABLE = new Set(['EACCES', 'EPERM', 'EISDIR', 'ENOTDIR', 'ELOOP']);
+export function check(args) {
+  try {
+    return checkAll(args);
+  } catch (e) {
+    if (e instanceof Fail || !UNREADABLE.has(e.code) || !e.path) throw e;
+    throw new Fail(`${relative(args.top, e.path)} cannot be read`, 'make it readable, then run al check again');
+  }
+}
+
+function checkAll({ top, opts }) {
   const config = loadConfig(top);
   const root = rootProblem(config);
   if (root) throw new Fail(root, 'fix root: in .assuredloop/config.yaml');
