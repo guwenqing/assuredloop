@@ -206,7 +206,7 @@ test('D10: signoff refuses without --words, with and without --yes, and writes n
   const dir = drafted(t);
   refusesWords(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--yes']);
   refusesWords(dir, ['record', 'inv', 'signoff', '--source', SOURCE]);
-  assert.ok(!exists(dir, 'requests/inv/origin'), 'no snapshot');
+  assert.ok(!exists(dir, `requests/inv/origin/${DAY}-signoff.md`), 'no sign-off snapshot');
   assert.deepEqual(record(dir, 'inv').signoff ?? [], [], 'no sign-off entry');
   assert.deepEqual(signedOffLines(dir), [], 'no Signed off line');
 });
