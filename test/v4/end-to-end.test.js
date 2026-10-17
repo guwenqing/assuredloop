@@ -86,8 +86,8 @@ test('a request from the owner\'s words to bound change spec links: the whole ch
       holder: `invoice-exports/${r.id}`, link: 'from', target: `invoice-exports/${file}`, holder_sha256: r.sha256, target_sha256: h,
     });
   }
-  assert.deepEqual(docRecord(dir, cs).paragraphs.map((p) => [p.id, p.kind, p.change]),
-    [['SP-1', 'note', ['New']], ['SP-12', 'rule', ['New']]]);
+  assert.deepEqual(docRecord(dir, cs).paragraphs.map((p) => [p.id, p.kind, 'change' in p]),
+    [['SP-1', 'note', false], ['SP-12', 'rule', false]], 'a per-doc record holds no change field (#245)');
 });
 
 test('an ADR with decides, source and supersedes, indexed: its bindings and its per-doc record', (t) => {
@@ -107,8 +107,9 @@ test('an ADR with decides, source and supersedes, indexed: its bindings and its 
   assert.equal(docRec.schema, 'assuredloop/1');
   assert.equal(docRec.file, adr);
   assert.equal(docRec.status, 'accepted');
-  assert.deepEqual(docRec.paragraphs.map((p) => [p.id, p.kind, p.change]),
-    [['ADR-4', 'choice', ['New']], ['ADR-4-1', 'rationale', ['New']], ['ADR-4-2', 'rationale', ['New']]]);
+  assert.deepEqual(docRec.paragraphs.map((p) => [p.id, p.kind, 'change' in p]),
+    [['ADR-4', 'choice', false], ['ADR-4-1', 'rationale', false], ['ADR-4-2', 'rationale', false]],
+    'a per-doc record holds no change field (#245)');
   assert.equal(docRecord(dir, 'specs/adr/0003-signed-links.md').status, 'accepted');
 
   const rec = record(dir, 'token-links');

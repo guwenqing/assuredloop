@@ -49,7 +49,7 @@ test('index writes the per-doc record: schema, file, each ID with kind, text_sha
   assert.equal(new Set(rec.paragraphs.map((p) => p.text_sha256)).size, rec.paragraphs.length);
 });
 
-test('change kinds against the base commit, and the removed list', (t) => {
+test('changed, new, moved and removed paragraphs on a branch: the record lists the current paragraphs, with no change field and no removed list', (t) => {
   const dir = committed(t);
   git(dir, 'checkout', '-q', '-b', 'feature');
   write(dir, SPEC, `An intro with no ID.\n\n${doc([
@@ -63,14 +63,13 @@ test('change kinds against the base commit, and the removed list', (t) => {
   ])}`);
   index(dir);
   const rec = docRecord(dir, SPEC);
-  const change = (id) => paragraph(dir, SPEC, id).change;
-  assert.equal(change('INV-1'), undefined, 'unchanged: no change field');
-  assert.deepEqual(change('INV-2'), ['Changed']);
-  assert.deepEqual(change('INV-4'), ['New']);
-  assert.ok(change('INV-5')?.includes('Moved') && !change('INV-5').includes('Changed'), `INV-5: ${change('INV-5')}`);
-  assert.ok(change('INV-6')?.includes('Moved') && change('INV-6').includes('Changed'), `INV-6: ${change('INV-6')}`);
-  assert.deepEqual(rec.removed, ['INV-9']);
-  assert.ok(!rec.paragraphs.some((p) => p.id === 'INV-9'));
+  assert.ok(!('removed' in rec), `no removed list: ${rec.removed}`);
+  assert.deepEqual(rec.paragraphs.map((p) => p.id), ['INV-1', 'INV-2', 'INV-4', 'INV-3', 'INV-7', 'INV-5', 'INV-6'],
+    'the paragraphs of the current file, in order; the removed INV-9 is not listed');
+  for (const p of rec.paragraphs) {
+    assert.ok(!('change' in p), `${p.id}: no change field, but it holds ${JSON.stringify(p.change)}`);
+    for (const k of Object.keys(p)) assert.ok(['id', 'kind', 'text_sha256', 'display'].includes(k), `${p.id}: ${k}`);
+  }
 });
 
 test('an ADR in specs/adr/ gets a record with its status, though config does not list it', (t) => {
@@ -237,7 +236,7 @@ test('config root: names the spec root; its *.md and <root>/adr/ are indexed, an
   assert.ok(!exists(dir, docRecordPath('specs/c.md')), 'specs/ is not the root here');
 });
 
-test('IDs of a change spec are local to its request: SP-1 of a and SP-1 of b each get their own change kind', (t) => {
+test('IDs of a change spec are local to its request: an edit to SP-1 of b changes only the record of b, and adds no change field', (t) => {
   const dir = project(t);
   newRequest(dir, 'a');
   newRequest(dir, 'b');
@@ -246,12 +245,16 @@ test('IDs of a change spec are local to its request: SP-1 of a and SP-1 of b eac
   commitAll(dir, 'two requests on main');
   git(dir, 'checkout', '-q', '-b', 'feature');
   index(dir);
-  assert.equal(paragraph(dir, 'requests/a/spec.md', 'SP-1').change, undefined);
-  assert.equal(paragraph(dir, 'requests/b/spec.md', 'SP-1').change, undefined);
+  const a = read(dir, docRecordPath('requests/a/spec.md'));
+  const b = hashOf(dir, 'requests/b/spec.md', 'SP-1');
   editFile(dir, 'requests/b/spec.md', 'MUST export ZIP', 'MUST export one ZIP');
   index(dir);
-  assert.equal(paragraph(dir, 'requests/a/spec.md', 'SP-1').change, undefined);
-  assert.deepEqual(paragraph(dir, 'requests/b/spec.md', 'SP-1').change, ['Changed']);
+  assert.equal(read(dir, docRecordPath('requests/a/spec.md')), a, 'the record of a is the same');
+  assert.notEqual(hashOf(dir, 'requests/b/spec.md', 'SP-1'), b, 'SP-1 of b has its new hash');
+  for (const r of ['a', 'b']) {
+    const p = paragraph(dir, `requests/${r}/spec.md`, 'SP-1');
+    assert.ok(!('change' in p), `SP-1 of ${r}: no change field, but it holds ${JSON.stringify(p.change)}`);
+  }
 });
 
 test('config root written as ./docs-spec or docs-spec/ works as docs-spec: a committed ADR is not New, its lost links unknown', async (t) => {
