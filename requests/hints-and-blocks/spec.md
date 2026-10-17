@@ -381,7 +381,11 @@ superseded, the same rule applies to it. Else `al check` gives
   the Markdown files of an open request, except its `origin/` folder; and
   each proposed or accepted ADR, with its marker. A current place that cannot
   be read gives `not ok superseded-cited` at its path: its citations are not
-  checked, and a read failure never hides a block.
+  checked, and a read failure never hides a block. `al` does not read through
+  a symlink, so a Markdown file there that is a symlink is such a place. Any
+  other file or folder that `al check` cannot read, and that no check reports
+  as `not ok`, stops `al check` with a refusal: exit 2,
+  `al: <path> cannot be read`.
 - Exempt, because they are the chain itself or dated records: an ADR that
   supersedes ADR-n, directly or through a chain; a superseded ADR; an ADR's
   `## History` section; a request's `## Decisions` section (D1, D2...);
