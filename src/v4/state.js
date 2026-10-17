@@ -151,12 +151,17 @@ export function loadState(top, rev = null) {
   for (const n of archivedNames) if (!requests.has(n)) add(n, false);
 
   const adrs = new Map();
+  // The ADR files that are there but cannot be read (#238): R5 reports them.
+  const unreadableAdrs = [];
   for (const f of adrFiles) {
     const m = ADR_FILE.exec(f);
     if (!m) continue;
     const file = `${root}/adr/${f}`;
     const text = get(file);
-    if (text === null || text === undefined) continue;
+    if (text === null || text === undefined) {
+      if (!rev && exists(top, file)) unreadableAdrs.push(file);
+      continue;
+    }
     const paragraphs = parseMarkdown(text, file, { kinds }).paragraphs;
     const id = `ADR-${Number(m[1])}`;
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
@@ -166,7 +171,7 @@ export function loadState(top, rev = null) {
     const by = n === undefined ? null : `ADR-${Number(n)}`;
     adrs.set(id, { id, file, text, status, by, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head });
   }
-  return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs };
+  return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, unreadableAdrs };
 }
 
 // The kind groups a check asks about.
