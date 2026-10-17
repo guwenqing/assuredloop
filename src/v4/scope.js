@@ -44,6 +44,9 @@ const linked = (top, config) => [
   ...insideDocs(config).map((d) => String(d.file)).filter((f) => symlinkOn(top, clean(f))),
 ];
 
+// The docs that config lists, in the repo, that a symlink reaches (#238).
+export const linkedDocs = (top, config) => insideDocs(config).map((d) => clean(d.file)).filter((f) => symlinkOn(top, f));
+
 // Why config's root cannot be used, or null: the repository top is no spec root.
 export const rootProblem = (config) => (!outside(config.root) && ['.', ''].includes(clean(config.root))
   ? `.assuredloop/config.yaml: root: ${JSON.stringify(String(config.root))} is the repository top; give the spec folder, for example specs`

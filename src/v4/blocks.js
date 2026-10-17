@@ -14,7 +14,7 @@ import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { read, recordPath, sha256 } from './base.js';
 import { SIGNED } from './snapshot.js';
-import { SPEC, rootNotOk } from './scope.js';
+import { SPEC, linkedDocs, rootNotOk } from './scope.js';
 
 const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const text = (x) => typeof x === 'string' && x.length > 0;
@@ -259,8 +259,10 @@ export function supersededBlocks(top, state, add) {
     }
     return entries.flatMap((e) => (e.isSymbolicLink() ? (placeLink(top, `${dir}/${e.name}`) ? [`${dir}/${e.name}`] : []) : e.isDirectory() ? linked(`${dir}/${e.name}`) : []));
   };
-  // Only a root that is in the repo and not through a symlink is walked (scope.js).
-  if (!rootNotOk(top, state.config)) for (const f of linked(state.root).sort()) unreadable(f, SYMLINK);
+  // Only a root that is in the repo and not through a symlink is walked
+  // (scope.js); the docs that config lists are spec docs too.
+  const links = new Set([...(rootNotOk(top, state.config) ? [] : linked(state.root)), ...linkedDocs(top, state.config)]);
+  for (const f of [...links].sort()) unreadable(f, SYMLINK);
   // The spec docs, each paragraph with its marker.
   for (const d of state.docs ?? []) if (d.scope === SPEC && typeof d.text === 'string') check(d.path, d.text);
   // The Markdown files of each open request, in its subfolders too, but
