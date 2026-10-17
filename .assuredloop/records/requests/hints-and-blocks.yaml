@@ -89,6 +89,13 @@ decisions:
     source: the agent (architect), message to developer, 2026-10-17
     text: "R3 stays as signed: a request that has a requirement (R<n>) needs it signed, also when it changes no promise; the owner's B1 in #238 has no exception. So nothing contradicts it: DES-42 says that a request that changes no promise needs no sign-off only when it has no requirement, and the skill says to write a design-only request with no R<n> in its organized section. The PR body says the consequence."
     sha256: 35f8cea168ce01aaaac13e8aad9fb58fafe3d5e7024e37556c3793e3dd45837a
+  - id: D10
+    date: 2026-10-17
+    source: the agent (architect)
+    text: "al record <name> signoff refuses without --words, and its Next line says to pass the owner's words: the command must not write a sign-off that al check calls not valid. It follows from R3 (DES-89), so it needs no new sign-off."
+    sha256: 5fca98e629d30537d5455f42470d128aede999d191655842f0a1f25920d2c1d7
+    clarifies:
+      - R3
 tasks: []
 bindings:
   - { holder: hints-and-blocks/R1, link: from, target: hints-and-blocks/2026-10-17-owner-words.md, holder_sha256: 99a4d062d4adaa69df69f57a4c4d5f10ae9972b59f1994963bf6b2764c0e7b62, target_sha256: 3d04cd7b512066a31d7b70114b0fbf3ccb295eccbd6d9abf65986870325e664d }
