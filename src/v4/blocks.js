@@ -7,7 +7,8 @@
 // - record-evidence: each file that a record lists with a hash still has it (R4);
 // - superseded-cited and superseded-status: a current place that names a
 //   superseded ADR names its successor, and the status line names it (R5);
-// - record-unreadable: a request record that is not a YAML mapping.
+// - record-unreadable: a request record that cannot be read or is not a YAML
+//   mapping, or whose request has no request.md.
 // Each finding is { severity, code, where, id, message }, as in checks.js.
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -48,6 +49,17 @@ function evidence(top, r, file, signedOnly) {
 
 // R3, R4 and the unreadable record, for each request with a record, open or archived.
 export function recordBlocks(top, state, add) {
+  // A record whose request has no request.md: nothing in it can be checked.
+  let records = [];
+  try {
+    records = readdirSync(join(top, '.assuredloop/records/requests'), { withFileTypes: true }).filter((e) => e.isFile() && e.name.endsWith('.yaml')).map((e) => e.name.slice(0, -5)).sort();
+  } catch {
+    records = [];
+  }
+  for (const name of records.filter((n) => !state.requests.has(n))) {
+    const at = recordPath(name);
+    add('not ok', 'record-unreadable', at, name, `${at} has no request.md in requests/${name}/ or requests/archive/${name}/, so its requirements, sign-offs and evidence are not checked`);
+  }
   for (const r of state.requests.values()) {
     const at = recordPath(r.name);
     const data = r.data;
@@ -223,16 +235,24 @@ export function supersededBlocks(top, state, add) {
   };
   // The spec docs, each paragraph with its marker.
   for (const d of state.docs ?? []) if (d.scope === SPEC && typeof d.text === 'string') check(d.path, d.text);
-  // The Markdown files of each open request, but origin/ and the recorded decisions.
+  // The Markdown files of each open request, in its subfolders too, but
+  // origin/ and the recorded decisions.
+  const markdown = (dir, sub) => {
+    let entries = [];
+    try {
+      entries = readdirSync(join(top, dir, sub), { withFileTypes: true });
+    } catch {
+      entries = [];
+    }
+    return entries.sort((a, b) => (a.name < b.name ? -1 : 1)).flatMap((e) => {
+      const f = sub ? `${sub}/${e.name}` : e.name;
+      if (e.isDirectory()) return f === 'origin' ? [] : markdown(dir, f);
+      return e.isFile() && e.name.endsWith('.md') ? [f] : [];
+    });
+  };
   for (const r of state.requests.values()) {
     if (!r.open) continue;
-    let files = [];
-    try {
-      files = readdirSync(join(top, r.dir), { withFileTypes: true }).filter((e) => e.isFile() && e.name.endsWith('.md')).map((e) => e.name).sort();
-    } catch {
-      files = [];
-    }
-    for (const f of files) {
+    for (const f of markdown(r.dir, '')) {
       let t;
       try {
         t = read(top, `${r.dir}/${f}`);

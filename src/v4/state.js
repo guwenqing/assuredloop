@@ -79,13 +79,15 @@ export function loadState(top, rev = null) {
     // The record is read now and parsed on first use (design.md 11): a check
     // that does not need an archived record never parses it.
     let text = null;
+    let readError = null;
     try {
       text = get(recordPath(name));
-    } catch {
+    } catch (e) {
       text = null;
+      readError = e.message.split('\n')[0];
     }
     let data;
-    let error = null;
+    let error = readError;
     const dataOf = () => {
       if (data !== undefined) return data;
       try {
