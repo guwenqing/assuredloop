@@ -1,7 +1,7 @@
 schema: assuredloop/1
 request: hints-and-blocks
 tier: "2"
-status: open
+status: concluded
 sources:
   - file: 2026-10-17-owner-words.md
     kind: owner-words
