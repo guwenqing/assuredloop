@@ -111,7 +111,7 @@ The user picks the path. The skill has the steps of each path.
 | 0. Fix | no promise changes: it restores what the spec says, or claims a typo in any paragraph | none | no | the PR merges |
 | 1. Small promise amend | one or a few promise paragraphs change | a short request; the PR edits `specs/` directly | yes | the PR merges |
 | 1d. Small design correction | names or wording of design paragraphs only | a short request with a one-line source note; the PR edits `specs/` directly | no | the PR merges |
-| 2. Big change | a real design, one or a few PRs | a request and a change spec | if a promise kind changes | the close rule holds |
+| 2. Big change | a real design, one or a few PRs | a request and a change spec | if a promise kind changes, or the request has an R<n> | the close rule holds |
 | 3. Epic | big, in parts over time | as 2, with optional task references | as 2 | the close rule holds |
 | S. Spike | not yet clear what to build | a request with an organized question; the findings open with the answer | yes, on the question | the answer names the question version |
 

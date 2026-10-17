@@ -181,8 +181,10 @@ paragraphs:
     display: DES-41 (6:1, in 6. Sign-off)
   - id: DES-42
     kind: rule
-    text_sha256: de1e808646d7c3a421f4f01195fed7cdea02fa49e89560863ccdb46577f60558
+    text_sha256: 757a4261de1c589a47c1e8437328ce3f8759d5d17ed86ee44a89a44dbec78d53
     display: DES-42 (6:2, in 6. Sign-off)
+    change:
+      - Changed
   - id: DES-89
     kind: rule
     text_sha256: 2e2f4f409b7c52548968f7afb20a42483acb625f8f79518ff0a8965311a394f2
@@ -211,8 +213,10 @@ paragraphs:
     display: DES-47 (7:1, in 7. Paths for each kind of work)
   - id: DES-48
     kind: definition
-    text_sha256: 2ef9134694372e285f3a3dcae57ca517fc3d760dd1e98655ddeaa43adc7b1ba5
+    text_sha256: 4adacbcafe26abfbea5698103ee063f8c8d899a8749b4ccf11669806311607fb
     display: DES-48 (7:2, in 7. Paths for each kind of work)
+    change:
+      - Changed
   - id: DES-49
     kind: rule
     text_sha256: 34f89de23e2e9a9ab9c6354d79213c4dadea410b76e41dbde45969248ff48569
