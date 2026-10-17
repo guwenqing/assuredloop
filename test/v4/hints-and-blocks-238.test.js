@@ -18,7 +18,7 @@
 // repos built here.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
@@ -977,5 +977,92 @@ describe('SCH-37: a Markdown file in a subfolder of an open request is a current
     write(dir, 'requests/archive/invoice-numbers/details/plan.md', CITES_ADR3);
     const r = both(dir);
     assert.deepEqual(coded(r, 'superseded-cited'), [], show(r));
+  });
+});
+
+// DES-89, continued: a record that exists but cannot be read, and the two
+// earlier cases together.
+const ROOT_SKIP = 'running as root: a file with mode 000 can still be read';
+const isRoot = () => typeof process.getuid === 'function' && process.getuid() === 0;
+
+// Make the record of name at dir a symlink to an unchanged copy outside the repo.
+function symlinkRecord(t, dir, name) {
+  const outside = mkdtempSync(join(realpathSync(tmpdir()), 'al4-rec-'));
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  const real = join(outside, `${name}.yaml`);
+  const path = join(dir, recordPath(name));
+  writeFileSync(real, readFileSync(path));
+  rmSync(path);
+  symlinkSync(real, path);
+}
+
+// Give the record of name at dir mode 000; the cleanup restores 0644.
+function lockRecord(t, dir, name) {
+  const path = join(dir, recordPath(name));
+  chmodSync(path, 0o000);
+  t.after(() => {
+    try { chmodSync(path, 0o644); } catch (e) { if (e.code !== 'ENOENT') throw e; } // the world may be removed first
+  });
+}
+
+// Put a folder at the record path of name at dir.
+function folderRecord(dir, name) {
+  const path = join(dir, recordPath(name));
+  rmSync(path);
+  mkdirSync(path);
+}
+
+describe('DES-89: a record that exists but cannot be read is not ok record-unreadable', () => {
+  test('control: the clean world and the hand-written world have no record-unreadable', (t) => {
+    let r = both(invoicer(t, 'clean'));
+    assert.deepEqual(coded(r, 'record-unreadable'), [], show(r));
+    r = both(signedWorld(t));
+    assert.deepEqual(coded(r, 'record-unreadable'), [], show(r));
+  });
+
+  test('the record file has mode 000: not ok record-unreadable inv; plain exits 0, --strict exits 1', { skip: isRoot() && ROOT_SKIP }, (t) => {
+    const dir = signedWorld(t);
+    onlyNotOk(both(dir), []);
+    lockRecord(t, dir, NAME);
+    assert.throws(() => readFileSync(join(dir, recordPath(NAME))), { code: 'EACCES' }, 'a direct read gives EACCES');
+    unreadable(both(dir), NAME);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('the invoicer world: invoice-exports.yaml has mode 000: not ok record-unreadable invoice-exports', { skip: isRoot() && ROOT_SKIP }, (t) => {
+    const dir = invoicer(t, 'clean');
+    lockRecord(t, dir, 'invoice-exports');
+    unreadable(both(dir), 'invoice-exports');
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('a folder stands at the record path: not ok record-unreadable inv; plain exits 0, --strict exits 1', (t) => {
+    const dir = signedWorld(t);
+    folderRecord(dir, NAME);
+    unreadable(both(dir), NAME);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('the invoicer world: a folder at invoice-exports.yaml: not ok record-unreadable invoice-exports', (t) => {
+    const dir = invoicer(t, 'clean');
+    folderRecord(dir, 'invoice-exports');
+    unreadable(both(dir), 'invoice-exports');
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('both earlier cases together: the record is a symlink to its unchanged copy and request.md is gone: not ok record-unreadable inv', (t) => {
+    const dir = signedWorld(t);
+    symlinkRecord(t, dir, NAME);
+    rmSync(join(dir, REQUEST_MD));
+    unreadable(both(dir), NAME);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('the invoicer world, both together: invoice-exports.yaml a symlink and its request.md gone: not ok record-unreadable invoice-exports', (t) => {
+    const dir = invoicer(t, 'clean');
+    symlinkRecord(t, dir, 'invoice-exports');
+    rmSync(join(dir, 'requests/invoice-exports/request.md'));
+    unreadable(both(dir), 'invoice-exports');
+    assert.equal(check(dir, '--strict').code, 1);
   });
 });
