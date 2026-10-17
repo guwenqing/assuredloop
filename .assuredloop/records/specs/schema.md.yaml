@@ -93,7 +93,7 @@ paragraphs:
       - Changed
   - id: SCH-37
     kind: rule
-    text_sha256: 8fa36357438774b2a2a3a5235fea0b3cc0fbc3625cf07175dba6c93f3520fc10
+    text_sha256: 535a07dd8bf92115f4ff2891ad63b749939ba6edef1066b65a7eab2bab32fa2b
     display: SCH-37 (5:2, in 5. ADRs)
     change:
       - New
