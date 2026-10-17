@@ -247,13 +247,13 @@ paragraphs:
       - New
   - id: DES-93
     kind: data
-    text_sha256: 7e12c6b1239414cefef5d998e92b0298c8f406867eac6e78d691a0f212412b14
+    text_sha256: 5ae35cdcfc8097c29bfc67921bce208af5b4d69f043fba3e1a58fdf4997b0dbe
     display: DES-93 (8:5, in 8. Tasks)
     change:
       - New
   - id: DES-94
     kind: data
-    text_sha256: 4ba3b91e0191555fd019982fc54c0777b7915b6b451c94a8e44cf6a4293d3497
+    text_sha256: 6073604ae935e59a9d4c2566ce3de0a91e17ef7f5b19b9e8a373d4ea5635fbb3
     display: DES-94 (8:6, in 8. Tasks)
     change:
       - New
@@ -283,13 +283,13 @@ paragraphs:
       - New
   - id: DES-97
     kind: interface
-    text_sha256: ee80ff1c945714d769705e870348907c30db93832f08a08ae6b77c0271d4f1fb
+    text_sha256: f761bd8a8562af1988696d580b7311e57451316c0fc5c00202d74e6014b0a048
     display: DES-97 (8:11, in 8. Tasks)
     change:
       - New
   - id: DES-98
     kind: interface
-    text_sha256: d799c5e5622ffb19ca06af3b1cbb9841ecc305a90e66504470cbc47230caf10a
+    text_sha256: 23020f71d0ede1efb3d75898e4be23457bcd8c4212f3284e72efce02ded22922
     display: DES-98 (8:12, in 8. Tasks)
     change:
       - New
