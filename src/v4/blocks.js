@@ -52,7 +52,7 @@ export function recordBlocks(top, state, add) {
   // A record whose request has no request.md: nothing in it can be checked.
   let records = [];
   try {
-    records = readdirSync(join(top, '.assuredloop/records/requests'), { withFileTypes: true }).filter((e) => e.isFile() && e.name.endsWith('.yaml')).map((e) => e.name.slice(0, -5)).sort();
+    records = readdirSync(join(top, '.assuredloop/records/requests'), { withFileTypes: true }).filter((e) => e.name.endsWith('.yaml')).map((e) => e.name.slice(0, -5)).sort();
   } catch {
     records = [];
   }
