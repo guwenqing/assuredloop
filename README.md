@@ -286,12 +286,22 @@ does not change; `al` hashes each paragraph without its marker.
 
 **From 0.1.0.** v4 (0.2.0) does not read 0.1.0 records. Keep 0.1.0 pinned
 until you move. Older records stay readable as files; run the pinned 0.1.0 at
-those commits. To move:
+those commits.
+
+In a project where `.assuredloop` is a file, as 0.1.0 writes it, each `al`
+command refuses with exit 2 and one line: `al: .assuredloop is a file, so the
+project has 0.1.0 records, which v4 does not read; keep 0.1.0 pinned, or move
+as "From 0.1.0" in the README says`. It reads and writes nothing else, so
+`al check` never passes there. `al --version` and the usage message still
+work. To move:
 
 1. Finish each open 0.1.0 request on its pinned copy, or start it again
    under v4.
 2. Install 0.2.0 (see "Install").
-3. Run `al spec --add-ids`, as in steps 1-5 above. It marks every paragraph
+3. Remove the 0.1.0 file: `git rm .assuredloop`. v4 keeps its settings in
+   the folder `.assuredloop/`. If the file had a `root:` line, write the
+   same line in `.assuredloop/config.yaml` (see "Settings").
+4. Run `al spec --add-ids`, as in steps 1-5 above. It marks every paragraph
    and writes the adoption record.
 
 ## Hints, and the rules that block
