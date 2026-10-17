@@ -1482,3 +1482,66 @@ describe('DES-89 and DES-90: the cases that tell each rule apart from its break'
     });
   }
 });
+
+// The root boundary of scope.js (outside-docs.test.js pins it), also in the
+// D12 symlink scan: al check never reads or walks a spec root that is outside
+// the repository or reached through a symlink. The repo is top/repo, so a
+// sibling folder top/<name> is outside it and private to the test.
+function rootRepo(t, root) {
+  const top = mkdtempSync(join(realpathSync(tmpdir()), 'al4-root-'));
+  t.after(() => rmSync(top, { recursive: true, force: true }));
+  const dir = join(top, 'repo');
+  mkdirSync(dir);
+  git(dir, 'init', '-q', '-b', 'main');
+  git(dir, 'config', 'user.name', 'Fixture Author');
+  git(dir, 'config', 'user.email', 'author@example.invalid');
+  git(dir, 'config', 'commit.gpgsign', 'false');
+  write(dir, '.assuredloop/config.yaml', `root: ${root}\n`);
+  write(dir, 'README.md', 'fixture\n');
+  commitAll(dir, 'config');
+  // The target of every symlinked .md: a file outside the repo.
+  mkdirSync(join(top, 'target'));
+  writeFileSync(join(top, 'target', 'outside-only.md'), 'Use ADR-3 for export links.\n');
+  return { top, dir, target: join(top, 'target', 'outside-only.md') };
+}
+
+// No finding line names a path outside the repo, or a path under the root
+// that is reached through a symlink.
+function namesNothingOutside(r, under) {
+  const bad = r.findings.filter((f) => f.file.startsWith('../') || f.file.startsWith('/') || f.line.includes('outside-only')
+    || (under && f.file.startsWith(`${under}/`)));
+  assert.deepEqual(bad.map((f) => f.line), [], `no finding names a path outside the repo:\n${show(r)}`);
+}
+
+describe('the root boundary: al check never walks a spec root outside the repo or through a symlink', () => {
+  test('root: ../outside-probe, a sibling folder that holds outside-only.md as a symlink: the spec-root not ok, and no finding outside the repo', (t) => {
+    const { top, dir, target } = rootRepo(t, '../outside-probe');
+    mkdirSync(join(top, 'outside-probe'));
+    symlinkSync(target, join(top, 'outside-probe', 'outside-only.md'));
+    const r = both(dir);
+    assert.ok(r.findings.some((f) => f.line === 'not ok spec-root .assuredloop/config.yaml - ../outside-probe/: outside the repository'), show(r));
+    namesNothingOutside(r);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('root: specs-link, itself a symlink to an outside folder that holds a symlinked .md: the spec-root not ok, and no finding through it', (t) => {
+    const { top, dir, target } = rootRepo(t, 'specs-link');
+    mkdirSync(join(top, 'linked'));
+    symlinkSync(target, join(top, 'linked', 'outside-only.md'));
+    symlinkSync(join(top, 'linked'), join(dir, 'specs-link'));
+    const r = both(dir);
+    assert.ok(r.findings.some((f) => f.severity === 'not ok' && f.code === 'spec-root' && f.file === '.assuredloop/config.yaml'
+      && f.line.includes('specs-link')), `a not ok spec-root line that names specs-link:\n${show(r)}`);
+    namesNothingOutside(r, 'specs-link');
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('control: root: design inside the repo, with design/linked.md a symlink: not ok superseded-cited at design/linked.md', (t) => {
+    const { dir, target } = rootRepo(t, 'design');
+    write(dir, 'design/plain.md', '# Design\n');
+    symlinkSync(target, join(dir, 'design', 'linked.md'));
+    const r = both(dir);
+    assert.deepEqual(cited(r).map((f) => f.file), ['design/linked.md'], show(r));
+    assert.deepEqual(coded(r, 'spec-root'), [], show(r));
+  });
+});
