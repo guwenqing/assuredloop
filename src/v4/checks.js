@@ -18,6 +18,8 @@ import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showH
 import { groupOf, sameBlocks } from './markers.js';
 import { isCentral } from './indexer.js';
 import { recordBlocks, supersededBlocks } from './blocks.js';
+import { phraseFindings } from './phrases.js';
+import { issueHints, issuesNotRead } from './issues.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
 const TIER = /^[ \t]*Tier:[ \t]*(0|1d|1|2|3|S)\b[ \t]*(?:—|–|--?)?[ \t]*(.*)$/m;
@@ -123,7 +125,7 @@ export function branchOf(top, now, was, base) {
   return { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered };
 }
 
-export function checks(top, { base }) {
+export function checks(top, { base, phrases = [], issues = false }) {
   const now = loadState(top);
   const was = base ? loadState(top, base) : null;
   const findings = [];
@@ -388,6 +390,11 @@ export function checks(top, { base }) {
   // unreadable records and citations of superseded ADRs.
   recordBlocks(top, now, add);
   supersededBlocks(top, now, add);
+
+  // Phrases for the review (issue-hints R2), and with --issues the hints from
+  // the linked issues (issue-hints R1); without it, no issue is read.
+  phraseFindings(top, now, phrases, add);
+  notKnown.push(...(issues ? issueHints(top, now, phrases, add) : issuesNotRead(top, now)));
 
   // Results (design.md 9): whether each one applies to the current text. The
   // commits they ran at are looked up in one batch.
