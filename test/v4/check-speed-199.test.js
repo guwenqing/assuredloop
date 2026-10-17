@@ -741,7 +741,8 @@ const PINNED = {
       'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
       'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
       'Read      working tree · base {central:The invoicer world:7} (merge-base with main)',
-      'Next      fix each not ok, and deal with each hint or say in the PR why it stays',
+      // #238: with an unsigned requirement, Next says to index and ask the owner to sign.
+      'Next      fix each not ok, and deal with each hint or say in the PR why it stays; for an unsigned requirement, run al index, then ask the owner to sign it (al record <name> signoff)',
       'Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)',
     ],
   },
