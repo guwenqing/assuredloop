@@ -1,5 +1,5 @@
 # Findings are hints, except three exact rules that block
-Tier: 2 · Status: open
+Tier: 2 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -59,3 +59,44 @@ Signed off: 2026-10-17 owner, origin/2026-10-17-signoff.md
 - D10, 2026-10-17. Source: the agent (architect). al record <name> signoff refuses without --words, and its Next line says to pass the owner's words: the command must not write a sign-off that al check calls not valid. It follows from R3 (DES-89), so it needs no new sign-off.
 - D11, 2026-10-17. Source: the agent (architect). A current place that cannot be read is not ok superseded-cited at its path, with a message that says it cannot be read, so its citations are not checked: a read failure never hides a block, as in R3 and R4. SCH-37 says so. It follows from R5, so it needs no new sign-off.
 - D12, 2026-10-17. Source: the agent (architect). One rule for read failures, which refines D11: a symlinked Markdown file in a current place is not read, so it gives not ok superseded-cited at its path; any other file or folder that al check cannot read, and that no check reports as not ok, stops al check with a refusal: exit 2, "al: <path> cannot be read", never an internal error and never a pass. SCH-37 says so. It follows from R3 to R5, so it needs no new sign-off.
+
+## Outcome
+
+Concluded 2026-10-17 with al conclude, on the working tree at 68a31c7.
+
+- R1 A rewrite that keeps the meaning, version 1, signed in S1:
+  - SP-12 rule: incorporated as SCH-22
+  - SP-13 data: incorporated as DES-9
+  - SP-14 rule: incorporated as DES-10
+  - DES-9 data: in specs/design.md, serves it
+  - DES-10 rule: in specs/design.md, serves it
+  - SCH-22 rule: in specs/schema.md, serves it
+- R2 Findings are hints for the review, version 1, signed in S1:
+  - SP-4 rule: incorporated as DES-22
+  - SP-5 limit: incorporated as DES-5
+  - SP-6 rule: incorporated as DES-33
+  - SP-7 rule: incorporated as DES-49
+  - SP-8 rule: incorporated as DES-58
+  - SP-9 rule: incorporated as SCH-38
+  - SP-12 rule: incorporated as SCH-22
+  - DES-5 limit: in specs/design.md, serves it
+  - DES-22 rule: in specs/design.md, serves it
+  - DES-33 rule: in specs/design.md, serves it
+  - DES-49 rule: in specs/design.md, serves it
+  - DES-58 rule: in specs/design.md, serves it
+  - SCH-22 rule: in specs/schema.md, serves it
+  - SCH-38 rule: in specs/schema.md, serves it
+- R3 Unsigned requirement, version 1, signed in S1:
+  - SP-18 rule: incorporated as DES-89
+  - SP-26 rule: incorporated as DES-42
+  - SP-27 definition: incorporated as DES-48
+  - DES-42 rule: in specs/design.md, serves it
+  - DES-89 rule: in specs/design.md, serves it
+  - DES-48 definition: in specs/design.md, serves it
+- R4 Changed record evidence, version 1, signed in S1:
+  - SP-21 rule: incorporated as DES-90
+  - DES-90 rule: in specs/design.md, serves it
+- R5 Citation of a superseded ADR, version 1, signed in S1:
+  - SP-24 rule: incorporated as SCH-37
+  - SCH-37 rule: in specs/schema.md, serves it
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
