@@ -10,8 +10,10 @@ AssuredLoop keeps an AI focused on one change. It holds together:
 - the code, the tests and the documents that came with the change.
 
 Its command, `al`, keeps these records, checks them, and says what to do
-next. It refuses only in its own `al conclude`. Every other check is a hint;
-a project that wants blocks turns on `al check --strict` in its CI.
+next. It refuses only in its own `al conclude`. `al check` gives the AI
+review hints, and the review decides. Only a few exact rules are `not ok`
+(see "Hints, and the rules that block"). A project that wants them to block
+turns on `al check --strict` in its CI.
 
 AssuredLoop is not a lifecycle tool. It has no phases, no roles, no task
 states and no approvals beyond the owner's sign-off. How and when you design,
@@ -116,9 +118,9 @@ The user picks the path. The skill has the steps of each path.
 Every PR states its path and its claim in a commit message, for example
 `Tier: 0 — typo in INV-3` or `Tier: 2 — invoice-payments, part 1`. `al check`
 reads the newest `Tier:` line in the branch's commits, and checks the claim
-against the kinds and the changed paragraphs: "path 0, but a rule paragraph
-is changed with no typo claim" is `not ok`. It checks the labels, not their
-meaning.
+against the kinds and the changed paragraphs. Where they disagree, it gives
+a hint, for example "path 0, but a rule paragraph is changed with no typo
+claim". It checks the labels, not their meaning.
 
 **The close rule.** `al conclude <name>` refuses while a promise change has
 no sign-off, a spike's current question is not signed, or a change paragraph
@@ -179,12 +181,30 @@ central: {path: ../invoicer}    # in an output repo: the central repo
 `al spec --add-ids` writes both files when they are absent.
 
 ADRs are `specs/adr/NNNN-<slug>.md`, with `Status: proposed`, `accepted` or
-`superseded` on the first line. The heading's marker holds `ADR-<n>` and its
-`decides:`, `source:` and `supersedes:` links. The text of an accepted ADR
-does not change; a new ADR supersedes it. You may add links to the marker of
-an accepted ADR when nothing else changes: keep its ID, its kind and each old
-link. `al check` gives a hint for a proposed or accepted ADR with no
-`source:` or no `decides:`; under `--strict`, it is `not ok`.
+`superseded by ADR-<n>` on the first line. The heading's marker holds
+`ADR-<n>` and its `decides:`, `source:` and `supersedes:` links.
+
+- Any text may be rewritten in other words when its meaning stays the same,
+  an accepted or superseded ADR's text too. A new ADR that supersedes it is
+  needed only when the decision changes, in whole or in part.
+- The review judges whether a rewrite keeps the decision; `al` does not. So
+  a changed ADR text, or a changed or removed link in its marker, gives a
+  hint: check that its decision is unchanged. Links added to the marker of
+  an accepted ADR, with nothing else changed, give no finding.
+- After a rewrite, `al index --align <ID>` moves the bindings of paragraph
+  `<ID>` to the ADR's new text, for an accepted or a superseded ADR.
+- `al check` gives a hint for a proposed or accepted ADR with no `source:`
+  or no `decides:`.
+- A current place that names a superseded ADR also names the ADR that
+  supersedes it, in the same marker or the same paragraph. Current places
+  are the spec docs, the open requests and the proposed and accepted ADRs.
+  The chain itself and dated records are exempt: an ADR that supersedes it,
+  a superseded ADR, an ADR's `## History`, a request's `## Decisions`, the
+  `origin/` files and the archived requests. Else `al check` gives
+  `not ok superseded-cited`.
+- A superseded ADR's status line names the ADR that supersedes it, and that
+  ADR's marker has `supersedes:` for it. Else `al check` gives
+  `not ok superseded-status`.
 
 ## Search
 
@@ -274,13 +294,45 @@ those commits. To move:
 3. Run `al spec --add-ids`, as in steps 1-5 above. It marks every paragraph
    and writes the adoption record.
 
+## Hints, and the rules that block
+
+`al check` gives the AI review hints, and the review decides. A finding is
+`not ok` only for a rule that meets two tests: breaking it lets an
+unapproved or wrong decision be built, and an exact check of the records,
+hashes and links decides it, with no judgement. These rules are:
+
+- **An unsigned requirement** (`not ok unsigned-requirement`). In each
+  request whose record has `requirements:`, open or archived, the latest
+  version of each requirement has a valid sign-off. A sign-off is valid only
+  when a `covers` entry matches the requirement's id, version and `sha256`
+  exactly; its file is in the request's `origin/` folder, and the hash of
+  its signed text equals the sign-off's `sha256`; and it records when it was
+  signed and the signer's words. A requirement in `request.md` that is not
+  its latest recorded version is not signed. An entry that `al check` cannot
+  read is `not ok` too. A promise paragraph that changes with no signed
+  requirement that covers it stays `not ok signoff-coverage`.
+- **Changed record evidence** (`not ok record-evidence`). Each origin file
+  under `sources:`, and each sign-off file, still has the hash that the
+  record lists. `al check` hashes the snapshot's text after its `---` line,
+  as `al record` did.
+- **A citation of a superseded ADR** (`not ok superseded-cited` and
+  `superseded-status`; see "Settings").
+
+A request record that cannot be read (`record-unreadable`) and a spec root
+that cannot be read (`spec-root`) are `not ok` too. Every other finding is a
+hint in every mode, `--strict` included: the marker and ID lints, the path
+claim, a link that does not resolve, an ADR's changed text or missing links,
+an invalid disposition, and the rest. `--strict` changes only the exit code:
+it is 1 when a `not ok` prints.
+
 ## What is enforced, and by whom
 
 | The tool checks | The skill asks | The owner decides |
 |---|---|---|
 | `al conclude` refuses on its three conditions (see "The close rule") | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
-| IDs: missing, used twice, lost, used again; kinds and links; links that do not resolve; sign-off coverage of promise changes; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task, as hints | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
-| `check --strict` exits 1 on a `not ok`, when a project opts in | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
+| `not ok`: sign-off coverage of promise changes, unsigned requirement versions, changed record evidence, citations of superseded ADRs and their status lines, and records or a spec root that cannot be read | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
+| hints for the review: IDs missing, used twice, lost or used again; kinds and links; links that do not resolve; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
+| `check --strict` exits 1 on a `not ok`, when a project opts in | | |
 
 `al` checks that declarations are well formed and that references resolve.
 It does not check that a kind is right, that a requirement is fully
