@@ -20,6 +20,7 @@ const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const text = (x) => typeof x === 'string' && x.length > 0;
 const whole = (x) => Number.isInteger(x) && x > 0;
 const REQ = /^[RQ]\d+$/;
+const SYMLINK = 'it is a symlink, and al does not read through a symlink';
 
 // The bytes of a snapshot after its separator line, as al new and al record
 // hashed them: the first line that is `---` (or `--- signed text ---`), or
@@ -235,11 +236,22 @@ export function supersededBlocks(top, state, add) {
       }
     }
   };
-  // The spec docs, each paragraph with its marker.
-  for (const d of state.docs ?? []) if (d.scope === SPEC && typeof d.text === 'string') check(d.path, d.text);
   // A current place that cannot be read: its citations are not checked, and
   // a read failure never hides a block (SCH-37).
   const unreadable = (path, why) => add('not ok', 'superseded-cited', path, '-', `${path} cannot be read (${why}), so its citations of superseded ADRs are not checked`);
+  // A symlinked Markdown file under the spec root (the ADRs too) is not read.
+  const linked = (dir) => {
+    let entries = [];
+    try {
+      entries = readdirSync(join(top, dir), { withFileTypes: true });
+    } catch {
+      entries = [];
+    }
+    return entries.flatMap((e) => (e.isSymbolicLink() ? (e.name.endsWith('.md') ? [`${dir}/${e.name}`] : []) : e.isDirectory() ? linked(`${dir}/${e.name}`) : []));
+  };
+  for (const f of linked(state.root).sort()) unreadable(f, SYMLINK);
+  // The spec docs, each paragraph with its marker.
+  for (const d of state.docs ?? []) if (d.scope === SPEC && typeof d.text === 'string') check(d.path, d.text);
   // The Markdown files of each open request, in its subfolders too, but
   // origin/ and the recorded decisions; a subfolder that cannot be read is
   // given as { unreadable }.
@@ -252,6 +264,7 @@ export function supersededBlocks(top, state, add) {
     }
     return entries.sort((a, b) => (a.name < b.name ? -1 : 1)).flatMap((e) => {
       const f = sub ? `${sub}/${e.name}` : e.name;
+      if (e.isSymbolicLink()) return f !== 'origin' && e.name.endsWith('.md') ? [{ unreadable: f, why: SYMLINK }] : [];
       if (e.isDirectory()) return f === 'origin' ? [] : markdown(dir, f);
       return e.isFile() && e.name.endsWith('.md') ? [f] : [];
     });
