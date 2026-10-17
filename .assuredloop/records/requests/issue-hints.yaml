@@ -1,0 +1,255 @@
+schema: assuredloop/1
+request: issue-hints
+tier: "2"
+status: concluded
+sources:
+  - file: 2026-10-17-owner-words.md
+    kind: owner-words
+    sha256: efb48f896785a5bea9c1f28c6c49105cd8363a60d57be6f2e1f17bb56012cc1b
+    taken: 2026-10-17T17:09Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: 5106b6abefa10e87ad59a2959c554a48eb7255bda312e74cb668f8692180ebc2
+    title: Hints from the linked issues
+  - id: R2
+    version: 1
+    sha256: 7c886d7b3dcb7bd56c9657cdedb183716c7df307686d5d76d70fa899329ac8ed
+    title: Phrases for the review
+  - id: R1
+    version: 2
+    sha256: 0327ef2a0a039d732bd3ddd589caf5f4639361141bb2450a92fb4d0346e9a20f
+    title: Hints from the linked issues
+  - id: R1
+    version: 3
+    sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9
+    title: Hints from the linked work items
+  - id: R2
+    version: 2
+    sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95
+    title: Phrases for the review
+signoff:
+  - id: S1
+    file: 2026-10-17-signoff.md
+    sha256: f7232c464a3d98fc1f74e4182fd55931183bc989e6d2ea9993965f8a7ab8cb0e
+    signed: 2026-10-17T17:52Z
+    source: the owner, in the chat with the architect, 2026-10-17 about 17:51Z
+    words: sign
+    presented: "the intro, R1, R2 and the Out: line word for word, marker lines not shown, about 17:45Z, after a plain account of three options (the owner chose 1: the caller saves the items; al never contacts a tracker) and of what changed from the first text"
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 3, sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9 }
+      - { id: R2, version: 2, sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95 }
+decisions:
+  - id: D1
+    date: 2026-10-17
+    source: the agent (architect), session prompt of developer, 2026-10-17
+    text: Read the issues with the GitHub CLI (`gh`), which the project already has for its own work. No new dependency and no token handling of our own. Tests use a fake `gh` on PATH, never the network.
+    sha256: b0cbe7c8e4ba6a7e1b8486b829d2531cfb0f36cd051c22853fe2ee10fd1eaf61
+    clarifies:
+      - R1
+  - id: D2
+    date: 2026-10-17
+    source: the agent (architect), session prompt of developer, 2026-10-17
+    text: "Which issues: the issue references in each open request's `tasks:` entries (`ref`, and the forms `#n`, `owner/repo#n`, `<repo>#n` for a repo the config names, and issue URLs). Archived requests are history and are not read."
+    sha256: 875cfe3f791f577eefbbd5646b22a78c182e09e90382341840b0bf51dfa5c3e9
+    clarifies:
+      - R1
+  - id: D3
+    date: 2026-10-17
+    source: the agent (architect), session prompt of developer, 2026-10-17
+    text: "\"The request's own issue\" is the issue its origin source came from (its `url`). When a request has none, or when GitHub gives no sub-issue data for that repository, the sub-issue hint is not given, and the \"Not known\" line says why."
+    sha256: 26273cfda0b074f5e8cfd8cdd1b5895793b52c317bf3a6ca453eec4281b222e7
+    clarifies:
+      - R1
+  - id: D4
+    date: 2026-10-17
+    source: the agent (architect), session prompt of developer, 2026-10-17
+    text: '"Hidden" means a comment that GitHub shows as minimized.'
+    sha256: af56e1c31cab4695a4812f63d8f82e5237deba1c1242fbb7df94ab31aeada758
+    clarifies:
+      - R1
+  - id: D5
+    date: 2026-10-17
+    source: the agent (architect), session prompt of developer, 2026-10-17
+    text: When `gh` is missing, not logged in, or fails for an issue, `al check --issues` gives one hint for each issue that it did not read, with the reason, and the "Not known" line names it. It is not a refusal, because R1 is hints only.
+    sha256: 38ea5fbad37b2f60da5bacc5769c5b57b83814fda182c58fb936bf6f7f36ecef
+    clarifies:
+      - R1
+  - id: D6
+    date: 2026-10-17
+    source: the agent (architect), session prompt of developer, 2026-10-17
+    text: R2's configuration is a list in `.assuredloop/config.yaml`; plain phrases match ignoring case; a pattern is a regular expression. An invalid pattern is a refusal with exit 2 that names it.
+    sha256: 17ff672fa0366ac0c39f14dcc176cc651e4d83fcc82710430dee3b29b0164f49
+    clarifies:
+      - R2
+  - id: D7
+    date: 2026-10-17
+    source: the agent (architect), session prompt of developer, 2026-10-17
+    text: Use hints-and-blocks R5's code for "names a superseded ADR without its successor", so that the two rules cannot drift.
+    sha256: 9eec93e4391fa8c5f1cf8902c07a0233e7c4f65eca82a436934d2c4194af3944
+    clarifies:
+      - R1
+  - id: D8
+    date: 2026-10-17
+    source: the agent (architect), session prompt of developer, 2026-10-17
+    text: In the PR body, say what each changed spec paragraph said before and after.
+    sha256: 7b033153776e2bb8e5996d157caa12ddfcb9ad30f4c56a862c95f88d7d258d82
+  - id: D9
+    date: 2026-10-17
+    source: the agent (architect), message to developer, 2026-10-17
+    text: Take out every gh call from al, and the fake-gh tests. Tests use folders of item files. No network in al. This replaces D1 and D5.
+    sha256: 5e873d5b74dc70659fba37a61360b31296100c34a65f4a77825322b5dafb1c97
+    clarifies:
+      - R1
+  - id: D10
+    date: 2026-10-17
+    source: the agent (architect), message to developer, 2026-10-17
+    text: "The format is the smallest the hints need: reference, repository or project (optional), text, comments with a hidden flag, parent (optional). Where possible, make it exactly what the GitHub CLI prints, so a GitHub user saves gh's JSON with no conversion. Check gh's real field names with the gh on this machine; invent none. The README gives the commands for GitHub and for GitHub Enterprise (GH_HOST), and the format for any other tracker."
+    sha256: 5fa939b16a41a9329a330d022da2eeb472876b75e43ba92b8f5f68b3a0da8287
+    clarifies:
+      - R1
+  - id: D11
+    date: 2026-10-17
+    source: the agent (architect), message to developer, 2026-10-17
+    text: Only the items that open requests' `tasks:` name are checked. Other files in the folder are ignored, and the "Not known" line counts them.
+    sha256: 1bcaeb667fa9b4da9d9a915ca3f48baf0fcf74fefa54f384638356c028ae5ecc
+    clarifies:
+      - R1
+  - id: D12
+    date: 2026-10-17
+    source: the agent (architect), message to developer, 2026-10-17
+    text: The request's own repository comes from `git remote get-url origin`, any host. When it, an item's repository or a parent is unknown, that hint is not given, and the "Not known" line says why.
+    sha256: 8a6cc42f4cc82892d4666265e77aed5022257c64b121db1ec245ab55309e3fa0
+    clarifies:
+      - R1
+  - id: D13
+    date: 2026-10-17
+    source: the agent (architect), message to developer, 2026-10-17
+    text: "Test: a project with no tracker gives, without --issues, exactly the same al check output as on main."
+    sha256: b1dca8231ea51f1d8d2e75b37bd4bd5b7800952f5218c02a48cce6e8ee5c8849
+    clarifies:
+      - R1
+tasks: []
+bindings:
+  - { holder: issue-hints/SP-4, link: serves, target: issue-hints/R1, holder_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-5, link: serves, target: issue-hints/R1, holder_sha256: 7baa55e1c92e34004cb77cbfd200acfe33fc0b7877972af3126b1640da3367c1, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-6, link: serves, target: issue-hints/R1, holder_sha256: 7466f4ebfe65c0a8532201ab986f77409cd3361bcb0209afb92e6bd92767af11, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-6, link: changes, target: DES-52, holder_sha256: 7466f4ebfe65c0a8532201ab986f77409cd3361bcb0209afb92e6bd92767af11, target_sha256: 7466f4ebfe65c0a8532201ab986f77409cd3361bcb0209afb92e6bd92767af11 }
+  - { holder: issue-hints/SP-8, link: serves, target: issue-hints/R1, holder_sha256: 7e12c6b1239414cefef5d998e92b0298c8f406867eac6e78d691a0f212412b14, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-8, link: builds-on, target: issue-hints/SP-4, holder_sha256: 7e12c6b1239414cefef5d998e92b0298c8f406867eac6e78d691a0f212412b14, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-9, link: serves, target: issue-hints/R1, holder_sha256: 4ba3b91e0191555fd019982fc54c0777b7915b6b451c94a8e44cf6a4293d3497, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-9, link: builds-on, target: issue-hints/SP-4, holder_sha256: 4ba3b91e0191555fd019982fc54c0777b7915b6b451c94a8e44cf6a4293d3497, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-10, link: serves, target: issue-hints/R1, holder_sha256: cd66f40b149b5e1eb74f283891af42506264aa2f1b8a868586090ecc8a28ea7a, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-10, link: builds-on, target: issue-hints/SP-4, holder_sha256: cd66f40b149b5e1eb74f283891af42506264aa2f1b8a868586090ecc8a28ea7a, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-11, link: serves, target: issue-hints/R1, holder_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-11, link: builds-on, target: issue-hints/SP-4, holder_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-12, link: serves, target: issue-hints/R1, holder_sha256: ee80ff1c945714d769705e870348907c30db93832f08a08ae6b77c0271d4f1fb, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-12, link: builds-on, target: issue-hints/SP-4, holder_sha256: ee80ff1c945714d769705e870348907c30db93832f08a08ae6b77c0271d4f1fb, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-13, link: serves, target: issue-hints/R1, holder_sha256: d799c5e5622ffb19ca06af3b1cbb9841ecc305a90e66504470cbc47230caf10a, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-13, link: builds-on, target: issue-hints/SP-4, holder_sha256: d799c5e5622ffb19ca06af3b1cbb9841ecc305a90e66504470cbc47230caf10a, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-14, link: serves, target: issue-hints/R1, holder_sha256: d8aa661b2633ca61f74cb7fd94bcc9b9ca19611b28625790bdc7589f36c69d15, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-14, link: builds-on, target: issue-hints/SP-4, holder_sha256: d8aa661b2633ca61f74cb7fd94bcc9b9ca19611b28625790bdc7589f36c69d15, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-15, link: explains, target: issue-hints/SP-11, holder_sha256: c85b99a7c14dc5b980e60c7c0e15394f0f814dc0e404c9e4b6f93438fabfd2ad, target_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d }
+  - { holder: issue-hints/SP-17, link: serves, target: issue-hints/R2, holder_sha256: 6fbe03036c111e54ddabcb21a20687e776b3025a7d565cbbfe0bf62b972463d2, target_sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95, target_version: 2 }
+  - { holder: issue-hints/SP-18, link: serves, target: issue-hints/R2, holder_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb, target_sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95, target_version: 2 }
+  - { holder: issue-hints/SP-18, link: builds-on, target: issue-hints/SP-17, holder_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb, target_sha256: 6fbe03036c111e54ddabcb21a20687e776b3025a7d565cbbfe0bf62b972463d2 }
+  - { holder: issue-hints/SP-19, link: serves, target: issue-hints/R1, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-19, link: serves, target: issue-hints/R2, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95, target_version: 2 }
+  - { holder: issue-hints/SP-19, link: changes, target: DES-22, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf }
+  - { holder: issue-hints/SP-21, link: serves, target: issue-hints/R1, holder_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-21, link: builds-on, target: issue-hints/SP-4, holder_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-21, link: changes, target: DES-72, holder_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026, target_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026 }
+  - { holder: issue-hints/R1, link: from, target: issue-hints/2026-10-17-owner-words.md, holder_sha256: 5106b6abefa10e87ad59a2959c554a48eb7255bda312e74cb668f8692180ebc2, target_sha256: efb48f896785a5bea9c1f28c6c49105cd8363a60d57be6f2e1f17bb56012cc1b }
+  - { holder: issue-hints/R2, link: from, target: issue-hints/2026-10-17-owner-words.md, holder_sha256: 7c886d7b3dcb7bd56c9657cdedb183716c7df307686d5d76d70fa899329ac8ed, target_sha256: efb48f896785a5bea9c1f28c6c49105cd8363a60d57be6f2e1f17bb56012cc1b }
+  - { holder: DES-22, link: serves, target: issue-hints/R1, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-22, link: serves, target: issue-hints/R2, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95, target_version: 2 }
+  - { holder: DES-101, link: serves, target: issue-hints/R2, holder_sha256: 6fbe03036c111e54ddabcb21a20687e776b3025a7d565cbbfe0bf62b972463d2, target_sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95, target_version: 2 }
+  - { holder: DES-102, link: serves, target: issue-hints/R2, holder_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb, target_sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95, target_version: 2 }
+  - { holder: DES-102, link: builds-on, target: DES-101, holder_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb, target_sha256: 6fbe03036c111e54ddabcb21a20687e776b3025a7d565cbbfe0bf62b972463d2 }
+  - { holder: DES-52, link: serves, target: issue-hints/R1, holder_sha256: 7466f4ebfe65c0a8532201ab986f77409cd3361bcb0209afb92e6bd92767af11, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-91, link: serves, target: issue-hints/R1, holder_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-92, link: serves, target: issue-hints/R1, holder_sha256: 7baa55e1c92e34004cb77cbfd200acfe33fc0b7877972af3126b1640da3367c1, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-93, link: serves, target: issue-hints/R1, holder_sha256: 7e12c6b1239414cefef5d998e92b0298c8f406867eac6e78d691a0f212412b14, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-93, link: builds-on, target: DES-91, holder_sha256: 7e12c6b1239414cefef5d998e92b0298c8f406867eac6e78d691a0f212412b14, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: DES-94, link: serves, target: issue-hints/R1, holder_sha256: 4ba3b91e0191555fd019982fc54c0777b7915b6b451c94a8e44cf6a4293d3497, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-94, link: builds-on, target: DES-91, holder_sha256: 4ba3b91e0191555fd019982fc54c0777b7915b6b451c94a8e44cf6a4293d3497, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: DES-95, link: serves, target: issue-hints/R1, holder_sha256: cd66f40b149b5e1eb74f283891af42506264aa2f1b8a868586090ecc8a28ea7a, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-95, link: builds-on, target: DES-91, holder_sha256: cd66f40b149b5e1eb74f283891af42506264aa2f1b8a868586090ecc8a28ea7a, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: DES-96, link: serves, target: issue-hints/R1, holder_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-96, link: builds-on, target: DES-91, holder_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: DES-97, link: serves, target: issue-hints/R1, holder_sha256: ee80ff1c945714d769705e870348907c30db93832f08a08ae6b77c0271d4f1fb, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-97, link: builds-on, target: DES-91, holder_sha256: ee80ff1c945714d769705e870348907c30db93832f08a08ae6b77c0271d4f1fb, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: DES-98, link: serves, target: issue-hints/R1, holder_sha256: d799c5e5622ffb19ca06af3b1cbb9841ecc305a90e66504470cbc47230caf10a, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-98, link: builds-on, target: DES-91, holder_sha256: d799c5e5622ffb19ca06af3b1cbb9841ecc305a90e66504470cbc47230caf10a, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: DES-99, link: serves, target: issue-hints/R1, holder_sha256: d8aa661b2633ca61f74cb7fd94bcc9b9ca19611b28625790bdc7589f36c69d15, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-99, link: builds-on, target: DES-91, holder_sha256: d8aa661b2633ca61f74cb7fd94bcc9b9ca19611b28625790bdc7589f36c69d15, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: DES-72, link: serves, target: issue-hints/R1, holder_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-22, link: serves, target: assuredloop-v4/R2, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: 28d70a23ca50b34b0f328d638bf2c2d617ceee851133d394a2de7dd77c8ba8d3, target_version: 1 }
+  - { holder: DES-22, link: serves, target: assuredloop-v4/R11, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: DES-22, link: serves, target: promise-design-split/R1, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3, target_version: 1 }
+  - { holder: DES-22, link: serves, target: delete-in-change-spec/R1, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33, target_version: 1 }
+  - { holder: DES-22, link: serves, target: design-links/R1, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
+  - { holder: DES-22, link: serves, target: adr-links/R1, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: 6ba0f7ea43e372f370501d48e4a2b84123da469dbd7e10bf19697f13de4a6644, target_version: 1 }
+  - { holder: DES-22, link: serves, target: hints-and-blocks/R2, holder_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, target_sha256: 43b981532770dca76cffdeaa82bbe7933264ddc2f1512e9c694b77e3fc365838, target_version: 1 }
+  - { holder: DES-52, link: serves, target: assuredloop-v4/R8, holder_sha256: 7466f4ebfe65c0a8532201ab986f77409cd3361bcb0209afb92e6bd92767af11, target_sha256: 66009b153aa23531ea75513096eaf19edca4c678009d26217cf70efd8bce61cf, target_version: 1 }
+  - { holder: DES-52, link: serves, target: assuredloop-v4/R11, holder_sha256: 7466f4ebfe65c0a8532201ab986f77409cd3361bcb0209afb92e6bd92767af11, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
+  - { holder: DES-58, link: serves, target: assuredloop-v4/R10, holder_sha256: d1d205a9686693038d3c4744a688d6b3595d362d303a35d4c5cdbbcc421a28c3, target_sha256: 01eeae0648fc531baf2b4aa244f9559eea2be553f6c8738c4afaafb15b6700a9, target_version: 1 }
+  - { holder: DES-58, link: serves, target: assuredloop-v4/R12, holder_sha256: d1d205a9686693038d3c4744a688d6b3595d362d303a35d4c5cdbbcc421a28c3, target_sha256: e4882aba66fb68e7ccbdab771d49c592b9589ab09757c15a8aafbab64f2ea48c, target_version: 1 }
+  - { holder: DES-58, link: serves, target: promise-design-split/R1, holder_sha256: d1d205a9686693038d3c4744a688d6b3595d362d303a35d4c5cdbbcc421a28c3, target_sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3, target_version: 1 }
+  - { holder: DES-58, link: serves, target: hints-and-blocks/R2, holder_sha256: d1d205a9686693038d3c4744a688d6b3595d362d303a35d4c5cdbbcc421a28c3, target_sha256: 43b981532770dca76cffdeaa82bbe7933264ddc2f1512e9c694b77e3fc365838, target_version: 1 }
+  - { holder: DES-72, link: serves, target: assuredloop-v4/R9, holder_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026, target_sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf, target_version: 1 }
+  - { holder: issue-hints/SP-22, link: serves, target: issue-hints/R1, holder_sha256: a7d4a1116b9fd54b82442be079c2ecbc9c42a1398bf6d343d09ad6064cd8e43f, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-22, link: builds-on, target: issue-hints/SP-4, holder_sha256: a7d4a1116b9fd54b82442be079c2ecbc9c42a1398bf6d343d09ad6064cd8e43f, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-23, link: illustrates, target: issue-hints/SP-11, holder_sha256: ebbc84a31e1ba196c99afeb379197e7e79e94b3b9a10069afc6164955f7948b5, target_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d }
+  - { holder: DES-103, link: serves, target: issue-hints/R1, holder_sha256: a7d4a1116b9fd54b82442be079c2ecbc9c42a1398bf6d343d09ad6064cd8e43f, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-103, link: builds-on, target: DES-91, holder_sha256: a7d4a1116b9fd54b82442be079c2ecbc9c42a1398bf6d343d09ad6064cd8e43f, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-24, link: serves, target: issue-hints/R1, holder_sha256: 397dc2c3963a0db196b330be4b7e86efab08946098ca98b040855fa22946464f, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: issue-hints/SP-24, link: builds-on, target: issue-hints/SP-4, holder_sha256: 397dc2c3963a0db196b330be4b7e86efab08946098ca98b040855fa22946464f, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { holder: issue-hints/SP-25, link: illustrates, target: issue-hints/SP-11, holder_sha256: afb94138eba1c41b443b4114c93080c155436f021d3d543b830326010359af87, target_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d }
+  - { holder: DES-105, link: serves, target: issue-hints/R1, holder_sha256: 397dc2c3963a0db196b330be4b7e86efab08946098ca98b040855fa22946464f, target_sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9, target_version: 3 }
+  - { holder: DES-105, link: builds-on, target: DES-91, holder_sha256: 397dc2c3963a0db196b330be4b7e86efab08946098ca98b040855fa22946464f, target_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+dispositions:
+  - { source: issue-hints/SP-4, disposition: incorporated, spec: DES-91, source_sha256: 933b2b44518d17073a6cb540e15c4829dd5d931a3f5694ed8523c7689eb0e95a, spec_sha256: 933b2b44518d17073a6cb540e15c4829dd5d931a3f5694ed8523c7689eb0e95a }
+  - { source: issue-hints/SP-5, disposition: incorporated, spec: DES-92, source_sha256: 65d7b300cebd2ed3518e63bed56d90539cdb44e022c827cb2bcc419cbcde914d, spec_sha256: 65d7b300cebd2ed3518e63bed56d90539cdb44e022c827cb2bcc419cbcde914d }
+  - { source: issue-hints/SP-6, disposition: incorporated, spec: DES-52, source_sha256: 6902f7dc84f4c0a53c21bdef551b4aac74e9bf40d043bc011a048bd7c7e1955d, spec_sha256: 6902f7dc84f4c0a53c21bdef551b4aac74e9bf40d043bc011a048bd7c7e1955d }
+  - { source: issue-hints/SP-8, disposition: incorporated, spec: DES-93, source_sha256: 40d603c6f14d67b37230cc49914af30abdcd38f542aa8eb068aad4f136d6247e, spec_sha256: 40d603c6f14d67b37230cc49914af30abdcd38f542aa8eb068aad4f136d6247e }
+  - { source: issue-hints/SP-9, disposition: incorporated, spec: DES-94, source_sha256: 869af3f773a1ea45bb53c1fe27b1661f7e07d5d35977f299b9058837d7f0a0b0, spec_sha256: 869af3f773a1ea45bb53c1fe27b1661f7e07d5d35977f299b9058837d7f0a0b0 }
+  - { source: issue-hints/SP-10, disposition: incorporated, spec: DES-95, source_sha256: c5dd083db5e3a2c1853b5a77ac5cd6d3d7e8d49be37ebc74b0546beb3d270e41, spec_sha256: c5dd083db5e3a2c1853b5a77ac5cd6d3d7e8d49be37ebc74b0546beb3d270e41 }
+  - { source: issue-hints/SP-11, disposition: incorporated, spec: DES-96, source_sha256: 4f0ee58097f5f41bbd331c2d78bf236a44f863791f80723bb1303a25e04cd39a, spec_sha256: 4f0ee58097f5f41bbd331c2d78bf236a44f863791f80723bb1303a25e04cd39a }
+  - { source: issue-hints/SP-12, disposition: incorporated, spec: DES-97, source_sha256: cd5a0552ca16527f4f37896c83e1255391852134edb9d9e4c956132ea4121b00, spec_sha256: cd5a0552ca16527f4f37896c83e1255391852134edb9d9e4c956132ea4121b00 }
+  - { source: issue-hints/SP-13, disposition: incorporated, spec: DES-98, source_sha256: cd8f0d3dc2b6e5ffaafa630b4d64ad0a705de2646c0a2c79f91f0807405a9356, spec_sha256: cd8f0d3dc2b6e5ffaafa630b4d64ad0a705de2646c0a2c79f91f0807405a9356 }
+  - { source: issue-hints/SP-14, disposition: incorporated, spec: DES-99, source_sha256: e68fb91fd6ab538bbaaa66d64abe776fb56daa2ef5a8670724e226e6ed84a088, spec_sha256: e68fb91fd6ab538bbaaa66d64abe776fb56daa2ef5a8670724e226e6ed84a088 }
+  - { source: issue-hints/SP-15, disposition: incorporated, spec: DES-100, source_sha256: 784e6c1be8bef15aa3268c3f208d41f211e9e6f174252594dcdc2a25daee9c16, spec_sha256: 784e6c1be8bef15aa3268c3f208d41f211e9e6f174252594dcdc2a25daee9c16 }
+  - { source: issue-hints/SP-17, disposition: incorporated, spec: DES-101, source_sha256: a6202c26e82610735187e80175d950f590162813e46b00df9cea95fbddd1c618, spec_sha256: a6202c26e82610735187e80175d950f590162813e46b00df9cea95fbddd1c618 }
+  - { source: issue-hints/SP-18, disposition: incorporated, spec: DES-102, source_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb, spec_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb }
+  - { source: issue-hints/SP-19, disposition: incorporated, spec: DES-22, source_sha256: 21adcecc5c690c3df045ecfb1c48f9bc8e7d216a0e9f83fe398390e73943235b, spec_sha256: 21adcecc5c690c3df045ecfb1c48f9bc8e7d216a0e9f83fe398390e73943235b }
+  - { source: issue-hints/SP-21, disposition: incorporated, spec: DES-72, source_sha256: 35c618397ce4976494e8ea48ac61b1855686fc4a8ecccd2285764195a2874646, spec_sha256: 35c618397ce4976494e8ea48ac61b1855686fc4a8ecccd2285764195a2874646 }
+  - { source: issue-hints/SP-13, disposition: incorporated, spec: DES-98, source_sha256: 0ed3218a1103d82b7a355f573f755f3ef267f776072ddb6a78bae28d7c2cef0c, spec_sha256: 0ed3218a1103d82b7a355f573f755f3ef267f776072ddb6a78bae28d7c2cef0c }
+  - { source: issue-hints/SP-5, disposition: incorporated, spec: DES-92, source_sha256: 3fe7761cfe7d05dc5086ccdbb91aa5ede8b25df05de8eab66c9489c5d98936fd, spec_sha256: 3fe7761cfe7d05dc5086ccdbb91aa5ede8b25df05de8eab66c9489c5d98936fd }
+  - { source: issue-hints/SP-4, disposition: incorporated, spec: DES-91, source_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460, spec_sha256: 4bacd7cea1bd9c038f5d1ff7f9e8e1c05282c59b09ecf0af04ccbec56cc58460 }
+  - { source: issue-hints/SP-5, disposition: incorporated, spec: DES-92, source_sha256: 7baa55e1c92e34004cb77cbfd200acfe33fc0b7877972af3126b1640da3367c1, spec_sha256: 7baa55e1c92e34004cb77cbfd200acfe33fc0b7877972af3126b1640da3367c1 }
+  - { source: issue-hints/SP-6, disposition: incorporated, spec: DES-52, source_sha256: 7466f4ebfe65c0a8532201ab986f77409cd3361bcb0209afb92e6bd92767af11, spec_sha256: 7466f4ebfe65c0a8532201ab986f77409cd3361bcb0209afb92e6bd92767af11 }
+  - { source: issue-hints/SP-8, disposition: incorporated, spec: DES-93, source_sha256: 7e12c6b1239414cefef5d998e92b0298c8f406867eac6e78d691a0f212412b14, spec_sha256: 7e12c6b1239414cefef5d998e92b0298c8f406867eac6e78d691a0f212412b14 }
+  - { source: issue-hints/SP-9, disposition: incorporated, spec: DES-94, source_sha256: 4ba3b91e0191555fd019982fc54c0777b7915b6b451c94a8e44cf6a4293d3497, spec_sha256: 4ba3b91e0191555fd019982fc54c0777b7915b6b451c94a8e44cf6a4293d3497 }
+  - { source: issue-hints/SP-10, disposition: incorporated, spec: DES-95, source_sha256: cd66f40b149b5e1eb74f283891af42506264aa2f1b8a868586090ecc8a28ea7a, spec_sha256: cd66f40b149b5e1eb74f283891af42506264aa2f1b8a868586090ecc8a28ea7a }
+  - { source: issue-hints/SP-11, disposition: incorporated, spec: DES-96, source_sha256: 4a0904010f4abbdc04fa9ee35796baf14b3d61e7578271e51fe66eec0f3821b8, spec_sha256: 4a0904010f4abbdc04fa9ee35796baf14b3d61e7578271e51fe66eec0f3821b8 }
+  - { source: issue-hints/SP-12, disposition: incorporated, spec: DES-97, source_sha256: ee80ff1c945714d769705e870348907c30db93832f08a08ae6b77c0271d4f1fb, spec_sha256: ee80ff1c945714d769705e870348907c30db93832f08a08ae6b77c0271d4f1fb }
+  - { source: issue-hints/SP-13, disposition: incorporated, spec: DES-98, source_sha256: d799c5e5622ffb19ca06af3b1cbb9841ecc305a90e66504470cbc47230caf10a, spec_sha256: d799c5e5622ffb19ca06af3b1cbb9841ecc305a90e66504470cbc47230caf10a }
+  - { source: issue-hints/SP-14, disposition: incorporated, spec: DES-99, source_sha256: d8aa661b2633ca61f74cb7fd94bcc9b9ca19611b28625790bdc7589f36c69d15, spec_sha256: d8aa661b2633ca61f74cb7fd94bcc9b9ca19611b28625790bdc7589f36c69d15 }
+  - { source: issue-hints/SP-15, disposition: incorporated, spec: DES-100, source_sha256: c85b99a7c14dc5b980e60c7c0e15394f0f814dc0e404c9e4b6f93438fabfd2ad, spec_sha256: c85b99a7c14dc5b980e60c7c0e15394f0f814dc0e404c9e4b6f93438fabfd2ad }
+  - { source: issue-hints/SP-17, disposition: incorporated, spec: DES-101, source_sha256: 6fbe03036c111e54ddabcb21a20687e776b3025a7d565cbbfe0bf62b972463d2, spec_sha256: 6fbe03036c111e54ddabcb21a20687e776b3025a7d565cbbfe0bf62b972463d2 }
+  - { source: issue-hints/SP-19, disposition: incorporated, spec: DES-22, source_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf, spec_sha256: 8ca5711952a026b16ee401b4d59d8d01e447dfeb6b9cfa7955c314d687c731bf }
+  - { source: issue-hints/SP-21, disposition: incorporated, spec: DES-72, source_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026, spec_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026 }
+  - { source: issue-hints/SP-22, disposition: incorporated, spec: DES-103, source_sha256: a7d4a1116b9fd54b82442be079c2ecbc9c42a1398bf6d343d09ad6064cd8e43f, spec_sha256: a7d4a1116b9fd54b82442be079c2ecbc9c42a1398bf6d343d09ad6064cd8e43f }
+  - { source: issue-hints/SP-23, disposition: incorporated, spec: DES-104, source_sha256: 7b0dd79be8b2a2276e69286c82394b74a76af19b96218a5d1f7d09173b67fb8c, spec_sha256: 7b0dd79be8b2a2276e69286c82394b74a76af19b96218a5d1f7d09173b67fb8c }
+  - { source: issue-hints/SP-24, disposition: incorporated, spec: DES-105, source_sha256: 397dc2c3963a0db196b330be4b7e86efab08946098ca98b040855fa22946464f, spec_sha256: 397dc2c3963a0db196b330be4b7e86efab08946098ca98b040855fa22946464f }
+  - { source: issue-hints/SP-25, disposition: incorporated, spec: DES-106, source_sha256: afb94138eba1c41b443b4114c93080c155436f021d3d543b830326010359af87, spec_sha256: afb94138eba1c41b443b4114c93080c155436f021d3d543b830326010359af87 }
+  - { source: issue-hints/SP-11, disposition: incorporated, spec: DES-96, source_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d, spec_sha256: bd0f686ca086a00463a670928ea233e173229d3100b8527ff6a6e9c72963304d }
+  - { source: issue-hints/SP-23, disposition: incorporated, spec: DES-104, source_sha256: ebbc84a31e1ba196c99afeb379197e7e79e94b3b9a10069afc6164955f7948b5, spec_sha256: ebbc84a31e1ba196c99afeb379197e7e79e94b3b9a10069afc6164955f7948b5 }
+  - { source: issue-hints/SP-8, disposition: incorporated, spec: DES-93, source_sha256: 5ae35cdcfc8097c29bfc67921bce208af5b4d69f043fba3e1a58fdf4997b0dbe, spec_sha256: 5ae35cdcfc8097c29bfc67921bce208af5b4d69f043fba3e1a58fdf4997b0dbe }
+  - { source: issue-hints/SP-9, disposition: incorporated, spec: DES-94, source_sha256: 6073604ae935e59a9d4c2566ce3de0a91e17ef7f5b19b9e8a373d4ea5635fbb3, spec_sha256: 6073604ae935e59a9d4c2566ce3de0a91e17ef7f5b19b9e8a373d4ea5635fbb3 }
+  - { source: issue-hints/SP-12, disposition: incorporated, spec: DES-97, source_sha256: f761bd8a8562af1988696d580b7311e57451316c0fc5c00202d74e6014b0a048, spec_sha256: f761bd8a8562af1988696d580b7311e57451316c0fc5c00202d74e6014b0a048 }
+  - { source: issue-hints/SP-13, disposition: incorporated, spec: DES-98, source_sha256: 23020f71d0ede1efb3d75898e4be23457bcd8c4212f3284e72efce02ded22922, spec_sha256: 23020f71d0ede1efb3d75898e4be23457bcd8c4212f3284e72efce02ded22922 }
+  - { source: issue-hints/SP-22, disposition: incorporated, spec: DES-103, source_sha256: c37fe1f3eff6416c21206762c861111c41eba5462984d0d0c2095129aba57da2, spec_sha256: c37fe1f3eff6416c21206762c861111c41eba5462984d0d0c2095129aba57da2 }
+  - { source: issue-hints/SP-10, disposition: incorporated, spec: DES-95, source_sha256: 1d9d20bf979936a584b38c0f94a8b3d37f404f7e473d24c6c455b7d8762000ef, spec_sha256: 1d9d20bf979936a584b38c0f94a8b3d37f404f7e473d24c6c455b7d8762000ef }
