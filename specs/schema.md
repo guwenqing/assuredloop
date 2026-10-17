@@ -217,7 +217,9 @@ superseded, the same rule applies to it. Else `al check` gives
   or one whose marker has `supersedes:ADR-n`.
 - The current places are each paragraph of the spec docs, with its marker;
   the Markdown files of an open request, except its `origin/` folder; and
-  each proposed or accepted ADR, with its marker.
+  each proposed or accepted ADR, with its marker. A current place that cannot
+  be read gives `not ok superseded-cited` at its path: its citations are not
+  checked, and a read failure never hides a block.
 - Exempt, because they are the chain itself or dated records: an ADR that
   supersedes ADR-n, directly or through a chain; a superseded ADR; an ADR's
   `## History` section; a request's `## Decisions` section (D1, D2...);
