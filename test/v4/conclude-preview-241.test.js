@@ -195,3 +195,11 @@ test('the order: the close rule fails and requests/archive/<name> exists; the pr
   commitAll(dir, 'two reasons');
   refusesAlike(dir, ['invoice-exports'], {});
 });
+
+test('refusal 8 sibling (review of #242), requests/archive is an ordinary file: the preview and --yes refuse alike (exit 2), never an internal error', (t) => {
+  const dir = open(t);
+  write(dir, 'requests/archive', 'not a folder\n');
+  commitAll(dir, 'a file where the archive folder goes');
+  const { preview, yes } = refusesAlike(dir, [NAME], { code: 2, message: AL_LINE });
+  for (const r of [preview, yes]) assert.doesNotMatch(r.stdout + r.stderr, /internal error/, show(r));
+});
