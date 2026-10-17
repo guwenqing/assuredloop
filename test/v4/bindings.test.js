@@ -25,7 +25,7 @@ function chain(t) {
   ok(dir, ['record', 'inv', 'origin', '--url', 'https://example.com/call-notes', '--from', '-',
     '--fetched', '2026-05-06T10:00Z', '--yes'], { input: MORE });
   appendSection(dir, 'inv', organized([R1, R2]));
-  ok(dir, ['record', 'inv', 'signoff', '--source', 'owner by email', '--yes']);
+  ok(dir, ['record', 'inv', 'signoff', '--source', 'owner by email', '--words', 'Yes, sign it', '--yes']);
   ok(dir, ['record', 'inv', 'decision', '--source', 'owner', '--text', DTEXT, '--clarifies', 'R2', '--yes']);
   return dir;
 }

@@ -35,8 +35,8 @@ function drafted(t, section) {
   appendSection(dir, 'inv', section);
   return dir;
 }
-const sign = (dir, source = SOURCE) => ok(dir, ['record', 'inv', 'signoff', '--source', source, '--yes']);
-const preview = (dir) => writesNothing(dir, ['record', 'inv', 'signoff', '--source', SOURCE]);
+const sign = (dir, source = SOURCE) => ok(dir, ['record', 'inv', 'signoff', '--source', source, '--words', 'Yes, sign it', '--yes']);
+const preview = (dir) => writesNothing(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--words', 'Yes, sign it']);
 
 // Adds the standard markers to request.md, with no other change.
 function addMarkers(dir) {
@@ -56,7 +56,7 @@ test('adding the standard markers to a signed section with no markers leaves not
   assert.ok(read(dir, 'requests/inv/request.md').includes(`${markerOf(R2)}\n\n### R2 ${R2.title}`));
   const r = preview(dir);
   assert.match(r.stdout, /nothing to sign/);
-  const yes = writesNothing(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--yes']);
+  const yes = writesNothing(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--words', 'Yes, sign it', '--yes']);
   assert.match(yes.stdout, /nothing to sign/);
 });
 
