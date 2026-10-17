@@ -5,8 +5,8 @@
 <!-- SP-2 note -->
 
 This change serves R1 to R5 in `request.md`. It changes SCH-22 in
-`specs/schema.md`, and DES-5, DES-9, DES-10, DES-22, DES-33, DES-49 and
-DES-58 in `specs/design.md`. It adds a paragraph on superseded ADRs and one
+`specs/schema.md`, and DES-5, DES-9, DES-10, DES-22, DES-33, DES-42, DES-48,
+DES-49 and DES-58 in `specs/design.md`. It adds a paragraph on superseded ADRs and one
 on findings to `specs/schema.md`, and a paragraph on unsigned requirements
 and one on record evidence to `specs/design.md`. Each section has the
 promise paragraphs first, then the design that keeps them.
@@ -311,6 +311,33 @@ no `id`, `file`, `sha256` or `covers` list, and a `covers` entry with no
 `id`, `version` or `sha256`. A record that is not YAML, or not a mapping,
 gives `not ok record-unreadable`. Each finding names the request and the
 requirement or sign-off: `<request>/R2`, `<request>/S1`.
+
+<!-- SP-26 rule serves:R3 changes:DES-42 -->
+
+- A sign-off is needed when a change touches a promise kind, and for every
+  spike's question. A request that has a requirement (R<n>) needs it signed,
+  also when it changes no promise kind (below). A request that touches no
+  promise kind, is not a spike and has no requirement closes without one. So
+  a design-only change, whose request has no requirement, needs no sign-off;
+  the review reads it.
+- A PR that edits a promise-kind paragraph, in a change spec or in `specs/`,
+  with no signed requirement that covers it: `not ok`. It blocks only under
+  opt-in `--strict`. A typo-fix claim is the exception (below).
+- `al conclude` refuses while a promise change has no sign-off.
+- A later change to a signed requirement needs a new sign-off.
+- A request with no kept effect may be abandoned without a sign-off. The owner
+  never has to sign work that the owner chose not to pursue.
+
+<!-- SP-27 definition serves:R3 changes:DES-48 -->
+
+| Path | When | Records | Sign-off | Consolidation | Closes when |
+|---|---|---|---|---|---|
+| 0. Fix | no promise changes: it restores what the spec says, or claims a typo fix in any paragraph | none; the PR says `Tier: 0 — restores INV-41` or `Tier: 0 — typo in INV-41` | no | none | the PR merges |
+| 1. Small promise amend | one or a few promise paragraphs change | a short request; no change spec; the PR edits `specs/` directly | yes | in the same PR | the PR merges |
+| 1d. Small design correction | names or wording of design-kind paragraphs only (input 129) | a short request with a one-line source note; no change spec; the PR edits `specs/` directly | no | in the same PR | the PR merges |
+| 2. Big change | a real design; one or a few PRs | request, change spec | if a promise kind changes, or the request has a requirement (R<n>) | in the PRs | the close rule holds |
+| 3. Epic | big, in parts over time | as 2, with optional task references | as 2 | part by part, before the epic closes | the close rule holds |
+| S. Spike | not yet clear what to build | request with an organized question; the change spec holds the candidates and the experiment; findings open with the answer | yes, on the question | none | the answer names the question version |
 
 <!-- SP-20 note -->
 

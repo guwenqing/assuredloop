@@ -509,12 +509,14 @@ Why: "Requirements are still the same need the signoff" (input 100); the
 owner signs the organized requirement, never a paragraph (R4). The owner and
 the requirement may change while the owner explores (input 122).
 
-<!-- DES-42 rule serves:assuredloop-v4/R4 -->
+<!-- DES-42 rule serves:assuredloop-v4/R4,hints-and-blocks/R3 -->
 
 - A sign-off is needed when a change touches a promise kind, and for every
-  spike's question. A request that touches no promise kind and is not a spike
-  closes without one. A design-only change needs no sign-off; the review
-  reads it.
+  spike's question. A request that has a requirement (R<n>) needs it signed,
+  also when it changes no promise kind (below). A request that touches no
+  promise kind, is not a spike and has no requirement closes without one. So
+  a design-only change, whose request has no requirement, needs no sign-off;
+  the review reads it.
 - A PR that edits a promise-kind paragraph, in a change spec or in `specs/`,
   with no signed requirement that covers it: `not ok`. It blocks only under
   opt-in `--strict`. A typo-fix claim is the exception (below).
@@ -599,14 +601,14 @@ and changes the promise. So:
 Why: "we need to support a regular wow, in various cases, big or small, clear
 or spike" (input 114), with the user free to pick (R7, input 126).
 
-<!-- DES-48 definition serves:assuredloop-v4/R7 -->
+<!-- DES-48 definition serves:assuredloop-v4/R7,hints-and-blocks/R3 -->
 
 | Path | When | Records | Sign-off | Consolidation | Closes when |
 |---|---|---|---|---|---|
 | 0. Fix | no promise changes: it restores what the spec says, or claims a typo fix in any paragraph | none; the PR says `Tier: 0 — restores INV-41` or `Tier: 0 — typo in INV-41` | no | none | the PR merges |
 | 1. Small promise amend | one or a few promise paragraphs change | a short request; no change spec; the PR edits `specs/` directly | yes | in the same PR | the PR merges |
 | 1d. Small design correction | names or wording of design-kind paragraphs only (input 129) | a short request with a one-line source note; no change spec; the PR edits `specs/` directly | no | in the same PR | the PR merges |
-| 2. Big change | a real design; one or a few PRs | request, change spec | if a promise kind changes | in the PRs | the close rule holds |
+| 2. Big change | a real design; one or a few PRs | request, change spec | if a promise kind changes, or the request has a requirement (R<n>) | in the PRs | the close rule holds |
 | 3. Epic | big, in parts over time | as 2, with optional task references | as 2 | part by part, before the epic closes | the close rule holds |
 | S. Spike | not yet clear what to build | request with an organized question; the change spec holds the candidates and the experiment; findings open with the answer | yes, on the question | none | the answer names the question version |
 
