@@ -69,7 +69,7 @@ export function idLints(base, head, { everUsed = [], removes = [] } = {}) {
   const used = new Set(everUsed);
   const removed = new Set(removes);
   const lints = [];
-  const lint = (code, p, message) => lints.push({ code, severity: 'hint', id: p.id, file: p.file, line: p.line, message });
+  const lint = (code, p, message) => lints.push({ code, severity: 'not ok', id: p.id, file: p.file, line: p.line, message });
   for (const [id, p] of was) {
     if (!now.has(id) && !removed.has(id)) lint('lost-id', p, `${id} was in ${p.file} at the base and is gone; declare removes:${id} in a change spec, or put the marker back`);
   }

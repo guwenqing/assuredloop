@@ -28,6 +28,7 @@ export function check({ top, opts }) {
   // A change spec's removes: names spec paragraphs.
   const removes = [...now.scopes].filter(([s]) => s !== SPEC).flatMap(([, ps]) => ps.flatMap((p) => p.links.removes));
 
+  // Each marker and ID lint is a hint for the review, in every mode (#238).
   const lints = [...now.lints];
   const changes = [];
   for (const scope of new Set([...now.scopes.keys(), ...(was?.scopes.keys() ?? [])])) {
@@ -43,7 +44,7 @@ export function check({ top, opts }) {
 
   const t10 = checks(top, { base });
   // An adopted paragraph needs no link while its text is the captured text (D16).
-  const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/')));
+  const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/'))).map((l) => ({ ...l, severity: 'hint' }));
   lints.length = 0;
   lints.push(...shown);
   const body = notRead(top, config);
