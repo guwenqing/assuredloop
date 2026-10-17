@@ -195,17 +195,17 @@ export function parseMarkdown(text, file, options = {}) {
 
   const [, ...marked] = blocks;
   for (const b of blocksOf(lines).blocks) {
-    if (!b.marked) lint('no-id', 'hint', null, b.first + 1, `a paragraph with no ID marker${b.after ? `, after ${b.after}` : ' before it'}`);
+    if (!b.marked) lint('no-id', 'not ok', null, b.first + 1, `a paragraph with no ID marker${b.after ? `, after ${b.after}` : ' before it'}`);
   }
 
   const seen = new Set();
   for (const b of marked) {
     const id = b.marker[1];
     const n = b.line;
-    if (n > 1 && lines[n - 2].trim() !== '') lint('no-blank-before', 'hint', id, n, `the marker of ${id} needs a blank line before it`);
+    if (n > 1 && lines[n - 2].trim() !== '') lint('no-blank-before', 'not ok', id, n, `the marker of ${id} needs a blank line before it`);
     // The empty string after a final newline is the end of the file, not a blank line.
-    if (n >= lines.length - 1 || lines[n].trim() !== '') lint('no-blank-after', 'hint', id, n, `the marker of ${id} needs a blank line after it`);
-    if (seen.has(id)) lint('duplicate-id', 'hint', id, n, `${id} is used by an earlier marker in this doc`);
+    if (n >= lines.length - 1 || lines[n].trim() !== '') lint('no-blank-after', 'not ok', id, n, `the marker of ${id} needs a blank line after it`);
+    if (seen.has(id)) lint('duplicate-id', 'not ok', id, n, `${id} is used by an earlier marker in this doc`);
     seen.add(id);
 
     let kind = null;
@@ -213,13 +213,13 @@ export function parseMarkdown(text, file, options = {}) {
     for (const token of b.marker[2].trim().split(/[ \t]+/).filter(Boolean)) {
       const c = token.indexOf(':');
       if (c < 0) {
-        if (kind !== null) lint('unknown-kind', 'hint', id, n, `${id} has a second kind "${token}"; a paragraph has one kind`);
-        else if (!known.has(token)) lint('unknown-kind', 'hint', id, n, `${id}: "${token}" is not a kind`);
+        if (kind !== null) lint('unknown-kind', 'not ok', id, n, `${id} has a second kind "${token}"; a paragraph has one kind`);
+        else if (!known.has(token)) lint('unknown-kind', 'not ok', id, n, `${id}: "${token}" is not a kind`);
         else kind = token;
         continue;
       }
       const key = Object.hasOwn(LINK_WORDS, token.slice(0, c)) ? LINK_WORDS[token.slice(0, c)] : null;
-      if (!key) lint('unknown-link', 'hint', id, n, `${id}: "${token.slice(0, c)}" is not a link word`);
+      if (!key) lint('unknown-link', 'not ok', id, n, `${id}: "${token.slice(0, c)}" is not a link word`);
       else links[key].push(...token.slice(c + 1).split(',').filter(Boolean));
     }
     if (kind === null) lint('no-kind', 'hint', id, n, `${id} has no kind`);
