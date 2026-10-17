@@ -18,7 +18,7 @@
 // repos built here.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
@@ -1134,5 +1134,109 @@ describe('DES-89: a records folder that al check cannot read is not ok record-un
     assert.ok(!existsSync(join(dir, RECORDS)), `no ${RECORDS} folder`);
     const r = both(dir);
     assert.deepEqual(coded(r, 'record-unreadable'), [], show(r));
+  });
+});
+
+// SCH-37 and the architect's decision "a read failure never hides a block":
+// a current place of an open request that al check cannot read is not ok
+// superseded-cited at that path, with a message that says it cannot be read.
+// Its citations are not checked. The files here name no ADR, so a finding
+// comes only from the failed read.
+const DETAILS = 'requests/invoice-exports/details';
+const NEUTRAL = 'Plan the export links.\n';
+const PLACE_ROOT_SKIP = 'running as root: a file or folder with mode 000 can still be read';
+const SAYS_UNREADABLE = /cannot be read|can not be read|could not be read|not readable|unreadable/i;
+
+// Run body with each path (relative to dir) at mode 000, in the order given.
+// Restore each mode afterwards, in the reverse order, also on a failure.
+function withLocked(t, dir, rels, body) {
+  const saved = rels.map((rel) => [join(dir, rel), statSync(join(dir, rel)).mode & 0o7777]);
+  const restore = () => {
+    for (const [path, mode] of [...saved].reverse()) {
+      try { chmodSync(path, mode); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    }
+  };
+  t.after(restore);
+  for (const [path] of saved) chmodSync(path, 0o000);
+  try {
+    body();
+  } finally {
+    restore();
+  }
+}
+
+// The not ok superseded-cited lines at path (a file, or a folder and what is in it).
+const citedAt = (r, path) => cited(r).filter((f) => f.file.replace(/\/$/, '') === path || f.file.startsWith(`${path}/`));
+
+function unreadablePlace(r, path) {
+  assert.doesNotMatch(r.stderr ?? '', /Error/, `no crash:\n${show(r)}`);
+  const found = citedAt(r, path);
+  assert.ok(found.length > 0, `a not ok superseded-cited at ${path}:\n${show(r)}`);
+  assert.ok(found.some((f) => SAYS_UNREADABLE.test(f.msg)), `its message says it cannot be read:\n${show(r)}`);
+}
+
+describe('SCH-37: a current place of an open request that cannot be read is not ok superseded-cited', () => {
+  test('control: details/plan.md readable, naming no ADR: no superseded-cited', (t) => {
+    const dir = invoicer(t, 'clean');
+    write(dir, PLAN, NEUTRAL);
+    const r = both(dir);
+    assert.deepEqual(coded(r, 'superseded-cited'), [], show(r));
+  });
+
+  test('details/plan.md with mode 000: not ok superseded-cited at that file, which says it cannot be read; --strict exits 1', { skip: isRoot() && PLACE_ROOT_SKIP }, (t) => {
+    const dir = invoicer(t, 'clean');
+    write(dir, PLAN, NEUTRAL);
+    withLocked(t, dir, [PLAN], () => {
+      assert.throws(() => readFileSync(join(dir, PLAN)), { code: 'EACCES' }, 'a direct read gives EACCES');
+      unreadablePlace(both(dir), PLAN);
+      assert.equal(check(dir, '--strict').code, 1);
+    });
+  });
+
+  test('the folder details with mode 000, holding plan.md: not ok superseded-cited at the folder, which says it cannot be read; --strict exits 1', { skip: isRoot() && PLACE_ROOT_SKIP }, (t) => {
+    const dir = invoicer(t, 'clean');
+    write(dir, PLAN, NEUTRAL);
+    withLocked(t, dir, [DETAILS], () => {
+      assert.throws(() => readdirSync(join(dir, DETAILS)), { code: 'EACCES' }, 'readdir gives EACCES');
+      unreadablePlace(both(dir), DETAILS);
+      assert.equal(check(dir, '--strict').code, 1);
+    });
+  });
+
+  test('control: an unreadable file under origin/ is exempt: no superseded-cited', { skip: isRoot() && PLACE_ROOT_SKIP }, (t) => {
+    for (const rel of ['requests/invoice-exports/origin/notes.md', 'requests/invoice-exports/origin/notes/x.md']) {
+      const dir = invoicer(t, 'clean');
+      write(dir, rel, NEUTRAL);
+      withLocked(t, dir, [rel], () => {
+        const r = both(dir);
+        assert.deepEqual(coded(r, 'superseded-cited'), [], `${rel}:\n${show(r)}`);
+      });
+    }
+  });
+
+  test('control: an unreadable file in an archived request is exempt: no superseded-cited', { skip: isRoot() && PLACE_ROOT_SKIP }, (t) => {
+    const rel = 'requests/archive/invoice-numbers/details/plan.md';
+    const dir = invoicer(t, 'clean');
+    write(dir, rel, NEUTRAL);
+    withLocked(t, dir, [rel], () => {
+      const r = both(dir);
+      assert.deepEqual(coded(r, 'superseded-cited'), [], show(r));
+    });
+  });
+
+  // A proposed or accepted ADR is a current place, and an unreadable ADR hides its own status too.
+  test('control: the invoicer ADR-4 file readable: the clean world', (t) => {
+    onlyNotOk(both(invoicer(t, 'clean')), []);
+  });
+
+  test('the accepted ADR-4 file with mode 000: not ok superseded-cited at its path, which says it cannot be read; --strict exits 1', { skip: isRoot() && PLACE_ROOT_SKIP }, (t) => {
+    const ADR4_FILE = 'specs/adr/0004-one-time-tokens.md';
+    const dir = invoicer(t, 'clean');
+    assert.match(read(dir, ADR4_FILE), /^Status: accepted/m);
+    withLocked(t, dir, [ADR4_FILE], () => {
+      assert.throws(() => readFileSync(join(dir, ADR4_FILE)), { code: 'EACCES' }, 'a direct read gives EACCES');
+      unreadablePlace(both(dir), ADR4_FILE);
+      assert.equal(check(dir, '--strict').code, 1);
+    });
   });
 });
