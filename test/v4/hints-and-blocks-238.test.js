@@ -18,7 +18,7 @@
 // repos built here.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
@@ -1364,4 +1364,121 @@ describe('a file or folder that al check cannot read, and that no check reports,
       assert.equal(check(dir, '--strict').code, 1);
     });
   });
+});
+
+// SCH-37 and D12: a symlink to a folder among the current places is not read
+// either. It is not ok superseded-cited at the symlink's own path, and al
+// does not follow it: no superseded-cited names a file under it.
+
+// Make rel in dir a symlink to a new folder outside the repo that holds files.
+function symlinkFolderOutside(t, dir, rel, files) {
+  const outside = mkdtempSync(join(realpathSync(tmpdir()), 'al4-dir-'));
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(join(outside, name, '..'), { recursive: true });
+    writeFileSync(join(outside, name), text);
+  }
+  const path = join(dir, rel);
+  rmSync(path, { recursive: true, force: true });
+  mkdirSync(join(path, '..'), { recursive: true });
+  symlinkSync(outside, path);
+}
+
+// A not ok superseded-cited at the symlink path itself, and none under it.
+function symlinkedFolder(r, path) {
+  symlinkedPlace(r, path);
+  const under = cited(r).filter((f) => f.file.startsWith(`${path}/`) && f.file !== `${path}/`);
+  assert.deepEqual(under.map((f) => f.line), [], `al does not follow the symlink:\n${show(r)}`);
+}
+
+describe('SCH-37 and D12: a symlink to a folder among the current places is not ok superseded-cited', () => {
+  test('specs/adr moved to .assuredloop/adr-copy and made a symlink to it: not ok superseded-cited at specs/adr; --strict exits 1', (t) => {
+    const dir = invoicer(t, 'clean');
+    renameSync(join(dir, 'specs/adr'), join(dir, '.assuredloop/adr-copy'));
+    symlinkSync(join(dir, '.assuredloop/adr-copy'), join(dir, 'specs/adr'));
+    symlinkedFolder(both(dir), 'specs/adr');
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('requests/invoice-exports/details a symlink to an outside folder whose plan.md names ADR-3 alone: not ok superseded-cited at details; --strict exits 1', (t) => {
+    const dir = invoicer(t, 'clean');
+    symlinkFolderOutside(t, dir, DETAILS, { 'plan.md': CITES_ADR3 });
+    symlinkedFolder(both(dir), DETAILS);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('control: a symlinked folder under origin/, or in an archived request, gives no superseded-cited', (t) => {
+    for (const rel of ['requests/invoice-exports/origin/notes', 'requests/archive/invoice-numbers/details']) {
+      const dir = invoicer(t, 'clean');
+      symlinkFolderOutside(t, dir, rel, { 'plan.md': CITES_ADR3 });
+      const r = both(dir);
+      assert.deepEqual(coded(r, 'superseded-cited'), [], `${rel}:\n${show(r)}`);
+    }
+  });
+});
+
+// =====================================================================
+// Rules from the mutation table (DES-89 and DES-90 as written). Each case is
+// the one that tells the rule apart from its break.
+
+describe('DES-89 and DES-90: the cases that tell each rule apart from its break', () => {
+  // D1. DES-89 "it records when it was signed (signed)". Break: only a non-empty string is checked.
+  for (const signed of ['yesterday', 'not a date']) {
+    test(`D1: a sign-off whose signed is "${signed}" is not valid: not ok unsigned-requirement inv/R1, which it alone covers`, (t) => {
+      const r = both(signedWorld(t, { record: goodRecord((rec) => { rec.signoff[0].signed = signed; }) }));
+      assert.ok(notOkKeys(r).includes('not ok unsigned-requirement inv/R1'), show(r));
+      assert.deepEqual(notOk(r).filter((f) => f.code !== 'unsigned-requirement').map((f) => f.line), [], show(r));
+    });
+  }
+
+  // D2. DES-89 "A requirement ... that al check cannot read is not ok". Break: no finding at all.
+  for (const [what, value] of [['a mapping', { R1: { version: 1, sha256: R1.sha256 } }], ['a string', 'R1 version 1']]) {
+    test(`D2: a record whose requirements is ${what}, not a list, with R1 in request.md: not ok unsigned-requirement`, (t) => {
+      const dir = signedWorld(t, { record: goodRecord((rec) => { rec.requirements = value; }) });
+      assert.match(read(dir, REQUEST_MD), /^### R1 /m, 'request.md has R1');
+      const r = both(dir);
+      assert.ok(unsignedIds(r).some(inRequest), `a not ok unsigned-requirement in ${NAME}:\n${show(r)}`);
+    });
+  }
+
+  // D3. DES-89 covers entries. Break: the bad entry is ignored and the valid one counts.
+  for (const [what, version] of [['0', 0], ['1.5', 1.5], ['the string "1"', '1']]) {
+    test(`D3: S1 with a covers entry of version ${what} beside its valid R1 entry is not valid as a whole: not ok unsigned-requirement inv/R1`, (t) => {
+      const record = goodRecord((rec) => { rec.signoff[0].covers.push({ id: 'R1', version, sha256: R1.sha256 }); });
+      const r = both(signedWorld(t, { record }));
+      assert.ok(notOkKeys(r).includes('not ok unsigned-requirement inv/R1'), show(r));
+      assert.deepEqual(notOk(r).filter((f) => f.code !== 'unsigned-requirement').map((f) => f.line), [], show(r));
+    });
+  }
+
+  // D4. DES-90 for a sign-off file: the hash is of the bytes after its
+  // "--- signed text ---" line, also when a plain --- line comes before it.
+  // Break: the hash starts after the first --- line.
+  for (const [what, header] of [
+    ['inside the header', ['Source: email from the owner', '---', "Owner's words: yes, R1 as written", 'Fetched: 2026-05-05T09:30Z']],
+    ['as the first line', ['---', 'Source: email from the owner', "Owner's words: yes, R1 as written", 'Fetched: 2026-05-05T09:30Z']],
+  ]) {
+    test(`D4: an unchanged sign-off file with a plain --- line ${what}, before "--- signed text ---": no record-evidence, no unsigned-requirement`, (t) => {
+      const signoff = signoffSnapshot(SIGNED, header);
+      const lines = signoff.split('\n');
+      assert.ok(lines.slice(0, lines.indexOf('--- signed text ---')).includes('---'), 'a plain --- line before the separator');
+      const r = both(signedWorld(t, { signoff }));
+      assert.deepEqual(coded(r, 'record-evidence'), [], show(r));
+      assert.deepEqual(coded(r, 'unsigned-requirement'), [], show(r));
+    });
+  }
+
+  // D5. DES-90 for an owner-words snapshot: only the first --- line separates
+  // the header; a later --- line belongs to the text. Break: the last separator is used.
+  for (const [what, text] of [
+    ['one later --- line', 'first part.\n---\nsecond part.\n'],
+    ['two later --- lines', 'one.\n---\ntwo.\n---\nthree.\n'],
+    ['a --- line at the end', 'the owner signs below.\n---\n'],
+  ]) {
+    test(`D5: an unchanged owner-words snapshot whose text holds ${what}: no record-evidence`, (t) => {
+      const words = wordsSnapshot(text);
+      const r = both(signedWorld(t, { words, record: goodRecord((rec) => { rec.sources[0].sha256 = sha(text); }) }));
+      assert.deepEqual(coded(r, 'record-evidence'), [], show(r));
+    });
+  }
 });
