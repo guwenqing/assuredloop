@@ -1545,3 +1545,47 @@ describe('the root boundary: al check never walks a spec root outside the repo o
     assert.deepEqual(coded(r, 'spec-root'), [], show(r));
   });
 });
+
+// SCH-37 and D12: a doc that config.yaml lists under docs:, inside the repo
+// but outside the spec root, is a current place too. As a symlink it is not
+// ok superseded-cited at its path, as a symlinked doc under the root is.
+const REPORT = 'docs/report.md';
+const REPORT_TEXT = doc([['REP-1 note', 'Use ADR-3 for export links.']]);
+
+// The invoicer world with docs/report.md (prefix REP) added to config docs:.
+function reportWorld(t) {
+  const dir = invoicer(t, 'clean');
+  const config = read(dir, '.assuredloop/config.yaml');
+  assert.match(config, /^docs:/m);
+  write(dir, '.assuredloop/config.yaml', `${config.trimEnd()}\n  - {file: ${REPORT}, prefix: REP}\n`);
+  write(dir, REPORT, REPORT_TEXT);
+  return dir;
+}
+
+describe('SCH-37 and D12: a configured doc outside the spec root that is a symlink is not ok superseded-cited', () => {
+  test('control: docs/report.md as a regular file, its REP-1 naming ADR-3 alone: not ok superseded-cited at docs/report.md; --strict exits 1', (t) => {
+    const dir = reportWorld(t);
+    const r = both(dir);
+    assert.ok(cited(r).some((f) => f.file === REPORT), show(r));
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('docs/report.md a symlink to its unchanged copy outside the repo: not ok superseded-cited at docs/report.md; --strict exits 1', (t) => {
+    const dir = reportWorld(t);
+    symlinkOutside(t, dir, REPORT, REPORT_TEXT);
+    symlinkedPlace(both(dir), REPORT);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('control: a configured doc outside the repository (../x.md) is only "not read: ../x.md: outside the repository", and no finding names it', (t) => {
+    const { top, dir } = rootRepo(t, 'specs');
+    write(dir, 'specs/invoices.md', doc([['INV-1 note', '# Invoices']]));
+    write(dir, '.assuredloop/config.yaml', 'root: specs\ndocs:\n  - {file: specs/invoices.md, prefix: INV}\n  - {file: ../x.md, prefix: X}\n');
+    commitAll(dir, 'config with an outside doc');
+    writeFileSync(join(top, 'x.md'), doc([['X-1 note', 'Use ADR-3 for export links.']]));
+    const r = both(dir);
+    assert.ok(r.stdout.split('\n').includes('not read: ../x.md: outside the repository'), show(r));
+    assert.deepEqual(r.findings.filter((f) => f.line.includes('x.md')).map((f) => f.line), [], show(r));
+    assert.deepEqual(coded(r, 'superseded-cited'), [], show(r));
+  });
+});
