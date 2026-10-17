@@ -718,6 +718,75 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
     assert.deepEqual(coded(r, 'issue-missing'), [], show(r));
     assertInfo(r, 2);
   });
+
+  // Clause B (review of PR #243): a parent's url names the own item when it is
+  // the own item's url, the url of the origin source that named the own item,
+  // a url that holds the own item's ref as a whole word, or a form of SP-8.
+  // Then the item is a child, also when the parent's number names another item.
+  const OWN_PROJ = 'https://tracker.example.test/browse/PROJ-1';
+  const projWorld = (t, parent, extra = []) => {
+    const w = world(t, { ownItem: OWN_PROJ, tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
+    save(w, {
+      'proj.json': [
+        { ref: 'PROJ-1', repository: 'PROJ', body: 'request' },
+        { ref: 'PROJ-12', repository: 'PROJ', body: 'task', parent },
+        ...extra,
+      ],
+    });
+    return w;
+  };
+
+  test('B1: the parent of PROJ-12 is {url: the origin source url of the own item PROJ-1, number: 1}: a child, no issue-not-sub', (t) => {
+    const w = projWorld(t, { url: OWN_PROJ, number: 1 });
+    const r = checked(w, ...ISSUES);
+    assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
+    assert.deepEqual(coded(r, 'issue-missing'), [], show(r));
+  });
+
+  test('B2: the parent of PROJ-12 is {url: .../browse/PROJ-2, number: 2}, and PROJ-2 is in the folder: one issue-not-sub at PROJ-12, ID inv/T1', (t) => {
+    const w = projWorld(t, { url: 'https://tracker.example.test/browse/PROJ-2', number: 2 }, [{ ref: 'PROJ-2', repository: 'PROJ', body: 'other' }]);
+    const r = checked(w, ...ISSUES);
+    assert.deepEqual(coded(r, 'issue-not-sub').map((f) => `${where(f)} ${f.id} ${f.severity}`), [`PROJ-12 ${NAME}/T1 hint`], show(r));
+  });
+
+  test('B3: a GitHub parent whose url is the own item\'s url, with the number of another item (#8, in the folder): a child, no issue-not-sub', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: '#31' }] });
+    save(w, { 'a.json': { ...own(31), parent: { number: 8, url: OWN_ITEM } }, 'b.json': own(8, { parent: null }) });
+    const r = checked(w, ...ISSUES);
+    assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
+  });
+});
+
+// =====================================================================
+// Clause A (SP-22, review of PR #243): no output of al check shows the user
+// name or the password of a remote URL.
+
+describe('R1 (SP-22): al check never shows the user name or the password of the origin remote', () => {
+  const SECRET_REMOTE = 'https://USER:REVIEW_DUMMY_TOKEN@git.example.test/scm/acme/invoicer.git';
+
+  test('A1: origin https://USER:REVIEW_DUMMY_TOKEN@git.example.test/scm/acme/invoicer.git: no stdout or stderr of al check (with or without --issues, plain or --strict) holds USER or REVIEW_DUMMY_TOKEN', (t) => {
+    const w = world(t, { remote: SECRET_REMOTE });
+    save(w, { 'a.json': own(31) });
+    for (const args of [ISSUES, [...ISSUES, '--strict'], [], ['--strict']]) {
+      const x = check(w, ...args);
+      assert.equal(x.code, 0, show(x));
+      for (const secret of ['USER', 'REVIEW_DUMMY_TOKEN']) {
+        assert.ok(!x.stdout.includes(secret), `stdout of al check ${args.join(' ')} holds ${secret}:\n${show(x)}`);
+        assert.ok(!x.stderr.includes(secret), `stderr of al check ${args.join(' ')} holds ${secret}:\n${show(x)}`);
+      }
+    }
+  });
+
+  test('A2: that origin names no owner/repo (three path parts): #31 gets issue-missing at #31, a hint, and the Not known line says that the own repository is not known (control: the same world with origin git@github.com:acme/invoicer.git)', (t) => {
+    // The folder is empty in both worlds, so the Not known lines differ only by what al knows of the own repository.
+    const control = world(t);
+    const c = checked(control, ...ISSUES);
+    const w = world(t, { remote: SECRET_REMOTE });
+    const r = checked(w, ...ISSUES);
+    const missing = one(r, 'issue-missing', '#31');
+    assert.equal(missing.id, `${NAME}/T1`, show(r));
+    assert.notEqual(notKnown(r), notKnown(c), `the Not known line says that the own repository is not known:\n${show(r)}\n${show(c)}`);
+  });
 });
 
 // =====================================================================
