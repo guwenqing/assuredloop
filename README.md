@@ -142,10 +142,10 @@ with a baseline effect has no valid disposition for its current version.
 - `al index`: write the derived facts and the new bindings, and list the AI
   hints to refresh. `al index --align <ID>` moves the bindings of one
   paragraph to its targets' current text, on purpose.
-- `al check [--strict] [--issues]`: the checks of this branch against its
-  base. With `--issues`, it also reads the GitHub issues that the tasks of
-  the open requests name, with the GitHub CLI `gh`, and gives hints (see
-  "Hints from the linked issues").
+- `al check [--strict] [--issues <folder>]`: the checks of this branch
+  against its base. With `--issues <folder>`, it also checks the work items
+  that the caller saved in the folder (see "Hints from the linked work
+  items").
 - `al context [<name> | <ID>]`: where the project, a request or a paragraph
   stands. `--diff <range> --for review` is the review view. `--audit` gives a
   request's whole trace; `--at <commit>` any v4 state.
@@ -185,7 +185,7 @@ phrases:                   # text for the review to look at; each match is a hin
 
 `al check` gives the hint `phrase` for each match of `phrases:` in the spec
 docs, the ADRs and the Markdown files of the open requests, but their
-`origin/` folders; with `--issues`, in the issues too. The list is empty by
+`origin/` folders; with `--issues <folder>`, in the work items too. The list is empty by
 default. A bad entry or an invalid pattern stops `al check` with exit 2.
 
 `.assuredloop/schema.yaml` holds the kinds and the link words, with a version.
@@ -217,24 +217,62 @@ ADRs are `specs/adr/NNNN-<slug>.md`, with `Status: proposed`, `accepted` or
   ADR's marker has `supersedes:` for it. Else `al check` gives
   `not ok superseded-status`.
 
-## Hints from the linked issues
+## Hints from the linked work items
 
-`al check --issues` reads the GitHub issues that the `tasks:` of each open
-request name, with the GitHub CLI `gh`. It only reads: `gh repo view` and
-`gh issue view`. Without `--issues`, `al check` reads no issue. A task's
-`ref` names an issue as `#n`, `owner/repo#n`, `<name>#n` for an output repo
-that config names, or an issue URL. An issue's text is its body and its
-comments that are not hidden. Each finding is a hint:
+A project may keep its work items in any tracker, or in none. `al` never
+contacts a tracker. The caller saves the items in a folder, and
+`al check --issues <folder>` checks the items that the `tasks:` of the open
+requests name. Without `--issues`, `al check` reads no item. A task's `ref`
+names an item as `#n`, `owner/repo#n`, `<name>#n` for an output repo that
+config names, an issue URL on any host, or the item's own `ref`, for
+example `PROJ-12`. Each finding is a hint:
 
-- `issue-superseded`: the text names a superseded ADR without the ADR that
-  supersedes it, by the rule of `superseded-cited`;
-- `issue-bare-ref`: a bare `#n` in an issue of another repository, which
-  GitHub reads as that repository's issue;
-- `issue-not-sub`: the issue is not a sub-issue of the request's own issue,
-  the issue that the `url` of an origin source names (`al record <name>
-  origin --url <issue URL>`);
+- `issue-missing`: a task names an item that is not in the folder;
+- `issue-superseded`: the item's text names a superseded ADR without the ADR
+  that supersedes it, by the rule of `superseded-cited`;
+- `issue-bare-ref`: a bare `#n` in an item of another repository, which
+  GitHub reads as that repository's issue. The request's own repository
+  comes from `git remote get-url origin`;
+- `issue-not-sub`: the item is not a child of the request's own item, the
+  item that the `url` of an origin source names (`al record <name> origin
+  --url <its URL>`);
 - `phrase`: a phrase of `phrases:` matches;
-- `issue-unread`: `gh` is missing, not logged in, or failed for the issue.
+- `issue-unread`: a file in the folder is not valid JSON, or holds an entry
+  that is not an item.
+
+The folder holds `*.json` files. Each file holds one item, or a list of
+items. An item is the JSON that the GitHub CLI prints with
+`--json number,url,body,comments,parent`, so GitHub issues need no
+conversion:
+
+| Field | What it is | Needed |
+|---|---|---|
+| `body` | the item's text | yes |
+| `url` | its address, `https://<host>/owner/repo/issues/n` for GitHub | one of `url`, `number` with `repository`, or `ref` |
+| `number` | its number in its repository | |
+| `comments` | a list, each with `body`, and `isMinimized` true for a hidden comment | no |
+| `parent` | the parent item, with `url` and `number`, or `ref`; `null` for none | no: with no `parent`, the child check is not made |
+| `ref` | the reference that a task names, for another tracker, for example `PROJ-12` | for another tracker |
+| `repository` | `owner/repo`, or a project key | no |
+
+To save GitHub issues, GitHub Enterprise included, save each issue with
+`gh issue view`. `gh issue list` gives at most 100 comments of an issue.
+
+```sh
+mkdir -p /tmp/items
+gh issue view 31 --repo acme/invoicer \
+  --json number,url,body,comments,parent > /tmp/items/invoicer-31.json
+GH_HOST=github.example.com gh issue view 5 --repo acme/web \
+  --json number,url,body,comments,parent > /tmp/items/web-5.json
+al check --issues /tmp/items
+```
+
+An item of another tracker:
+
+```json
+{"ref": "PROJ-12", "repository": "PROJ", "body": "Build the export (ADR-3).",
+ "comments": [{"body": "Done.", "isMinimized": false}], "parent": {"ref": "PROJ-1"}}
+```
 
 ## Search
 
@@ -268,7 +306,7 @@ itself (2, then 1, then 0), and says which level answered and why.
   brings it up to date before it answers; `--rebuild` builds it again.
 - Level 2 runs a small local model (bge-small-en-v1.5, pinned by its
   revision). The model download is the only data that leaves the machine.
-  `al search` itself makes no network call. Without the library, `al search`
+  `al` itself makes no network call. Without the library, `al search`
   answers at level 1, and a `Not known` line says how to add level 2. Only
   `al search` loads the library.
 
@@ -371,7 +409,7 @@ it is 1 when a `not ok` prints.
 |---|---|---|
 | `al conclude` refuses on its three conditions (see "The close rule") | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
 | `not ok`: sign-off coverage of promise changes, unsigned requirement versions, changed record evidence, citations of superseded ADRs and their status lines, and records or a spec root that cannot be read | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
-| hints for the review: IDs missing, used twice, lost or used again; kinds and links; links that do not resolve; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task; matches of the configured phrases; with `--issues`, the hints from the linked issues | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
+| hints for the review: IDs missing, used twice, lost or used again; kinds and links; links that do not resolve; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task; matches of the configured phrases; with `--issues <folder>`, the hints from the linked work items | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
 | `check --strict` exits 1 on a `not ok`, when a project opts in | | |
 
 `al` checks that declarations are well formed and that references resolve.
