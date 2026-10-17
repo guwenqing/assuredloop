@@ -755,6 +755,45 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
     const r = checked(w, ...ISSUES);
     assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
   });
+
+  // B4 and B5 keep the two ways apart: a parent url that equals the own
+  // item's url and holds no ref (B4), and a parent url that holds the ref
+  // and equals neither the own item's url nor its source's url (B5).
+  const I10001 = 'https://tracker.example.test/i/10001';
+  const I10002 = 'https://tracker.example.test/i/10002';
+
+  test('B4: the parent url equals the own item\'s url (and its source url) and holds no ref: a child, no issue-not-sub; control: the url of another item, PROJ-2, gives one', (t) => {
+    const ownProj = { ref: 'PROJ-1', repository: 'PROJ', url: I10001, body: 'request' };
+    const w = world(t, { ownItem: I10001, tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
+    save(w, { 'proj.json': [ownProj, { ref: 'PROJ-12', repository: 'PROJ', body: 'task', parent: { url: I10001, number: 10001 } }] });
+    const r = checked(w, ...ISSUES);
+    assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
+    assert.deepEqual(coded(r, 'issue-missing'), [], show(r));
+
+    const c = world(t, { ownItem: I10001, tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
+    save(c, {
+      'proj.json': [
+        ownProj,
+        { ref: 'PROJ-12', repository: 'PROJ', body: 'task', parent: { url: I10002, number: 10002 } },
+        { ref: 'PROJ-2', repository: 'PROJ', url: I10002, body: 'other' },
+      ],
+    });
+    const rc = checked(c, ...ISSUES);
+    assert.deepEqual(coded(rc, 'issue-not-sub').map((f) => `${where(f)} ${f.id} ${f.severity}`), [`PROJ-12 ${NAME}/T1 hint`], show(rc));
+  });
+
+  test('B5: the parent url holds the own item\'s ref PROJ-1 as a whole word and equals neither url (the own item has none; the source url is .../browse/PROJ-1): a child, no issue-not-sub', (t) => {
+    const w = world(t, { ownItem: 'https://tracker.example.test/browse/PROJ-1', tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
+    save(w, {
+      'proj.json': [
+        { ref: 'PROJ-1', repository: 'PROJ', body: 'request' },
+        { ref: 'PROJ-12', repository: 'PROJ', body: 'task', parent: { url: 'https://tracker.example.test/browse/PROJ-1?focusedId=5', number: 1 } },
+      ],
+    });
+    const r = checked(w, ...ISSUES);
+    assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
+    assert.deepEqual(coded(r, 'issue-missing'), [], show(r));
+  });
 });
 
 // =====================================================================
