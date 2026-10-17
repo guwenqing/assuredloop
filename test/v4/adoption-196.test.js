@@ -535,7 +535,7 @@ function linkedBase(t) {
   writeConfig(dir);
   newRequest(dir, 'inv');
   appendSection(dir, 'inv', organized([req('R1', 'Invoice lines', RULE_TEXT)]));
-  ok(dir, ['record', 'inv', 'signoff', '--source', 'email from the owner', '--yes']);
+  ok(dir, ['record', 'inv', 'signoff', '--source', 'email from the owner', '--words', 'Yes, sign it', '--yes']);
   write(dir, SPEC, `${HEADING_ONLY}\n${LINKED_MARKER}\n\n${RULE_TEXT}\n`);
   index(dir);
   commitAll(dir, 'the signed request inv and the spec with INV-2');
