@@ -96,6 +96,13 @@ decisions:
     sha256: 5fca98e629d30537d5455f42470d128aede999d191655842f0a1f25920d2c1d7
     clarifies:
       - R3
+  - id: D11
+    date: 2026-10-17
+    source: the agent (architect)
+    text: "A current place that cannot be read is not ok superseded-cited at its path, with a message that says it cannot be read, so its citations are not checked: a read failure never hides a block, as in R3 and R4. SCH-37 says so. It follows from R5, so it needs no new sign-off."
+    sha256: b766e8b6aa5e306d65a9be724e72cadf93ff6724b3091f13d6459f9ab214f7e5
+    clarifies:
+      - R5
 tasks: []
 bindings:
   - { holder: hints-and-blocks/R1, link: from, target: hints-and-blocks/2026-10-17-owner-words.md, holder_sha256: 99a4d062d4adaa69df69f57a4c4d5f10ae9972b59f1994963bf6b2764c0e7b62, target_sha256: 3d04cd7b512066a31d7b70114b0fbf3ccb295eccbd6d9abf65986870325e664d }
