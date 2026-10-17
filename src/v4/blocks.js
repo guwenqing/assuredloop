@@ -168,6 +168,11 @@ function supersedes(state) {
   return out;
 }
 
+// What a superseded-ADR finding says (supersededIn).
+export const citedMessage = (c) => (c.next.length
+  ? `names ${c.adr}, which is superseded, but not ${c.next.join(' or ')}, which supersedes it, ${c.link ? 'in the same marker' : 'in the same paragraph'}`
+  : `names ${c.adr}, which is superseded, and no ADR supersedes it (see superseded-status)`);
+
 // The ADR that a link value or word names: `ADR-n` and `ADR-n-k` name ADR-n.
 const ADR_REF = /^ADR-(\d+)(?:-\d+)?$/;
 const adrOf = (ref) => (ADR_REF.test(ref) ? `ADR-${Number(ADR_REF.exec(ref)[1])}` : null);
@@ -206,13 +211,43 @@ function places(textOf, skip) {
   return out;
 }
 
+// R5's rule on one text: each place that names a superseded ADR, but no ADR
+// that supersedes it, in the same marker or the same paragraph. Gives
+// (text, { skip, exempt }) => [{ line, id, link, adr, next }]. al check
+// --issues reads the issues with the same rule (issue-hints D7).
+export function supersededIn(state) {
+  const down = supersedes(state);
+  const up = (id) => [...down].filter(([, xs]) => xs.has(id)).map(([y]) => y);
+  const superseded = (id) => state.adrs.get(id)?.status === 'superseded';
+  return (textOf, { skip = null, exempt = new Set() } = {}) => places(textOf, skip).flatMap((p) => [...p.names]
+    .filter((x) => superseded(x) && !exempt.has(x) && !up(x).some((y) => p.names.has(y)))
+    .map((x) => ({ line: p.line, id: p.id, link: p.link, adr: x, next: up(x) })));
+}
+
+// The Markdown files of an open request's folder, in its subfolders too, but
+// origin/; a symlink to a Markdown file or a folder, or a subfolder that
+// cannot be read, is given as { unreadable, why }.
+export function requestMarkdown(top, dir, sub = '') {
+  let entries = [];
+  try {
+    entries = readdirSync(join(top, dir, sub), { withFileTypes: true });
+  } catch (e) {
+    return sub && e.code !== 'ENOENT' ? [{ unreadable: sub, why: e.code ?? e.message }] : [];
+  }
+  return entries.sort((a, b) => (a.name < b.name ? -1 : 1)).flatMap((e) => {
+    const f = sub ? `${sub}/${e.name}` : e.name;
+    if (e.isSymbolicLink()) return f !== 'origin' && placeLink(top, `${dir}/${f}`) ? [{ unreadable: f, why: SYMLINK }] : [];
+    if (e.isDirectory()) return f === 'origin' ? [] : requestMarkdown(top, dir, f);
+    return e.isFile() && e.name.endsWith('.md') ? [f] : [];
+  });
+}
+
 // R5: a current place that names a superseded ADR names an ADR that
 // supersedes it, in the same marker or the same paragraph; and each
 // superseded ADR's status line names an ADR whose marker supersedes it.
 export function supersededBlocks(top, state, add) {
   const down = supersedes(state);
-  // The ADRs that supersede `id` directly.
-  const up = (id) => [...down].filter(([, xs]) => xs.has(id)).map(([y]) => y);
+  const cited = supersededIn(state);
   // The ADRs that `id` supersedes, directly or through a chain.
   const chain = (id) => {
     const seen = new Set();
@@ -220,7 +255,6 @@ export function supersededBlocks(top, state, add) {
     walk(id);
     return seen;
   };
-  const superseded = (id) => state.adrs.get(id)?.status === 'superseded';
 
   for (const a of state.adrs.values()) {
     if (a.status !== 'superseded') continue;
@@ -233,17 +267,9 @@ export function supersededBlocks(top, state, add) {
   }
 
   const check = (file, textOf, { skip = null, exempt = new Set(), name = null } = {}) => {
-    for (const p of places(textOf, skip)) {
-      for (const x of p.names) {
-        if (!superseded(x) || exempt.has(x)) continue;
-        const next = up(x);
-        if (next.some((y) => p.names.has(y))) continue;
-        const where = p.link ? 'in the same marker' : 'in the same paragraph';
-        const id = p.id ? (name ? `${name}/${p.id}` : p.id) : '-';
-        add('not ok', 'superseded-cited', `${file}:${p.line}`, id, next.length
-          ? `names ${x}, which is superseded, but not ${next.join(' or ')}, which supersedes it, ${where}`
-          : `names ${x}, which is superseded, and no ADR supersedes it (see superseded-status)`);
-      }
+    for (const c of cited(textOf, { skip, exempt })) {
+      const id = c.id ? (name ? `${name}/${c.id}` : c.id) : '-';
+      add('not ok', 'superseded-cited', `${file}:${c.line}`, id, citedMessage(c));
     }
   };
   // A current place that cannot be read: its citations are not checked, and
@@ -265,26 +291,10 @@ export function supersededBlocks(top, state, add) {
   for (const f of [...links].sort()) unreadable(f, SYMLINK);
   // The spec docs, each paragraph with its marker.
   for (const d of state.docs ?? []) if (d.scope === SPEC && typeof d.text === 'string') check(d.path, d.text);
-  // The Markdown files of each open request, in its subfolders too, but
-  // origin/ and the recorded decisions; a subfolder that cannot be read is
-  // given as { unreadable }.
-  const markdown = (dir, sub) => {
-    let entries = [];
-    try {
-      entries = readdirSync(join(top, dir, sub), { withFileTypes: true });
-    } catch (e) {
-      return sub && e.code !== 'ENOENT' ? [{ unreadable: sub, why: e.code ?? e.message }] : [];
-    }
-    return entries.sort((a, b) => (a.name < b.name ? -1 : 1)).flatMap((e) => {
-      const f = sub ? `${sub}/${e.name}` : e.name;
-      if (e.isSymbolicLink()) return f !== 'origin' && placeLink(top, `${dir}/${f}`) ? [{ unreadable: f, why: SYMLINK }] : [];
-      if (e.isDirectory()) return f === 'origin' ? [] : markdown(dir, f);
-      return e.isFile() && e.name.endsWith('.md') ? [f] : [];
-    });
-  };
+  // The Markdown files of each open request, but origin/ and the recorded decisions.
   for (const r of state.requests.values()) {
     if (!r.open) continue;
-    for (const f of markdown(r.dir, '')) {
+    for (const f of requestMarkdown(top, r.dir)) {
       if (f.unreadable) {
         unreadable(`${r.dir}/${f.unreadable}`, f.why);
         continue;

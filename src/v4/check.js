@@ -5,7 +5,8 @@
 // HEAD with main; the head is the working tree. It exits 0; with --strict, 1
 // when it prints a `not ok`. A finding has the same severity in both modes:
 // the marker and ID lints are hints for the review, and only the exact rules
-// of checks.js are `not ok` (#238).
+// of checks.js are `not ok` (#238). With --issues <folder> it also checks the
+// work items that the caller saved there (issue-hints R1).
 import { relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { read, recordPath } from './base.js';
@@ -16,6 +17,8 @@ import { docsInScope, idsEverUsed, isShallow, notRead, parseScopes, rootNotOk, r
 import { Fail } from './spec.js';
 import { centralLookup } from './repos.js';
 import { checks } from './checks.js';
+import { loadPhrases } from './phrases.js';
+import { loadItems } from './issues.js';
 
 // A file or folder that al check cannot read, and that no check reports as
 // not ok, stops it with a refusal: never an internal error, never a pass (#238).
@@ -29,11 +32,15 @@ export function check(args) {
   }
 }
 
-function checkAll({ top, opts }) {
+function checkAll({ top, cwd, opts }) {
   const config = loadConfig(top);
   const root = rootProblem(config);
   if (root) throw new Fail(root, 'fix root: in .assuredloop/config.yaml');
   const { kinds } = loadSchema(top);
+  // A bad phrases: list is a refusal before anything is read (issue-hints D6).
+  const phrases = loadPhrases(config);
+  // The work items that the caller saved; a folder that is not there is a refusal.
+  const issues = opts.issues === undefined ? null : loadItems(cwd ?? top, opts.issues);
   const base = mergeBase(top);
   const now = parseScopes(docsInScope(top, config), kinds);
   const was = base ? parseScopes(docsInScope(top, config, base), kinds) : null;
@@ -55,7 +62,7 @@ function checkAll({ top, opts }) {
     changes.push(...diffParagraphs(before, head).filter((c) => c.changes.length));
   }
 
-  const t10 = checks(top, { base });
+  const t10 = checks(top, { base, phrases, issues });
   // An adopted paragraph needs no link while its text is the captured text (D16).
   const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/'))).map((l) => ({ ...l, severity: 'hint' }));
   lints.length = 0;
