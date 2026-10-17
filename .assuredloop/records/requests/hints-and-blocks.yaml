@@ -103,6 +103,15 @@ decisions:
     sha256: b766e8b6aa5e306d65a9be724e72cadf93ff6724b3091f13d6459f9ab214f7e5
     clarifies:
       - R5
+  - id: D12
+    date: 2026-10-17
+    source: the agent (architect)
+    text: 'One rule for read failures, which refines D11: a symlinked Markdown file in a current place is not read, so it gives not ok superseded-cited at its path; any other file or folder that al check cannot read, and that no check reports as not ok, stops al check with a refusal: exit 2, "al: <path> cannot be read", never an internal error and never a pass. SCH-37 says so. It follows from R3 to R5, so it needs no new sign-off.'
+    sha256: 1d74fe8cf7aba593d1bc79f0140f290d779db50e20e447f2ddd49fb39281fef6
+    clarifies:
+      - R3
+      - R4
+      - R5
 tasks: []
 bindings:
   - { holder: hints-and-blocks/R1, link: from, target: hints-and-blocks/2026-10-17-owner-words.md, holder_sha256: 99a4d062d4adaa69df69f57a4c4d5f10ae9972b59f1994963bf6b2764c0e7b62, target_sha256: cd75875c6dfa178d4f3a0ed3a3cd93dae5a30ee5e61f2641eeb3b3c7588d0816 }
@@ -143,7 +152,7 @@ bindings:
   - { holder: hints-and-blocks/SP-22, link: builds-on, target: hints-and-blocks/SP-21, holder_sha256: 00ff61d5025923bb08809de943d1de995bda7a8b7ba0210f0dd3ebfda4f90ec6, target_sha256: aed1f5e7ae330288aab5d1b63d802e9e9ce4d50c371bddab0d8559b339b74d3c }
   - { holder: hints-and-blocks/SP-24, link: serves, target: hints-and-blocks/R5, holder_sha256: 8b8fcc9a17783a2c319b8a338d83208a883d9c5a0f0bbe75c557814a3733b1ab, target_sha256: 512db58045bc5cff5443eb1e6bdcc689e54822c50a82d7a3b8ee141d73abff39, target_version: 1 }
   - { holder: hints-and-blocks/SP-25, link: serves, target: hints-and-blocks/R5, holder_sha256: 1882d7033f0a0560cc513245de1ae9d962814ca229c2a5f22b81a0b34e295b20, target_sha256: 512db58045bc5cff5443eb1e6bdcc689e54822c50a82d7a3b8ee141d73abff39, target_version: 1 }
-  - { holder: hints-and-blocks/SP-25, link: builds-on, target: hints-and-blocks/SP-24, holder_sha256: 1882d7033f0a0560cc513245de1ae9d962814ca229c2a5f22b81a0b34e295b20, target_sha256: 8fa36357438774b2a2a3a5235fea0b3cc0fbc3625cf07175dba6c93f3520fc10 }
+  - { holder: hints-and-blocks/SP-25, link: builds-on, target: hints-and-blocks/SP-24, holder_sha256: 1882d7033f0a0560cc513245de1ae9d962814ca229c2a5f22b81a0b34e295b20, target_sha256: 535a07dd8bf92115f4ff2891ad63b749939ba6edef1066b65a7eab2bab32fa2b }
   - { holder: DES-5, link: serves, target: hints-and-blocks/R2, holder_sha256: 091be7e89d98190fdb70059c47b520f9aa41f62dfb62b6e2c844495122311075, target_sha256: 43b981532770dca76cffdeaa82bbe7933264ddc2f1512e9c694b77e3fc365838, target_version: 1 }
   - { holder: DES-9, link: serves, target: hints-and-blocks/R1, holder_sha256: a2f1ae0b1bfbbc722a82252614d911731be64c0ee91637263c9eb278d0347e00, target_sha256: 99a4d062d4adaa69df69f57a4c4d5f10ae9972b59f1994963bf6b2764c0e7b62, target_version: 1 }
   - { holder: DES-10, link: serves, target: hints-and-blocks/R1, holder_sha256: 101ed9c2217d4e5da1ccbb648b926100d2673a7cd65f97bcd9f602ff6690b15c, target_sha256: 99a4d062d4adaa69df69f57a4c4d5f10ae9972b59f1994963bf6b2764c0e7b62, target_version: 1 }
@@ -197,6 +206,6 @@ dispositions:
   - { source: hints-and-blocks/SP-14, disposition: incorporated, spec: DES-10, source_sha256: 101ed9c2217d4e5da1ccbb648b926100d2673a7cd65f97bcd9f602ff6690b15c, spec_sha256: 101ed9c2217d4e5da1ccbb648b926100d2673a7cd65f97bcd9f602ff6690b15c }
   - { source: hints-and-blocks/SP-18, disposition: incorporated, spec: DES-89, source_sha256: 2e2f4f409b7c52548968f7afb20a42483acb625f8f79518ff0a8965311a394f2, spec_sha256: 2e2f4f409b7c52548968f7afb20a42483acb625f8f79518ff0a8965311a394f2 }
   - { source: hints-and-blocks/SP-21, disposition: incorporated, spec: DES-90, source_sha256: aed1f5e7ae330288aab5d1b63d802e9e9ce4d50c371bddab0d8559b339b74d3c, spec_sha256: aed1f5e7ae330288aab5d1b63d802e9e9ce4d50c371bddab0d8559b339b74d3c }
-  - { source: hints-and-blocks/SP-24, disposition: incorporated, spec: SCH-37, source_sha256: 8fa36357438774b2a2a3a5235fea0b3cc0fbc3625cf07175dba6c93f3520fc10, spec_sha256: 8fa36357438774b2a2a3a5235fea0b3cc0fbc3625cf07175dba6c93f3520fc10 }
+  - { source: hints-and-blocks/SP-24, disposition: incorporated, spec: SCH-37, source_sha256: 535a07dd8bf92115f4ff2891ad63b749939ba6edef1066b65a7eab2bab32fa2b, spec_sha256: 535a07dd8bf92115f4ff2891ad63b749939ba6edef1066b65a7eab2bab32fa2b }
   - { source: hints-and-blocks/SP-26, disposition: incorporated, spec: DES-42, source_sha256: 757a4261de1c589a47c1e8437328ce3f8759d5d17ed86ee44a89a44dbec78d53, spec_sha256: 757a4261de1c589a47c1e8437328ce3f8759d5d17ed86ee44a89a44dbec78d53 }
   - { source: hints-and-blocks/SP-27, disposition: incorporated, spec: DES-48, source_sha256: 4adacbcafe26abfbea5698103ee063f8c8d899a8749b4ccf11669806311607fb, spec_sha256: 4adacbcafe26abfbea5698103ee063f8c8d899a8749b4ccf11669806311607fb }
