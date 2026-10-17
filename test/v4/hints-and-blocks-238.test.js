@@ -18,7 +18,7 @@
 // repos built here.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
@@ -1064,5 +1064,75 @@ describe('DES-89: a record that exists but cannot be read is not ok record-unrea
     rmSync(join(dir, 'requests/invoice-exports/request.md'));
     unreadable(both(dir), 'invoice-exports');
     assert.equal(check(dir, '--strict').code, 1);
+  });
+});
+
+// DES-89, continued: the records folder itself cannot be read. Every record
+// in it would be skipped; al check gives at least one not ok
+// record-unreadable that names the folder or a request in it.
+const RECORDS = '.assuredloop/records/requests';
+const FOLDER_ROOT_SKIP = 'running as root: a folder with mode 000 can still be read';
+
+// The not ok record-unreadable lines that name the records folder or one of names.
+const folderUnreadable = (r, names) => notOk(r).filter((f) => f.code === 'record-unreadable'
+  && (f.line.includes(RECORDS) || names.some((n) => new RegExp(`(^|[\\s/])${n}(\\.yaml|/|\\s|$)`).test(f.line))));
+
+// Run body with the records folder at mode 000; restore 0755 after it, also on a failure.
+function withLockedRecords(t, dir, body) {
+  const path = join(dir, RECORDS);
+  const names = readdirSync(path).filter((n) => n.endsWith('.yaml')).map((n) => n.slice(0, -5));
+  assert.ok(names.length > 0, 'the world has request records');
+  const restore = () => {
+    try { chmodSync(path, 0o755); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  };
+  t.after(restore);
+  chmodSync(path, 0o000);
+  try {
+    assert.throws(() => readdirSync(path), { code: 'EACCES' }, 'readdir gives EACCES');
+    assert.throws(() => readFileSync(join(path, `${names[0]}.yaml`)), { code: 'EACCES' }, 'a direct read gives EACCES');
+    body(names);
+  } finally {
+    restore();
+  }
+}
+
+describe('DES-89: a records folder that al check cannot read is not ok record-unreadable', () => {
+  test('the records folder has mode 000: a not ok record-unreadable names it or a request in it; plain exits 0, --strict exits 1', { skip: isRoot() && FOLDER_ROOT_SKIP }, (t) => {
+    const dir = signedWorld(t);
+    onlyNotOk(both(dir), []);
+    withLockedRecords(t, dir, (names) => {
+      const r = both(dir);
+      assert.ok(folderUnreadable(r, names).length > 0, `a not ok record-unreadable that names ${RECORDS} or one of ${names.join(', ')}:\n${show(r)}`);
+      assert.equal(check(dir, '--strict').code, 1);
+    });
+  });
+
+  test('the invoicer world: the records folder has mode 000: a not ok record-unreadable names it or a request in it', { skip: isRoot() && FOLDER_ROOT_SKIP }, (t) => {
+    const dir = invoicer(t, 'clean');
+    withLockedRecords(t, dir, (names) => {
+      const r = both(dir);
+      assert.ok(folderUnreadable(r, names).length > 0, `a not ok record-unreadable that names ${RECORDS} or one of ${names.join(', ')}:\n${show(r)}`);
+      assert.equal(check(dir, '--strict').code, 1);
+    });
+  });
+
+  test('control: with the folder mode restored to 0755, the world is clean again', { skip: isRoot() && FOLDER_ROOT_SKIP }, (t) => {
+    for (const dir of [signedWorld(t), invoicer(t, 'clean')]) {
+      withLockedRecords(t, dir, () => {});
+      const r = both(dir);
+      onlyNotOk(r, []);
+      assert.deepEqual(coded(r, 'record-unreadable'), [], show(r));
+    }
+  });
+
+  test('control: a repo with no records folder at all gives no record-unreadable', (t) => {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, 'specs/invoices.md', doc([['INV-1 note', '# Invoices'], ['INV-2 rule', 'An invoice MUST have at least one line.']]));
+    commitAll(dir, 'base');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    assert.ok(!existsSync(join(dir, RECORDS)), `no ${RECORDS} folder`);
+    const r = both(dir);
+    assert.deepEqual(coded(r, 'record-unreadable'), [], show(r));
   });
 });
