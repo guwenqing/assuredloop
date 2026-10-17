@@ -10,8 +10,9 @@ description: >-
 # AssuredLoop v4
 
 `al` keeps the records of what was asked, decided, changed and delivered,
-and gives hints. It refuses only in `al conclude`. How and when you design,
-test and review is your project's way of working; this skill does not set it.
+and gives the review hints. The review decides. It refuses only in
+`al conclude`. How and when you design, test and review is your project's
+way of working; this skill does not set it.
 
 ## Start here, on every path
 
@@ -38,9 +39,12 @@ test and review is your project's way of working; this skill does not set it.
 The promise kinds are purpose, scope, rule, limit and definition. Work that
 grows changes its path: a small change that needs a design becomes path 2.
 
-4. Before you ask for review, run `al index`, then `al check`. Fix each
-   `not ok`, or say in the PR why it stays. A hint is an observation, not a
-   verdict.
+4. Before you ask for review, run `al index`, then `al check`. A `not ok` is
+   one of the few exact rules: a promise change or a requirement version
+   with no valid sign-off, changed record evidence, a citation of a
+   superseded ADR, or a record that cannot be read. Fix each one. A hint is
+   for the review, not a verdict: deal with it, or say in the PR why it
+   stays. A finding has the same severity with or without `--strict`.
 5. Put the claim in a commit message and in the PR, for example
    `Tier: 1 — amends INV-10`. `al check` reads the newest `Tier:` line of the
    branch.
@@ -63,7 +67,7 @@ The export link MUST expire 30 minutes after the email is sent.
   marker. Its ID is retired and never used again. `al check` gives a hint
   that names the deletion; when it is on purpose, nothing more is needed. In
   `specs/`, a removal needs `removes:<ID>` in a change spec: a lost ID there
-  is `not ok`.
+  gets a hint that asks for it.
 - For a new paragraph, write the text with no marker. Then run
   `al spec --add-ids <file> --yes`: it gives each unmarked paragraph the next
   free ID. Then write the kind and the links into each new marker.
@@ -78,10 +82,19 @@ The export link MUST expire 30 minutes after the email is sent.
   needs at least one link. In `specs/`, the ID of a change spec paragraph
   names its request: `invoice-exports/SP-12`.
 - An ADR in `specs/adr/` has one marker on its heading: `ADR-<n>`, its kind,
-  and its `decides:`, `source:` and `supersedes:` links. Under `--strict`,
-  `al check` asks each proposed or accepted ADR for `source:` and
-  `decides:`. You may add links to the marker of an accepted ADR. Change
-  nothing else in it: its ID, its kind, its old links and its text stay.
+  and its `decides:`, `source:` and `supersedes:` links. `al check` gives a
+  hint for each proposed or accepted ADR with no `source:` or no
+  `decides:`.
+- Any text may be rewritten in other words when its meaning stays the same,
+  an accepted or superseded ADR's text too. Write a new ADR that supersedes
+  it only when the decision changes, in whole or in part. `al check` gives a
+  hint on a changed ADR: check that its decision is unchanged. After the
+  rewrite, run `al index --align <ID>` for each paragraph that links to it.
+- When an ADR is superseded, set its first line to
+  `Status: superseded by ADR-<m>`, and put `supersedes:ADR-<n>` in the marker
+  of ADR-m. Where a spec paragraph, an open request or a proposed or accepted
+  ADR names ADR-n, name ADR-m beside it: in the same marker for a link, in
+  the same paragraph for a word. Else `al check` gives `not ok`.
 - `al` writes every hash and every derived field. Do not write them by hand.
 
 ## Path 0: a fix
@@ -127,9 +140,9 @@ The export link MUST expire 30 minutes after the email is sent.
 1. `al new <name> --tier 1d --from -`, with a one-line note of where the
    correction comes from.
 2. Change only names or wording of design paragraphs in `specs/`. Add or
-   remove no paragraph. Do not change an accepted ADR's text: a new ADR
-   supersedes it.
-3. Claim `Tier: 1d — <what changes>`. `al check` gives `not ok` when the PR
+   remove no paragraph. You may reword an ADR when its decision stays; a
+   changed decision is a new ADR that supersedes it.
+3. Claim `Tier: 1d — <what changes>`. `al check` gives a hint when the PR
    touches a promise paragraph, or adds or removes a design paragraph. No
    sign-off is needed.
 4. Run `al conclude <name> --yes` with the PR.
