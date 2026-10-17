@@ -50,11 +50,13 @@ function evidence(top, r, file, signedOnly) {
 // R3, R4 and the unreadable record, for each request with a record, open or archived.
 export function recordBlocks(top, state, add) {
   // A record whose request has no request.md: nothing in it can be checked.
+  const folder = '.assuredloop/records/requests';
   let records = [];
   try {
-    records = readdirSync(join(top, '.assuredloop/records/requests'), { withFileTypes: true }).filter((e) => e.name.endsWith('.yaml')).map((e) => e.name.slice(0, -5)).sort();
-  } catch {
+    records = readdirSync(join(top, folder), { withFileTypes: true }).filter((e) => e.name.endsWith('.yaml')).map((e) => e.name.slice(0, -5)).sort();
+  } catch (e) {
     records = [];
+    if (e.code !== 'ENOENT') add('not ok', 'record-unreadable', folder, '-', `${folder} cannot be read (${e.code ?? e.message}), so no record in it is checked`);
   }
   for (const name of records.filter((n) => !state.requests.has(n))) {
     const at = recordPath(name);
@@ -235,14 +237,18 @@ export function supersededBlocks(top, state, add) {
   };
   // The spec docs, each paragraph with its marker.
   for (const d of state.docs ?? []) if (d.scope === SPEC && typeof d.text === 'string') check(d.path, d.text);
+  // A current place that cannot be read: its citations are not checked, and
+  // a read failure never hides a block (SCH-37).
+  const unreadable = (path, why) => add('not ok', 'superseded-cited', path, '-', `${path} cannot be read (${why}), so its citations of superseded ADRs are not checked`);
   // The Markdown files of each open request, in its subfolders too, but
-  // origin/ and the recorded decisions.
+  // origin/ and the recorded decisions; a subfolder that cannot be read is
+  // given as { unreadable }.
   const markdown = (dir, sub) => {
     let entries = [];
     try {
       entries = readdirSync(join(top, dir, sub), { withFileTypes: true });
-    } catch {
-      entries = [];
+    } catch (e) {
+      return sub && e.code !== 'ENOENT' ? [{ unreadable: sub, why: e.code ?? e.message }] : [];
     }
     return entries.sort((a, b) => (a.name < b.name ? -1 : 1)).flatMap((e) => {
       const f = sub ? `${sub}/${e.name}` : e.name;
@@ -253,15 +259,24 @@ export function supersededBlocks(top, state, add) {
   for (const r of state.requests.values()) {
     if (!r.open) continue;
     for (const f of markdown(r.dir, '')) {
+      if (f.unreadable) {
+        unreadable(`${r.dir}/${f.unreadable}`, f.why);
+        continue;
+      }
       let t;
+      let why = 'it is there, but it cannot be read as a file';
       try {
         t = read(top, `${r.dir}/${f}`);
-      } catch {
+      } catch (e) {
         t = null;
+        why = e.message.split('\n')[0];
       }
-      if (t !== null) check(`${r.dir}/${f}`, t, { name: r.name, skip: f === 'request.md' ? /^#{1,2}\s+Decisions\s*$/ : null });
+      if (t === null) unreadable(`${r.dir}/${f}`, why);
+      else check(`${r.dir}/${f}`, t, { name: r.name, skip: f === 'request.md' ? /^#{1,2}\s+Decisions\s*$/ : null });
     }
   }
+  // An ADR file that cannot be read: neither its status nor its citations are known.
+  for (const file of state.unreadableAdrs ?? []) unreadable(file, 'it is there, but it cannot be read as a file');
   // Each proposed or accepted ADR, but its History section and the ADRs it supersedes.
   for (const a of state.adrs.values()) {
     if (!['proposed', 'accepted'].includes(a.status)) continue;
