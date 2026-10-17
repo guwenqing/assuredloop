@@ -1,0 +1,129 @@
+schema: assuredloop/1
+file: requests/issue-hints/spec.md
+paragraphs:
+  - id: SP-1
+    kind: note
+    text_sha256: 4bf806ca362432b7c198336f1ed57a2e7d80da44c8677a9e3b6aba8b476e4e1c
+    display: "SP-1 (0, Hints from the linked issues, and phrases for the review: the change spec)"
+    change:
+      - New
+  - id: SP-2
+    kind: note
+    text_sha256: eb42ebed95b66c59056aa92af9fa22550319c09881dd29eb378ea3ca7a556cc0
+    display: "SP-2 (0:1, in Hints from the linked issues, and phrases for the review: the change spec)"
+    change:
+      - New
+  - id: SP-3
+    kind: note
+    text_sha256: 0bdfb3ce08be06c64c94fae36edeed8393a381f2570eb98aa0b297c31a5ae2db
+    display: SP-3 (1, Hints from the linked issues)
+    change:
+      - New
+  - id: SP-4
+    kind: rule
+    text_sha256: 933b2b44518d17073a6cb540e15c4829dd5d931a3f5694ed8523c7689eb0e95a
+    display: SP-4 (1:1, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-5
+    kind: rule
+    text_sha256: 65d7b300cebd2ed3518e63bed56d90539cdb44e022c827cb2bcc419cbcde914d
+    display: SP-5 (1:2, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-6
+    kind: rule
+    text_sha256: 6902f7dc84f4c0a53c21bdef551b4aac74e9bf40d043bc011a048bd7c7e1955d
+    display: SP-6 (1:3, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-7
+    kind: rule
+    text_sha256: d1d205a9686693038d3c4744a688d6b3595d362d303a35d4c5cdbbcc421a28c3
+    display: SP-7 (1:4, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-8
+    kind: data
+    text_sha256: 40d603c6f14d67b37230cc49914af30abdcd38f542aa8eb068aad4f136d6247e
+    display: SP-8 (1:5, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-9
+    kind: data
+    text_sha256: 869af3f773a1ea45bb53c1fe27b1661f7e07d5d35977f299b9058837d7f0a0b0
+    display: SP-9 (1:6, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-10
+    kind: data
+    text_sha256: c5dd083db5e3a2c1853b5a77ac5cd6d3d7e8d49be37ebc74b0546beb3d270e41
+    display: SP-10 (1:7, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-11
+    kind: interface
+    text_sha256: 4f0ee58097f5f41bbd331c2d78bf236a44f863791f80723bb1303a25e04cd39a
+    display: SP-11 (1:8, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-12
+    kind: interface
+    text_sha256: cd5a0552ca16527f4f37896c83e1255391852134edb9d9e4c956132ea4121b00
+    display: SP-12 (1:9, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-13
+    kind: interface
+    text_sha256: cd8f0d3dc2b6e5ffaafa630b4d64ad0a705de2646c0a2c79f91f0807405a9356
+    display: SP-13 (1:10, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-14
+    kind: data
+    text_sha256: e68fb91fd6ab538bbaaa66d64abe776fb56daa2ef5a8670724e226e6ed84a088
+    display: SP-14 (1:11, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-15
+    kind: rationale
+    text_sha256: 8ac32bff86baba61712823cfacddff33be68cf0b2feecb904e49882097844e14
+    display: SP-15 (1:12, in Hints from the linked issues)
+    change:
+      - New
+  - id: SP-16
+    kind: note
+    text_sha256: 4a0ee5e61c0b2313b545fb4230922bb93395e29b1c5d85faa98e1c68b986595c
+    display: SP-16 (2, Phrases for the review)
+    change:
+      - New
+  - id: SP-17
+    kind: rule
+    text_sha256: b736ebc339cc75f8f350601e6cfa13167f90c34be8c1abd389e44dd8e5b0ee50
+    display: SP-17 (2:1, in Phrases for the review)
+    change:
+      - New
+  - id: SP-18
+    kind: data
+    text_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb
+    display: SP-18 (2:2, in Phrases for the review)
+    change:
+      - New
+  - id: SP-19
+    kind: rule
+    text_sha256: 21adcecc5c690c3df045ecfb1c48f9bc8e7d216a0e9f83fe398390e73943235b
+    display: SP-19 (2:3, in Phrases for the review)
+    change:
+      - New
+  - id: SP-20
+    kind: note
+    text_sha256: b2393192a65e10c751a4fcea73459f12df0fb3061fbbb87b6913aa31b4bb30a7
+    display: SP-20 (3, The commands)
+    change:
+      - New
+  - id: SP-21
+    kind: interface
+    text_sha256: 35c618397ce4976494e8ea48ac61b1855686fc4a8ecccd2285764195a2874646
+    display: SP-21 (3:1, in The commands)
+    change:
+      - New

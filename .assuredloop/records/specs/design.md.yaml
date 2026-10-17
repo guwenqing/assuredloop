@@ -21,8 +21,6 @@ paragraphs:
     kind: limit
     text_sha256: 091be7e89d98190fdb70059c47b520f9aa41f62dfb62b6e2c844495122311075
     display: DES-5 (1:2, in 1. Intent)
-    change:
-      - Changed
   - id: DES-6
     kind: rationale
     text_sha256: 37211bbdfdea2af256cbb2ec74a59b02515a8f11238c88d111bfa2f8f3adcd57
@@ -39,14 +37,10 @@ paragraphs:
     kind: data
     text_sha256: a2f1ae0b1bfbbc722a82252614d911731be64c0ee91637263c9eb278d0347e00
     display: DES-9 (2:2, in 2. One change, and the consolidated spec)
-    change:
-      - Changed
   - id: DES-10
     kind: rule
     text_sha256: 101ed9c2217d4e5da1ccbb648b926100d2673a7cd65f97bcd9f602ff6690b15c
     display: DES-10 (2:3, in 2. One change, and the consolidated spec)
-    change:
-      - Changed
   - id: DES-11
     kind: note
     text_sha256: 5d7311a56f259f483f88b41cb8122bfa3549273bf8c3518587d3fc5bb12ae952
@@ -95,8 +89,6 @@ paragraphs:
     kind: rule
     text_sha256: 97a392953903aad2310a09371d384a54f46a5f79f0c2105ab47b5e86657af332
     display: DES-22 (3:11, in 3. IDs, kinds and links)
-    change:
-      - Changed
   - id: DES-81
     kind: choice
     text_sha256: 8de44539eedb01d463b7d6372cd958a743bb3c3bb16f5936e3cbd7fb30a6e49e
@@ -145,8 +137,6 @@ paragraphs:
     kind: rule
     text_sha256: 71ef7b0c494ba73917ec9a4249037a79bb7ea1067c2a9143835e989608fee88a
     display: DES-33 (5:6, in 5. Consolidation and the close rule)
-    change:
-      - Changed
   - id: DES-34
     kind: rule
     text_sha256: 7446fa85534ebd532af2061e47df539061f8d2ee99c73ec6151fea0963ed9fc7
@@ -183,14 +173,10 @@ paragraphs:
     kind: rule
     text_sha256: 757a4261de1c589a47c1e8437328ce3f8759d5d17ed86ee44a89a44dbec78d53
     display: DES-42 (6:2, in 6. Sign-off)
-    change:
-      - Changed
   - id: DES-89
     kind: rule
     text_sha256: 2e2f4f409b7c52548968f7afb20a42483acb625f8f79518ff0a8965311a394f2
     display: DES-89 (6:3, in 6. Sign-off)
-    change:
-      - New
   - id: DES-43
     kind: rule
     text_sha256: 81d981afb8de8a981aabf222f930f957fb3138fa0ec03f2ff6e1294cda8d4e22
@@ -215,14 +201,10 @@ paragraphs:
     kind: definition
     text_sha256: 4adacbcafe26abfbea5698103ee063f8c8d899a8749b4ccf11669806311607fb
     display: DES-48 (7:2, in 7. Paths for each kind of work)
-    change:
-      - Changed
   - id: DES-49
     kind: rule
     text_sha256: 34f89de23e2e9a9ab9c6354d79213c4dadea410b76e41dbde45969248ff48569
     display: DES-49 (7:3, in 7. Paths for each kind of work)
-    change:
-      - Changed
   - id: DES-50
     kind: note
     text_sha256: 95d1691f0b3b65f28cebf110aceb5e809fe85afcc83954b6b61f91c3ecdb8309
@@ -259,14 +241,10 @@ paragraphs:
     kind: rule
     text_sha256: 4565c5b664d35e808d9413b8391db00f7234f591c0eea57c3643173d9a4f5879
     display: DES-58 (10:2, in 10. Records)
-    change:
-      - Changed
   - id: DES-90
     kind: rule
     text_sha256: aed1f5e7ae330288aab5d1b63d802e9e9ce4d50c371bddab0d8559b339b74d3c
     display: DES-90 (10:3, in 10. Records)
-    change:
-      - New
   - id: DES-82
     kind: data
     text_sha256: 1ba277553e01c830fab0397f5d9266a3b7e863608e0d635166a940eb18a0912c
