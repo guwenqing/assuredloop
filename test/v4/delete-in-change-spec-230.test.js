@@ -9,6 +9,9 @@
 // hint names each disposition and wording decision of the request that names
 // the deleted ID.
 //
+// #238 R2 changes D2 and D3: lost-id, used-again, no-id and unresolved-link
+// are hints in every scope and every mode, so --strict exits 0 on them.
+//
 // Each test builds a throwaway git repo: main holds the spec and the request,
 // the branch `feature` changes the working tree, and al check compares it
 // with the merge-base.
@@ -116,7 +119,7 @@ test('1: the line is the marker line in the base file: SP-4 deleted is line 13',
   assert.equal(r.code, 0, show(r));
 });
 
-test('1 + D2 control: in the same run, a specs/ loss with no removes: is still not ok lost-id, exit 1 under --strict', (t) => {
+test('1 + D2 control: in the same run, a specs/ loss with no removes: is still lost-id, a hint (#238), exit 0 under --strict', (t) => {
   const dir = repo(t);
   write(dir, SPEC, changeSpec(without('SP-3')));
   write(dir, SPECS, INVOICES.replace(`\n${INV3}`, ''));
@@ -126,8 +129,8 @@ test('1 + D2 control: in the same run, a specs/ loss with no removes: is still n
     const lost = coded(r, 'lost-id');
     assert.equal(lost.length, 2, show(r));
     assert.ok(lost.includes(hintLine(NAME, 9, 'SP-3')), show(r));
-    assert.match(lost.find((l) => l.includes(' INV-3 ')) ?? '', /^not ok lost-id specs\/invoices\.md:9 INV-3 \S/, show(r));
-    assert.equal(r.code, args.length ? 1 : 0, show(r));
+    assert.match(lost.find((l) => l.includes(' INV-3 ')) ?? '', /^hint lost-id specs\/invoices\.md:9 INV-3 \S/, show(r));
+    assert.equal(r.code, 0, show(r));
   }
 });
 
@@ -150,7 +153,7 @@ test('1: two open requests each delete SP-3: one hint each, each with its own na
 
 // --- item 2: a change spec already archived at the base is not an open request's
 
-test('2: SP-3 deleted from a change spec archived at the base stays not ok lost-id; exit 1 under --strict', (t) => {
+test('2: SP-3 deleted from a change spec archived at the base stays lost-id, a hint (#238); exit 0 under --strict', (t) => {
   const dir = project(t);
   writeConfig(dir);
   write(dir, SPECS, INVOICES);
@@ -168,8 +171,8 @@ test('2: SP-3 deleted from a change spec archived at the base stays not ok lost-
     const r = check(dir, ...args);
     const lost = coded(r, 'lost-id');
     assert.equal(lost.length, 1, show(r));
-    assert.match(lost[0], /^not ok lost-id requests\/archive\/old\/spec\.md:9 SP-3 \S/, show(r));
-    assert.equal(r.code, args.length ? 1 : 0, show(r));
+    assert.match(lost[0], /^hint lost-id requests\/archive\/old\/spec\.md:9 SP-3 \S/, show(r));
+    assert.equal(r.code, 0, show(r));
   }
 });
 
@@ -245,15 +248,15 @@ test('D4: a record entry that names only another SP gives no facts on SP-3, and 
 
 // --- item 3 and D2: specs/ is unchanged
 
-test('3: INV-3 deleted from specs/ with no removes: is not ok lost-id; exit 1 under --strict', (t) => {
+test('3: INV-3 deleted from specs/ with no removes: is lost-id, a hint (#238); exit 0 under --strict', (t) => {
   const dir = repo(t);
   write(dir, SPECS, INVOICES.replace(`\n${INV3}`, ''));
   const r = check(dir);
   assert.equal(r.code, 0, show(r));
   const lost = coded(r, 'lost-id');
   assert.equal(lost.length, 1, show(r));
-  assert.match(lost[0], /^not ok lost-id specs\/invoices\.md:9 INV-3 \S/, show(r));
-  assert.equal(check(dir, '--strict').code, 1);
+  assert.match(lost[0], /^hint lost-id specs\/invoices\.md:9 INV-3 \S/, show(r));
+  assert.equal(check(dir, '--strict').code, 0);
 });
 
 test('3 control: INV-3 deleted from specs/ with removes:INV-3 in the open change spec gives no lost-id line', (t) => {
@@ -267,7 +270,7 @@ test('3 control: INV-3 deleted from specs/ with removes:INV-3 in the open change
 
 // --- item 4 and D3: an ID of a change spec is never used again
 
-test('4: SP-3 deleted and merged to main earlier, then added back on the branch: not ok used-again; exit 1 under --strict', (t) => {
+test('4: SP-3 deleted and merged to main earlier, then added back on the branch: used-again, a hint (#238); exit 0 under --strict', (t) => {
   const dir = repo(t);
   git(dir, 'checkout', '-q', 'main');
   write(dir, SPEC, changeSpec(without('SP-3')));
@@ -279,11 +282,12 @@ test('4: SP-3 deleted and merged to main earlier, then added back on the branch:
   assert.equal(r.code, 0, show(r));
   const again = coded(r, 'used-again');
   assert.equal(again.length, 1, show(r));
-  assert.match(again[0], /^not ok used-again requests\/exp\/spec\.md:13 (exp\/)?SP-3 \S/, show(r));
+  assert.match(again[0], /^hint used-again requests\/exp\/spec\.md:13 (exp\/)?SP-3 \S/, show(r));
   assert.deepEqual(coded(r, 'lost-id'), [], show(r));
   const strict = check(dir, '--strict');
-  assert.equal(strict.code, 1, show(strict));
-  assert.ok(coded(strict, 'used-again').every((l) => l.startsWith('not ok ')), show(strict));
+  assert.equal(strict.code, 0, show(strict));
+  assert.equal(coded(strict, 'used-again').length, 1, show(strict));
+  assert.ok(coded(strict, 'used-again').every((l) => l.startsWith('hint ')), show(strict));
 });
 
 // --- item 5 and D3: a marker removed while its text stays
@@ -292,7 +296,7 @@ test('4: SP-3 deleted and merged to main earlier, then added back on the branch:
 // its text "Step two: add the button." is then on line 9.
 const unmarkedSp3 = () => changeSpec().replace('<!-- SP-3 plan -->\n\n', '');
 
-test('5: SP-3\'s marker removed while its text stays: not ok no-id on the text; exit 1 under --strict', (t) => {
+test('5: SP-3\'s marker removed while its text stays: no-id on the text, a hint (#238); exit 0 under --strict', (t) => {
   const dir = repo(t);
   write(dir, SPEC, unmarkedSp3());
   assert.equal(read(dir, SPEC).split('\n')[8], 'Step two: add the button.');
@@ -300,8 +304,8 @@ test('5: SP-3\'s marker removed while its text stays: not ok no-id on the text; 
     const r = check(dir, ...args);
     const noId = coded(r, 'no-id');
     assert.equal(noId.length, 1, show(r));
-    assert.match(noId[0], /^not ok no-id requests\/exp\/spec\.md:9 - \S/, show(r));
-    assert.equal(r.code, args.length ? 1 : 0, show(r));
+    assert.match(noId[0], /^hint no-id requests\/exp\/spec\.md:9 - \S/, show(r));
+    assert.equal(r.code, 0, show(r));
   }
 });
 
@@ -316,13 +320,13 @@ test('5: SP-3\'s marker removed while its text stays: the lost-id line on SP-3 i
 
 // --- item 6 and D3: a link to the deleted ID
 
-test('6: SP-2 says explains:SP-3 and SP-3 is deleted: not ok unresolved-link; exit 1 under --strict', (t) => {
+test('6: SP-2 says explains:SP-3 and SP-3 is deleted: unresolved-link, a hint (#238); exit 0 under --strict', (t) => {
   const dir = repo(t);
   write(dir, SPEC, changeSpec([PARAS[0], ['SP-2 plan explains:SP-3', 'Step one: add the route.'], PARAS[3]]));
   for (const args of [[], ['--strict']]) {
     const r = check(dir, ...args);
-    assert.deepEqual(coded(r, 'unresolved-link'), ['not ok unresolved-link requests/exp/spec.md:5 exp/SP-2 SP-3: no such ID'], show(r));
-    assert.equal(r.code, args.length ? 1 : 0, show(r));
+    assert.deepEqual(coded(r, 'unresolved-link'), ['hint unresolved-link requests/exp/spec.md:5 exp/SP-2 SP-3: no such ID'], show(r));
+    assert.equal(r.code, 0, show(r));
   }
 });
 

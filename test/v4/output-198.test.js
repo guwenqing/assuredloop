@@ -116,10 +116,11 @@ test('check: when the only hint is from the records (stale-base, d07 defect), Ne
 });
 
 test('check control: when a not ok prints, Next still says to fix it', (t) => {
-  // The same hints, raised to not ok by --strict.
+  // #238 R2: --strict raises nothing; the same hints stay hints, Next names no not ok, and the exit is 0.
   const strict = check(baseProject(t), '--strict');
-  assert.ok(printsNotOk(strict), show(strict));
-  assert.match(nextLine(strict), /not ok/, `a not ok printed:\n${show(strict)}`);
+  assert.ok(printsHint(strict) && !printsNotOk(strict), show(strict));
+  assert.doesNotMatch(nextLine(strict), /not ok/i, `no not ok printed:\n${show(strict)}`);
+  assert.equal(strict.code, 0, show(strict));
   // A marker hint with a not ok from the records (adoption-gap new).
   const mixed = check(invoicer(t, 'adoption-gap', 'new'));
   assert.ok(printsNotOk(mixed) && printsHint(mixed), show(mixed));

@@ -257,7 +257,8 @@ describe('reading does not go through a symlink', () => {
       assert.equal(r.code, 0, show(r));
       assert.ok(!r.stdout.includes('not read:'), show(r));
       assert.ok(!r.stdout.includes('not ok spec-root'), show(r));
-      assert.ok(lines(r.stdout).some((l) => l.startsWith(`not ok no-blank-after ${c.docPath}:1 OUT-1 `)), show(r));
+      // #238 R2: a marker lint is a hint.
+      assert.ok(lines(r.stdout).some((l) => l.startsWith(`hint no-blank-after ${c.docPath}:1 OUT-1 `)), show(r));
     });
   }
 });

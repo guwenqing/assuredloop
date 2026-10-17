@@ -100,13 +100,14 @@ test('#212 @huggingface/transformers in the project: level 2 is the default, wit
 // --- item 4: only search loads it, and only when it embeds
 
 // The other commands, each with the exit code it gives in smallRepo's repo
-// (an open request `links` with no sign-off): `al check --strict` finds
-// not ok lines, and `al conclude links` refuses, so both exit 1. Each must run
-// to its end (no crash), and none may import the library.
+// (an open request `links` with no sign-off): `al conclude links` refuses, so
+// it exits 1. `al check --strict` finds only hints (#238 R2: the no-link
+// lines stay hints), so it exits 0. Each must run to its end (no crash), and
+// none may import the library.
 const OTHERS = [
   [['--version'], 0],
   [['check'], 0],
-  [['check', '--strict'], 1],
+  [['check', '--strict'], 0],
   [['index'], 0],
   [['spec'], 0],
   [['export'], 0],
