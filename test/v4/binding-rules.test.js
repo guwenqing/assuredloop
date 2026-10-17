@@ -218,7 +218,7 @@ test('a second index leaves every record byte for byte the same', (t) => {
   const dir = bound(t);
   newRequest(dir, 'other');
   appendSection(dir, 'other', organized([req('R1', 'Yearly ZIP', 'A year MUST be one ZIP file.')]));
-  ok(dir, ['record', 'inv', 'signoff', '--source', 'owner', '--yes']);
+  ok(dir, ['record', 'inv', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
   ok(dir, ['record', 'inv', 'decision', '--source', 'owner', '--text', 'Thirty minutes.', '--yes']);
   write(dir, 'specs/adr/0004-one-time-tokens.md', `Status: accepted\n\n${doc([
     ['ADR-4 choice decides:INV-41 source:inv/D1 supersedes:ADR-3', '# ADR-4: One-time tokens'],
