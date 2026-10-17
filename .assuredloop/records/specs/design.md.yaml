@@ -87,16 +87,30 @@ paragraphs:
     display: DES-21 (3:10, in 3. IDs, kinds and links)
   - id: DES-22
     kind: rule
-    text_sha256: 97a392953903aad2310a09371d384a54f46a5f79f0c2105ab47b5e86657af332
+    text_sha256: 21adcecc5c690c3df045ecfb1c48f9bc8e7d216a0e9f83fe398390e73943235b
     display: DES-22 (3:11, in 3. IDs, kinds and links)
+    change:
+      - Changed
   - id: DES-81
     kind: choice
     text_sha256: 8de44539eedb01d463b7d6372cd958a743bb3c3bb16f5936e3cbd7fb30a6e49e
     display: DES-81 (3:12, in 3. IDs, kinds and links)
+  - id: DES-101
+    kind: rule
+    text_sha256: a6202c26e82610735187e80175d950f590162813e46b00df9cea95fbddd1c618
+    display: DES-101 (3:13, in 3. IDs, kinds and links)
+    change:
+      - New
+  - id: DES-102
+    kind: data
+    text_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb
+    display: DES-102 (3:14, in 3. IDs, kinds and links)
+    change:
+      - New
   - id: DES-23
     kind: flow
     text_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c
-    display: DES-23 (3:13, in 3. IDs, kinds and links)
+    display: DES-23 (3:15, in 3. IDs, kinds and links)
   - id: DES-24
     kind: note
     text_sha256: 84947cd9438f30253fda7b8034c11f1e3ebad3c254452c836d9ade5f0e99b28e
@@ -215,8 +229,70 @@ paragraphs:
     display: DES-51 (8:1, in 8. Tasks)
   - id: DES-52
     kind: rule
-    text_sha256: e2026246a4065d80b3904245abb44a674a39b29010cda84a837232e815db2033
+    text_sha256: 6902f7dc84f4c0a53c21bdef551b4aac74e9bf40d043bc011a048bd7c7e1955d
     display: DES-52 (8:2, in 8. Tasks)
+    change:
+      - Changed
+  - id: DES-91
+    kind: rule
+    text_sha256: 933b2b44518d17073a6cb540e15c4829dd5d931a3f5694ed8523c7689eb0e95a
+    display: DES-91 (8:3, in 8. Tasks)
+    change:
+      - New
+  - id: DES-92
+    kind: rule
+    text_sha256: 65d7b300cebd2ed3518e63bed56d90539cdb44e022c827cb2bcc419cbcde914d
+    display: DES-92 (8:4, in 8. Tasks)
+    change:
+      - New
+  - id: DES-93
+    kind: data
+    text_sha256: 40d603c6f14d67b37230cc49914af30abdcd38f542aa8eb068aad4f136d6247e
+    display: DES-93 (8:5, in 8. Tasks)
+    change:
+      - New
+  - id: DES-94
+    kind: data
+    text_sha256: 869af3f773a1ea45bb53c1fe27b1661f7e07d5d35977f299b9058837d7f0a0b0
+    display: DES-94 (8:6, in 8. Tasks)
+    change:
+      - New
+  - id: DES-95
+    kind: data
+    text_sha256: c5dd083db5e3a2c1853b5a77ac5cd6d3d7e8d49be37ebc74b0546beb3d270e41
+    display: DES-95 (8:7, in 8. Tasks)
+    change:
+      - New
+  - id: DES-96
+    kind: interface
+    text_sha256: 4f0ee58097f5f41bbd331c2d78bf236a44f863791f80723bb1303a25e04cd39a
+    display: DES-96 (8:8, in 8. Tasks)
+    change:
+      - New
+  - id: DES-97
+    kind: interface
+    text_sha256: cd5a0552ca16527f4f37896c83e1255391852134edb9d9e4c956132ea4121b00
+    display: DES-97 (8:9, in 8. Tasks)
+    change:
+      - New
+  - id: DES-98
+    kind: interface
+    text_sha256: cd8f0d3dc2b6e5ffaafa630b4d64ad0a705de2646c0a2c79f91f0807405a9356
+    display: DES-98 (8:10, in 8. Tasks)
+    change:
+      - New
+  - id: DES-99
+    kind: data
+    text_sha256: e68fb91fd6ab538bbaaa66d64abe776fb56daa2ef5a8670724e226e6ed84a088
+    display: DES-99 (8:11, in 8. Tasks)
+    change:
+      - New
+  - id: DES-100
+    kind: rationale
+    text_sha256: 784e6c1be8bef15aa3268c3f208d41f211e9e6f174252594dcdc2a25daee9c16
+    display: DES-100 (8:12, in 8. Tasks)
+    change:
+      - New
   - id: DES-53
     kind: note
     text_sha256: f91d2aec151dce2d5789fc73f56fe070d54c599c3c2faf0da191926554c8c9ab
@@ -239,8 +315,10 @@ paragraphs:
     display: DES-57 (10:1, in 10. Records)
   - id: DES-58
     kind: rule
-    text_sha256: 4565c5b664d35e808d9413b8391db00f7234f591c0eea57c3643173d9a4f5879
+    text_sha256: d1d205a9686693038d3c4744a688d6b3595d362d303a35d4c5cdbbcc421a28c3
     display: DES-58 (10:2, in 10. Records)
+    change:
+      - Changed
   - id: DES-90
     kind: rule
     text_sha256: aed1f5e7ae330288aab5d1b63d802e9e9ce4d50c371bddab0d8559b339b74d3c
@@ -327,8 +405,10 @@ paragraphs:
     display: DES-71 (13, 13. Commands)
   - id: DES-72
     kind: interface
-    text_sha256: 112810b3b6bd3c5a5cec7be952daa3728fa408f8b90e5b7d45e964a7a9523bc9
+    text_sha256: 35c618397ce4976494e8ea48ac61b1855686fc4a8ecccd2285764195a2874646
     display: DES-72 (13:1, in 13. Commands)
+    change:
+      - Changed
   - id: DES-73
     kind: note
     text_sha256: cff5efe0ec75b164e730f7c30d0ad386e7dc235828ba4911d9eaad32213f41ad

@@ -142,7 +142,10 @@ with a baseline effect has no valid disposition for its current version.
 - `al index`: write the derived facts and the new bindings, and list the AI
   hints to refresh. `al index --align <ID>` moves the bindings of one
   paragraph to its targets' current text, on purpose.
-- `al check [--strict]`: the checks of this branch against its base.
+- `al check [--strict] [--issues]`: the checks of this branch against its
+  base. With `--issues`, it also reads the GitHub issues that the tasks of
+  the open requests name, with the GitHub CLI `gh`, and gives hints (see
+  "Hints from the linked issues").
 - `al context [<name> | <ID>]`: where the project, a request or a paragraph
   stands. `--diff <range> --for review` is the review view. `--audit` gives a
   request's whole trace; `--at <commit>` any v4 state.
@@ -175,7 +178,15 @@ results: .assuredloop/results   # where result files are
 outputs:                   # in the central repo: its output repos
   - {name: invoicer-web, path: ../invoicer-web, commit: <sha>}
 central: {path: ../invoicer}    # in an output repo: the central repo
+phrases:                   # text for the review to look at; each match is a hint
+  - the requester          # a phrase: ignoring case, across a line break too
+  - {pattern: "Avery (asked|wants)"}   # a JavaScript regular expression
 ```
+
+`al check` gives the hint `phrase` for each match of `phrases:` in the spec
+docs, the ADRs and the Markdown files of the open requests, but their
+`origin/` folders; with `--issues`, in the issues too. The list is empty by
+default. A bad entry or an invalid pattern stops `al check` with exit 2.
 
 `.assuredloop/schema.yaml` holds the kinds and the link words, with a version.
 `al spec --add-ids` writes both files when they are absent.
@@ -205,6 +216,25 @@ ADRs are `specs/adr/NNNN-<slug>.md`, with `Status: proposed`, `accepted` or
 - A superseded ADR's status line names the ADR that supersedes it, and that
   ADR's marker has `supersedes:` for it. Else `al check` gives
   `not ok superseded-status`.
+
+## Hints from the linked issues
+
+`al check --issues` reads the GitHub issues that the `tasks:` of each open
+request name, with the GitHub CLI `gh`. It only reads: `gh repo view` and
+`gh issue view`. Without `--issues`, `al check` reads no issue. A task's
+`ref` names an issue as `#n`, `owner/repo#n`, `<name>#n` for an output repo
+that config names, or an issue URL. An issue's text is its body and its
+comments that are not hidden. Each finding is a hint:
+
+- `issue-superseded`: the text names a superseded ADR without the ADR that
+  supersedes it, by the rule of `superseded-cited`;
+- `issue-bare-ref`: a bare `#n` in an issue of another repository, which
+  GitHub reads as that repository's issue;
+- `issue-not-sub`: the issue is not a sub-issue of the request's own issue,
+  the issue that the `url` of an origin source names (`al record <name>
+  origin --url <issue URL>`);
+- `phrase`: a phrase of `phrases:` matches;
+- `issue-unread`: `gh` is missing, not logged in, or failed for the issue.
 
 ## Search
 
@@ -238,7 +268,7 @@ itself (2, then 1, then 0), and says which level answered and why.
   brings it up to date before it answers; `--rebuild` builds it again.
 - Level 2 runs a small local model (bge-small-en-v1.5, pinned by its
   revision). The model download is the only data that leaves the machine.
-  `al` itself makes no network call. Without the library, `al search`
+  `al search` itself makes no network call. Without the library, `al search`
   answers at level 1, and a `Not known` line says how to add level 2. Only
   `al search` loads the library.
 
@@ -341,7 +371,7 @@ it is 1 when a `not ok` prints.
 |---|---|---|
 | `al conclude` refuses on its three conditions (see "The close rule") | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
 | `not ok`: sign-off coverage of promise changes, unsigned requirement versions, changed record evidence, citations of superseded ADRs and their status lines, and records or a spec root that cannot be read | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
-| hints for the review: IDs missing, used twice, lost or used again; kinds and links; links that do not resolve; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
+| hints for the review: IDs missing, used twice, lost or used again; kinds and links; links that do not resolve; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task; matches of the configured phrases; with `--issues`, the hints from the linked issues | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
 | `check --strict` exits 1 on a `not ok`, when a project opts in | | |
 
 `al` checks that declarations are well formed and that references resolve.

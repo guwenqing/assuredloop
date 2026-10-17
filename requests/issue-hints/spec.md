@@ -5,9 +5,9 @@
 <!-- SP-2 note -->
 
 This change serves R1 and R2 in `request.md`. It changes DES-22, DES-52,
-DES-58 and DES-72 in `specs/design.md`, and adds two paragraphs to it: one
-on the hints from the linked issues (section 8) and one on the phrases for
-the review (section 3). Each section has the promise paragraphs first, then
+DES-58 and DES-72 in `specs/design.md`. It adds paragraphs to it on the
+hints from the linked issues (section 8) and on the phrases for the review
+(section 3). Each section has the promise paragraphs first, then
 the design that keeps them.
 
 <!-- SP-3 note -->
@@ -168,9 +168,10 @@ repository's issue n, not to the request's.
 <!-- SP-15 rationale explains:SP-11 -->
 
 Why `gh`: the project already has it for its own work. It needs no new
-dependency, and `al` handles no token of its own (D1). The tests use a fake
-`gh` on PATH, not the network. The code of the superseded-ADR rule is
-the same as for `superseded-cited`, so that the two rules cannot drift (D7).
+dependency, and `al` handles no token of its own (issue-hints D1). The
+tests use a fake `gh` on PATH, not the network. The code of the
+superseded-ADR rule is the same as for `superseded-cited`, so that the two
+rules cannot drift (issue-hints D7).
 
 <!-- SP-16 note -->
 
@@ -184,7 +185,9 @@ the same as for `superseded-cited`, so that the two rules cannot drift (D7).
 where the match starts, in: the spec docs and the ADRs; the Markdown files
 of each open request, but its `origin/` folder; and, with `--issues`, the
 text of each issue that it reads. Origin files and archived requests are not
-read for phrases. A match is a hint in every mode.
+read for phrases. The request records in `.assuredloop/records/` are not
+read either: their `source:` fields would match a phrase such as "the
+owner" on every line. A match is a hint in every mode.
 
 <!-- SP-18 data serves:R2 builds-on:SP-17 -->
 

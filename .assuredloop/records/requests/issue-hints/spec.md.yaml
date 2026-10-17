@@ -9,7 +9,7 @@ paragraphs:
       - New
   - id: SP-2
     kind: note
-    text_sha256: eb42ebed95b66c59056aa92af9fa22550319c09881dd29eb378ea3ca7a556cc0
+    text_sha256: 00b6c54ebe9ac15a9f46395a9afb939f06ed57e76df7f05611358998fc70991e
     display: "SP-2 (0:1, in Hints from the linked issues, and phrases for the review: the change spec)"
     change:
       - New
@@ -87,7 +87,7 @@ paragraphs:
       - New
   - id: SP-15
     kind: rationale
-    text_sha256: 8ac32bff86baba61712823cfacddff33be68cf0b2feecb904e49882097844e14
+    text_sha256: 784e6c1be8bef15aa3268c3f208d41f211e9e6f174252594dcdc2a25daee9c16
     display: SP-15 (1:12, in Hints from the linked issues)
     change:
       - New
@@ -99,7 +99,7 @@ paragraphs:
       - New
   - id: SP-17
     kind: rule
-    text_sha256: b736ebc339cc75f8f350601e6cfa13167f90c34be8c1abd389e44dd8e5b0ee50
+    text_sha256: a6202c26e82610735187e80175d950f590162813e46b00df9cea95fbddd1c618
     display: SP-17 (2:1, in Phrases for the review)
     change:
       - New

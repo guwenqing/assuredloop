@@ -214,7 +214,10 @@ project uses them, list them in the record as
 `tasks: [{id: T2, ref: "issue #34", delivers: [R3]}]`, and name the task in
 the commit messages of its PRs. Plan, step and migration paragraphs may live
 in the tracker issue that the task's `ref` names, instead of in the change
-spec. Run `al conclude <name> --yes` with the last part.
+spec. `al check --issues` reads those issues with `gh`, and gives hints:
+a superseded ADR named without its successor, a bare `#n` in another
+repository's issue, an issue that is not a sub-issue of the request's own
+issue, and the phrases of `phrases:` in `.assuredloop/config.yaml`. Run `al conclude <name> --yes` with the last part.
 
 ## Path S: a spike
 
