@@ -336,7 +336,8 @@ function strictWorld(t) {
   ]);
   index(dir);
   editRecord(dir, 'x', (rec) => { rec.tasks = [{ id: 'T1', ref: 'tasks.md T1', delivers: ['R1'] }]; });
-  ok(dir, ['record', 'x', 'signoff', '--source', 'email from the owner, 2026-05-04', '--yes']);
+  // #238 R3: a valid sign-off records the signer's words.
+  ok(dir, ['record', 'x', 'signoff', '--source', 'email from the owner, 2026-05-04', '--words', 'yes, R1 as written', '--yes']);
   index(dir);
   commitAll(dir, `x\n\n${claim('x')}`);
   return dir;

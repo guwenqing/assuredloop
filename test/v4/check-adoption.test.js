@@ -28,8 +28,9 @@ test('an adopted paragraph edited on the branch (D09 defect, INV-4) gets no-link
   const r = run(t, 'd09', 'defect');
   assert.equal(noLink(r, 'INV-4').length, 1, show(r));
   assert.equal(noLink(r, 'INV-4')[0].severity, 'hint', show(r));
-  for (const code of ['path-claim', 'signoff-coverage']) {
-    assert.ok(r.findings.some((f) => f.severity === 'not ok' && f.code === code && f.id === 'INV-4'), `${code}:\n${show(r)}`);
+  // #238 R2: path-claim is a hint; signoff-coverage stays not ok.
+  for (const [severity, code] of [['hint', 'path-claim'], ['not ok', 'signoff-coverage']]) {
+    assert.ok(r.findings.some((f) => f.severity === severity && f.code === code && f.id === 'INV-4'), `${code}:\n${show(r)}`);
   }
   for (const id of ADOPTED.filter((x) => x !== 'INV-4')) assert.deepEqual(noLink(r, id), [], show(r));
   const control = run(t, 'd09', 'control');

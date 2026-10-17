@@ -107,11 +107,13 @@ function recordOrigin({ top, cwd, args, opts }) {
   return { body: [`Wrote ${dir}/origin/${file} and source ${file} in ${rec.path}`], next: `name it in a requirement's marker: <!-- R<n> from:${file} -->` };
 }
 
-// al record <name> signoff --source <where> [--words <quote>] [--presented <x>] [--transcribed-by <who>] [--yes]
+// al record <name> signoff --source <where> --words <quote> [--presented <x>] [--transcribed-by <who>] [--yes]
 function recordSignoff({ top, args, opts }) {
   const [name] = args;
   oneLine(opts, ['source', 'words', 'presented', 'transcribed-by']);
   if (!opts.source) throw new Fail('--source <where the owner signed> is missing', `al record ${name} signoff --source <where> --words <quote>`);
+  // A sign-off with no words is not valid in al check (DES-89, D10).
+  if (typeof opts.words !== 'string' || !opts.words) throw new Fail('--words <the owner\'s words> is missing', `pass the owner's words: al record ${name} signoff --source <where> --words <quote>`);
   const { dir, rec } = openRequest(top, name);
   const md = read(top, `${dir}/request.md`);
   const text = signedText(md);

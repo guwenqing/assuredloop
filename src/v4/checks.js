@@ -17,6 +17,7 @@ import {
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { groupOf, sameBlocks } from './markers.js';
 import { isCentral } from './indexer.js';
+import { recordBlocks, supersededBlocks } from './blocks.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
 const TIER = /^[ \t]*Tier:[ \t]*(0|1d|1|2|3|S)\b[ \t]*(?:—|–|--?)?[ \t]*(.*)$/m;
@@ -122,7 +123,7 @@ export function branchOf(top, now, was, base) {
   return { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered };
 }
 
-export function checks(top, { base, strict = false }) {
+export function checks(top, { base }) {
   const now = loadState(top);
   const was = base ? loadState(top, base) : null;
   const findings = [];
@@ -144,7 +145,7 @@ export function checks(top, { base, strict = false }) {
   } else if (claim.tier === '0') {
     for (const c of changes) {
       if (typo.has(c.name)) continue;
-      if (isPromiseChange(c)) add('not ok', 'path-claim', c.head ?? c.base, c.name, `path 0, but a ${(c.head ?? c.base).kind} paragraph is ${changeWord(c)} with no typo claim`);
+      if (isPromiseChange(c)) add('hint', 'path-claim', c.head ?? c.base, c.name, `path 0, but a ${(c.head ?? c.base).kind} paragraph is ${changeWord(c)} with no typo claim`);
       else if (!c.request && ['design', 'informative'].includes(groupOf((c.head ?? c.base).kind, now.kinds))) {
         add('hint', 'path-claim', c.head ?? c.base, c.name, `path 0, but a ${(c.head ?? c.base).kind} paragraph is ${changeWord(c)}: path 1d or 2?`);
       }
@@ -152,8 +153,8 @@ export function checks(top, { base, strict = false }) {
   } else if (claim.tier === '1d') {
     for (const c of changes) {
       const p = c.head ?? c.base;
-      if (isPromiseChange(c)) add('not ok', 'path-claim', p, c.name, `path 1d, but a ${p.kind} paragraph is ${changeWord(c)}; 1d is for names and wording of design paragraphs`);
-      else if (DESIGN.includes(p.kind) && (!c.head || !c.base)) add('not ok', 'path-claim', p, c.name, `path 1d, but a ${p.kind} paragraph is ${changeWord(c)}; 1d adds or removes no design paragraph`);
+      if (isPromiseChange(c)) add('hint', 'path-claim', p, c.name, `path 1d, but a ${p.kind} paragraph is ${changeWord(c)}; 1d is for names and wording of design paragraphs`);
+      else if (DESIGN.includes(p.kind) && (!c.head || !c.base)) add('hint', 'path-claim', p, c.name, `path 1d, but a ${p.kind} paragraph is ${changeWord(c)}; 1d adds or removes no design paragraph`);
     }
   }
   const byName = new Map(changes.map((c) => [c.name, c]));
@@ -252,7 +253,7 @@ export function checks(top, { base, strict = false }) {
         const who = named(r?.name ?? null, p.id);
         if (word === 'removes' && !t.req && !now.spec.has(t.id) && r) continue; // its own removal, done
         if (!t.req && removerOf(t.id)) add('hint', 'target-removed', p, who, `${ref}: target removed by ${removerOf(t.id)}; align this link`);
-        else add('not ok', 'unresolved-link', p, who, `${ref}: no such ID${adr ? ` (in ${adr.id})` : ''}`);
+        else add('hint', 'unresolved-link', p, who, `${ref}: no such ID${adr ? ` (in ${adr.id})` : ''}`);
       }
     }
   }
@@ -346,27 +347,29 @@ export function checks(top, { base, strict = false }) {
     const judged = judgeRequest(now, r, { typo, baseSpec });
     for (const j of judged) {
       if (j.status === 'pending') continue;
-      if (!j.valid) add(strict ? 'not ok' : 'hint', 'disposition', j.p, j.id, `${j.status} is not valid: ${j.reason}`);
+      if (!j.valid) add('hint', 'disposition', j.p, j.id, `${j.status} is not valid: ${j.reason}`);
       for (const n of j.notes) add(n.startsWith('near-match') ? 'hint' : 'info', n.startsWith('near-match') ? 'near-match' : 'disposition', j.p, j.id, n.replace(/^near-match /, ''));
     }
     const pending = judged.filter((j) => j.status === 'pending').map((j) => j.p.id);
     if (pending.length) add('info', 'disposition-pending', r.specFile, r.name, `${pending.length} of ${judged.length} paragraphs with a baseline effect have no disposition for their current version: ${pending.join(', ')}`);
   }
 
-  // ADRs (schema.md 5). Links may be added to the heading marker of an
-  // accepted ADR: the same kind, each old link kept, the rest unchanged.
+  // ADRs (schema.md 5). An ADR's text may be rewritten when its decision
+  // stays, so a change is a hint for the review (#238). Links may be added to
+  // the heading marker of an accepted ADR: the same kind, each old link kept,
+  // the rest unchanged; that gives no finding.
   const linksAdded = (a, h) => a.status === 'accepted' && a.head && h.head && a.rest === h.rest && a.head.kind === h.head.kind
     && Object.entries(a.head.links).every(([k, refs]) => refs.every((x) => h.head.links[k].includes(x)));
   for (const [id, a] of was?.adrs ?? []) {
     if (!['accepted', 'superseded'].includes(a.status)) continue;
     const h = now.adrs.get(id);
-    if (!h) add('not ok', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone; an ADR is superseded, never edited or deleted`);
-    else if (h.body !== a.body && !linksAdded(a, h)) add('not ok', 'adr-changed', h.head ?? h.file, id, `the text of ${id} changed after it was accepted; write a new ADR that supersedes it`);
+    if (!h) add('hint', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone: check that its decision is not lost; an ADR that no longer holds is superseded by a new ADR, not deleted`);
+    else if (h.body !== a.body && !linksAdded(a, h)) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s text changed: check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
   }
   for (const a of now.adrs.values()) {
     if (!['proposed', 'accepted'].includes(a.status)) continue;
     const missing = ['source', 'decides'].filter((w) => !a.head?.links[w].length);
-    if (missing.length) add(strict ? 'not ok' : 'hint', 'adr-links', a.head ?? a.file, a.id, `${a.id} has ${missing.map((w) => `no ${w}:`).join(' and ')}; add the links to its marker`);
+    if (missing.length) add('hint', 'adr-links', a.head ?? a.file, a.id, `${a.id} has ${missing.map((w) => `no ${w}:`).join(' and ')}; add the links to its marker`);
   }
   for (const a of now.adrs.values()) {
     for (const old of a.head?.links.supersedes ?? []) {
@@ -380,6 +383,11 @@ export function checks(top, { base, strict = false }) {
       && ((a.head?.links.decides ?? []).includes(c.id) || p.links.governedBy.includes(a.id)));
     for (const a of govern) add('hint', 'adr-governs', p, c.id, `check that ${a.id} still holds`);
   }
+
+  // The rules that block (#238): unsigned requirements, record evidence,
+  // unreadable records and citations of superseded ADRs.
+  recordBlocks(top, now, add);
+  supersededBlocks(top, now, add);
 
   // Results (design.md 9): whether each one applies to the current text. The
   // commits they ran at are looked up in one batch.

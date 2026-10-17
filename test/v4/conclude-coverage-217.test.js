@@ -31,7 +31,7 @@ function branch(t, { signed = false } = {}) {
   const dir = baseProject(t);
   newRequest(dir, NAME, 'Every invoice needs a line, also the unpaid ones.\n', ['--tier', '1']);
   appendSection(dir, NAME, organized([R1]));
-  if (signed) ok(dir, ['record', NAME, 'signoff', '--source', 'email from the owner', '--yes']);
+  if (signed) ok(dir, ['record', NAME, 'signoff', '--source', 'email from the owner', '--words', 'Yes, sign it', '--yes']);
   return dir;
 }
 

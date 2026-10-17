@@ -37,7 +37,8 @@ function signed(t) {
   git(dir, 'checkout', '-q', '-b', 'feature');
   newRequest(dir, 'inv');
   appendSection(dir, 'inv', SECTION);
-  ok(dir, ['record', 'inv', 'signoff', '--source', 'email from the owner', '--yes']);
+  // #238 R3: a valid sign-off records the signer's words.
+  ok(dir, ['record', 'inv', 'signoff', '--source', 'email from the owner', '--words', 'yes, R1 and R2', '--yes']);
   editFile(dir, SPEC, '<!-- INV-41 rule -->\n\nThe export link MUST expire 30 minutes',
     '<!-- INV-41 rule serves:inv/R1 -->\n\nThe export link MUST expire 20 minutes');
   editFile(dir, SPEC, '<!-- INV-42 rule -->\n\nAn export MUST name the invoice number.',
@@ -130,7 +131,7 @@ for (const [part, from, to] of FRAME) {
 test('a new sign-off after the Out: change signs R1 and R2 again in S2: check --strict passes, conclude would conclude', (t) => {
   const dir = signed(t);
   editRequest(dir, 'inv', OUT, 'Out: all exports.');
-  ok(dir, ['record', 'inv', 'signoff', '--source', 'call with the owner', '--yes']);
+  ok(dir, ['record', 'inv', 'signoff', '--source', 'call with the owner', '--words', 'yes, sign them again', '--yes']);
   signedIn(dir, 'S2', 'R1', 'R2');
   assert.match(servesLine(dir, 'INV-41'), /inv\/R1 version 1: signed in S2/);
   checkPasses(dir);
@@ -155,7 +156,9 @@ test('a change to R2 after S1 leaves R1 signed in S1: only INV-42, which serves 
   concludeRefuses(dir, ['INV-42'], ['INV-41']);
 });
 
-test('a new requirement R3 after S1 leaves R1 and R2 signed in S1: check --strict passes, conclude would conclude', (t) => {
+// #238 R3: the new R3 has no sign-off, so check gives not ok
+// unsigned-requirement inv/R3, and only that; R1 and R2 stay signed.
+test('a new requirement R3 after S1 leaves R1 and R2 signed in S1: check --strict has no signoff-coverage, only unsigned-requirement inv/R3; conclude would conclude', (t) => {
   const dir = signed(t);
   const R3 = req('R3', 'ISO dates', 'Every date MUST be ISO 8601.');
   editRequest(dir, 'inv', `\n${OUT}`, `\n${R3.block}\n${OUT}`);
@@ -165,7 +168,11 @@ test('a new requirement R3 after S1 leaves R1 and R2 signed in S1: check --stric
   const line = reqLine(dir, 'R3');
   assert.match(line, /: not signed$/, line);
   assert.match(servesLine(dir, 'INV-41'), /inv\/R1 version 1: signed in S1/);
-  checkPasses(dir);
+  const r = check(dir, '--strict');
+  assert.deepEqual(r.findings.filter((f) => f.code === 'signoff-coverage'), [], show(r));
+  assert.deepEqual([...new Set(r.findings.filter((f) => f.severity === 'not ok').map((f) => `${f.code} ${f.id}`))],
+    ['unsigned-requirement inv/R3'], show(r));
+  assert.equal(r.code, 1, show(r));
   wouldConclude(dir);
 });
 

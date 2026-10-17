@@ -1,5 +1,6 @@
 # schema.md 5: a new ADR supersedes an old one. Arm ok: ADR-5 supersedes
-# ADR-2, whose status becomes superseded. Arm missing: ADR-5 supersedes ADR-9,
+# ADR-2, whose status becomes "superseded by ADR-5"; EXP-2 and the tasks of
+# invoice-exports name ADR-5 (#238 R5). Arm missing: ADR-5 supersedes ADR-9,
 # which does not exist. Arm accepted: ADR-5 supersedes ADR-2, which stays
 # accepted.
 title: ADR-5 supersedes ADR-2
@@ -12,7 +13,15 @@ arms:
       - edit:
           file: specs/adr/0002-csv-not-xlsx.md
           from: "Status: accepted\n"
-          to: "Status: superseded\n"
+          to: "Status: superseded by ADR-5\n"
+      - edit:
+          file: specs/exports.md
+          from: "<!-- EXP-2 rule serves:invoice-exports/R1 governed-by:ADR-2 -->"
+          to: "<!-- EXP-2 rule serves:invoice-exports/R1 governed-by:ADR-5 -->"
+      - edit:
+          file: requests/invoice-exports/tasks.md
+          from: "Follows\n  ADR-2."
+          to: "Follows\n  ADR-5, which supersedes ADR-2."
   missing:
     steps:
       - write: {file: specs/adr/0005-csv-bom.md, text: {file: 0005-missing.md}}
