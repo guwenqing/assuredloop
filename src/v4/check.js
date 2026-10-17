@@ -3,9 +3,10 @@
 // again, one ID in two files), then each paragraph's change (T8); then the
 // checks that read records (T10, checks.js). The base is the merge-base of
 // HEAD with main; the head is the working tree. It exits 0; with --strict, 1
-// when it prints a `not ok`. --strict raises every marker lint and an invalid
-// disposition to `not ok`; the hints that need judgment stay hints. A lost ID
-// of an open request's change spec is a hint, also under --strict (#230).
+// when it prints a `not ok`. A finding has the same severity in both modes:
+// the marker and ID lints are hints for the review, and only the exact rules
+// of checks.js are `not ok` (#238).
+import { relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { read, recordPath } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
@@ -16,7 +17,19 @@ import { Fail } from './spec.js';
 import { centralLookup } from './repos.js';
 import { checks } from './checks.js';
 
-export function check({ top, opts }) {
+// A file or folder that al check cannot read, and that no check reports as
+// not ok, stops it with a refusal: never an internal error, never a pass (#238).
+const UNREADABLE = new Set(['EACCES', 'EPERM', 'EISDIR', 'ENOTDIR', 'ELOOP']);
+export function check(args) {
+  try {
+    return checkAll(args);
+  } catch (e) {
+    if (e instanceof Fail || !UNREADABLE.has(e.code) || !e.path) throw e;
+    throw new Fail(`${relative(args.top, e.path)} cannot be read`, 'make it readable, then run al check again');
+  }
+}
+
+function checkAll({ top, opts }) {
   const config = loadConfig(top);
   const root = rootProblem(config);
   if (root) throw new Fail(root, 'fix root: in .assuredloop/config.yaml');
@@ -28,6 +41,7 @@ export function check({ top, opts }) {
   // A change spec's removes: names spec paragraphs.
   const removes = [...now.scopes].filter(([s]) => s !== SPEC).flatMap(([, ps]) => ps.flatMap((p) => p.links.removes));
 
+  // Each marker and ID lint is a hint for the review, in every mode (#238).
   const lints = [...now.lints];
   const changes = [];
   for (const scope of new Set([...now.scopes.keys(), ...(was?.scopes.keys() ?? [])])) {
@@ -41,22 +55,20 @@ export function check({ top, opts }) {
     changes.push(...diffParagraphs(before, head).filter((c) => c.changes.length));
   }
 
-  const t10 = checks(top, { base, strict: opts.strict });
+  const t10 = checks(top, { base });
   // An adopted paragraph needs no link while its text is the captured text (D16).
-  const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/')));
+  const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/'))).map((l) => ({ ...l, severity: 'hint' }));
   lints.length = 0;
   lints.push(...shown);
-  const severity = (l) => (opts.strict && !l.staysHint ? 'not ok' : l.severity);
   const body = notRead(top, config);
   // A root that config sets but that is not read is a not ok, as in al index (#218).
   const rootLine = rootNotOk(top, config);
   if (rootLine) body.push(rootLine);
-  body.push(...lints.map((l) => `${severity(l)} ${l.code} ${l.file}:${l.line} ${l.id ?? '-'} ${l.message}`));
+  body.push(...lints.map((l) => `${l.severity} ${l.code} ${l.file}:${l.line} ${l.id ?? '-'} ${l.message}`));
   if (base) body.push(...changes.map((c) => `${c.file} ${c.id} ${c.changes.join('+')}`));
   if (!lints.length) body.push('ok: no marker lint');
   body.push(...t10.findings.map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}`));
-  // Under --strict every marker lint is a not ok.
-  const notOk = Boolean(rootLine) || lints.some((l) => severity(l) === 'not ok') || t10.findings.some((f) => f.severity === 'not ok');
+  const notOk = Boolean(rootLine) || lints.some((l) => l.severity === 'not ok') || t10.findings.some((f) => f.severity === 'not ok');
   // In an output repo: the central IDs that the branch's changed files cite (T12).
   const central = centralLookup(top);
   body.push(...central.body);
@@ -67,8 +79,9 @@ export function check({ top, opts }) {
   return {
     body,
     read: base ? `working tree · base ${base.slice(0, 7)} (merge-base with main)` : 'working tree · no base',
-    next: nextStep([...(rootLine ? ['not ok'] : []), ...lints.map(severity), ...t10.findings.map((f) => f.severity),
-      ...central.body.map((l) => (/^not ok /.test(l) ? 'not ok' : /^hint /.test(l) ? 'hint' : 'info'))], lints.some((l) => l.code === 'no-id')),
+    next: nextStep([...(rootLine ? ['not ok'] : []), ...lints.map((l) => l.severity), ...t10.findings.map((f) => f.severity),
+      ...central.body.map((l) => (/^not ok /.test(l) ? 'not ok' : /^hint /.test(l) ? 'hint' : 'info'))], lints.some((l) => l.code === 'no-id'),
+      t10.findings.some((f) => f.code === 'unsigned-requirement')),
     notKnown,
     exit: opts.strict && notOk ? 1 : 0,
   };
@@ -96,15 +109,16 @@ function deleted(top, l) {
     ...list(rec?.decisions).filter((d) => d?.wording?.source === source).map((d) => `decision ${d.id} names its wording`),
   ];
   const message = `${source} is deleted${facts.map((f) => `; ${f}`).join('')}. If that is on purpose, nothing more is needed: the ID is retired and never used again.`;
-  return { ...l, severity: 'hint', staysHint: true, message };
+  return { ...l, message };
 }
 
 // The Next line names what to do for what printed: a not ok, a hint, both, or
-// neither (#198).
-function nextStep(severities, noId) {
+// neither (#198); and for an unsigned requirement, how to get it signed (#238).
+function nextStep(severities, noId, unsigned) {
   const notOk = severities.includes('not ok');
   const hint = severities.includes('hint');
-  const addIds = noId ? '; al spec --add-ids <file> marks the paragraphs with no ID' : '';
+  const addIds = (noId ? '; al spec --add-ids <file> marks the paragraphs with no ID' : '')
+    + (unsigned ? '; for an unsigned requirement, run al index, then ask the owner to sign it (al record <name> signoff)' : '');
   if (notOk && hint) return `fix each not ok, and deal with each hint or say in the PR why it stays${addIds}`;
   if (notOk) return `fix each not ok${addIds}`;
   if (hint) return 'deal with each hint, or say in the PR why it stays';

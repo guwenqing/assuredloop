@@ -76,11 +76,18 @@ const setDisposition = (dir, set) => editRecord(dir, NAME, (rec) => {
 
 // --- 1. the issue's case: SP-2 validly abandoned, its text never in specs/, R1 not signed
 
+// #238 R3: csv-bom's record lists R1 with no sign-off, so check gives
+// not ok unsigned-requirement csv-bom/R1, open or archived. It is the only
+// not ok line, and it alone makes --strict exit 1.
+const ONLY_UNSIGNED = [`not ok unsigned-requirement ${NAME}/R1`];
+const notOkKeys = (c) => [...new Set(c.notOk.map((f) => `not ok ${f.code} ${f.id}`))].sort();
+
 test('1: SP-2 validly abandoned with no kept effect: check --strict has no signoff-coverage on it while the request is open', (t) => {
   const dir = invoicer(t, 'abandon-unsigned', 'abandoned');
   const c = strict(dir);
   assert.deepEqual(c.ids, [], `no signoff-coverage finding:\n${show(c.r)}`);
-  assert.equal(c.r.code, 0, show(c.r));
+  assert.deepEqual(notOkKeys(c), ONLY_UNSIGNED, show(c.r));
+  assert.equal(c.r.code, 1, show(c.r));
   const { k } = agree(dir);
   // A guard: conclude would conclude, as it does before #226.
   assert.equal(k.code, 0, show(k));
@@ -88,7 +95,7 @@ test('1: SP-2 validly abandoned with no kept effect: check --strict has no signo
   assert.match(k.stdout, new RegExp(`^Would conclude ${NAME}: `, 'm'), show(k));
 });
 
-test('1: after al conclude csv-bom --yes, and again after the archive move is committed, check --strict exits 0 with no not ok', (t) => {
+test('1: after al conclude csv-bom --yes, and again after the archive move is committed, check --strict has no not ok but unsigned-requirement csv-bom/R1', (t) => {
   const dir = invoicer(t, 'abandon-unsigned', 'abandoned');
   const closed = al(dir, ['conclude', NAME, '--yes']);
   assert.equal(closed.code, 0, show(closed));
@@ -97,9 +104,9 @@ test('1: after al conclude csv-bom --yes, and again after the archive move is co
   commitAll(dir, `Close ${NAME}\n\nTier: 2 — ${NAME}; closes the request`);
   const after = strict(dir);
   const runs = { before: before.r, after: after.r };
-  assert.deepEqual({ before: before.notOk.map((f) => f.line), after: after.notOk.map((f) => f.line) }, { before: [], after: [] },
-    `no not ok before or after the commit:\n${show(before.r)}\n${show(after.r)}`);
-  for (const [when, r] of Object.entries(runs)) assert.equal(r.code, 0, `${when} the commit:\n${show(r)}`);
+  assert.deepEqual({ before: notOkKeys(before), after: notOkKeys(after) }, { before: ONLY_UNSIGNED, after: ONLY_UNSIGNED },
+    `no other not ok before or after the commit:\n${show(before.r)}\n${show(after.r)}`);
+  for (const [when, r] of Object.entries(runs)) assert.equal(r.code, 1, `${when} the commit:\n${show(r)}`);
 });
 
 // --- 2. control: the same rule incorporated as EXP-9, no sign-off

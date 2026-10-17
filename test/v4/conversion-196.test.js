@@ -147,11 +147,11 @@ function tree(dir) {
 }
 
 // Tests 1-3 check that S1 covers today's requirement; this one checks that the concluded request is not signed again.
-test('#196 node bin/al.js record assuredloop-v4 signoff --source x (no --yes), from the repo top: it refuses the archived request with exit 2, and it writes nothing', (t) => {
+test('#196 node bin/al.js record assuredloop-v4 signoff --source x --words x (no --yes), from the repo top: it refuses the archived request with exit 2, and it writes nothing', (t) => {
   const dir = copyRepo(t);
   const before = tree(dir);
   const status = git(dir, 'status', '--porcelain');
-  const r = spawnSync(process.execPath, ['bin/al.js', 'record', 'assuredloop-v4', 'signoff', '--source', 'x'],
+  const r = spawnSync(process.execPath, ['bin/al.js', 'record', 'assuredloop-v4', 'signoff', '--source', 'x', '--words', 'x'],
     { cwd: dir, env: env(), input: '', encoding: 'utf8', timeout: LIMIT });
   const show = `exit ${r.status}\n--- stdout\n${r.stdout}--- stderr\n${r.stderr}`;
   assert.equal(r.signal, null, `the run was killed:\n${show}`);

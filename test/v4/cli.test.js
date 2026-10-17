@@ -402,43 +402,46 @@ describe('al check', () => {
     assert.equal(r.code, 0, show(r));
     const ls = lintLines(r);
     assert.equal(ls.length, 3, show(r));
-    assert.match(ls.find((l) => l.includes(' no-blank-after ')) ?? '', /^not ok no-blank-after specs\/inv\.md:5 INV-2 \S/, show(r));
-    assert.match(ls.find((l) => l.includes(' no-id ')) ?? '', /^not ok no-id specs\/inv\.md:8 - \S/, show(r));
+    assert.match(ls.find((l) => l.includes(' no-blank-after ')) ?? '', /^hint no-blank-after specs\/inv\.md:5 INV-2 \S/, show(r));
+    assert.match(ls.find((l) => l.includes(' no-id ')) ?? '', /^hint no-id specs\/inv\.md:8 - \S/, show(r));
     assert.match(ls.find((l) => l.includes(' no-kind ')) ?? '', /^hint no-kind specs\/inv\.md:10 INV-3 \S/, show(r));
     assertNoLine(r, 'ok: no marker lint');
     assertFrame(r.stdout);
   });
 
-  test('--strict prints every hint as not ok and exits 1', (t) => {
+  // #238 R2: --strict changes no severity; it sets only the exit code.
+  test('--strict prints every hint as a hint and exits 0', (t) => {
     const repo = featureRepo(t, CLEAN + doc('', '<!-- INV-6 rule -->', '', 'A rule with no link.', '', '<!-- INV-7 -->', '', 'Untyped.'));
     const plain = check(repo);
     assert.equal(plain.code, 0, show(plain));
     assert.match(lintLines(plain).find((l) => l.includes(' no-link ')) ?? '', /^hint no-link specs\/inv\.md:21 INV-6 \S/, show(plain));
     assert.match(lintLines(plain).find((l) => l.includes(' no-kind ')) ?? '', /^hint no-kind specs\/inv\.md:25 INV-7 \S/, show(plain));
     const strict = check(repo, '--strict');
-    assert.equal(strict.code, 1, show(strict));
+    assert.equal(strict.code, 0, show(strict));
     const ls = lintLines(strict);
     assert.equal(ls.length, 2, show(strict));
-    assert.match(ls.find((l) => l.includes(' no-link ')) ?? '', /^not ok no-link specs\/inv\.md:21 INV-6 \S/, show(strict));
-    assert.match(ls.find((l) => l.includes(' no-kind ')) ?? '', /^not ok no-kind specs\/inv\.md:25 INV-7 \S/, show(strict));
+    assert.match(ls.find((l) => l.includes(' no-link ')) ?? '', /^hint no-link specs\/inv\.md:21 INV-6 \S/, show(strict));
+    assert.match(ls.find((l) => l.includes(' no-kind ')) ?? '', /^hint no-kind specs\/inv\.md:25 INV-7 \S/, show(strict));
     assertNoLine(strict, 'ok: no marker lint');
   });
 
   // duplicate-heading is a hint (design.md section 3, PR #176).
-  test('duplicate-heading prints as a hint, and as not ok with exit 1 under --strict', (t) => {
+  test('duplicate-heading prints as a hint, also under --strict, with exit 0', (t) => {
     const repo = featureRepo(t, CLEAN + doc('', '<!-- INV-6 note -->', '', '## Export ##'));
     const plain = check(repo);
     assert.equal(plain.code, 0, show(plain));
     assert.deepEqual(lintLines(plain).map((l) => l.replace(/ INV-6 .*/, ' INV-6')), ['hint duplicate-heading specs/inv.md:21 INV-6'], show(plain));
     const strict = check(repo, '--strict');
-    assert.equal(strict.code, 1, show(strict));
-    assert.deepEqual(lintLines(strict).map((l) => l.replace(/ INV-6 .*/, ' INV-6')), ['not ok duplicate-heading specs/inv.md:21 INV-6'], show(strict));
+    assert.equal(strict.code, 0, show(strict));
+    assert.deepEqual(lintLines(strict).map((l) => l.replace(/ INV-6 .*/, ' INV-6')), ['hint duplicate-heading specs/inv.md:21 INV-6'], show(strict));
   });
 
-  test('--strict exits 1 on a not ok lint; without it the exit is 0', (t) => {
+  test('a marker lint is a hint: --strict exits 0 on it, as the plain check does (#238 R2)', (t) => {
     const repo = featureRepo(t, doc('<!-- INV-1 note -->', 'Text.'));
     assert.equal(check(repo).code, 0);
-    assert.equal(check(repo, '--strict').code, 1);
+    const strict = check(repo, '--strict');
+    assert.equal(strict.code, 0, show(strict));
+    assert.match(lintLines(strict).find((l) => l.includes(' no-blank-after ')) ?? '', /^hint no-blank-after /, show(strict));
   });
 
   test('lost-id: an ID of the base that is gone at head, with a Removed change line', (t) => {
@@ -447,10 +450,13 @@ describe('al check', () => {
     repo.commit('drop INV-5');
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assertStarts(r, 'not ok lost-id specs/inv.md:', 1);
-    assert.match(startsWith(r, 'not ok lost-id ')[0], /^not ok lost-id specs\/inv\.md:\d+ INV-5 \S/);
+    assertStarts(r, 'hint lost-id specs/inv.md:', 1);
+    assert.match(startsWith(r, 'hint lost-id ')[0], /^hint lost-id specs\/inv\.md:\d+ INV-5 \S/);
     assertLine(r, 'specs/inv.md INV-5 Removed');
-    assert.equal(check(repo, '--strict').code, 1);
+    // #238 R2: lost-id stays a hint under --strict.
+    const strict = check(repo, '--strict');
+    assertStarts(strict, 'hint lost-id specs/inv.md:', 1);
+    assertStarts(strict, 'not ok lost-id ', 0);
   });
 
   test('a removal declared by removes: in a change spec at head is not lost-id', (t) => {
@@ -485,8 +491,8 @@ describe('al check', () => {
     repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'A new rule.', '', '<!-- INV-7 rule serves:inv/R2 -->', '', 'A fresh rule.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assertStarts(r, 'not ok used-again ', 1);
-    assert.match(startsWith(r, 'not ok used-again ')[0], /^not ok used-again specs\/inv\.md:21 INV-6 \S/);
+    assertStarts(r, 'hint used-again ', 1);
+    assert.match(startsWith(r, 'hint used-again ')[0], /^hint used-again specs\/inv\.md:21 INV-6 \S/);
     assertLine(r, 'specs/inv.md INV-6 New');
     assertLine(r, 'specs/inv.md INV-7 New');
   });
@@ -496,9 +502,9 @@ describe('al check', () => {
     repo.write('specs/other.md', '<!-- INV-2 note -->\n\nAnother paragraph.\n');
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    const dup = startsWith(r, 'not ok duplicate-id ');
+    const dup = startsWith(r, 'hint duplicate-id ');
     assert.equal(dup.length, 1, show(r));
-    assert.match(dup[0], /^not ok duplicate-id specs\/(inv|other)\.md:\d+ INV-2 \S/);
+    assert.match(dup[0], /^hint duplicate-id specs\/(inv|other)\.md:\d+ INV-2 \S/);
   });
 
   test('control: two request specs each with SP-1 are two scopes, no duplicate-id', (t) => {
@@ -602,8 +608,8 @@ describe('al check: used-again from history', () => {
     repo.write('specs/inv.md', CLEAN + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'A new rule.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assertStarts(r, 'not ok used-again ', 1);
-    assert.match(startsWith(r, 'not ok used-again ')[0], /^not ok used-again specs\/inv\.md:21 INV-6 \S/);
+    assertStarts(r, 'hint used-again ', 1);
+    assert.match(startsWith(r, 'hint used-again ')[0], /^hint used-again specs\/inv\.md:21 INV-6 \S/);
   });
 
   // The marker comes after the header-like line in the same hunk: in the
@@ -622,8 +628,8 @@ describe('al check: used-again from history', () => {
     repo.write('specs/inv.md', upToInv4 + doc('', '<!-- INV-6 rule serves:inv/R2 -->', '', 'Six again.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assertStarts(r, 'not ok used-again ', 1);
-    assert.match(startsWith(r, 'not ok used-again ')[0], /^not ok used-again specs\/inv\.md:17 INV-6 \S/);
+    assertStarts(r, 'hint used-again ', 1);
+    assert.match(startsWith(r, 'hint used-again ')[0], /^hint used-again specs\/inv\.md:17 INV-6 \S/);
   });
 
   test('a marker that was only ever in a file outside the scope does not count as used', (t) => {

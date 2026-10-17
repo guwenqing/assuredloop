@@ -232,7 +232,7 @@ test('record signoff refuses when request.md is a symlink: no snapshot, no recor
   const dir = draftProject(t);
   const external = fileOut(t, dir, 'requests/inv/request.md');
   const text = readFileSync(external, 'utf8');
-  refused(dir, ['record', 'inv', 'signoff', '--source', 'x', '--yes']);
+  refused(dir, ['record', 'inv', 'signoff', '--source', 'x', '--words', 'x', '--yes']);
   assert.ok(!exists(dir, 'requests/inv/origin/2026-05-04-signoff.md'));
   assert.deepEqual(record(dir, 'inv').signoff, []);
   assert.equal(readFileSync(external, 'utf8'), text);

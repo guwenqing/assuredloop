@@ -4,7 +4,7 @@
 import { readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { parse } from 'yaml';
-import { read, recordPath, sha256 } from './base.js';
+import { exists, read, recordPath, sha256 } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { fileAt, filesAt, git } from './git.js';
 import { KINDS, groupOf, parseMarkdown } from './markers.js';
@@ -67,7 +67,8 @@ export function loadState(top, rev = null) {
     ...adrFiles.map((f) => `${root}/adr/${f}`),
   ]) : null;
   const get = rev ? (p) => (atRev.has(p) ? atRev.get(p) : fileAt(top, rev, p)) : (p) => read(top, p);
-  const { scopes, lints } = parseScopes(docsInScope(top, config, rev), kinds);
+  const docs = docsInScope(top, config, rev);
+  const { scopes, lints } = parseScopes(docs, kinds);
   const spec = new Map((scopes.get(SPEC) ?? []).map((p) => [p.id, p]));
 
   const requests = new Map();
@@ -78,20 +79,30 @@ export function loadState(top, rev = null) {
     // The record is read now and parsed on first use (design.md 11): a check
     // that does not need an archived record never parses it.
     let text = null;
+    let readError = null;
     try {
       text = get(recordPath(name));
-    } catch {
+    } catch (e) {
       text = null;
+      readError = e.message.split('\n')[0];
     }
+    // read() gives null for a file it cannot read (EACCES, a folder): only a
+    // record that is not there at all has no error.
+    if (!rev && text == null && !readError && exists(top, recordPath(name))) readError = 'it is there, but it cannot be read as a file';
     let data;
+    let error = readError;
     const dataOf = () => {
       if (data !== undefined) return data;
       try {
         data = parse(text ?? 'null');
-      } catch {
+      } catch (e) {
+        data = null;
+        error = e.message.split('\n')[0];
+      }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        if (text !== null && text !== undefined && !error) error = 'not a mapping';
         data = null;
       }
-      if (!data || typeof data !== 'object' || Array.isArray(data)) data = null;
       return data;
     };
     const specFile = `${dir}/spec.md`;
@@ -123,6 +134,8 @@ export function loadState(top, rev = null) {
     requests.set(name, {
       name, open, dir, md, specFile,
       get data() { return dataOf(); },
+      // Why a record that is there cannot be read, or null (#238).
+      get recordError() { dataOf(); return error; },
       get tier() { return tierOf(); },
       get spike() { return tierOf() === 'S' || /^##\s+Organized question\s*$/m.test(md); },
       // Whether the record's text names `x`, so that a reader parses only the
@@ -138,19 +151,27 @@ export function loadState(top, rev = null) {
   for (const n of archivedNames) if (!requests.has(n)) add(n, false);
 
   const adrs = new Map();
+  // The ADR files that are there but cannot be read (#238): R5 reports them.
+  const unreadableAdrs = [];
   for (const f of adrFiles) {
     const m = ADR_FILE.exec(f);
     if (!m) continue;
     const file = `${root}/adr/${f}`;
     const text = get(file);
-    if (text === null || text === undefined) continue;
+    if (text === null || text === undefined) {
+      if (!rev && exists(top, file)) unreadableAdrs.push(file);
+      continue;
+    }
     const paragraphs = parseMarkdown(text, file, { kinds }).paragraphs;
     const id = `ADR-${Number(m[1])}`;
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
     const head = paragraphs.find((p) => p.id === id) ?? null;
-    adrs.set(id, { id, file, status, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head });
+    // The ADR that its status line names: `Status: superseded by ADR-n` (#238).
+    const n = /^\s*Status:[ \t]*superseded[ \t]+by[ \t]+ADR-(\d+)[ \t]*\r?(?:\n|$)/i.exec(text)?.[1];
+    const by = n === undefined ? null : `ADR-${Number(n)}`;
+    adrs.set(id, { id, file, text, status, by, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head });
   }
-  return { top, rev, config, kinds, root, get, scopes, lints, spec, requests, adrs };
+  return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, unreadableAdrs };
 }
 
 // The kind groups a check asks about.

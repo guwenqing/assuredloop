@@ -31,9 +31,11 @@ function missing(r, f, { source, decides }) {
   assert.equal(f.msg.includes('no source:'), source, `"no source:" ${source ? 'in' : 'not in'} the message:\n${f.line}\n${show(r)}`);
   assert.equal(f.msg.includes('no decides:'), decides, `"no decides:" ${decides ? 'in' : 'not in'} the message:\n${f.line}\n${show(r)}`);
 }
-const changed = (r, id) => all(r, 'not ok', 'adr-changed', id);
+// #238 R1: a changed ADR is a hint, never not ok.
+const changed = (r, id) => all(r, 'hint', 'adr-changed', id);
 function isChanged(r, id) {
-  assert.ok(changed(r, id).length >= 1, `a "not ok adr-changed" line on ${id}:\n${show(r)}`);
+  assert.ok(changed(r, id).length >= 1, `a "hint adr-changed" line on ${id}:\n${show(r)}`);
+  assert.deepEqual(all(r, 'not ok', 'adr-changed', id), [], `no "not ok adr-changed" line on ${id}:\n${show(r)}`);
 }
 function notChanged(r, id) {
   assert.deepEqual(coded(r, 'adr-changed', id), [], `no adr-changed on ${id}:\n${show(r)}`);
@@ -61,31 +63,31 @@ test('the Status line changes to superseded and a link is added in the same rang
   isChanged(run(t, 'adr-links', 'text'), 'ADR-2');
 });
 
-test('a link target removed from an accepted ADR (decides:EXP-4,EXP-6 -> decides:EXP-4): not ok adr-changed on ADR-4', (t) => {
+test('a link target removed from an accepted ADR (decides:EXP-4,EXP-6 -> decides:EXP-4): hint adr-changed on ADR-4', (t) => {
   isChanged(run(t, 'adr-links', 'removed'), 'ADR-4');
 });
 
-test('a link word replaced by another (source: removed, decides: added): not ok adr-changed on ADR-1', (t) => {
+test('a link word replaced by another (source: removed, decides: added): hint adr-changed on ADR-1', (t) => {
   isChanged(run(t, 'adr-links', 'swapped'), 'ADR-1');
 });
 
-test('a link target changed (decides:EXP-2 -> decides:EXP-4): not ok adr-changed on ADR-2', (t) => {
+test('a link target changed (decides:EXP-2 -> decides:EXP-4): hint adr-changed on ADR-2', (t) => {
   isChanged(run(t, 'adr-links', 'retarget'), 'ADR-2');
 });
 
-test('the kind changed (choice -> rule) with a link added: not ok adr-changed on ADR-2', (t) => {
+test('the kind changed (choice -> rule) with a link added: hint adr-changed on ADR-2', (t) => {
   isChanged(run(t, 'adr-links', 'kind'), 'ADR-2');
 });
 
-test('a link added and one word of the decision text changed: not ok adr-changed on ADR-2', (t) => {
+test('a link added and one word of the decision text changed: hint adr-changed on ADR-2', (t) => {
   isChanged(run(t, 'adr-links', 'text'), 'ADR-2');
 });
 
-test('a link added to the marker of another paragraph (ADR-2-2): not ok adr-changed on ADR-2', (t) => {
+test('a link added to the marker of another paragraph (ADR-2-2): hint adr-changed on ADR-2', (t) => {
   isChanged(run(t, 'adr-links', 'para'), 'ADR-2');
 });
 
-test('a link added to an ADR that was superseded at the base: still not ok adr-changed on ADR-3 (control: the same on an accepted ADR does not fire)', (t) => {
+test('a link added to an ADR that was superseded at the base: still hint adr-changed on ADR-3 (control: the same on an accepted ADR does not fire)', (t) => {
   isChanged(run(t, 'adr-links', 'frozen'), 'ADR-3');
   notChanged(run(t, 'adr-links', 'word'), 'ADR-2');
 });
@@ -116,11 +118,11 @@ test('ADRs with missing links, a PR that changes no ADR: one hint adr-links on e
   assert.deepEqual(coded(r, 'adr-links', 'ADR-4'), [], `ADR-4 has both links:\n${show(r)}`);
 });
 
-test('--strict: adr-links is not ok and the exit is 1 (control: clean --strict exits 0 with no adr-links)', (t) => {
+test('--strict: adr-links stays a hint and the exit is 0 (#238 R2; control: clean --strict exits 0 with no adr-links)', (t) => {
   const r = run(t, 'adr-links', 'untouched', '--strict');
-  assert.equal(r.code, 1, show(r));
-  for (const id of ['ADR-1', 'ADR-2', 'ADR-5']) links(r, 'not ok', id);
-  assert.deepEqual(notOk(r).filter((f) => f.code !== 'adr-links').map((f) => f.line), [], `only adr-links is not ok:\n${show(r)}`);
+  assert.equal(r.code, 0, show(r));
+  for (const id of ['ADR-1', 'ADR-2', 'ADR-5']) links(r, 'hint', id);
+  assert.deepEqual(notOk(r).map((f) => f.line), [], `nothing is not ok:\n${show(r)}`);
   assert.deepEqual(coded(r, 'adr-links', 'ADR-3'), [], show(r));
   const clean = run(t, 'clean', undefined, '--strict');
   assert.equal(clean.code, 0, show(clean));
@@ -158,8 +160,8 @@ test('an accepted ADR with no ADR-<n> marker at all: adr-links on it, at the fil
   assert.equal(f.at, null, `no line number:\n${show(r)}`);
   missing(r, f, { source: true, decides: true });
   const strict = run(t, 'adr-links-nomarker', undefined, '--strict');
-  assert.equal(strict.code, 1, show(strict));
-  links(strict, 'not ok', 'ADR-5');
+  assert.equal(strict.code, 0, show(strict));
+  links(strict, 'hint', 'ADR-5');
 });
 
 test('adr-history: the accepted ADR-6 has no decides: and gets adr-links; the superseded ADR-5 gets none', (t) => {

@@ -114,10 +114,10 @@ test('record signoff refuses an extra positional and names it; without it, signo
   const R1 = req('R1', 'Monthly CSV download', 'A user MUST be able to download one month as one CSV file.', [WORDS_FILE]);
   appendSection(dir, 'inv', organized([R1]));
   const SOURCE = 'email from the owner, 2026-05-04';
-  refusedNaming(dir, ['record', 'inv', 'signoff', '--source', SOURCE, 'stray-word', '--yes'], 'stray-word');
+  refusedNaming(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--words', 'Yes, sign it', 'stray-word', '--yes'], 'stray-word');
   assert.deepEqual(record(dir, 'inv').signoff, []);
 
-  okAndWrites(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--yes']);
+  okAndWrites(dir, ['record', 'inv', 'signoff', '--source', SOURCE, '--words', 'Yes, sign it', '--yes']);
   assert.deepEqual(record(dir, 'inv').signoff.map((s) => s.id), ['S1']);
 });
 

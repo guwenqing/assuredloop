@@ -224,14 +224,21 @@ describe('reading does not go through a symlink', () => {
 
     // #218: a root through a symlink is a spec-root not ok (exit 1 with
     // --strict); the not read line of the root is not asserted either way.
-    test(`check: ${c.name} gives no lint and no change line from it, ${c.rootNotOk ? 'only the spec-root not ok, exit 0, and exit 1 with --strict' : 'prints the not read line, exit 0 also with --strict'}`, (t) => {
+    // #238 D12: a docs: file that config lists is a current place (SCH-37), so
+    // through a symlink it is one not ok superseded-cited at its path.
+    test(`check: ${c.name} gives no lint and no change line from it, ${c.rootNotOk ? 'only the spec-root not ok, exit 0, and exit 1 with --strict' : 'prints the not read line, only a superseded-cited not ok at the file, exit 0, and exit 1 with --strict'}`, (t) => {
       const repo = linked(t);
-      for (const [args, code] of [[[], 0], [['--strict'], c.rootNotOk ? 1 : 0]]) {
+      for (const [args, code] of [[[], 0], [['--strict'], 1]]) {
         const r = runV4(repo.dir, ['check', ...args]);
         assert.equal(r.code, code, show(r));
         if (!c.rootNotOk) assert.ok(lines(r.stdout).includes(notReadLine), show(r));
         assert.ok(!r.stdout.includes('OUT-1'), show(r));
-        assert.deepEqual(lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l)), c.rootNotOk ? [c.rootNotOk] : [], show(r));
+        const flagged = lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l));
+        if (c.rootNotOk) assert.deepEqual(flagged, [c.rootNotOk], show(r));
+        else {
+          assert.equal(flagged.length, 1, show(r));
+          assert.ok(flagged[0].startsWith(`not ok superseded-cited ${c.docPath} `), show(r));
+        }
         assert.deepEqual(lines(r.stdout).filter((l) => l.startsWith(`${c.docPath} `)), [], show(r));
       }
     });
@@ -257,7 +264,8 @@ describe('reading does not go through a symlink', () => {
       assert.equal(r.code, 0, show(r));
       assert.ok(!r.stdout.includes('not read:'), show(r));
       assert.ok(!r.stdout.includes('not ok spec-root'), show(r));
-      assert.ok(lines(r.stdout).some((l) => l.startsWith(`not ok no-blank-after ${c.docPath}:1 OUT-1 `)), show(r));
+      // #238 R2: a marker lint is a hint.
+      assert.ok(lines(r.stdout).some((l) => l.startsWith(`hint no-blank-after ${c.docPath}:1 OUT-1 `)), show(r));
     });
   }
 });
