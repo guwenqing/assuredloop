@@ -89,8 +89,6 @@ paragraphs:
     kind: rule
     text_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4
     display: SCH-22 (5:1, in 5. ADRs)
-    change:
-      - Changed
   - id: SCH-23
     kind: note
     text_sha256: a262a3791a58348b944529cef79f2c099f5a5277b524d4e870d5b4c9e799ff0a
