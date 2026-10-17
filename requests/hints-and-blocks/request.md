@@ -1,5 +1,5 @@
 # Findings are hints, except three exact rules that block
-Tier: 2 · Status: concluded
+Tier: 2 · Status: open
 
 ## Owner's words and dialog
 
@@ -57,44 +57,3 @@ Signed off: 2026-10-17 owner, origin/2026-10-17-signoff.md
 - D8, 2026-10-17. Source: the agent (architect), session prompt of developer-238, 2026-10-17. In the PR body, say what each changed spec paragraph said before and after.
 - D9, 2026-10-17. Source: the agent (architect), message to developer-238, 2026-10-17. R3 stays as signed: a request that has a requirement (R<n>) needs it signed, also when it changes no promise; the owner's B1 in #238 has no exception. So nothing contradicts it: DES-42 says that a request that changes no promise needs no sign-off only when it has no requirement, and the skill says to write a design-only request with no R<n> in its organized section. The PR body says the consequence.
 - D10, 2026-10-17. Source: the agent (architect). al record <name> signoff refuses without --words, and its Next line says to pass the owner's words: the command must not write a sign-off that al check calls not valid. It follows from R3 (DES-89), so it needs no new sign-off.
-
-## Outcome
-
-Concluded 2026-10-17 with al conclude, on the working tree at 2f966d2.
-
-- R1 A rewrite that keeps the meaning, version 1, signed in S1:
-  - SP-12 rule: incorporated as SCH-22
-  - SP-13 data: incorporated as DES-9
-  - SP-14 rule: incorporated as DES-10
-  - DES-9 data: in specs/design.md, serves it
-  - DES-10 rule: in specs/design.md, serves it
-  - SCH-22 rule: in specs/schema.md, serves it
-- R2 Findings are hints for the review, version 1, signed in S1:
-  - SP-4 rule: incorporated as DES-22
-  - SP-5 limit: incorporated as DES-5
-  - SP-6 rule: incorporated as DES-33
-  - SP-7 rule: incorporated as DES-49
-  - SP-8 rule: incorporated as DES-58
-  - SP-9 rule: incorporated as SCH-38
-  - SP-12 rule: incorporated as SCH-22
-  - DES-5 limit: in specs/design.md, serves it
-  - DES-22 rule: in specs/design.md, serves it
-  - DES-33 rule: in specs/design.md, serves it
-  - DES-49 rule: in specs/design.md, serves it
-  - DES-58 rule: in specs/design.md, serves it
-  - SCH-22 rule: in specs/schema.md, serves it
-  - SCH-38 rule: in specs/schema.md, serves it
-- R3 Unsigned requirement, version 1, signed in S1:
-  - SP-18 rule: incorporated as DES-89
-  - SP-26 rule: incorporated as DES-42
-  - SP-27 definition: incorporated as DES-48
-  - DES-42 rule: in specs/design.md, serves it
-  - DES-89 rule: in specs/design.md, serves it
-  - DES-48 definition: in specs/design.md, serves it
-- R4 Changed record evidence, version 1, signed in S1:
-  - SP-21 rule: incorporated as DES-90
-  - DES-90 rule: in specs/design.md, serves it
-- R5 Citation of a superseded ADR, version 1, signed in S1:
-  - SP-24 rule: incorporated as SCH-37
-  - SCH-37 rule: in specs/schema.md, serves it
-- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
