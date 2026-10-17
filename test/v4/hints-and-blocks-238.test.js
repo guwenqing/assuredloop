@@ -1240,3 +1240,74 @@ describe('SCH-37: a current place of an open request that cannot be read is not 
     });
   });
 });
+
+// SCH-37 and D11: al never reads through a symlink, so a Markdown file in a
+// current place that is a symlink cannot be read. It is not ok
+// superseded-cited at its path, with a message that says it cannot be read
+// or is not read through a symlink. The targets are outside the repo.
+const SAYS_SYMLINK = /cannot be read|can not be read|could not be read|not readable|unreadable|symlink|symbolic link/i;
+
+// Replace rel in dir (if there) with a symlink to an outside file that holds text.
+function symlinkOutside(t, dir, rel, text) {
+  const outside = mkdtempSync(join(realpathSync(tmpdir()), 'al4-link-'));
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  const real = join(outside, rel.split('/').at(-1));
+  writeFileSync(real, text);
+  const path = join(dir, rel);
+  rmSync(path, { force: true });
+  mkdirSync(join(path, '..'), { recursive: true });
+  symlinkSync(real, path);
+}
+
+function symlinkedPlace(r, path) {
+  assert.doesNotMatch(r.stderr ?? '', /Error/, `no crash:\n${show(r)}`);
+  const found = citedAt(r, path);
+  assert.ok(found.length > 0, `a not ok superseded-cited at ${path}:\n${show(r)}`);
+  assert.ok(found.some((f) => SAYS_SYMLINK.test(f.msg)), `its message says it cannot be read, or is not read through a symlink:\n${show(r)}`);
+}
+
+describe('SCH-37 and D11: a Markdown file in a current place that is a symlink is not ok superseded-cited', () => {
+  test('control: the clean world has no superseded-cited', (t) => {
+    const r = both(invoicer(t, 'clean'));
+    assert.deepEqual(coded(r, 'superseded-cited'), [], show(r));
+  });
+
+  test('the accepted ADR-2 file is a symlink to its unchanged copy: not ok superseded-cited at its path; --strict exits 1', (t) => {
+    const rel = 'specs/adr/0002-csv-not-xlsx.md';
+    const dir = invoicer(t, 'clean');
+    assert.match(read(dir, rel), /^Status: accepted/m);
+    symlinkOutside(t, dir, rel, read(dir, rel));
+    symlinkedPlace(both(dir), rel);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('the spec doc specs/exports.md is a symlink to its unchanged copy: not ok superseded-cited at its path; --strict exits 1', (t) => {
+    const rel = 'specs/exports.md';
+    const dir = invoicer(t, 'clean');
+    symlinkOutside(t, dir, rel, read(dir, rel));
+    symlinkedPlace(both(dir), rel);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('requests/invoice-exports/plan.md is a symlink to a file that names ADR-3 alone: not ok superseded-cited at its path; --strict exits 1', (t) => {
+    const rel = 'requests/invoice-exports/plan.md';
+    const dir = invoicer(t, 'clean');
+    symlinkOutside(t, dir, rel, CITES_ADR3);
+    symlinkedPlace(both(dir), rel);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('control: a symlink under origin/, in an archived request, or to a file that is not .md gives no superseded-cited', (t) => {
+    for (const rel of [
+      'requests/invoice-exports/origin/link.md',
+      'requests/invoice-exports/origin/notes/link.md',
+      'requests/archive/invoice-numbers/plan.md',
+      'requests/invoice-exports/plan.txt',
+    ]) {
+      const dir = invoicer(t, 'clean');
+      symlinkOutside(t, dir, rel, CITES_ADR3);
+      const r = both(dir);
+      assert.deepEqual(coded(r, 'superseded-cited'), [], `${rel}:\n${show(r)}`);
+    }
+  });
+});
