@@ -13,8 +13,8 @@
 //   requests, not the records), and with --issues in the items. A bad
 //   `phrases:` is a refusal.
 //
-// Each run has a PATH with a fake `gh` that only logs, and the system
-// folders (for git). Every run checks that al did not run gh (D9).
+// Each run has a PATH with a fake `gh` that only logs, and a folder of links
+// to git and node only. Every run checks that al did not run gh (D9).
 // Nothing here reads the code under test.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,9 +27,17 @@ import {
   BIN, EPOCH, REPO, al, commitAll, doc, editRecord, git, move, newRequest, ok, read, recordPath, refused, show, write, writeYaml,
 } from './helpers/project.js';
 
-// The system folders: git is there, gh is not (checked below).
-const SAFE_PATH = '/usr/bin:/bin:/usr/sbin:/sbin';
-const ghInSafePath = spawnSync('/bin/sh', ['-c', 'command -v gh'], { env: { PATH: SAFE_PATH }, encoding: 'utf8' }).stdout.trim();
+// A folder that holds only links to the tools that al needs (git, node),
+// so that no real gh can be on the PATH of a run, on any machine. A run's
+// PATH is <the logging fake gh>:<this folder>, or this folder alone.
+const TOOLS = mkdtempSync(join(realpathSync(tmpdir()), 'al-v4-239-tools-'));
+process.on('exit', () => rmSync(TOOLS, { recursive: true, force: true }));
+const gitPath = spawnSync('/bin/sh', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim();
+assert.ok(gitPath, 'git is on the PATH of the test process');
+symlinkSync(gitPath, join(TOOLS, 'git'));
+symlinkSync(process.execPath, join(TOOLS, 'node'));
+const SAFE_PATH = TOOLS;
+const ghIn = (path) => spawnSync('/bin/sh', ['-c', 'command -v gh'], { env: { PATH: path }, encoding: 'utf8' }).stdout.trim();
 
 const NAME = 'inv';
 const OWN = 'acme/invoicer';
@@ -213,8 +221,12 @@ function one(r, code, file, at) {
 const where = (f) => (f.at === null ? f.file : `${f.file}:${f.at}`);
 const sorted = (list) => [...list].sort();
 
-test('the test setup: the system folders hold no gh', () => {
-  assert.equal(ghInSafePath, '', `a gh in ${SAFE_PATH} would hide a gh call`);
+test('the test setup: the tools folder holds git and no gh; with the fake first on PATH, gh is the fake', (t) => {
+  assert.equal(ghIn(SAFE_PATH), '', `a gh in ${SAFE_PATH} would hide a gh call`);
+  assert.equal(spawnSync('git', ['--version'], { env: { PATH: SAFE_PATH }, encoding: 'utf8' }).status, 0, 'git runs from the tools folder');
+  const gh = fakeGh();
+  t.after(() => rmSync(gh.bin, { recursive: true, force: true }));
+  assert.equal(ghIn(gh.env.PATH), join(gh.bin, 'gh'));
 });
 
 // =====================================================================
