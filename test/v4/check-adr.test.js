@@ -15,21 +15,27 @@ const one = (r, severity, code, id) => {
 const coded = (r, ...codes) => r.findings.filter((f) => codes.includes(f.code));
 const notOk = (r) => r.findings.filter((f) => f.severity === 'not ok');
 
-test('an accepted ADR whose text changed: not ok adr-changed on ADR-2', (t) => {
+test('an accepted ADR whose text changed: hint adr-changed on ADR-2 (#238 R1)', (t) => {
   const r = run(t, 'adr-accepted', 'text');
   assert.equal(r.code, 0, show(r));
-  one(r, 'not ok', 'adr-changed', 'ADR-2');
-});
-
-test('an accepted ADR whose status line alone changed: no finding', (t) => {
-  const r = run(t, 'adr-accepted', 'status');
-  assert.deepEqual(coded(r, 'adr-changed', 'adr-supersede'), [], show(r));
+  one(r, 'hint', 'adr-changed', 'ADR-2');
   assert.deepEqual(notOk(r), [], show(r));
 });
 
-test('an accepted ADR whose file was deleted: not ok adr-changed on ADR-2', (t) => {
+// #238 R5: a bare "Status: superseded" that no ADR supersedes is not ok
+// superseded-status, and the places that still name ADR-2 are not ok
+// superseded-cited; nothing else.
+test('an accepted ADR whose status line alone changed: no adr-changed; only the R5 findings are not ok', (t) => {
+  const r = run(t, 'adr-accepted', 'status');
+  assert.deepEqual(coded(r, 'adr-changed', 'adr-supersede'), [], show(r));
+  one(r, 'not ok', 'superseded-status', 'ADR-2');
+  assert.deepEqual(notOk(r).filter((f) => !['superseded-status', 'superseded-cited'].includes(f.code)), [], show(r));
+});
+
+test('an accepted ADR whose file was deleted: hint adr-changed on ADR-2 that says the file is gone (#238 D2)', (t) => {
   const r = run(t, 'adr-accepted', 'deleted');
-  one(r, 'not ok', 'adr-changed', 'ADR-2');
+  assert.match(one(r, 'hint', 'adr-changed', 'ADR-2').msg, /file is gone/, show(r));
+  assert.deepEqual(all(r, 'not ok', 'adr-changed', 'ADR-2'), [], show(r));
 });
 
 test('a proposed ADR may change: no adr-changed', (t) => {
@@ -44,9 +50,9 @@ test('a new ADR supersedes an old one whose status is superseded: no finding', (
   assert.deepEqual(notOk(r), [], show(r));
 });
 
-test('a new ADR supersedes an ADR that does not exist: not ok unresolved-link on ADR-5', (t) => {
+test('a new ADR supersedes an ADR that does not exist: hint unresolved-link on ADR-5', (t) => {
   const r = run(t, 'adr-supersede', 'missing');
-  assert.ok(one(r, 'not ok', 'unresolved-link', 'ADR-5').line.includes('ADR-9'), show(r));
+  assert.ok(one(r, 'hint', 'unresolved-link', 'ADR-5').line.includes('ADR-9'), show(r));
   assert.deepEqual(coded(r, 'adr-supersede'), [], show(r));
 });
 

@@ -160,9 +160,10 @@ describe('3. history reads a deleted doc whatever its file name', () => {
       repo.write('specs/new.md', doc('<!-- A-9 note -->', '', 'New paragraph.'));
       const r = check(repo);
       assert.equal(r.code, 0, show(r));
-      const used = lines(r.stdout).filter((l) => l.startsWith('not ok used-again '));
+      // #238 R2: used-again is a hint.
+      const used = lines(r.stdout).filter((l) => l.startsWith('hint used-again '));
       assert.equal(used.length, 1, show(r));
-      assert.match(used[0], /^not ok used-again specs\/new\.md:1 A-9 \S/);
+      assert.match(used[0], /^hint used-again specs\/new\.md:1 A-9 \S/);
     });
 
     test(`--add-ids starts above A-9 from a deleted doc whose name has ${name}`, (t) => {
@@ -215,7 +216,7 @@ describe('4. an unmarked block after a marked heading has no ID', () => {
     ));
     const before = check(repo);
     assert.equal(before.code, 0, show(before));
-    assert.equal(lintLines(before).filter((l) => l.startsWith('not ok no-id specs/a.md:')).length, 5, show(before));
+    assert.equal(lintLines(before).filter((l) => l.startsWith('hint no-id specs/a.md:')).length, 5, show(before));
     const add = addIds(repo, 'specs/a.md', '--prefix', 'A', '--yes');
     assert.equal(add.code, 0, show(add));
     assert.ok(lines(add.stdout).includes('Marked 5 paragraph(s) in specs/a.md'), show(add));
@@ -271,12 +272,12 @@ describe('6. a table needs as many delimiter cells as header cells', () => {
     assert.deepEqual(lintsAt(withTable('A | B', '--- | --- | ---')), [['no-id', 5]]);
   });
 
-  test('check --strict exits 1 with that no-id', (t) => {
+  test('check --strict prints that no-id as a hint and exits 0 (#238 R2)', (t) => {
     const repo = makeRepo(t);
     repo.write('specs/a.md', withTable('A | B', '--- | --- | ---'));
     const r = check(repo, '--strict');
-    assert.equal(r.code, 1, show(r));
-    assert.deepEqual(lintLines(r).map((l) => l.replace(/^(not ok no-id specs\/a\.md:5 -) .*/, '$1')), ['not ok no-id specs/a.md:5 -'], show(r));
+    assert.equal(r.code, 0, show(r));
+    assert.deepEqual(lintLines(r).map((l) => l.replace(/^(hint no-id specs\/a\.md:5 -) .*/, '$1')), ['hint no-id specs/a.md:5 -'], show(r));
   });
 
   test('spec --add-ids --yes marks it as A-2', (t) => {

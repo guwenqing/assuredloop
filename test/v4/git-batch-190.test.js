@@ -675,9 +675,9 @@ describe('on git 2.31: no cat-file -z, -Z or --batch-command', () => {
     for (const [f, p] of ODD_DOCS) want.push(`${shownPath(f)} ${p}-2 Changed`, `${shownPath(f)} ${p}-3 New`);
     const changeLines = outLines(now).filter((l) => l.startsWith('specs/'));
     assert.deepEqual([...changeLines].sort(), [...want].sort(), show(now));
-    const usedAgain = outLines(now).filter((l) => l.startsWith('not ok used-again '));
+    const usedAgain = outLines(now).filter((l) => l.startsWith('hint used-again ')); // #238 R2: a hint
     assert.equal(usedAgain.length, 1, show(now));
-    assert.match(usedAgain[0], /^not ok used-again specs\/reuse\.md:1 G-9 \S/, show(now));
+    assert.match(usedAgain[0], /^hint used-again specs\/reuse\.md:1 G-9 \S/, show(now));
 
     const old = gitCounter(t, { old: true });
     const r = al(dir, ['check'], { env: { PATH: old.PATH } });

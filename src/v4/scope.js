@@ -44,6 +44,9 @@ const linked = (top, config) => [
   ...insideDocs(config).map((d) => String(d.file)).filter((f) => symlinkOn(top, clean(f))),
 ];
 
+// The docs that config lists, in the repo, that a symlink reaches (#238).
+export const linkedDocs = (top, config) => insideDocs(config).map((d) => clean(d.file)).filter((f) => symlinkOn(top, f));
+
 // Why config's root cannot be used, or null: the repository top is no spec root.
 export const rootProblem = (config) => (!outside(config.root) && ['.', ''].includes(clean(config.root))
   ? `.assuredloop/config.yaml: root: ${JSON.stringify(String(config.root))} is the repository top; give the spec folder, for example specs`
@@ -99,7 +102,16 @@ export function prefixOf(path, config) {
 // Every file of the working tree under `dir`, symlinks not followed.
 function walk(top, dir, out = []) {
   if (!existsSync(join(top, dir)) || !lstatSync(join(top, dir)).isDirectory()) return out;
-  for (const e of readdirSync(join(top, dir), { withFileTypes: true })) {
+  let entries;
+  try {
+    entries = readdirSync(join(top, dir), { withFileTypes: true });
+  } catch (e) {
+    // A folder under requests/ that cannot be read: al check reports it, as
+    // an unreadable record or current place (#238).
+    if (dir.startsWith('requests/')) return out;
+    throw e;
+  }
+  for (const e of entries) {
     if (e.name === '.git' || e.name === 'node_modules') continue;
     const p = dir ? `${dir}/${e.name}` : e.name;
     if (e.isDirectory()) walk(top, p, out);
