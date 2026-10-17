@@ -5,17 +5,11 @@ paragraphs:
     kind: note
     text_sha256: 8c42979dbc4b201b3d5ef1482260f81517bf0dcce7b8dad1632caa80c8a11262
     display: "SP-1 (0, Deleting a paragraph of a change spec: the change spec)"
-    change:
-      - New
   - id: SP-2
     kind: note
     text_sha256: 8a4cc50900cdb4a34ddffad01d231dfbc80f5dc80e03e6d691431bafb6385c62
     display: "SP-2 (0:1, in Deleting a paragraph of a change spec: the change spec)"
-    change:
-      - New
   - id: SP-3
     kind: rule
     text_sha256: db7362ebf7cbb34ce273626a169fda9e36f3edfbd41638132e0f653097089cc9
     display: "SP-3 (0:2, in Deleting a paragraph of a change spec: the change spec)"
-    change:
-      - New

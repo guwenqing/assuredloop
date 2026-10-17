@@ -6,7 +6,6 @@ import { readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { isMap, parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
-import { diffParagraphs } from './ids.js';
 import { git, mergeBase, fileAt, filesAt } from './git.js';
 import { loadConfig } from './config.js';
 import { SPEC, docsInScope, symlinkOn } from './scope.js';
@@ -310,11 +309,8 @@ export function index({ top, opts }) {
   }
 
   // The per-doc records: regenerable fields, written fresh; hints kept by ID.
-  // A change spec's IDs are its request's own, so they are compared as <request>/<ID>.
-  const qualified = (docs) => docs.flatMap((d) => d.paragraphs.map((p) => (d.request ? { ...p, id: `${d.request}/${p.id}` } : p)));
-  const diffs = main ? diffParagraphs(qualified(loadState(top, main, config, names).docs), qualified(now.docs)) : null;
-  const own = (d, id) => (d.request ? `${d.request}/${id}` : id);
-  const changeOf = new Map((diffs ?? []).filter((x) => x.sha256 !== null).map((x) => [`${x.file}\t${x.id}`, x.changes]));
+  // Nothing in them depends on the branch or its base, so main's index
+  // rebuilds a merged record as it is (#245).
   const outputs = [];
   for (const d of now.docs) {
     const path = docRecordPath(d.file);
@@ -328,13 +324,11 @@ export function index({ top, opts }) {
     }
     const status = d.adr ? d.text.split('\n').find((l) => l.trim())?.match(/^Status:\s*([a-z]+)/i)?.[1].toLowerCase() : undefined;
     const paragraphs = d.paragraphs.map((p) => {
-      const change = changeOf.get(`${d.file}\t${own(d, p.id)}`) ?? [];
       const hint = hints.get(p.id);
       if (hint && stale(hint, p)) body.push(`refresh hint: ${d.file} ${p.id}`);
-      return { id: p.id, ...(p.kind ? { kind: p.kind } : {}), text_sha256: p.sha256, display: p.displayNumber, ...(change.length ? { change } : {}), ...(hint ? { hint } : {}) };
+      return { id: p.id, ...(p.kind ? { kind: p.kind } : {}), text_sha256: p.sha256, display: p.displayNumber, ...(hint ? { hint } : {}) };
     });
-    const removed = (diffs ?? []).filter((x) => x.sha256 === null && x.file === d.file).map((x) => (d.request ? x.id.slice(d.request.length + 1) : x.id));
-    const rec = { schema: SCHEMA, file: d.file, ...(status ? { status } : {}), paragraphs, ...(removed.length ? { removed } : {}) };
+    const rec = { schema: SCHEMA, file: d.file, ...(status ? { status } : {}), paragraphs };
     outputs.push([path, stringify(rec, YAML_OPTIONS)]);
   }
   for (const [, rec] of recs) if (rec.changed) outputs.push([rec.path, recordText(rec)]);
