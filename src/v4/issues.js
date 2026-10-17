@@ -46,9 +46,8 @@ function remoteRepo(dir) {
   const url = git(dir, ['remote', 'get-url', 'origin'], { allowFail: true });
   if (!url) return { unknown: 'no remote origin' };
   const m = /^(?:[\w.+-]+:\/\/(?:[^@/]+@)?[^/]+\/|[^@\s/]+@[^:\s/]+:)(.+?)(?:\.git)?\/?$/.exec(url);
-  // The URL without its user name and password, which may hold a token.
-  const shown = url.replace(/^([\w.+-]+:\/\/)[^@/]*@/, '$1').replace(/^[^@\s/:]+@(?=[^:\s/]+:)/, '');
-  return m && /^[^/]+\/[^/]+$/.test(m[1]) ? { repo: m[1] } : { unknown: `the remote origin ${shown} names no owner/repo` };
+  // The URL is not shown: it may hold a user name and a password (SP-22).
+  return m && /^[^/]+\/[^/]+$/.test(m[1]) ? { repo: m[1] } : { unknown: 'the remote origin names no owner/repo' };
 }
 
 // An entry of an item file: the item, or null when it is not one (SP-24).
