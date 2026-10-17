@@ -285,8 +285,6 @@ paragraphs:
     kind: choice
     text_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf
     display: SP-129 (12:4, in 12. One central spec repo, and output repos)
-    change:
-      - New
   - id: SP-61
     kind: note
     text_sha256: ce296d0bdabab1c6a0245126a50ca429bcba5a21be20af119a087b07330918f7
@@ -371,8 +369,6 @@ paragraphs:
     kind: plan
     text_sha256: c2115596f8f9e2ac6a139a5f6ba0001054ae74727e0fbc8024cd47f636ac2fcc
     display: SP-128 (17:3, in 17. Building v4)
-    change:
-      - Changed
   - id: SP-79
     kind: rule
     text_sha256: 17644b17a53ebb40de162a9d346ddb69615df52084b5c8cd6ee9c9bb3c284669
