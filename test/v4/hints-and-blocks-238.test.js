@@ -1481,6 +1481,19 @@ describe('DES-89 and DES-90: the cases that tell each rule apart from its break'
       assert.deepEqual(coded(r, 'record-evidence'), [], show(r));
     });
   }
+
+  // D6. DES-90 (R4): an owner-words snapshot (separator ---) whose text holds
+  // a "--- signed text ---" line is hashed from the bytes after the first ---
+  // line. Break: the later of the first --- line and the first
+  // "--- signed text ---" line is used.
+  test('D6: an unchanged owner-words snapshot whose text holds a "--- signed text ---" line: hashed after the first --- line, no record-evidence', (t) => {
+    const text = 'the owner wrote:\n--- signed text ---\nthis is not a sign-off.\n';
+    const words = wordsSnapshot(text);
+    const lines = words.split('\n');
+    assert.ok(lines.indexOf('---') < lines.indexOf('--- signed text ---'), 'the --- separator comes first');
+    const r = both(signedWorld(t, { words, record: goodRecord((rec) => { rec.sources[0].sha256 = sha(text); }) }));
+    assert.deepEqual(coded(r, 'record-evidence'), [], show(r));
+  });
 });
 
 // The root boundary of scope.js (outside-docs.test.js pins it), also in the
