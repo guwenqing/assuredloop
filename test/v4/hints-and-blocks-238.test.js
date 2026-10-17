@@ -18,6 +18,9 @@
 // repos built here.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { stringify } from 'yaml';
 import { check, invoicer, keys } from './helpers/invoicer.js';
 import {
@@ -853,5 +856,126 @@ describe('R2: findings that are hints stay hints under --strict', () => {
     const hinted = linted(t);
     assert.equal(check(hinted).code, 0);
     assert.equal(check(hinted, '--strict').code, 0);
+  });
+});
+
+// =====================================================================
+// The reviewer's gaps (DES-89, D2; SCH-37).
+//
+// DES-89: "A requirement, sign-off or covers entry that al check cannot read
+// is not ok too, not skipped." So a request record that al check cannot read,
+// or whose request has no request.md, is not ok record-unreadable. The line
+// names the record path or the request name; the message is the code's.
+
+// The not ok record-unreadable lines that name the request (by name or record path).
+const unreadableOf = (r, name) => notOk(r).filter((f) => f.code === 'record-unreadable'
+  && new RegExp(`(^|[\\s/])${name}(\\.yaml|/|\\s|$)`).test(f.line));
+function unreadable(r, name) {
+  assert.ok(unreadableOf(r, name).length > 0, `a not ok record-unreadable line that names ${name}:\n${show(r)}`);
+}
+
+describe('DES-89: a request record that al check cannot read is not ok record-unreadable', () => {
+  test('the record file is a symlink to an unchanged real copy outside the repo: not ok record-unreadable inv; plain exits 0, --strict exits 1', (t) => {
+    const dir = signedWorld(t);
+    onlyNotOk(both(dir), []);
+    const outside = mkdtempSync(join(realpathSync(tmpdir()), 'al4-rec-'));
+    t.after(() => rmSync(outside, { recursive: true, force: true }));
+    const real = join(outside, `${NAME}.yaml`);
+    const path = join(dir, recordPath(NAME));
+    writeFileSync(real, readFileSync(path));
+    rmSync(path);
+    symlinkSync(real, path);
+    const r = both(dir);
+    unreadable(r, NAME);
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('control: the base world has no record-unreadable', (t) => {
+    const r = both(invoicer(t, 'clean'));
+    assert.deepEqual(coded(r, 'record-unreadable'), [], show(r));
+  });
+
+  test('an open request whose request.md is gone, its record kept: not ok record-unreadable invoice-exports', (t) => {
+    const dir = invoicer(t, 'clean');
+    rmSync(join(dir, 'requests/invoice-exports/request.md'));
+    unreadable(both(dir), 'invoice-exports');
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('an archived request whose request.md is gone, its record kept: not ok record-unreadable invoice-numbers', (t) => {
+    const dir = invoicer(t, 'clean');
+    rmSync(join(dir, 'requests/archive/invoice-numbers/request.md'));
+    unreadable(both(dir), 'invoice-numbers');
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('a record with no request folder at all, in requests/ or requests/archive/: not ok record-unreadable reminder-emails', (t) => {
+    const dir = invoicer(t, 'clean');
+    rmSync(join(dir, 'requests/reminder-emails'), { recursive: true, force: true });
+    unreadable(both(dir), 'reminder-emails');
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('the same in the hand-written world: inv with no request.md, open and archived: not ok record-unreadable inv', (t) => {
+    for (const archived of [false, true]) {
+      const dir = signedWorld(t, { archived });
+      rmSync(join(dir, archived ? `requests/archive/${NAME}/request.md` : REQUEST_MD));
+      unreadable(both(dir), NAME);
+    }
+  });
+});
+
+// SCH-37: "The current places are ... the Markdown files of an open request,
+// except its origin/ folder." A Markdown file in a subfolder of an open
+// request is a current place. In the invoicer world ADR-3 is superseded by ADR-4.
+const PLAN = 'requests/invoice-exports/details/plan.md';
+const CITES_ADR3 = 'Use ADR-3 for export links.\n';
+
+describe('SCH-37: a Markdown file in a subfolder of an open request is a current place', () => {
+  test('control: the base world has no superseded-cited', (t) => {
+    const r = both(invoicer(t, 'clean'));
+    assert.deepEqual(coded(r, 'superseded-cited'), [], show(r));
+  });
+
+  test('details/plan.md that names ADR-3 alone: not ok superseded-cited at that file, naming ADR-3; --strict exits 1', (t) => {
+    const dir = invoicer(t, 'clean');
+    write(dir, PLAN, CITES_ADR3);
+    const r = both(dir);
+    const found = cited(r);
+    assert.equal(found.length, 1, `one not ok superseded-cited:\n${show(r)}`);
+    assert.equal(found[0].file, PLAN, show(r));
+    assert.match(found[0].msg, /\bADR-3\b/, show(r));
+    assert.deepEqual(notOk(r).filter((x) => x.code !== 'superseded-cited').map((x) => x.line), [], show(r));
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+
+  test('a deeper subfolder (details/a/b/plan.md) is a current place too', (t) => {
+    const dir = invoicer(t, 'clean');
+    write(dir, 'requests/invoice-exports/details/a/b/plan.md', CITES_ADR3);
+    const r = both(dir);
+    assert.deepEqual(cited(r).map((f) => f.file), ['requests/invoice-exports/details/a/b/plan.md'], show(r));
+  });
+
+  test('control: the same text under origin/ at any depth is exempt', (t) => {
+    for (const rel of ['origin/x.md', 'origin/notes/x.md', 'origin/notes/deep/x.md']) {
+      const dir = invoicer(t, 'clean');
+      write(dir, `requests/invoice-exports/${rel}`, CITES_ADR3);
+      const r = both(dir);
+      assert.deepEqual(coded(r, 'superseded-cited'), [], `${rel}:\n${show(r)}`);
+    }
+  });
+
+  test('control: a subfolder file that also names the successor ADR-4 is clean', (t) => {
+    const dir = invoicer(t, 'clean');
+    write(dir, PLAN, 'Use ADR-3 for export links, as ADR-4 now says.\n');
+    const r = both(dir);
+    assert.deepEqual(coded(r, 'superseded-cited'), [], show(r));
+  });
+
+  test('control: the same file in an archived request is exempt', (t) => {
+    const dir = invoicer(t, 'clean');
+    write(dir, 'requests/archive/invoice-numbers/details/plan.md', CITES_ADR3);
+    const r = both(dir);
+    assert.deepEqual(coded(r, 'superseded-cited'), [], show(r));
   });
 });
