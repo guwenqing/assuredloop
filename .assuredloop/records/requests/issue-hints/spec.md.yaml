@@ -51,13 +51,13 @@ paragraphs:
       - New
   - id: SP-22
     kind: data
-    text_sha256: a7d4a1116b9fd54b82442be079c2ecbc9c42a1398bf6d343d09ad6064cd8e43f
+    text_sha256: c37fe1f3eff6416c21206762c861111c41eba5462984d0d0c2095129aba57da2
     display: SP-22 (1:6, in Hints from the linked work items)
     change:
       - New
   - id: SP-10
     kind: data
-    text_sha256: cd66f40b149b5e1eb74f283891af42506264aa2f1b8a868586090ecc8a28ea7a
+    text_sha256: 1d9d20bf979936a584b38c0f94a8b3d37f404f7e473d24c6c455b7d8762000ef
     display: SP-10 (1:7, in Hints from the linked work items)
     change:
       - New

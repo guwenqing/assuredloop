@@ -97,6 +97,8 @@ host: `git@<host>:owner/repo.git`, `https://<host>/owner/repo.git` or
 `owner/repo` is the same, ignoring case. When the request's own repository
 or an item's repository is not known, `issue-bare-ref` is not given for that
 item, and the `Not known` line says why.
+No output of `al check` shows the user name or the password of the
+remote's URL.
 
 <!-- SP-10 data serves:R1 builds-on:SP-4 -->
 
@@ -105,7 +107,10 @@ of the request names: the first entry of `sources:` in its record whose
 `url` names an item in one of the forms above, or holds the `url` or `ref`
 of an item in the folder. An item is a child of the own item when its
 `parent` names the own item: by the parent's `url`, its `ref`, or its
-`number` in the item's repository. When no source names an own item,
+`number` in the item's repository. The parent's `url` names the own item
+when it equals the `url` of the own item or of its source. It also names
+the own item when it holds the own item's `ref` as a whole word, or names
+the own item in a form above. When no source names an own item,
 `issue-not-sub` is not given for that request's items, and the `Not known`
 line says so. The own item itself gets no `issue-not-sub`. An item with no
 `parent` field says nothing about its parent: it gets no `issue-not-sub`,

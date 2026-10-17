@@ -46,7 +46,9 @@ function remoteRepo(dir) {
   const url = git(dir, ['remote', 'get-url', 'origin'], { allowFail: true });
   if (!url) return { unknown: 'no remote origin' };
   const m = /^(?:[\w.+-]+:\/\/(?:[^@/]+@)?[^/]+\/|[^@\s/]+@[^:\s/]+:)(.+?)(?:\.git)?\/?$/.exec(url);
-  return m && /^[^/]+\/[^/]+$/.test(m[1]) ? { repo: m[1] } : { unknown: `the remote origin ${url} names no owner/repo` };
+  // The URL without its user name and password, which may hold a token.
+  const shown = url.replace(/^([\w.+-]+:\/\/)[^@/]*@/, '$1').replace(/^[^@\s/:]+@(?=[^:\s/]+:)/, '');
+  return m && /^[^/]+\/[^/]+$/.test(m[1]) ? { repo: m[1] } : { unknown: `the remote origin ${shown} names no owner/repo` };
 }
 
 // An entry of an item file: the item, or null when it is not one (SP-24).
@@ -196,7 +198,7 @@ export function issueHints(top, state, matchers, add, { folder, items, unread })
     if (!own.repo) continue;
     if (!it.repository) notKnown.push(`the issue-bare-ref check of ${it.key}: its repository is not known`);
   }
-  if (first.size && !own.repo) notKnown.push(`the issue-bare-ref check: the request's own repository is not known (${own.unknown})`);
+  if (!own.repo) notKnown.push(`the request's own repository, for #n and the issue-bare-ref check: ${own.unknown}`);
 
   // Children (SP-10): once for each request and item.
   const ownOf = new Map();
@@ -208,8 +210,8 @@ export function issueHints(top, state, matchers, add, { folder, items, unread })
       if (!url) continue;
       const k = keyOf(url);
       const it = items.find((x) => (x.url && x.url === url) || (x.ref && holds(url, x.ref)) || (k && slug(x.key) === slug(k)));
-      if (it) ids = new Set([it.key, it.ref].filter(Boolean).map(slug));
-      else if (k) ids = new Set([slug(k)]);
+      if (it) ids = { keys: new Set([it.key, it.ref].filter(Boolean).map(slug)), urls: new Set([url, it.url].filter(Boolean)), ref: it.ref };
+      else if (k) ids = { keys: new Set([slug(k)]), urls: new Set([url]), ref: null };
       if (ids) break;
     }
     ownOf.set(r.name, ids);
@@ -227,7 +229,7 @@ export function issueHints(top, state, matchers, add, { folder, items, unread })
       continue;
     }
     const it = n.it;
-    if (mine.has(slug(it.key)) || (it.ref && mine.has(slug(it.ref)))) continue;
+    if (mine.keys.has(slug(it.key)) || (it.ref && mine.keys.has(slug(it.ref)))) continue;
     if (it.parent === undefined) {
       notKnown.push(`whether ${it.key} is a child of the own item of ${n.r.name}: the item has no parent field`);
       continue;
@@ -240,8 +242,11 @@ export function issueHints(top, state, matchers, add, { folder, items, unread })
       notKnown.push(`whether ${it.key} is a child of the own item of ${n.r.name}: its parent names no item`);
       continue;
     }
-    if (parent.some((x) => mine.has(slug(x)))) continue;
-    add('hint', 'issue-not-sub', it.key, `${n.r.name}/${n.task}`, `is not a child of the request's own item (${[...mine][0]})${parent.length ? `; its parent is ${parent[0]}` : ''}`);
+    // A parent's url names the own item when it is the own item's url or its source's, or holds its ref.
+    const url = isMap(p) && typeof p.url === 'string' ? p.url : null;
+    if (url && (mine.urls.has(url) || (mine.ref && holds(url, mine.ref)))) continue;
+    if (parent.some((x) => mine.keys.has(slug(x)))) continue;
+    add('hint', 'issue-not-sub', it.key, `${n.r.name}/${n.task}`, `is not a child of the request's own item (${[...mine.keys][0]})${parent.length ? `; its parent is ${parent[0]}` : ''}`);
   }
   for (const name of noOwn) notKnown.push(`whether the items of ${name} are children of its own item: no origin source of ${name} names an item`);
 
