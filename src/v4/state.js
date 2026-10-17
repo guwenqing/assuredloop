@@ -67,7 +67,8 @@ export function loadState(top, rev = null) {
     ...adrFiles.map((f) => `${root}/adr/${f}`),
   ]) : null;
   const get = rev ? (p) => (atRev.has(p) ? atRev.get(p) : fileAt(top, rev, p)) : (p) => read(top, p);
-  const { scopes, lints } = parseScopes(docsInScope(top, config, rev), kinds);
+  const docs = docsInScope(top, config, rev);
+  const { scopes, lints } = parseScopes(docs, kinds);
   const spec = new Map((scopes.get(SPEC) ?? []).map((p) => [p.id, p]));
 
   const requests = new Map();
@@ -84,14 +85,19 @@ export function loadState(top, rev = null) {
       text = null;
     }
     let data;
+    let error = null;
     const dataOf = () => {
       if (data !== undefined) return data;
       try {
         data = parse(text ?? 'null');
-      } catch {
+      } catch (e) {
+        data = null;
+        error = e.message.split('\n')[0];
+      }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        if (text !== null && text !== undefined && !error) error = 'not a mapping';
         data = null;
       }
-      if (!data || typeof data !== 'object' || Array.isArray(data)) data = null;
       return data;
     };
     const specFile = `${dir}/spec.md`;
@@ -123,6 +129,8 @@ export function loadState(top, rev = null) {
     requests.set(name, {
       name, open, dir, md, specFile,
       get data() { return dataOf(); },
+      // Why a record that is there cannot be read, or null (#238).
+      get recordError() { dataOf(); return error; },
       get tier() { return tierOf(); },
       get spike() { return tierOf() === 'S' || /^##\s+Organized question\s*$/m.test(md); },
       // Whether the record's text names `x`, so that a reader parses only the
@@ -148,9 +156,12 @@ export function loadState(top, rev = null) {
     const id = `ADR-${Number(m[1])}`;
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
     const head = paragraphs.find((p) => p.id === id) ?? null;
-    adrs.set(id, { id, file, status, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head });
+    // The ADR that its status line names: `Status: superseded by ADR-n` (#238).
+    const n = /^\s*Status:[ \t]*superseded[ \t]+by[ \t]+ADR-(\d+)[ \t]*\r?(?:\n|$)/i.exec(text)?.[1];
+    const by = n === undefined ? null : `ADR-${Number(n)}`;
+    adrs.set(id, { id, file, text, status, by, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head });
   }
-  return { top, rev, config, kinds, root, get, scopes, lints, spec, requests, adrs };
+  return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs };
 }
 
 // The kind groups a check asks about.
