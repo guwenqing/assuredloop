@@ -43,6 +43,7 @@ Each file that a record lists with a hash still has that hash: each origin file 
 A current place that names a superseded ADR also names the ADR that supersedes it. When that ADR is itself superseded, the same rule applies to it. Current places are, for example, a spec paragraph's `governed-by:`, an open request, and the marker and text of an accepted ADR. These are exempt, because they are the chain itself or dated records: an ADR that supersedes it, directly or through a chain; a superseded ADR; an ADR's `## History` section; a request's recorded decisions (`D<n>`); origin files; and archived requests. Each superseded ADR's `Status: superseded by ADR-n` names an ADR that exists and whose marker has `supersedes:` for it.
 
 Out: hints from the issues that a request's tasks link, and configurable phrases (#239).
+Signed off: 2026-10-17 owner, origin/2026-10-17-signoff.md
 
 ## Decisions
 
