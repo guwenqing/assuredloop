@@ -286,8 +286,9 @@ semantic coverage as "not checked".
 - Where the project uses tasks: a `for <task>` that names no task in the
   record: a hint.
 - The phrases that the config lists: a hint for each match ("Phrases for
-  the review", below). With `--issues`, the hints from the issues that the
-  tasks of the open requests name (section 8).
+  the review", below). With `--issues <folder>`, the hints from the work
+  items that the caller saved for the tasks of the open requests (section
+  8).
 - A change of kind from a promise kind to any other kind counts as a promise
   change.
 - Findings are hints for the review, and the review decides. A finding is
@@ -316,8 +317,8 @@ constant.
 `al check` gives the hint `phrase` for each match, at the file and the line
 where the match starts, in: the spec docs and the ADRs; the Markdown files
 of each open request, but its `origin/` folder; and, with `--issues`, the
-text of each issue that it reads. Origin files and archived requests are not
-read for phrases. The request records in `.assuredloop/records/` are not
+text of each work item that it checks. Origin files and archived requests
+are not read for phrases. The request records in `.assuredloop/records/` are not
 read either: their `source:` fields would match a phrase such as "the
 owner" on every line. A match is a hint in every mode.
 
@@ -687,10 +688,10 @@ way" (input 115). The chain must still reach from the requirement to the work
 - A task is optional. Where a project uses tasks, a task has an ID and a
   reference: a line in a file of the request, an issue number, a tracker key
   or URL, or a title only.
-- The chain holds the reference only. `al` keeps no task status. It reads
-  an outside tracker only in `al check --issues`, which reads the GitHub
-  issues that the references name, for hints (below). Git shows which PRs
-  name the task and whether they merged.
+- The chain holds the reference only. `al` reads no outside tracker and keeps
+  no task status. `al check --issues <folder>` reads the work items that the
+  caller saved from a tracker, for hints (below). Git shows which PRs name
+  the task and whether they merged.
 - Change-only paragraphs belong to their request by default. A plan needs no
   task node.
 - One way of working that the tool supports and does not enforce (input 136):
@@ -704,113 +705,169 @@ way" (input 115). The chain must still reach from the requirement to the work
 
 <!-- DES-91 rule serves:issue-hints/R1 -->
 
-**Hints from the linked issues.** With `al check --issues`, `al check` reads
-the GitHub issues that the `tasks:` of each open request name. It only
-reads, and it changes nothing on GitHub. An issue's text is its body and
-each comment that GitHub does not show as minimized (hidden). For each issue
-that it reads, it gives a hint:
-- `issue-superseded`: the issue's text names a superseded ADR without the
+**Hints from the linked work items.** A project may keep its work items in
+any tracker, or in none. `al check` never contacts a tracker. With
+`al check --issues <folder>`, it reads the work items that the caller saved
+in that folder, in the format below. It checks only the items that the
+`tasks:` of an open request name. An item's text is its body and each
+comment that is not hidden. It gives a hint:
+- `issue-missing`: a task names an item that is not in the folder;
+- `issue-superseded`: the item's text names a superseded ADR without the
   ADR that supersedes it, by the rule of hints-and-blocks R5 (schema.md 5):
   in the same marker for a link, in the same paragraph for a word;
-- `issue-bare-ref`: the issue's text holds a bare `#n`, and the issue is in
-  a repository other than the request's own;
-- `issue-not-sub`: the issue is not a sub-issue of the request's own issue,
-  where GitHub gives sub-issue data;
-- `phrase`: a phrase or pattern of the config matches the issue's text
+- `issue-bare-ref`: the item's text holds a bare `#n`, and the item is in a
+  repository other than the request's own;
+- `issue-not-sub`: the item is not a child of the request's own item, where
+  the item says which item is its parent;
+- `phrase`: a phrase or pattern of the config matches the item's text
   ("Phrases for the review", section 3).
 
 <!-- DES-92 rule serves:issue-hints/R1 -->
 
-When it cannot read an issue, it gives the hint `issue-unread` with the
-reason, and the `Not known` line names the issue. Each of these is a hint in
-every mode; none is `not ok`. Without `--issues`, `al check` reads no issue.
-Archived requests are history, and their issues are not read. Reading
-issues is optional: a project needs no GitHub issues, and every other check
-works the same without them.
+Each of these is a hint in every mode; none is `not ok`. Without
+`--issues`, `al check` reads no item and gives no line about items.
+Archived requests are history, and their tasks are not read. Reading items
+is optional: a project needs no tracker, and every other check works the
+same without one.
 
 <!-- DES-93 data serves:issue-hints/R1 builds-on:DES-91 -->
 
-**Which issues.** `al check --issues` reads the `ref` of each task in the
-record of each open request. A `ref` may name several issues, in these
-forms:
-- `#n`: issue n of the request's own repository;
-- `owner/repo#n`: issue n of that GitHub repository;
-- `<name>#n`: issue n of a repository that the config names: an `outputs:`
-  entry with that name, or `central` in an output repo. Its GitHub
-  repository is the one that `gh` names for the folder of its `path`;
-- `https://github.com/owner/repo/issues/n`: that issue.
+**Which items.** For each task in the record of each open request,
+`al check --issues` finds the items that its `ref` names:
+- `#n`: item n of the request's own repository;
+- `owner/repo#n`: item n of that repository;
+- `<name>#n`: item n of a repository that the config names: an `outputs:`
+  entry with that name, or `central` in an output repo. Its repository is
+  the one that `git remote get-url origin` names in the folder of its
+  `path`;
+- a URL of the form `https://<host>/owner/repo/issues/n`, on any host: that
+  item;
+- the `ref` of an item in the folder (for example `PROJ-12`), where the
+  task's `ref` holds it as a whole word.
 
 <!-- DES-94 data serves:issue-hints/R1 builds-on:DES-91 -->
 
-Other text in a `ref` names no issue. An issue that several tasks name is
-read once. The request's own repository is the GitHub repository that `gh`
-names for this checkout, the repo that holds the request.
+An item that a task names in one of these forms, and that is not in the
+folder, gets `issue-missing`. A task whose `ref` names no item in the folder
+gets `issue-missing` too. An item that several tasks name is checked once.
+The items in the folder that no task names are not checked, and the
+`Not known` line counts them.
+
+<!-- DES-103 data serves:issue-hints/R1 builds-on:DES-91 -->
+
+**Repositories.** An item's repository is its `repository` field, or else
+the `owner/repo` of its `url` when the url has the form
+`https://<host>/owner/repo/issues/n`. The request's own repository is the
+`owner/repo` that `git remote get-url origin` names in this checkout, on any
+host: `git@<host>:owner/repo.git`, `https://<host>/owner/repo.git` or
+`ssh://git@<host>/owner/repo.git`. Two repositories are the same when their
+`owner/repo` is the same, ignoring case. When the request's own repository
+or an item's repository is not known, `issue-bare-ref` is not given for that
+item, and the `Not known` line says why.
 
 <!-- DES-95 data serves:issue-hints/R1 builds-on:DES-91 -->
 
-**The request's own issue** is the issue that the `url` of an origin source
+**The request's own item** is the item that the `url` of an origin source
 of the request names: the first entry of `sources:` in its record whose
-`url` is an issue URL or `owner/repo#n`. When no source names one, the
-`issue-not-sub` hint is not given for that request's issues, and the
-`Not known` line says so. The request's own issue itself gets no
-`issue-not-sub`.
+`url` names an item in one of the forms above, or holds the `url` or `ref`
+of an item in the folder. An item is a child of the own item when its
+`parent` names the own item: by the parent's `url`, its `ref`, or its
+`number` in the item's repository. When no source names an own item,
+`issue-not-sub` is not given for that request's items, and the `Not known`
+line says so. The own item itself gets no `issue-not-sub`. An item with no
+`parent` field says nothing about its parent: it gets no `issue-not-sub`,
+and the `Not known` line says so. `parent: null` means that the item has no
+parent.
 
 <!-- DES-96 interface serves:issue-hints/R1 builds-on:DES-91 -->
 
-**How `al` reads an issue.** It runs the GitHub CLI `gh`, with
-`GH_PROMPT_DISABLED=1` so that `gh` asks no question, and a time limit
-of 60 seconds for each call:
-- `gh repo view --json nameWithOwner`, in this checkout and in the folder of
-  each repository that a `<name>#n` names, for its `owner/repo`;
-- `gh issue view <n> --repo <owner/repo> --json number,url,body,comments,parent`
-  for each issue. `parent` is the issue whose sub-issue it is, or null.
-  `comments` holds each comment's `body`, `isMinimized` and `url`.
+**The format of an item.** An item is a JSON object. Its GitHub fields are
+the ones that the GitHub CLI prints with
+`--json number,url,body,comments,parent`, so a GitHub user saves the output
+of `gh` as it is, with no conversion:
+- `body`: the item's text (gh);
+- `url`: the item's address (gh);
+- `number`: its number in its repository (gh);
+- `comments`: a list, each with `body` and `isMinimized`, which is true for
+  a hidden comment (gh); optional;
+- `parent`: the parent item, an object with `url` and `number` (gh), or
+  with `ref`; null for no parent; optional;
+- `ref`: the reference that a task names, for an item of another tracker,
+  for example `PROJ-12`; optional;
+- `repository`: the item's repository or project, as `owner/repo` or as a
+  project key; optional.
+
+<!-- DES-105 interface serves:issue-hints/R1 builds-on:DES-91 -->
+
+An item needs a `body`, and a `url` of the form above, a `number` with a
+`repository`, or a `ref`, so that a task can name it.
 
 <!-- DES-97 interface serves:issue-hints/R1 builds-on:DES-91 -->
 
-When `gh` refuses the field `parent` (its error names it), `al` runs the
-same call again without `parent`. Then GitHub gives no sub-issue data for
-that repository: the `issue-not-sub` hint is not given for its issues, and
-the `Not known` line says so. When `gh` is not installed, is not logged in,
-or fails or times out for an issue, that issue gets one `issue-unread` hint
-with the reason (the first line of what `gh` wrote), and is not read.
-When `gh repo view` fails for this checkout, each `#n` issue gets
-`issue-unread`, the `issue-bare-ref` check is not made, and the
-`Not known` line says so.
+**The folder.** `al check --issues <folder>` reads each `*.json` file in
+the folder, but not its subfolders. A file holds one item, or a list of
+items, as `gh issue view` and `gh issue list` print them. A file that is
+not valid JSON, and an entry that is not an item, get `issue-unread` at the
+file, and the `Not known` line names the file. The folder is a path from
+the current directory. A folder that is not there stops `al check` with a
+refusal: exit 2, and a line that names it.
 
 <!-- DES-98 interface serves:issue-hints/R1 builds-on:DES-91 -->
 
-**What the hints show.** A hint in an issue's body is at
-`<owner>/<repo>#<n>:<line>`; a hint in a comment is at
-`<owner>/<repo>#<n>/comment-<k>:<line>`, where k counts all the issue's
-comments from 1, the hidden ones too. Its ID is `<request>/<task>`, for the
-first task that names the issue. `issue-superseded` is at the first line of
-the paragraph or the marker, as `superseded-cited` is. `issue-bare-ref` is
-given once for each line that holds a bare `#n`. `issue-not-sub` and
-`issue-unread` have no line: they are at `<owner>/<repo>#<n>`, or at the
-reference as written (for example `#12`) when its repository is not known.
-`issue-not-sub` is given once for each request and issue, with the ID of
-that request's first task that names the issue. A `phrase` hint in a file
-has the ID `-`. `al check --issues` adds the line
-`info issues - - read <r> of <t> issues that the tasks of the open requests name`.
-Without `--issues`, when the tasks of an open request name an issue, the
-`Not known` line says that the issues were not read, and that
-`al check --issues` reads them.
+**What the hints show.** An item's key is `owner/repo#n` when its
+repository and its number are known, and else its `ref`. A hint in an
+item's body is at `<key>:<line>`; a hint in a comment is at
+`<key>/comment-<k>:<line>`, where k counts all the item's comments from 1,
+the hidden ones too. Its ID is `<request>/<task>`, for the first task that
+names the item. `issue-superseded` is at the first line of the paragraph or
+the marker, as `superseded-cited` is. `issue-bare-ref` is given once for
+each line that holds a bare `#n`. `issue-not-sub` is at `<key>`, once for
+each request and item, with the ID of that request's first task that names
+the item. `issue-missing` is at the reference as the task wrote it, for
+example `acme/web#5`, or at the request's record when the task's `ref`
+names no item. `issue-unread` is at the file. A `phrase` hint in a file has
+the ID `-`. `al check --issues <folder>` adds the line
+`info issues - - checked <c> items for the tasks of the open requests, from <folder>`.
 
 <!-- DES-99 data serves:issue-hints/R1 builds-on:DES-91 -->
 
 A bare `#n` is `#` and digits that come after no letter, digit, `_`, `-`,
 `/`, `#` or `&`. GitHub reads it as an issue of the repository where it is
-written. So in an issue of another repository it points to that
-repository's issue n, not to the request's.
+written. So in an item of another repository it points to that
+repository's item n, not to the request's.
 
 <!-- DES-100 rationale explains:DES-96 -->
 
-Why `gh`: the project already has it for its own work. It needs no new
-dependency, and `al` handles no token of its own (issue-hints D1). The
-tests use a fake `gh` on PATH, not the network. The code of the
-superseded-ADR rule is the same as for `superseded-cited`, so that the two
-rules cannot drift (issue-hints D7).
+Why the caller saves the items: `al` makes no network call, and handles no
+token or login (issue-hints D9). Each tracker has its own tool and login,
+GitHub Enterprise too, and the caller already has them. The format is the
+one that `gh` prints, so GitHub needs no conversion (issue-hints D10). The
+code of the superseded-ADR rule is the same as for `superseded-cited`, so
+that the two rules cannot drift (issue-hints D7).
+
+<!-- DES-104 example illustrates:DES-96 -->
+
+To save GitHub issues, GitHub Enterprise included, save each issue with
+`gh issue view`. `gh issue list` gives at most 100 comments of an issue, so
+it can leave comments out.
+
+```sh
+mkdir -p /tmp/items
+gh issue view 31 --repo acme/invoicer \
+  --json number,url,body,comments,parent > /tmp/items/invoicer-31.json
+GH_HOST=github.example.com gh issue view 5 --repo acme/web \
+  --json number,url,body,comments,parent > /tmp/items/web-5.json
+al check --issues /tmp/items
+```
+
+<!-- DES-106 example illustrates:DES-96 -->
+
+An item of another tracker, saved by the caller:
+
+```json
+{"ref": "PROJ-12", "repository": "PROJ", "body": "Build the export (ADR-3).",
+ "comments": [{"body": "Done.", "isMinimized": false}], "parent": {"ref": "PROJ-1"}}
+```
 
 <!-- DES-53 note -->
 
@@ -869,7 +926,7 @@ varied by up to 15% over ten runs (arXiv 2408.04667), and a change of model
 moved the main tag on close to half of the notes in one study (arXiv
 2606.05970).
 
-<!-- DES-58 rule serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1,hints-and-blocks/R2,issue-hints/R1 -->
+<!-- DES-58 rule serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1,hints-and-blocks/R2 -->
 
 - `.assuredloop/schema.yaml`: the schema, with a version. The owner and the
   architect design it. A user's extension gets the same careful review.
@@ -903,8 +960,6 @@ moved the main tag on close to half of the notes in one study (arXiv
   of section 3 are `not ok`. A project that wants them to block turns on
   `--strict` in its CI, and the README advises it (input 123).
 - The core checks stay deterministic: no AI, network or database calls.
-  Only `al check --issues` reads the network, through `gh`, and only when
-  it is asked to (section 8).
 
 <!-- DES-90 rule serves:hints-and-blocks/R4 -->
 
@@ -1196,7 +1251,7 @@ these records (validation.md).
 | `al spec` | lists IDs, display numbers and kinds; `--add-ids` marks every paragraph |
 | `al context` | a change's dispositions (for example "120 paragraphs, 40 with a baseline effect: 30 incorporated, 6 pending, 2 removed, 2 abandoned"), coverage per section, the hints, the open changes on an ID, and what is not checked |
 | `al context --diff ... --for review` | the review view: each changed paragraph's text beside its kind, its requirement and the baseline paragraphs it touches |
-| `al check` | the checks in sections 3-9; `--issues` also reads the GitHub issues that the tasks of the open requests name (section 8) |
+| `al check` | the checks in sections 3-9; `--issues <folder>` also checks the work items that the caller saved for the tasks of the open requests (section 8) |
 | `al conclude` | the close rule. It refuses with exit 1 and a `refused:` line for each reason. Without `--yes` it shows what it would do. With `--yes` it writes the Outcome, which shows the evidence and what is unknown, and moves the request to `requests/archive/` |
 | `al index` | writes derived facts and new bindings; `--align <ID>` advances a binding on purpose; lists the hints that the agent must refresh |
 | `al export` | the export: one JSONL row per paragraph version, output file or result, with its repo, role, version, commit and edges; not committed |
