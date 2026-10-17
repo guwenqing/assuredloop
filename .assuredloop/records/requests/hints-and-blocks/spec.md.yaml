@@ -9,7 +9,7 @@ paragraphs:
       - New
   - id: SP-2
     kind: note
-    text_sha256: 7380a5a09eb9663a2528fbcfdce7d8b939dd249c0ac2b510de745bd0b023d593
+    text_sha256: 1e05c135c341f7154e0dcf5b2ca66ffcaabf5d732e56f036c270abe07e5dc94d
     display: "SP-2 (0:1, in Findings are hints, except three exact rules that block: the change spec)"
     change:
       - New
@@ -113,6 +113,18 @@ paragraphs:
     kind: approach
     text_sha256: 3f4c7a78df1fa1d66b0bac5bd5804c1c01399c812de794d09e31ddded4669814
     display: SP-19 (3:2, in An unsigned requirement version)
+    change:
+      - New
+  - id: SP-26
+    kind: rule
+    text_sha256: 757a4261de1c589a47c1e8437328ce3f8759d5d17ed86ee44a89a44dbec78d53
+    display: SP-26 (3:3, in An unsigned requirement version)
+    change:
+      - New
+  - id: SP-27
+    kind: definition
+    text_sha256: 4adacbcafe26abfbea5698103ee063f8c8d899a8749b4ccf11669806311607fb
+    display: SP-27 (3:4, in An unsigned requirement version)
     change:
       - New
   - id: SP-20

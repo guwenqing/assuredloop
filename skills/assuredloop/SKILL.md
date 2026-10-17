@@ -32,7 +32,7 @@ way of working; this skill does not set it.
 | 0 | No promise changes: a fix that restores what the spec says, or a typo in any paragraph. | none | no |
 | 1 | One or a few promise paragraphs change. | a short request; no change spec | yes |
 | 1d | Only names or wording of design paragraphs change. | a short request; no change spec | no |
-| 2 | A real design, in one or a few PRs. | a request and a change spec | if a promise changes |
+| 2 | A real design, in one or a few PRs. | a request and a change spec | if a promise changes, or the request has an R<n> |
 | 3 | A big change, delivered in parts over time. | as path 2, part by part | as path 2 |
 | S | It is not clear yet what to build. | a request with a question | yes, on the question |
 
@@ -151,8 +151,11 @@ The export link MUST expire 30 minutes after the email is sent.
 
 1. `al new <name> --tier 2 --from -`. Write the organized requirement as in
    path 1, with `Out:` and `Assumed:` lines where they help. Draft freely;
-   deliver with the owner's sign-off or after it. A change that touches no
-   promise kind needs no sign-off.
+   deliver with the owner's sign-off or after it. Each R<n> needs the
+   owner's sign-off, also when the change touches no promise kind: until it
+   is signed, `al check` gives `not ok unsigned-requirement`. For a
+   design-only change, which needs no sign-off, write the organized section
+   with no `### R<n>`: a short note of what the design changes and why.
 2. Write the design in `requests/<name>/spec.md`, the change spec: the
    promises this change adds or changes, its design, its plan. The order
    of the paragraphs is free. The recommended order is one section per
