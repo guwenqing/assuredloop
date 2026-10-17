@@ -28,7 +28,21 @@ requirements:
     version: 1
     sha256: 512db58045bc5cff5443eb1e6bdcc689e54822c50a82d7a3b8ee141d73abff39
     title: Citation of a superseded ADR
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-17-signoff.md
+    sha256: 1611190c3b2b1209c22aabe172604ab36d121242683a6286852045d46b54cff2
+    signed: 2026-10-17T15:01Z
+    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-17 about 15:00Z
+    words: I sign, can you pleae speak like in a understandble way in the future ?
+    presented: "R1 to R5 word for word with the intro and the Out: line, marker lines not shown, about 14:10Z; then, just before the sign-off, a plain summary of each rule and the architect's three readings: signoff-coverage stays not ok; archived requests are exempt in R5; exit codes as today"
+    transcribed_by: assuredloop/architect
+    covers:
+      - { id: R1, version: 1, sha256: 99a4d062d4adaa69df69f57a4c4d5f10ae9972b59f1994963bf6b2764c0e7b62 }
+      - { id: R2, version: 1, sha256: 43b981532770dca76cffdeaa82bbe7933264ddc2f1512e9c694b77e3fc365838 }
+      - { id: R3, version: 1, sha256: 349806f78909087456f3bd433afd4ab33f6726ea726d6a507a6b372e36d50992 }
+      - { id: R4, version: 1, sha256: df6588989320306669ddefd4eb3a1da0f0f7faf0531490495df619fcc485bd94 }
+      - { id: R5, version: 1, sha256: 512db58045bc5cff5443eb1e6bdcc689e54822c50a82d7a3b8ee141d73abff39 }
 decisions:
   - id: D1
     date: 2026-10-17
