@@ -826,6 +826,30 @@ describe('R1 (SP-22): al check never shows the user name or the password of the 
     assert.equal(missing.id, `${NAME}/T1`, show(r));
     assert.notEqual(notKnown(r), notKnown(c), `the Not known line says that the own repository is not known:\n${show(r)}\n${show(c)}`);
   });
+
+  // A3 and A4: other remotes that git stores as they are written (checked
+  // with git remote add and git remote get-url). The item folder is empty.
+  const noSecrets = (remote, secrets) => (t) => {
+    const w = world(t, { remote });
+    for (const args of [ISSUES, [...ISSUES, '--strict'], [], ['--strict']]) {
+      const x = check(w, ...args);
+      assert.equal(x.code, 0, show(x));
+      for (const secret of secrets) {
+        assert.ok(!x.stdout.includes(secret), `stdout of al check ${args.join(' ')} holds ${secret}:\n${show(x)}`);
+        assert.ok(!x.stderr.includes(secret), `stderr of al check ${args.join(' ')} holds ${secret}:\n${show(x)}`);
+      }
+      if (args[0] === '--issues') {
+        const missing = one(x, 'issue-missing', '#31');
+        assert.equal(missing.id, `${NAME}/T1`, show(x));
+      }
+    }
+  };
+
+  test('A3: origin https://USER:FIRST_DUMMY_SECRET@SECOND_DUMMY_SECRET@git.example.test/scm/acme/invoicer.git (two @): no output holds USER, FIRST_DUMMY_SECRET or SECOND_DUMMY_SECRET; #31 gets issue-missing at #31, ID inv/T1',
+    noSecrets('https://USER:FIRST_DUMMY_SECRET@SECOND_DUMMY_SECRET@git.example.test/scm/acme/invoicer.git', ['USER', 'FIRST_DUMMY_SECRET', 'SECOND_DUMMY_SECRET']));
+
+  test('A4: the scp-like origin USER:SCP_DUMMY_SECRET@git.example.test:scm/acme/invoicer.git: no output holds USER or SCP_DUMMY_SECRET; #31 gets issue-missing at #31, ID inv/T1',
+    noSecrets('USER:SCP_DUMMY_SECRET@git.example.test:scm/acme/invoicer.git', ['USER', 'SCP_DUMMY_SECRET']));
 });
 
 // =====================================================================
