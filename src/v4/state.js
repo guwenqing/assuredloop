@@ -4,7 +4,7 @@
 import { readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { parse } from 'yaml';
-import { read, recordPath, sha256 } from './base.js';
+import { exists, read, recordPath, sha256 } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { fileAt, filesAt, git } from './git.js';
 import { KINDS, groupOf, parseMarkdown } from './markers.js';
@@ -86,6 +86,9 @@ export function loadState(top, rev = null) {
       text = null;
       readError = e.message.split('\n')[0];
     }
+    // read() gives null for a file it cannot read (EACCES, a folder): only a
+    // record that is not there at all has no error.
+    if (!rev && text == null && !readError && exists(top, recordPath(name))) readError = 'it is there, but it cannot be read as a file';
     let data;
     let error = readError;
     const dataOf = () => {
