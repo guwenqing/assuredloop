@@ -170,24 +170,27 @@ it"; it is only a hint.
 
 ## 5. ADRs
 
-<!-- SCH-22 rule serves:assuredloop-v4/R1,adr-links/R1 -->
+<!-- SCH-22 rule serves:assuredloop-v4/R1,adr-links/R1,hints-and-blocks/R1,hints-and-blocks/R2 -->
 
-- One file per decision, numbered, in `specs/adr/`. Its text does not change
-  after it is accepted. Only its status changes: proposed → accepted →
-  superseded by ADR-n. Who accepts it is the project's way of working; the
-  schema records only its source.
+- One file per decision, numbered, in `specs/adr/`. Its status changes:
+  proposed → accepted → superseded by ADR-n. Who accepts it is the project's
+  way of working; the schema records only its source.
 - Links: `decides` → the paragraphs that it governs; `source` → the sign-off
   or the owner's words; `supersedes` → an older ADR. The text also names the
   alternatives that were considered.
-- A change to an accepted ADR's text is `not ok`. Write a new ADR that
-  supersedes it.
-- Links may be added to the marker of an accepted ADR when nothing else
-  changes: the same ID and kind, each old link kept with the same target,
-  and the text below the marker unchanged. A changed or removed link is a
-  change to its text.
+- Any text may be rewritten in other words when its meaning stays the same.
+  This holds for an accepted or superseded ADR as for a spec. A new ADR that
+  supersedes it is needed only when the decision changes, in whole or in
+  part. The review judges whether a rewrite keeps the decision; the tool
+  does not.
+- So a changed text of an accepted or superseded ADR gets a hint: "ADR-3's
+  text changed: check that its decision is unchanged; if the decision
+  changed, write a new ADR that supersedes it." A changed or removed link in
+  its marker gets the same hint. A deleted ADR file gets a hint with its own
+  message. Links added to the marker of an accepted ADR, with nothing else
+  changed, get no finding.
 - A proposed or accepted ADR with no `source` or no `decides` link gets a
-  hint; under `--strict`, `not ok`. A superseded ADR gets none: it is
-  history.
+  hint, in every mode. A superseded ADR gets none: it is history.
 - A PR that changes a paragraph that an ADR governs gets a hint: "check that
   ADR-3 still holds". The review view marks each ADR that it names that has
   no `source` link.
@@ -196,6 +199,32 @@ it"; it is only a hint.
   paragraphs. Its status is a line at the top of the file.
 - A superseded ADR keeps its `decides` links as history, even to paragraphs
   that were removed later.
+- After an accepted or superseded ADR is rewritten, `al index --align <ID>`
+  advances the bindings that paragraph `<ID>` holds to it, as for any other
+  target.
+
+<!-- SCH-37 rule serves:hints-and-blocks/R5 -->
+
+**A citation of a superseded ADR.** A current place that names a superseded
+ADR also names the ADR that supersedes it. When that ADR is itself
+superseded, the same rule applies to it. Else `al check` gives
+`not ok superseded-cited`.
+- A place names ADR-n by a link in a marker, with any link word, or by the
+  word `ADR-n` in its text. `ADR-n-k`, a paragraph of ADR-n, names ADR-n.
+  For a link, the successor is named in the same marker. For a word, it is
+  named in the same paragraph's text.
+- The ADR that supersedes ADR-n is the one that ADR-n's status line names,
+  or one whose marker has `supersedes:ADR-n`.
+- The current places are each paragraph of the spec docs, with its marker;
+  the Markdown files of an open request, except its `origin/` folder; and
+  each proposed or accepted ADR, with its marker.
+- Exempt, because they are the chain itself or dated records: an ADR that
+  supersedes ADR-n, directly or through a chain; a superseded ADR; an ADR's
+  `## History` section; a request's `## Decisions` section (D1, D2...);
+  origin files; and archived requests.
+- Each superseded ADR's status line is `Status: superseded by ADR-m`. ADR-m
+  exists, and its marker has `supersedes:` for it. Else `al check` gives
+  `not ok superseded-status`.
 
 <!-- SCH-23 note -->
 
@@ -401,3 +430,11 @@ On these records, the tool can say, as exact facts or as hints:
 
 What it does not say: that a test really checks INV-41, that a kind is
 right, or that a merged task means the work is complete.
+
+<!-- SCH-38 rule serves:hints-and-blocks/R2 -->
+
+The tool's findings are hints for the review, and the review decides. A
+finding is `not ok` only where an exact check of the records, hashes and
+links decides it, and where breaking the rule lets an unapproved or wrong
+decision be built (design.md 3). The tool does not judge whether a rewrite
+keeps a meaning or a decision.

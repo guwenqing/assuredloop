@@ -40,7 +40,7 @@ What the owner wants, and why, in the owner's words:
   sort of price we must pay, we can pay" (input 127).
 - "I allow ai to do typo fixing at least" (input 128).
 
-<!-- DES-5 limit serves:assuredloop-v4/R11,assuredloop-v4/R7 -->
+<!-- DES-5 limit serves:assuredloop-v4/R11,assuredloop-v4/R7,hints-and-blocks/R2 -->
 
 **What v4 is not.** "I do not want a fullscacle lifecycle tool, to demand
 user must follow an exact heavy wow to do everything in one way. anti
@@ -53,8 +53,9 @@ must pass these limits:
 - The tool refuses only in its own command `al conclude`, for three reasons:
   a promise change with no signed requirement, a spike with no signed
   question, and a change paragraph with a baseline effect and no valid
-  disposition (sections 5 and 6). All other checks are hints. Blocks in CI
-  come only from a project's opt-in `--strict`.
+  disposition (sections 5 and 6). `al check` gives the review hints, and the
+  review decides. Only a few exact rules are `not ok` (section 3), and they
+  block CI only where a project opts in with `--strict`.
 - No roles, no approvals beyond the sign-off, no task states (R11).
 - The user picks the path. A fix needs no record (R7).
 - The tool keeps records of what was asked, decided, changed and delivered.
@@ -81,7 +82,7 @@ Why: the owner keeps both a change's own documents and one current set
 (inputs 92, 104-108), and wants no design text outside the trace (input 109).
 A reader must find the current system without reading past changes (R1).
 
-<!-- DES-9 data serves:assuredloop-v4/R1,adr-links/R1 -->
+<!-- DES-9 data serves:assuredloop-v4/R1,adr-links/R1,hints-and-blocks/R1 -->
 
 | Set | Where | Holds | Changes how |
 |---|---|---|---|
@@ -89,17 +90,18 @@ A reader must find the current system without reading past changes (R1).
 | | `requests/<name>/request.md` | the dialog, the organized requirement (R1...), the sign-off line, decisions (D1...), task references, the outcome | the requirement is an editable draft until it is signed (section 6); signed versions, the dialog and the decisions are append only; task references and the outcome are updated |
 | | `requests/<name>/spec.md` | **the change spec**: the promises this change adds or changes, its design (the largest part), its plan, and its explanations | edited in the change's PRs |
 | Consolidated | `specs/*.md` | the system now: the promises and the lasting design, told apart by kind | a PR replaces paragraphs by hand |
-| | `specs/adr/` | the decisions; an ADR is superseded, never edited, but links may be added to its marker | a new ADR file, or links added to a marker |
+| | `specs/adr/` | the decisions; an ADR's text may be rewritten when its decision stays the same, and a changed decision is a new ADR that supersedes it | a new ADR file, or a rewrite that keeps the decision |
 | Outputs | code, tests, `docs/` | the product and its user documents | normal PRs; traced from the change's record (input 112) |
 | Tool data | `.assuredloop/` | `config.yaml`, `schema.yaml`, `records/` | the developer's agent and `al` |
 
-<!-- DES-10 rule serves:assuredloop-v4/R1,assuredloop-v4/R2 -->
+<!-- DES-10 rule serves:assuredloop-v4/R1,assuredloop-v4/R2,hints-and-blocks/R1 -->
 
 - There is no free design document anywhere. Design lives only in a change
   spec or in `specs/` (inputs 108, 109).
 - ADRs live in the spec folder (input 110). An ADR made in a change is
-  written straight into `specs/adr/` by that change's PR. ADRs are append
-  only, so they need no consolidation.
+  written straight into `specs/adr/` by that change's PR, so it needs no
+  consolidation. A rewrite that keeps an ADR's decision is made in place; a
+  changed decision is a new ADR (schema.md 5).
 - User documents in `docs/` are an output of a change, like code and tests
   (input 112). They carry no paragraph IDs of their own, unless the config's
   `docs:` list names them (section 17).
@@ -238,17 +240,16 @@ semantic coverage as "not checked".
   incomplete (only about 60% of commits named an issue, Rath et al., ICSE
   2018).
 
-<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,design-links/R1,adr-links/R1 -->
+<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,design-links/R1,adr-links/R1,hints-and-blocks/R2 -->
 
 **What the script checks** (no AI):
-- A paragraph with no ID: `not ok`. A promise or design paragraph with no kind
-  or no link: a hint; under opt-in `--strict`, `not ok`. An adopted paragraph
-  (section 5) gets no link hint while its text equals the captured text.
-- A proposed or accepted ADR with no `source` or no `decides` link: a hint;
-  under `--strict`, `not ok` (schema.md 5).
-- A link to an ID that does not exist: `not ok`. When another change removed
-  the target, the link gets the hint "target removed" instead, and the open
-  change aligns.
+- A paragraph with no ID: a hint. A promise or design paragraph with no kind
+  or no link: a hint. An adopted paragraph (section 5) gets no link hint
+  while its text equals the captured text.
+- A proposed or accepted ADR with no `source` or no `decides` link: a hint
+  (schema.md 5).
+- A link to an ID that does not exist: a hint. When another change removed
+  the target, the hint is "target removed", and the open change aligns.
 - Two headings with the same text under the same parent (the same heading
   path): a hint. The same text under different parents is valid. Why: the
   OpenSpec CLI caught duplicate requirement names that the v4 model missed
@@ -264,8 +265,9 @@ semantic coverage as "not checked".
   disposition or wording decision of the request that names the ID. When the
   deletion is on purpose, nothing more is needed: the ID is retired and never
   used again. A marker removed by accident, with its text kept, still leaves
-  a paragraph with no ID, which is `not ok`. In `specs/` and in an archived
-  change spec, a lost ID is `not ok`.
+  a paragraph with no ID, which gets its own hint. In `specs/` and in an
+  archived change spec, the hint on a lost ID asks for `removes:<ID>` or for
+  the marker back.
 - A per-paragraph hash list, from which the script derives each paragraph's
   change in the PR: Changed, Moved, New or Removed.
 - A non-promise kind whose text holds requirement words (MUST, SHALL, MUST
@@ -285,15 +287,19 @@ semantic coverage as "not checked".
   record: a hint.
 - A change of kind from a promise kind to any other kind counts as a promise
   change.
+- Findings are hints for the review, and the review decides. A finding is
+  `not ok` only for a rule that meets two tests: breaking it lets an
+  unapproved or wrong decision be built, and an exact check of the records,
+  hashes and links decides it, with no judgment. These rules are: a promise
+  change with no signed requirement that covers it, and an unsigned
+  requirement version (section 6); changed record evidence (section 10); a
+  citation of a superseded ADR, and a superseded ADR's status line
+  (schema.md 5). A request record that cannot be read, and a spec root that
+  cannot be read, are `not ok` too. Every other finding is a hint in every
+  mode.
 - The exit code is 0 by default, even when `not ok` lines print. Under
-  `--strict`, the exit is 1 when any `not ok` prints. `--strict` raises only
-  the findings that need no judgment: no kind, no link, an ADR with no
-  `source` or no `decides`, an invalid disposition, and the marker lints.
-  The hints that need judgment stay hints under `--strict`: near match,
-  "promise kind?", the typo mark, overlap, stale base, a stale AI hint, an
-  ADR that governs, a removed target, a paragraph deleted from an open
-  request's change spec, "which promise does it keep?", and a `for` that
-  names no task.
+  `--strict`, the exit is 1 when any `not ok` prints. No finding changes
+  severity with the mode.
 
 <!-- DES-81 choice serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1 -->
 
@@ -411,10 +417,10 @@ requirement or the scope. A design paragraph can stay `incorporated` while
 another paragraph of the same change is `abandoned`; that needs no owner
 decision.
 
-<!-- DES-33 rule serves:assuredloop-v4/R5,assuredloop-v4/R6 -->
+<!-- DES-33 rule serves:assuredloop-v4/R5,assuredloop-v4/R6,hints-and-blocks/R2 -->
 
 **Invalid dispositions.** `al check` shows an invalid disposition as a hint,
-and as `not ok` under `--strict`; `al conclude` refuses. A small design
+in every mode; `al conclude` refuses. A small design
 correction (path 1d) to text that an open change incorporated makes that
 change's `incorporated` disposition invalid, because the spec text no longer
 equals the incorporated version. Both sides are told: the 1d PR gets a hint
@@ -517,6 +523,24 @@ the requirement may change while the owner explores (input 122).
 - A request with no kept effect may be abandoned without a sign-off. The owner
   never has to sign work that the owner chose not to pursue.
 
+<!-- DES-89 rule serves:hints-and-blocks/R3 -->
+
+**An unsigned requirement version.** In each request whose record has
+`requirements:`, open or archived, the latest version of each requirement
+(or question) is covered by a valid sign-off; else `al check` gives
+`not ok unsigned-requirement`. A requirement in `request.md` whose text is
+not its latest recorded version is a new version, so it is not covered. A
+requirement, sign-off or `covers` entry that `al check` cannot read is
+`not ok` too, not skipped. The YAML layout does not count: block and flow
+mappings and any valid indentation give the same result. A sign-off is valid
+only when:
+- a `covers` entry has the requirement's id, version and `sha256` exactly,
+  with no case folding;
+- its `file` is in the request's `origin/` folder, and the hash of that
+  file's signed text equals its `sha256`;
+- it records when it was signed (`signed`) and the signer's words
+  (`words`).
+
 <!-- DES-43 rule serves:assuredloop-v4/R4,assuredloop-v4/R7 -->
 
 **Typo fixes** (input 128). An AI may claim a typo fix in any paragraph of a
@@ -586,7 +610,7 @@ or spike" (input 114), with the user free to pick (R7, input 126).
 | 3. Epic | big, in parts over time | as 2, with optional task references | as 2 | part by part, before the epic closes | the close rule holds |
 | S. Spike | not yet clear what to build | request with an organized question; the change spec holds the candidates and the experiment; findings open with the answer | yes, on the question | none | the answer names the question version |
 
-<!-- DES-49 rule serves:assuredloop-v4/R7 -->
+<!-- DES-49 rule serves:assuredloop-v4/R7,hints-and-blocks/R2 -->
 
 - A spike may end with no follow-up. A new request is needed only for
   separately authorized work, which says `Follows: <spike>`. An answer may
@@ -598,8 +622,8 @@ or spike" (input 114), with the user free to pick (R7, input 126).
   one in the branch's commits; it works offline, so it does not read the PR's
   text. With no `Tier:` line, a hint says so, and the path checks do not run.
 - The script checks the claim against the declared kinds and the paragraph
-  hash list: "path 0, but the PR changes a `rule` paragraph with no typo
-  claim" is `not ok`. On path 0, a change of kind into a promise kind is a
+  hash list, and gives a hint where they disagree: "path 0, but the PR
+  changes a `rule` paragraph with no typo claim". On path 0, a change of kind into a promise kind is a
   promise change too. A non-promise spec paragraph that path 0 changes, adds
   or removes with no typo claim gets the hint "path 1d or 2?". A typo claim
   with a meaning-sensitive mark goes to the review. This checks the labels,
@@ -609,7 +633,7 @@ or spike" (input 114), with the user free to pick (R7, input 126).
   only names or wording of design-kind paragraphs; it adds or removes no
   component, interface, data or flow; and it touches no promise kind. The
   script shows the changed words. A 1d claim that touches a promise kind, or
-  adds or removes a design paragraph, is `not ok`. The review judges the
+  adds or removes a design paragraph, gets a hint. The review judges the
   rest. Larger design changes stay on path 2.
 
 <!-- DES-50 note -->
@@ -697,7 +721,7 @@ varied by up to 15% over ten runs (arXiv 2408.04667), and a change of model
 moved the main tag on close to half of the notes in one study (arXiv
 2606.05970).
 
-<!-- DES-58 rule serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
+<!-- DES-58 rule serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1,hints-and-blocks/R2 -->
 
 - `.assuredloop/schema.yaml`: the schema, with a version. The owner and the
   architect design it. A user's extension gets the same careful review.
@@ -727,9 +751,20 @@ moved the main tag on close to half of the notes in one study (arXiv
     defect.
 - The kinds and the declared links are checked data, in the limited sense of
   section 3. The AI summaries and tags are hints (input 123).
-- Checks give hints by default. A project that wants blocks turns on
+- Checks give the review hints, and the review decides. The few exact rules
+  of section 3 are `not ok`. A project that wants them to block turns on
   `--strict` in its CI, and the README advises it (input 123).
 - The core checks stay deterministic: no AI, network or database calls.
+
+<!-- DES-90 rule serves:hints-and-blocks/R4 -->
+
+**Record evidence.** Each file that a request's record lists with a hash
+still has that hash: each origin file under `sources:`, and the `file` of
+each sign-off. `al check` hashes the snapshot's text, after its `---` line,
+as `al record` hashed it. A changed, missing or unreadable file, or an entry
+with no file or no hash, is `not ok record-evidence`. This holds for open and
+archived requests. A result file's inputs are not record evidence: when one
+changes, the result "does not apply to the current text", as section 9 says.
 
 <!-- DES-82 data serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
 
