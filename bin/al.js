@@ -2,7 +2,8 @@
 // al, the v4 command (T17 made it the one in package.json's bin).
 import { parseArgs } from 'node:util';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { check } from '../src/v4/check.js';
 import { Fail, spec } from '../src/v4/spec.js';
@@ -101,6 +102,11 @@ async function main(argv) {
       const used = name === 'spec' ? 'spec --add-ids' : name;
       throw new Fail(`extra argument ${JSON.stringify(extra)}: ${used} takes ${n === 0 ? 'no' : n} positional argument${n === 1 ? '' : 's'}`,
         'quote an option value that holds spaces, and leave out the extra argument');
+    }
+    // 0.1.0 kept its settings in a file .assuredloop; v4 keeps a folder (#241).
+    if (statSync(join(top, '.assuredloop'), { throwIfNoEntry: false })?.isFile()) {
+      throw new Fail('.assuredloop is a file, so the project has 0.1.0 records, which v4 does not read; keep 0.1.0 pinned, or move as "From 0.1.0" in the README says',
+        'npm install --global @assuredloop/cli@0.1.0, or move as "From 0.1.0" in the README says');
     }
     let out;
     try {

@@ -112,13 +112,14 @@ export function conclude({ top, args, opts }) {
   const block = outcome(state, r, judged, top);
   const target = `requests/archive/${name}`;
   if (exists(top, target)) throw new Fail(`${target} already exists; a request name is never reused`, `al context ${name}`);
+  // The preview refuses for each reason that --yes refuses (#241).
+  const rec = openRecord(top, name);
+  if (!rec) throw new Fail(`${name} has no record .assuredloop/records/requests/${name}.yaml`, 'a v4 request is made with al new');
+  guard(top, [`${r.dir}/request.md`, `${target}/request.md`, rec.path]);
   const what = `Status: concluded, the Outcome in ${target}/request.md, status: concluded in the record, and ${r.dir}/ moved to ${target}/`;
   if (!opts.yes) {
     return { body: [`Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read, next: 'run the same command with --yes to do it', notKnown };
   }
-  const rec = openRecord(top, name);
-  if (!rec) throw new Fail(`${name} has no record .assuredloop/records/requests/${name}.yaml`, 'a v4 request is made with al new');
-  guard(top, [`${r.dir}/request.md`, `${target}/request.md`, rec.path]);
   const md = withOutcome(withStatus(r.md), block);
   rec.doc.set('status', 'concluded');
   mkdirSync(dirname(join(top, target)), { recursive: true });
