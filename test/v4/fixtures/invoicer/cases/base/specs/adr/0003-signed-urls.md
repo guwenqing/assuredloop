@@ -1,4 +1,4 @@
-Status: superseded
+Status: superseded by ADR-4
 
 <!-- ADR-3 choice decides:EXP-4 source:invoice-exports/D1 -->
 

@@ -75,7 +75,7 @@ Each step is a map with one key.
 | `report-base`, `res-c3`, `res-unknown` | market-report: the C1 review added at C2; C3 changes the report; results whose applicability is unknown |
 | `adr-accepted` | arms `text`, `status`, `deleted` of ADR-2 |
 | `adr-proposed-pre`, `adr-proposed` | a proposed ADR-5 that changes |
-| `adr-supersede` | arms `ok`, `missing`, `accepted`: ADR-5 supersedes ADR-2 (or the missing ADR-9) |
+| `adr-supersede` | arms `ok`, `missing`, `accepted`: ADR-5 supersedes ADR-2 (or the missing ADR-9); in arm `ok`, ADR-2 says `Status: superseded by ADR-5`, and EXP-2 and the tasks of invoice-exports name ADR-5 |
 | `adr-governs` | arms `decided` (EXP-6, decided by ADR-4) and `free` (EXP-5) |
 | `adr-history-pre`, `adr-history` | EXP-7, decided only by ADR-5, which ADR-6 superseded |
 | `adr-links-pre`, `adr-links` | on main, ADR-1 has no `decides:`, ADR-2 no `source:`, the superseded ADR-3 and a proposed ADR-5 no link (#234); arms `untouched`, links added only (`word`, `order`, `target`, `status`), `superseded` (ADR-2's status only), other changes (`removed`, `swapped`, `retarget`, `kind`, `text`, `para`, `frozen`), `proposed` (ADR-5 changes) |
@@ -155,3 +155,9 @@ The fixtures were written before the final design. These are the changes.
 16. Each requirement has a plain marker (`<!-- R1 -->`) and no `from:` link.
 17. Dates: each command runs with its own SOURCE_DATE_EPOCH, from the dates
     of the fixtures.
+18. Each superseded ADR's status line names the ADR that supersedes it, as
+    #238 R5 asks: `Status: superseded by ADR-4` (ADR-3 in `base`),
+    `superseded by ADR-6` (ADR-5 in `adr-history-pre`), `superseded by ADR-5`
+    (ADR-4 in `cr-chain`, ADR-2 in `adr-supersede` arm `ok`). The arms that
+    test a bare status line keep `Status: superseded` (`adr-accepted` arm
+    `status`, `adr-links` arms `status` and `superseded`).

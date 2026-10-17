@@ -28,9 +28,10 @@ test('cr-revert: an unexplained revert of INV-11 makes SP-2\'s incorporated disp
   const r = run(t, 'cr-revert');
   assert.equal(r.code, 0, show(r));
   assert.deepEqual(invalid(r).map((f) => `${f.severity} ${f.id}`), ['hint reminder-emails/SP-2'], show(r));
+  // #238 R2: an invalid disposition stays a hint under --strict, and alone it leaves the exit 0.
   const strict = run(t, 'cr-revert', '--strict');
-  assert.equal(strict.code, 1, show(strict));
-  assert.deepEqual(invalid(strict).map((f) => `${f.severity} ${f.id}`), ['not ok reminder-emails/SP-2'], show(strict));
+  assert.equal(strict.code, 0, show(strict));
+  assert.deepEqual(invalid(strict).map((f) => `${f.severity} ${f.id}`), ['hint reminder-emails/SP-2'], show(strict));
 });
 
 test('cr-supersede: SP-6 superseded by link-refresh/SP-2, which incorporated EXP-4: valid', (t) => {
