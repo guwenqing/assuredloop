@@ -1,5 +1,5 @@
 # Hints from the linked issues, and phrases for the review
-Tier: 2 · Status: open
+Tier: 2 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -49,3 +49,49 @@ Signed off: 2026-10-17 owner, origin/2026-10-17-signoff.md
 - D11, 2026-10-17. Source: the agent (architect), message to developer, 2026-10-17. Only the items that open requests' `tasks:` name are checked. Other files in the folder are ignored, and the "Not known" line counts them.
 - D12, 2026-10-17. Source: the agent (architect), message to developer, 2026-10-17. The request's own repository comes from `git remote get-url origin`, any host. When it, an item's repository or a parent is unknown, that hint is not given, and the "Not known" line says why.
 - D13, 2026-10-17. Source: the agent (architect), message to developer, 2026-10-17. Test: a project with no tracker gives, without --issues, exactly the same al check output as on main.
+
+## Outcome
+
+Concluded 2026-10-17 with al conclude, on the working tree at bef8d2b.
+
+- R1 Hints from the linked work items, version 3, signed in S1:
+  - SP-4 rule: incorporated as DES-91
+  - SP-5 rule: incorporated as DES-92
+  - SP-6 rule: incorporated as DES-52
+  - SP-8 data: incorporated as DES-93
+  - SP-9 data: incorporated as DES-94
+  - SP-22 data: incorporated as DES-103
+  - SP-10 data: incorporated as DES-95
+  - SP-11 interface: incorporated as DES-96
+  - SP-24 interface: incorporated as DES-105
+  - SP-12 interface: incorporated as DES-97
+  - SP-13 interface: incorporated as DES-98
+  - SP-14 data: incorporated as DES-99
+  - SP-19 rule: incorporated as DES-22
+  - SP-21 interface: incorporated as DES-72
+  - DES-22 rule: in specs/design.md, serves it
+  - DES-52 rule: in specs/design.md, serves it
+  - DES-91 rule: in specs/design.md, serves it
+  - DES-92 rule: in specs/design.md, serves it
+  - DES-93 data: in specs/design.md, serves it
+  - DES-94 data: in specs/design.md, serves it
+  - DES-103 data: in specs/design.md, serves it
+  - DES-95 data: in specs/design.md, serves it
+  - DES-96 interface: in specs/design.md, serves it
+  - DES-105 interface: in specs/design.md, serves it
+  - DES-97 interface: in specs/design.md, serves it
+  - DES-98 interface: in specs/design.md, serves it
+  - DES-99 data: in specs/design.md, serves it
+  - DES-72 interface: in specs/design.md, serves it
+- R2 Phrases for the review, version 2, signed in S1:
+  - SP-17 rule: incorporated as DES-101
+  - SP-18 data: incorporated as DES-102
+  - SP-19 rule: incorporated as DES-22
+  - DES-22 rule: in specs/design.md, serves it
+  - DES-101 rule: in specs/design.md, serves it
+  - DES-102 data: in specs/design.md, serves it
+- Other paragraphs with a baseline effect:
+  - SP-15 rationale: incorporated as DES-100
+  - SP-23 example: incorporated as DES-104
+  - SP-25 example: incorporated as DES-106
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
