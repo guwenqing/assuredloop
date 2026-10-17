@@ -782,8 +782,14 @@ When `gh repo view` fails for this checkout, each `#n` issue gets
 `<owner>/<repo>#<n>:<line>`; a hint in a comment is at
 `<owner>/<repo>#<n>/comment-<k>:<line>`, where k counts all the issue's
 comments from 1, the hidden ones too. Its ID is `<request>/<task>`, for the
-first task that names the issue. `issue-not-sub` is given once for each
-request and issue. `al check --issues` adds the line
+first task that names the issue. `issue-superseded` is at the first line of
+the paragraph or the marker, as `superseded-cited` is. `issue-bare-ref` is
+given once for each line that holds a bare `#n`. `issue-not-sub` and
+`issue-unread` have no line: they are at `<owner>/<repo>#<n>`, or at the
+reference as written (for example `#12`) when its repository is not known.
+`issue-not-sub` is given once for each request and issue, with the ID of
+that request's first task that names the issue. A `phrase` hint in a file
+has the ID `-`. `al check --issues` adds the line
 `info issues - - read <r> of <t> issues that the tasks of the open requests name`.
 Without `--issues`, when the tasks of an open request name an issue, the
 `Not known` line says that the issues were not read, and that

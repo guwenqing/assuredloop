@@ -161,3 +161,4 @@ dispositions:
   - { source: issue-hints/SP-18, disposition: incorporated, spec: DES-102, source_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb, spec_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb }
   - { source: issue-hints/SP-19, disposition: incorporated, spec: DES-22, source_sha256: 21adcecc5c690c3df045ecfb1c48f9bc8e7d216a0e9f83fe398390e73943235b, spec_sha256: 21adcecc5c690c3df045ecfb1c48f9bc8e7d216a0e9f83fe398390e73943235b }
   - { source: issue-hints/SP-21, disposition: incorporated, spec: DES-72, source_sha256: 35c618397ce4976494e8ea48ac61b1855686fc4a8ecccd2285764195a2874646, spec_sha256: 35c618397ce4976494e8ea48ac61b1855686fc4a8ecccd2285764195a2874646 }
+  - { source: issue-hints/SP-13, disposition: incorporated, spec: DES-98, source_sha256: 0ed3218a1103d82b7a355f573f755f3ef267f776072ddb6a78bae28d7c2cef0c, spec_sha256: 0ed3218a1103d82b7a355f573f755f3ef267f776072ddb6a78bae28d7c2cef0c }

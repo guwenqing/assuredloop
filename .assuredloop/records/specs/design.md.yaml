@@ -277,7 +277,7 @@ paragraphs:
       - New
   - id: DES-98
     kind: interface
-    text_sha256: cd8f0d3dc2b6e5ffaafa630b4d64ad0a705de2646c0a2c79f91f0807405a9356
+    text_sha256: 0ed3218a1103d82b7a355f573f755f3ef267f776072ddb6a78bae28d7c2cef0c
     display: DES-98 (8:10, in 8. Tasks)
     change:
       - New
