@@ -83,7 +83,7 @@ steps:
   - edit:
       file: specs/adr/0004-one-time-tokens.md
       from: "Status: accepted\n"
-      to: "Status: superseded\n"
+      to: "Status: superseded by ADR-5\n"
   - write: {file: specs/adr/0005-portal-login.md, text: {file: 0005-portal-login.md}}
   - dispositions:
       request: portal-downloads

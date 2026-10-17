@@ -12,7 +12,8 @@ import { al, readYaml, show } from './helpers/project.js';
 // The expected differences, from t2 defects.yaml and defects-repair.yaml with
 // the final design (no rule-check hint).
 const PAIRS = {
-  d01: { name: 'an unsigned promise change', defect: ['not ok signoff-coverage INV-6'], control: [] },
+  // #238 R3: the defect's request small-remainders has R1 with no sign-off.
+  d01: { name: 'an unsigned promise change', defect: ['not ok signoff-coverage INV-6', 'not ok unsigned-requirement small-remainders/R1'], control: [] },
   d02: { name: 'a new rule labelled data', defect: ['hint promise-kind credit-notes/SP-2'], control: [] },
   d03: { name: 'a code-only promise change claimed as a fix', defect: [], control: [] },
   d04: {
@@ -25,11 +26,12 @@ const PAIRS = {
   d07: { name: 'a stale base after indexing', defect: ['hint stale-base reminder-emails/SP-4'], control: [] },
   d08: { name: 'a stale AI summary with a surviving quote', defect: ['hint stale-ai-hint INV-8'], control: [] },
   // D09: INV-4 is adopted (decision D16); edited with no link on path 0, it gets no-link back.
-  d09: { name: 'a wrong path claim', defect: ['hint no-link INV-4', 'not ok path-claim INV-4', 'not ok signoff-coverage INV-4'], control: [] },
+  // #238 R2: path-claim is a hint.
+  d09: { name: 'a wrong path claim', defect: ['hint no-link INV-4', 'hint path-claim INV-4', 'not ok signoff-coverage INV-4'], control: [] },
   d10: { name: 'a typo claim that changes a MUST', defect: ['hint typo-mark EXP-9'], control: [] },
   d11: { name: 'a typo claim that changes "only" to "all"', defect: ['hint typo-mark EXP-10'], control: [] },
   d12: { name: 'a typo claim that removes a doubled "MUST MUST"', defect: [], control: [] },
-  d13: { name: 'a 1d claim that adds a component', defect: ['hint no-link INV-17', 'not ok path-claim INV-17'], control: [] },
+  d13: { name: 'a 1d claim that adds a component', defect: ['hint no-link INV-17', 'hint path-claim INV-17'], control: [] },
   d14: { name: 'a code example whose trailing spaces change', defect: ['hint disposition csv-header/SP-2'], control: [] },
 };
 
@@ -176,47 +178,53 @@ test('D12: typo-mark on EXP-11 in both arms; the shown words tell them apart (MU
   assert.ok(!control.includes('NOT'), show(p.control));
 });
 
-test('D09: path-claim and signoff-coverage are not ok on INV-4; the control (path 1, signed) has neither', (t) => {
+test('D09: path-claim is a hint and signoff-coverage is not ok on INV-4; the control (path 1, signed) has neither', (t) => {
   const p = pair(t, 'd09');
-  for (const code of ['path-claim', 'signoff-coverage']) {
-    assert.equal(one(p.defect, 'not ok', code, 'INV-4').file, 'specs/invoices.md');
-    none(p.control, 'not ok', code, 'INV-4');
+  for (const [severity, code] of [['hint', 'path-claim'], ['not ok', 'signoff-coverage']]) {
+    assert.equal(one(p.defect, severity, code, 'INV-4').file, 'specs/invoices.md');
+    none(p.control, severity, code, 'INV-4');
   }
+  none(p.defect, 'not ok', 'path-claim', 'INV-4');
 });
 
 test('D13: path-claim on INV-17 (a 1d claim adds a component); both arms show lines -> line items on INV-8', (t) => {
   const p = pair(t, 'd13');
-  one(p.defect, 'not ok', 'path-claim', 'INV-17');
+  one(p.defect, 'hint', 'path-claim', 'INV-17');
+  none(p.defect, 'not ok', 'path-claim', 'INV-17');
   for (const r of [p.defect, p.control]) assert.ok(typoWords(r, 'INV-8').includes('lines -> line items'), show(r));
   assert.deepEqual(p.control.findings.filter((f) => f.code === 'path-claim'), [], show(p.control));
 });
 
-test('D06 and D14 under --strict: the invalid disposition is not ok and exits 1; the control exits 0', (t) => {
+test('D06 and D14 under --strict: the invalid disposition stays a hint and the exit is 0 (#238 R2); the control exits 0', (t) => {
   for (const [name, id] of [['d06', 'invoice-exports/SP-10'], ['d14', 'csv-header/SP-2']]) {
     const defect = run(t, name, 'defect', '--strict');
-    assert.equal(defect.code, 1, show(defect));
-    one(defect, 'not ok', 'disposition', id);
-    none(defect, 'hint', 'disposition', id);
+    assert.equal(defect.code, 0, show(defect));
+    one(defect, 'hint', 'disposition', id);
+    none(defect, 'not ok', 'disposition', id);
     const control = run(t, name, 'control', '--strict');
     assert.equal(control.code, 0, show(control));
     assert.deepEqual(control.findings.filter((f) => f.code === 'disposition'), [], show(control));
   }
 });
 
-test('--strict raises no-link to not ok; the judgment hints stay hints and do not change the exit code', (t) => {
+// #238 R2: --strict raises nothing. d02 and d08 have a request with no
+// sign-off, which is not ok unsigned-requirement (R3) in both arms; it alone
+// sets the exit code there.
+test('--strict leaves no-link a hint; the judgment hints stay hints and do not change the exit code', (t) => {
   const d13 = run(t, 'd13', 'defect', '--strict');
-  one(d13, 'not ok', 'no-link', 'INV-17');
-  for (const [name, code, id] of [
-    ['d02', 'promise-kind', 'credit-notes/SP-2'],
-    ['d04', 'near-match', 'link-45/SP-2'],
-    ['d07', 'stale-base', 'reminder-emails/SP-4'],
-    ['d08', 'stale-ai-hint', 'INV-8'],
-    ['d10', 'typo-mark', 'EXP-9'],
+  one(d13, 'hint', 'no-link', 'INV-17');
+  none(d13, 'not ok', 'no-link', 'INV-17');
+  for (const [name, code, id, unsigned] of [
+    ['d02', 'promise-kind', 'credit-notes/SP-2', ['not ok unsigned-requirement credit-notes/R1']],
+    ['d04', 'near-match', 'link-45/SP-2', []],
+    ['d07', 'stale-base', 'reminder-emails/SP-4', []],
+    ['d08', 'stale-ai-hint', 'INV-8', ['not ok unsigned-requirement due-dates/R1']],
+    ['d10', 'typo-mark', 'EXP-9', []],
   ]) {
     const r = run(t, name, 'defect', '--strict');
-    assert.equal(r.code, 0, `${name}: only judgment hints, so --strict exits 0\n${show(r)}`);
+    assert.equal(r.code, unsigned.length ? 1 : 0, `${name}: the judgment hints do not change the exit code\n${show(r)}`);
     one(r, 'hint', code, id);
-    assert.deepEqual(r.findings.filter((f) => f.severity === 'not ok').map((f) => f.line), [], show(r));
+    assert.deepEqual(keys(r.findings.filter((f) => f.severity === 'not ok')), unsigned, show(r));
   }
 });
 
@@ -230,7 +238,7 @@ test('without --strict the check exits 0 on every defect, not ok lines included'
 
 test('the claim is the newest Tier line in base..HEAD; with none, no path check runs and Not known says so', (t) => {
   const newest = run(t, 'd09', 'newest');
-  one(newest, 'not ok', 'path-claim', 'INV-4');
+  one(newest, 'hint', 'path-claim', 'INV-4');
   const unclaimed = run(t, 'd09', 'unclaimed');
   assert.deepEqual(unclaimed.findings.filter((f) => f.code === 'path-claim'), [], show(unclaimed));
   assert.equal(unclaimed.findings.filter((f) => f.severity === 'hint' && f.code === 'no-claim').length, 1, show(unclaimed));

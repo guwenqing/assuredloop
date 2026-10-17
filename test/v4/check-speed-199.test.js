@@ -389,9 +389,17 @@ function named(stdout, repos, extra = {}) {
 }
 
 // The run, compared with the expected exit code and text.
+// `added`: lines of findings that main did not print (#238 R3), matched by a
+// pattern; each matches one line, and the other lines are as main printed them.
 function sameAsMain(r, repos, expected, extra) {
   assert.equal(r.signal, null, show(r));
-  assert.equal(named(r.stdout, repos, extra), expected.lines.join('\n') + '\n', show(r));
+  let out = named(r.stdout, repos, extra);
+  for (const re of expected.added ?? []) {
+    const found = out.split('\n').filter((l) => re.test(l));
+    assert.equal(found.length, 1, `one line ${re}:\n${show(r)}`);
+    out = out.replace(`${found[0]}\n`, '');
+  }
+  assert.equal(out, expected.lines.join('\n') + '\n', show(r));
   assert.equal(r.code, expected.code, show(r));
 }
 
@@ -713,7 +721,7 @@ const PINNED = {
       'hint no-link specs/invoices.md:14 INV-4 INV-4 is a limit paragraph with no link',
       'specs/invoices.md INV-4 Changed',
       'not ok signoff-coverage specs/invoices.md:14 INV-4 a limit paragraph is changed with no signed requirement that covers it',
-      'not ok path-claim specs/invoices.md:14 INV-4 path 0, but a limit paragraph is changed with no typo claim',
+      'hint path-claim specs/invoices.md:14 INV-4 path 0, but a limit paragraph is changed with no typo claim',
       'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
       'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
       'Read      working tree · base {central:The invoicer world:7} (merge-base with main)',
@@ -723,6 +731,8 @@ const PINNED = {
   },
   'd01 defect: check': {
     code: 0,
+    // #238 R3: small-remainders lists R1 with no sign-off.
+    added: [/^not ok unsigned-requirement \S+ small-remainders\/R1( |$)/],
     lines: [
       'specs/invoices.md INV-6 Changed',
       'ok: no marker lint',

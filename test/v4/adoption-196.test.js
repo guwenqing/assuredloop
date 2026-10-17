@@ -226,14 +226,17 @@ const pick = (h, ids) => Object.fromEntries(ids.map((id) => [id, h[id]]));
 
 const notOk = (r, id) => r.findings.filter((f) => f.severity === 'not ok' && f.id === id);
 const noLink = (r, id) => r.findings.filter((f) => f.code === 'no-link' && f.id === id);
+// #238 R2: signoff-coverage stays not ok; path-claim is a hint.
+const SEVERITY = { 'signoff-coverage': 'not ok', 'path-claim': 'hint' };
 const assertPromiseFindings = (r, id) => {
   for (const code of PROMISE_CODES) {
-    assert.ok(r.findings.some((f) => f.severity === 'not ok' && f.code === code && f.id === id), `not ok ${code} ${id}:\n${show(r)}`);
+    assert.ok(r.findings.some((f) => f.severity === SEVERITY[code] && f.code === code && f.id === id), `${SEVERITY[code]} ${code} ${id}:\n${show(r)}`);
   }
 };
 const assertClean = (r, ids) => {
   for (const id of ids) {
     assert.deepEqual(notOk(r, id), [], `no not ok for ${id}:\n${show(r)}`);
+    assert.deepEqual(r.findings.filter((f) => PROMISE_CODES.includes(f.code) && f.id === id), [], `no ${PROMISE_CODES.join(' or ')} for ${id}:\n${show(r)}`);
     assert.deepEqual(noLink(r, id), [], `no no-link for ${id}:\n${show(r)}`);
   }
 };
@@ -257,7 +260,7 @@ describe('al check reads the adoption record on the branch', () => {
     assertClean(strict, ALL);
   });
 
-  test('control: the same marked branch with no adoption record still gives signoff-coverage and path-claim not ok', (t) => {
+  test('control: the same marked branch with no adoption record still gives signoff-coverage not ok and path-claim', (t) => {
     const dir = adoptionBase(t);
     adopt(dir);
     setKinds(dir);
@@ -357,7 +360,7 @@ const SALE = 'A sale MUST have one line.';
 // INV-1 heading, INV-2 and INV-3 the two rules, in file order.
 const twoRules = (a, b) => `# Invoices\n\n${a}\n\n${b}\n`;
 const RULES = { 'INV-2': 'rule', 'INV-3': 'rule' };
-const hasPromiseFindings = (r, id) => PROMISE_CODES.every((code) => r.findings.some((f) => f.severity === 'not ok' && f.code === code && f.id === id));
+const hasPromiseFindings = (r, id) => PROMISE_CODES.every((code) => r.findings.some((f) => f.severity === SEVERITY[code] && f.code === code && f.id === id));
 
 // main: the v4 config and the spec with the two rules; then the branch `feature`.
 function rulesBase(t, a, b) {
@@ -382,7 +385,7 @@ describe('one base block covers at most one adopted paragraph', () => {
     assert.ok(outLines(r).some((l) => new RegExp(`\\b${other}\\b`).test(l) && /not adopted/i.test(l)), `a line names ${other} as not adopted:\n${show(r)}`);
   });
 
-  test('check: a paragraph edited on the branch to equal another adopted text gets signoff-coverage and path-claim not ok, --strict exits 1', (t) => {
+  test('check: a paragraph edited on the branch to equal another adopted text gets signoff-coverage not ok and path-claim, --strict exits 1', (t) => {
     const dir = rulesBase(t, CREDIT, SALE);
     editFile(dir, SPEC, CREDIT, SALE);
     adopt(dir);
@@ -498,7 +501,7 @@ describe('a copy of a kept paragraph is not adopted', () => {
     });
 
     for (const named of [false, true]) {
-      test(`check: the copy ${where} INV-2, as rule INV-3${named ? ', named by hand in the adoption record with its hash,' : ''} gets signoff-coverage and path-claim not ok, --strict exits 1; INV-2 has no not ok`, (t) => {
+      test(`check: the copy ${where} INV-2, as rule INV-3${named ? ', named by hand in the adoption record with its hash,' : ''} gets signoff-coverage not ok and path-claim, --strict exits 1; INV-2 has no not ok`, (t) => {
         const dir = adoptedMarkedBase(t);
         write(dir, SPEC, text);
         adopt(dir);
@@ -568,7 +571,7 @@ describe('a copy of a paragraph that moved to another spec file is not adopted',
   });
 
   for (const named of [false, true]) {
-    test(`check: the copy as rule INV-3${named ? ', named by hand in the adoption record with its hash,' : ''} gets signoff-coverage and path-claim not ok, --strict exits 1`, (t) => {
+    test(`check: the copy as rule INV-3${named ? ', named by hand in the adoption record with its hash,' : ''} gets signoff-coverage not ok and path-claim, --strict exits 1`, (t) => {
       const dir = linkedBase(t);
       moveInv2(dir, { copy: true });
       adopt(dir);
