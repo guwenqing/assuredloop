@@ -28,7 +28,18 @@ requirements:
     version: 2
     sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95
     title: Phrases for the review
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-17-signoff.md
+    sha256: f7232c464a3d98fc1f74e4182fd55931183bc989e6d2ea9993965f8a7ab8cb0e
+    signed: 2026-10-17T17:52Z
+    source: the owner, in the chat with the architect, 2026-10-17 about 17:51Z
+    words: sign
+    presented: "the intro, R1, R2 and the Out: line word for word, marker lines not shown, about 17:45Z, after a plain account of three options (the owner chose 1: the caller saves the items; al never contacts a tracker) and of what changed from the first text"
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 3, sha256: 606f07ec0e5c25904b61eaa62612ffb7875c53d87af3a74b1aa62cbb04191ce9 }
+      - { id: R2, version: 2, sha256: c9cd0910837682079757e8f6c8ac6d472fb3b70fe2aa78ac0def78dd42c11a95 }
 decisions:
   - id: D1
     date: 2026-10-17

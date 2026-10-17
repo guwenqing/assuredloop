@@ -32,6 +32,7 @@ A project may keep its work items in any tracker, or in none. `al check` never c
 A project can list phrases or patterns in its configuration. `al check` gives a hint for each match in the specs and the request files, and with `--issues` in the work items, with the file or item and the line. Origin files are exempt. The list is empty by default.
 
 Out: blocking on any of these; fetching items from a tracker, or writing to one.
+Signed off: 2026-10-17 owner, origin/2026-10-17-signoff.md
 
 ## Decisions
 
