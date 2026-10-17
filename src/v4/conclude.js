@@ -6,7 +6,7 @@
 // change of the branch, against the merge-base with main, counts as al check
 // counts it (branchOf, #217). With
 // --yes it writes the Outcome, sets the status and archives the request.
-import { mkdirSync, renameSync } from 'node:fs';
+import { mkdirSync, renameSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Fail, day, exists, guard, isName, now, write } from './base.js';
 import { branchOf } from './checks.js';
@@ -116,6 +116,9 @@ export function conclude({ top, args, opts }) {
   const rec = openRecord(top, name);
   if (!rec) throw new Fail(`${name} has no record .assuredloop/records/requests/${name}.yaml`, 'a v4 request is made with al new');
   guard(top, [`${r.dir}/request.md`, `${target}/request.md`, rec.path]);
+  if (statSync(join(top, dirname(target)), { throwIfNoEntry: false })?.isDirectory() === false) {
+    throw new Fail(`${dirname(target)} is not a folder; nothing was written`, `make ${dirname(target)} a folder, then al conclude ${name} again`);
+  }
   const what = `Status: concluded, the Outcome in ${target}/request.md, status: concluded in the record, and ${r.dir}/ moved to ${target}/`;
   if (!opts.yes) {
     return { body: [`Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read, next: 'run the same command with --yes to do it', notKnown };
