@@ -1311,3 +1311,57 @@ describe('SCH-37 and D11: a Markdown file in a current place that is a symlink i
     }
   });
 });
+
+// The architect's decision (from R3 to R5): a read failure never hides a
+// block, and never ends in a pass or an internal error. A file or folder that
+// al check cannot read, and that no check reports as not ok, stops al check
+// with a clean refusal: exit 2, the line "al: <path> cannot be read" (the path
+// from the repo top), no "internal error", no finding lines. Plain and --strict.
+const LOCK_ROOT_SKIP = 'running as root: a file or folder with mode 000 can still be read';
+
+function cleanRefusal(dir, path) {
+  const line = new RegExp(`^al: ${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/? cannot be read$`, 'm');
+  for (const args of [[], ['--strict']]) {
+    const r = check(dir, ...args);
+    assert.equal(r.code, 2, `al check ${args.join(' ')} exits 2:\n${show(r)}`);
+    assert.match(r.stdout, line, `the line "al: ${path} cannot be read":\n${show(r)}`);
+    assert.doesNotMatch(`${r.stdout}\n${r.stderr ?? ''}`, /internal error/i, `no internal error:\n${show(r)}`);
+    assert.deepEqual(r.findings.map((f) => f.line), [], `no finding lines:\n${show(r)}`);
+  }
+}
+
+describe('a file or folder that al check cannot read, and that no check reports, is a clean refusal', () => {
+  test('the spec doc specs/exports.md with mode 000: exit 2, "al: specs/exports.md cannot be read", no internal error, no findings', { skip: isRoot() && LOCK_ROOT_SKIP }, (t) => {
+    const dir = invoicer(t, 'clean');
+    withLocked(t, dir, ['specs/exports.md'], () => {
+      assert.throws(() => readFileSync(join(dir, 'specs/exports.md')), { code: 'EACCES' }, 'a direct read gives EACCES');
+      cleanRefusal(dir, 'specs/exports.md');
+    });
+  });
+
+  test('the folder specs/adr with mode 000: exit 2, "al: specs/adr cannot be read", no internal error, no findings', { skip: isRoot() && LOCK_ROOT_SKIP }, (t) => {
+    const dir = invoicer(t, 'clean');
+    withLocked(t, dir, ['specs/adr'], () => {
+      assert.throws(() => readdirSync(join(dir, 'specs/adr')), { code: 'EACCES' }, 'readdir gives EACCES');
+      cleanRefusal(dir, 'specs/adr');
+    });
+  });
+
+  test('control: the records folder with mode 000 stays not ok record-unreadable: plain exits 0, --strict exits 1', { skip: isRoot() && LOCK_ROOT_SKIP }, (t) => {
+    const dir = invoicer(t, 'clean');
+    withLockedRecords(t, dir, (names) => {
+      const r = both(dir);
+      assert.ok(folderUnreadable(r, names).length > 0, show(r));
+      assert.equal(check(dir, '--strict').code, 1);
+    });
+  });
+
+  test('control: an open request file with mode 000 stays not ok superseded-cited: plain exits 0, --strict exits 1', { skip: isRoot() && LOCK_ROOT_SKIP }, (t) => {
+    const dir = invoicer(t, 'clean');
+    write(dir, PLAN, NEUTRAL);
+    withLocked(t, dir, [PLAN], () => {
+      unreadablePlace(both(dir), PLAN);
+      assert.equal(check(dir, '--strict').code, 1);
+    });
+  });
+});
