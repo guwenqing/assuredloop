@@ -49,10 +49,16 @@ const namesRemoved = (r, [holder, link, target]) =>
 function reportsRemoved(r, b) {
   assert.ok(namesRemoved(r, b), `al index names the removed binding ${b.join(' ')} on a line that says "removed":\n${show(r)}`);
 }
-// No line about a removal names this holder (a holder all of whose links are still declared).
-function namesNoRemoval(r, holder) {
-  const found = removalLines(r).filter((l) => token(l, holder));
-  assert.deepEqual(found, [], `no removal line names ${holder}, whose links are all still declared:\n${show(r)}`);
+// No line reports a binding of this holder as removed (a holder all of whose
+// links are still declared). rec is the record before the run. The holder's
+// ID may still appear on a removal line as the target of another binding.
+function namesNoRemoval(r, holder, rec) {
+  const own = (rec.bindings ?? []).filter((b) => b.holder === holder);
+  assert.ok(own.length > 0, `${holder} holds bindings in the record before the run`);
+  for (const b of own) {
+    const found = [b.holder, b.link, b.target];
+    assert.ok(!namesRemoved(r, found), `no line reports ${found.join(' ')} as removed; its link is still declared:\n${show(r)}`);
+  }
 }
 
 const oneBinding = (rec, [holder, link, target]) => {
@@ -168,7 +174,7 @@ const NEW = [
   ['inv/SP-6', 'serves', 'inv/R1'],
   ['INV-60', 'builds-on', 'INV-41'],
 ];
-// The holders whose links are all still declared: no removal line names them.
+// The holders whose links are all still declared: no line reports one of their bindings as removed.
 const UNTOUCHED = ['inv/SP-4', 'INV-62', 'ADR-5', 'src/lines.js', 'docs/export.md', 'inv/R1'];
 
 function dropLinks(dir) {
@@ -207,7 +213,7 @@ test('R1: al index removes the binding of each link that no marker and no output
   }
 });
 
-test('R1: a link that is still declared keeps its binding, unchanged, also when its holder and its target changed in the same run; the new links are bound; no removal line names a holder whose links all stay', (t) => {
+test('R1: a link that is still declared keeps its binding, unchanged, also when its holder and its target changed in the same run; the new links are bound; no line reports a binding of a holder whose links all stay as removed', (t) => {
   const dir = linked(t);
   const before = record(dir, 'inv');
   const kept = new Map(KEPT.map((b) => [b.join(' '), oneBinding(before, b)]));
@@ -218,7 +224,7 @@ test('R1: a link that is still declared keeps its binding, unchanged, also when 
   const rec = record(dir, 'inv');
   for (const b of KEPT) assert.deepEqual(oneBinding(rec, b), kept.get(b.join(' ')), `${b.join(' ')} unchanged`);
   for (const b of NEW) oneBinding(rec, b);
-  for (const holder of UNTOUCHED) namesNoRemoval(r, holder);
+  for (const holder of UNTOUCHED) namesNoRemoval(r, holder, before);
 });
 
 test('R1: the next al index removes nothing more, says no removal for the bindings already gone, and leaves every file the same', (t) => {
@@ -249,7 +255,7 @@ test('R1: the supersedes: link of a new ADR and the decides: and source: links t
   noBinding(rec, ['inv/SP-2', 'builds-on', 'INV-13'], 'the control: its link is gone');
   reportsRemoved(r, ['inv/SP-2', 'builds-on', 'INV-13']);
   for (const b of stays) assert.deepEqual(oneBinding(rec, b), kept.get(b.join(' ')), `${b.join(' ')} unchanged`);
-  for (const holder of ['ADR-5', 'ADR-6']) namesNoRemoval(r, holder);
+  for (const holder of ['ADR-5', 'ADR-6']) namesNoRemoval(r, holder, before);
 });
 
 test('R1: a link declared at the base whose binding was lost stays "binding unknown" and gets no binding, in a run that removes another binding', (t) => {
@@ -326,7 +332,7 @@ test('R1: in an archived request\'s record, the binding of a link that no marker
   noBinding(rec, ['INV-70', 'builds-on', 'INV-13'], 'in the archived record, after al index');
   reportsRemoved(r, ['INV-70', 'builds-on', 'INV-13']);
   for (const b of kept) assert.deepEqual(oneBinding(rec, b), keptBefore.get(b.join(' ')), `${b.join(' ')} unchanged`);
-  for (const holder of ['old/SP-1', 'old/SP-2', 'src/rows.js', 'old/R1']) namesNoRemoval(r, holder);
+  for (const holder of ['old/SP-1', 'old/SP-2', 'src/rows.js', 'old/R1']) namesNoRemoval(r, holder, before);
 });
 
 // --- a file that al index cannot read
