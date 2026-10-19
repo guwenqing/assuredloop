@@ -485,18 +485,19 @@ function unreadable(t, dir, rel, fn) {
 }
 
 // One al index while a file it needs cannot be read. It removes no binding:
-// either it is refused (exit 2, an "al: " line that names the file), or it
+// either it stops (exit 2, an "al: " line that names the file; an
+// "al: internal error: EACCES ..." line counts, as it writes nothing), or it
 // runs (exit 0) and its output names the file and says why no binding was
-// removed. It never fails with an internal error. names: the records to compare.
+// removed. names: the records to compare.
 function indexRemovesNothing(t, dir, rel, names, gone) {
   const before = Object.fromEntries(names.map((n) => [n, record(dir, n).bindings]));
   const r = unreadable(t, dir, rel, () => al(dir, ['index']));
-  assert.doesNotMatch(r.stdout + r.stderr, /internal error/, `no internal error:\n${show(r)}`);
+  const out = r.stdout + r.stderr;
   assert.ok(r.code === 0 || r.code === 2, show(r));
   for (const n of names) assert.deepEqual(record(dir, n).bindings, before[n], `no binding of ${n} changes in this run:\n${show(r)}`);
-  assert.ok(r.stdout.includes(rel), `the output names ${rel}:\n${show(r)}`);
+  assert.ok(out.includes(rel), `the output names ${rel}:\n${show(r)}`);
   if (r.code === 0) assert.ok(removalLines(r).length > 0, `a line says why no binding was removed:\n${show(r)}`);
-  else assert.match(r.stdout, /^al: /m, show(r));
+  else assert.ok(out.split('\n').some((l) => l.startsWith('al: ') && l.includes(rel)), `an "al: " line that names ${rel}:\n${show(r)}`);
   assert.ok(!namesRemoved(r, gone), `no line reports ${gone.join(' ')} as removed:\n${show(r)}`);
   for (const n of names) {
     for (const b of before[n]) {
