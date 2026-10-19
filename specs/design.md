@@ -703,7 +703,7 @@ way" (input 115). The chain must still reach from the requirement to the work
 - The context and the outcome never claim that a merged task or a reconciled
   spec proves the work complete. They show the evidence and what is unknown.
 
-<!-- DES-91 rule serves:issue-hints/R1 -->
+<!-- DES-91 rule serves:issue-hints/R1,own-item/R1 -->
 
 **Hints from the linked work items.** A project may keep its work items in
 any tracker, or in none. `al check` never contacts a tracker. With
@@ -718,17 +718,22 @@ comment that is not hidden. It gives a hint:
 - `issue-bare-ref`: the item's text holds a bare `#n`, and the item is in a
   repository other than the request's own;
 - `issue-not-sub`: the item is not a child of the request's own item, where
-  the item says which item is its parent;
+  the folder names the request's own item and the item says which item is
+  its parent;
 - `phrase`: a phrase or pattern of the config matches the item's text
   ("Phrases for the review", section 3).
 
-<!-- DES-92 rule serves:issue-hints/R1 -->
+<!-- DES-92 rule serves:issue-hints/R1,own-item/R1 -->
 
 Each of these is a hint in every mode; none is `not ok`. Without
 `--issues`, `al check` reads no item and gives no line about items.
 Archived requests are history, and their tasks are not read. Reading items
 is optional: a project needs no tracker, and every other check works the
-same without one.
+same without one. `al check` takes a request's own item only from the file
+in the folder that names it, never from an origin source or another record.
+When the folder names no own item for a request, `al check` does not make
+the `issue-not-sub` check for that request's items, and its `Not known`
+line says so once for that request.
 
 <!-- DES-93 data serves:issue-hints/R1 builds-on:DES-91 -->
 
@@ -769,22 +774,43 @@ item, and the `Not known` line says why.
 No output of `al check` shows the user name or the password of the
 remote's URL.
 
-<!-- DES-95 data serves:issue-hints/R1 builds-on:DES-91 -->
+<!-- DES-95 data serves:issue-hints/R1,own-item/R1 builds-on:DES-91 -->
 
-**The request's own item** is the item that the `url` of an origin source
-of the request names: the first entry of `sources:` in its record whose
-`url` names an item in one of the forms above, or holds the `url` or `ref`
-of an item in the folder. An item is a child of the own item when its
-`parent` names the own item: by the parent's `url`, its `ref`, or its
-`number` in the item's repository. The parent's `url` names the own item
-when it equals the `url` of the own item or of its source. It also names
-the own item when it holds the own item's `ref` as a whole word, or names
-the own item in a form above. When no source names an own item,
-`issue-not-sub` is not given for that request's items, and the `Not known`
-line says so. The own item itself gets no `issue-not-sub`. An item with no
-`parent` field says nothing about its parent: it gets no `issue-not-sub`,
-and the `Not known` line says so. `parent: null` means that the item has no
-parent.
+**The request's own item** is the item that the file
+`assuredloop-requests.json` in the folder names for the request: the value
+of the request's name under `requests`. The value names an item in one of
+the forms above, as a task's `ref` does. When the value names no item in
+those forms, the item in the folder whose `ref` the value holds as a whole
+word is the own item; when there is none, the value itself is the own
+item's `ref`. An item is a child of the own item when its `parent` names
+the own item: by the parent's `url`, its `ref`, or its `number` in the
+item's repository. The parent's `url` names the own item when it equals the
+`url` of the own item or the value. It also names the own item when it
+holds the own item's `ref` as a whole word, or names the own item in a form
+above. When the file names no own item for a request, or the value is a
+`#n` and the request's own repository is not known, `issue-not-sub` is not
+given for that request's items, and the `Not known` line says why, once for
+that request. An origin source's `url` does not name the own item. The own
+item itself gets no `issue-not-sub`. An item with no `parent` field says
+nothing about its parent: it gets no `issue-not-sub`, and the `Not known`
+line says so. `parent: null` means that the item has no parent.
+
+<!-- DES-107 interface serves:own-item/R1 builds-on:DES-91 -->
+
+**The file of own items.** `assuredloop-requests.json` is a JSON object
+with two fields, and no other field:
+- `format`: the exact text `assuredloop-items/1`;
+- `requests`: an object. Each key is the name of a request, and its value is
+  that request's own item, as a text that is not empty: a URL, an
+  `owner/repo#n`, or another tracker's key, for example `PROJ-1`.
+
+<!-- DES-108 interface serves:own-item/R1 builds-on:DES-91 -->
+
+The file is optional. It is not an item, and it is not read as one. A file
+that is not valid JSON, has another `format`, has another field, or has a
+value of another type gets `issue-unread` at the file, and is ignored as a
+whole: no request has an own item then, and `al check` goes on. A key
+that names no open request is ignored.
 
 <!-- DES-96 interface serves:issue-hints/R1 builds-on:DES-91 -->
 
@@ -809,16 +835,17 @@ of `gh` as it is, with no conversion:
 An item needs a `body`, and a `url` of the form above, a `number` with a
 `repository`, or a `ref`, so that a task can name it.
 
-<!-- DES-97 interface serves:issue-hints/R1 builds-on:DES-91 -->
+<!-- DES-97 interface serves:issue-hints/R1,own-item/R1 builds-on:DES-91 -->
 
 **The folder.** `al check --issues <folder>` reads each `*.json` file in
-the folder, but not its subfolders. A file holds one item, or a list of
-items, as `gh issue view` and `gh issue list` print them. A file that is
-not valid JSON gets `issue-unread` at the file. In a list, each entry that
-is not an item gets `issue-unread` at the file, and the other entries are
-read. The `Not known` line names each such file. The folder is a path from
-the current directory. A folder that is not there stops `al check` with a
-refusal: exit 2, and a line that names it.
+the folder, but not its subfolders, and not `assuredloop-requests.json`. A
+file holds one item, or a list of items, as `gh issue view` and
+`gh issue list` print them. A file that is not valid JSON gets
+`issue-unread` at the file. In a list, each entry that is not an item gets
+`issue-unread` at the file, and the other entries are read. The `Not known`
+line names each such file. The folder is a path from the current
+directory. A folder that is not there stops `al check` with a refusal: exit
+2, and a line that names it.
 
 <!-- DES-98 interface serves:issue-hints/R1 builds-on:DES-91 -->
 
@@ -879,6 +906,104 @@ An item of another tracker, saved by the caller:
 {"ref": "PROJ-12", "repository": "PROJ", "body": "Build the export (ADR-3).",
  "comments": [{"body": "Done.", "isMinimized": false}], "parent": {"ref": "PROJ-1"}}
 ```
+
+<!-- DES-109 interface serves:own-item/R1 builds-on:DES-91 -->
+
+**The JSON Schema of the files.** The README gives a JSON Schema (draft
+2020-12) for each of the two kinds of file, so that a person or an AI can
+write them and check them. The schema of an item file, which says what
+"The format of an item" says:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "an item file: one item, or a list of items",
+  "oneOf": [
+    {"$ref": "#/$defs/item"},
+    {"type": "array", "items": {"$ref": "#/$defs/item"}}
+  ],
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["body"],
+      "anyOf": [
+        {"required": ["url"], "properties": {"url": {"type": "string", "pattern": "^https?://[^/\\s]+/[^/\\s]+/[^/\\s]+/issues/[0-9]+"}}},
+        {"required": ["number", "repository"]},
+        {"required": ["ref"]}
+      ],
+      "properties": {
+        "body": {"type": "string"},
+        "url": {"type": "string"},
+        "number": {"type": "integer"},
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["body"],
+            "properties": {"body": {"type": "string"}, "isMinimized": {"type": "boolean"}}
+          }
+        },
+        "parent": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "properties": {"url": {"type": "string"}, "number": {"type": "integer"}, "ref": {"type": "string", "minLength": 1}}
+            }
+          ]
+        },
+        "ref": {"type": "string", "minLength": 1},
+        "repository": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
+```
+
+<!-- DES-110 interface serves:own-item/R1 builds-on:DES-91 -->
+
+The schema of `assuredloop-requests.json`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "assuredloop-requests.json",
+  "type": "object",
+  "required": ["format", "requests"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {"const": "assuredloop-items/1"},
+    "requests": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1}
+    }
+  }
+}
+```
+
+<!-- DES-111 example illustrates:DES-107 -->
+
+An `assuredloop-requests.json` for two requests, one with a GitHub issue
+and one with an item of another tracker:
+
+```json
+{
+  "format": "assuredloop-items/1",
+  "requests": {
+    "invoice-exports": "https://github.com/acme/invoicer/issues/30",
+    "pay-run": "PROJ-1"
+  }
+}
+```
+
+<!-- DES-112 rationale explains:DES-95 -->
+
+Why a file in the folder: an origin source's `url` is free text, for
+example "a work session for acme/invoicer#46". An issue number in it was
+read as the request's own item, so each task was reported as not a child
+of it (issue #3). Only the caller knows which item is the request's own,
+and the caller already prepares the folder. So the folder names it, in one
+file, and `al` guesses nothing. The item files stay as `gh` prints them.
 
 <!-- DES-53 note -->
 

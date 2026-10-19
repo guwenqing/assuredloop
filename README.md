@@ -234,8 +234,7 @@ example `PROJ-12`. Each finding is a hint:
   GitHub reads as that repository's issue. The request's own repository
   comes from `git remote get-url origin`;
 - `issue-not-sub`: the item is not a child of the request's own item, the
-  item that the `url` of an origin source names (`al record <name> origin
-  --url <its URL>`);
+  item that `assuredloop-requests.json` in the folder names (below);
 - `phrase`: a phrase of `phrases:` matches;
 - `issue-unread`: a file in the folder is not valid JSON, or holds an entry
   that is not an item.
@@ -272,6 +271,104 @@ An item of another tracker:
 ```json
 {"ref": "PROJ-12", "repository": "PROJ", "body": "Build the export (ADR-3).",
  "comments": [{"body": "Done.", "isMinimized": false}], "parent": {"ref": "PROJ-1"}}
+```
+
+The folder also says which item is each request's own item, in the file
+`assuredloop-requests.json`. `al` reads the own item from this file only,
+never from an origin source. Without the file, or for a request that it
+does not list, `issue-not-sub` is not checked, and the `Not known` line
+says so once for each request. The file is not read as an item. A file that
+is not valid gets `issue-unread` and is ignored; `al check` goes on.
+
+- `format`: the exact text `assuredloop-items/1`;
+- `requests`: each key is a request's name, and its value is that request's
+  own item, in a form that a task's `ref` uses: a URL, `owner/repo#n`, or
+  another tracker's key, for example `PROJ-1`.
+
+```json
+{
+  "format": "assuredloop-items/1",
+  "requests": {
+    "invoice-exports": "https://github.com/acme/invoicer/issues/30",
+    "pay-run": "PROJ-1"
+  }
+}
+```
+
+To write it for a GitHub issue:
+
+```sh
+printf '{"format": "assuredloop-items/1", "requests": {"invoice-exports": "%s"}}\n' \
+  "$(gh issue view 30 --repo acme/invoicer --json url --jq .url)" \
+  > /tmp/items/assuredloop-requests.json
+```
+
+The JSON Schema (draft 2020-12) of each file, for a person or an AI that
+writes them. An item file:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "an item file: one item, or a list of items",
+  "oneOf": [
+    {"$ref": "#/$defs/item"},
+    {"type": "array", "items": {"$ref": "#/$defs/item"}}
+  ],
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["body"],
+      "anyOf": [
+        {"required": ["url"], "properties": {"url": {"type": "string", "pattern": "^https?://[^/\\s]+/[^/\\s]+/[^/\\s]+/issues/[0-9]+"}}},
+        {"required": ["number", "repository"]},
+        {"required": ["ref"]}
+      ],
+      "properties": {
+        "body": {"type": "string"},
+        "url": {"type": "string"},
+        "number": {"type": "integer"},
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["body"],
+            "properties": {"body": {"type": "string"}, "isMinimized": {"type": "boolean"}}
+          }
+        },
+        "parent": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "properties": {"url": {"type": "string"}, "number": {"type": "integer"}, "ref": {"type": "string", "minLength": 1}}
+            }
+          ]
+        },
+        "ref": {"type": "string", "minLength": 1},
+        "repository": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
+```
+
+`assuredloop-requests.json`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "assuredloop-requests.json",
+  "type": "object",
+  "required": ["format", "requests"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {"const": "assuredloop-items/1"},
+    "requests": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1}
+    }
+  }
+}
 ```
 
 ## Search
