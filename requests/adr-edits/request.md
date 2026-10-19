@@ -18,3 +18,4 @@ When someone changes the marker line of an accepted or replaced ADR in any way o
 When the first line of an ADR is not a status that `al` knows (proposed, accepted, or replaced by other ADRs), `al check` MUST give a hint.
 
 Out: these cases give a hint and never block.
+Signed off: 2026-10-19 owner, origin/2026-10-19-signoff.md
