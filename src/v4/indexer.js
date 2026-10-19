@@ -201,6 +201,16 @@ export function declaredNow(top, state) {
   return (b) => keys.has(tripleKey(b));
 }
 
+// Whether al index --align can move a binding to `target` now, by its own
+// target rules, in al check's state (state.js): holder-changed names --align
+// only where it works (#11).
+export function canAlignTo(state) {
+  const adrs = [...state.adrs.values()].flatMap((a) => a.paragraphs.filter((p) => p.id).map((p) => [p.id, p]));
+  const view = { spec: new Map([...state.spec, ...adrs]), requests: state.requests };
+  const central = isCentral(state.config);
+  return (target) => Boolean(targetOf(qualify(String(target), null, new Set(), central), view));
+}
+
 // A state whose archived requests declare their links too: their change
 // specs' markers, their requirements' from: and their records' outputs: (#11).
 function everyDeclaration(state) {
@@ -214,7 +224,8 @@ function everyDeclaration(state) {
 // The files and folders that can declare links but are not read, each with
 // why: reached through a symlink, a file that cannot be read, or a folder that
 // cannot be listed. They are the spec root's, the requests' (open and
-// archived) request.md and spec.md, and the docs that config lists (#11).
+// archived) request.md, spec.md and record, whose outputs: declare links, and
+// the docs that config lists (#11).
 function notRead(top, root, config) {
   const out = [];
   const blocked = (p) => {
@@ -232,6 +243,7 @@ function notRead(top, root, config) {
     }
   };
   tree(root);
+  const records = !blocked('.assuredloop/records/requests');
   for (const dir of ['requests', 'requests/archive']) {
     if (blocked(dir)) continue;
     for (const e of list(top, dir)) {
@@ -239,6 +251,7 @@ function notRead(top, root, config) {
       if (d === 'requests/archive' || (!e.isDirectory() && !e.isSymbolicLink()) || blocked(d)) continue;
       blocked(`${d}/request.md`);
       blocked(`${d}/spec.md`);
+      if (records) blocked(recordPath(e.name));
     }
   }
   for (const d of config.docs) blocked(posix.normalize(String(d.file)));
