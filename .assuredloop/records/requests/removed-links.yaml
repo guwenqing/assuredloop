@@ -1,0 +1,39 @@
+schema: assuredloop/1
+request: removed-links
+tier: "1"
+status: concluded
+sources:
+  - file: 2026-10-19-owner-words.md
+    kind: owner-words
+    sha256: 88d3caa2a4f47988abb5a802a256c954ae0734dbb3fd84ee274968623f2412c8
+    taken: 2026-10-19T19:56Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: 802374ed4943b64d591db08cf6e8aa40fb739ebcdebdc3237bc36d87236b83f0
+    title: Records of removed links
+  - id: R2
+    version: 1
+    sha256: 3a48959b5d476d95a590355cb620e60f0bd6712543fbedc4915ac74bec4efbe2
+    title: A changed paragraph that holds a link
+signoff:
+  - id: S1
+    file: 2026-10-19-signoff.md
+    sha256: f62ff32d71f2d1966b40df4db3c6980bf0808073a9c05645100dd85b29e1959c
+    signed: 2026-10-19T19:58Z
+    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-19 at 19:51Z
+    words: Yes I am good on both
+    presented: 'R1, R2 and the Out: line word for word, marker lines not shown, first at 19:30Z, and again at 19:50Z with a plain account of each part after the owner asked "Tell me more what to sign"; the one answer covers this text and the text of issue #13'
+    transcribed_by: assuredloop/architect
+    covers:
+      - { id: R1, version: 1, sha256: 802374ed4943b64d591db08cf6e8aa40fb739ebcdebdc3237bc36d87236b83f0 }
+      - { id: R2, version: 1, sha256: 3a48959b5d476d95a590355cb620e60f0bd6712543fbedc4915ac74bec4efbe2 }
+decisions: []
+tasks: []
+bindings:
+  - { holder: removed-links/R1, link: from, target: removed-links/2026-10-19-owner-words.md, holder_sha256: 802374ed4943b64d591db08cf6e8aa40fb739ebcdebdc3237bc36d87236b83f0, target_sha256: 88d3caa2a4f47988abb5a802a256c954ae0734dbb3fd84ee274968623f2412c8 }
+  - { holder: removed-links/R2, link: from, target: removed-links/2026-10-19-owner-words.md, holder_sha256: 3a48959b5d476d95a590355cb620e60f0bd6712543fbedc4915ac74bec4efbe2, target_sha256: 88d3caa2a4f47988abb5a802a256c954ae0734dbb3fd84ee274968623f2412c8 }
+  - { holder: DES-26, link: serves, target: removed-links/R1, holder_sha256: 980e730b49d9ff75bfe0700ddd08b1b114a1b08626809ed255fa11cbc60cd506, target_sha256: 802374ed4943b64d591db08cf6e8aa40fb739ebcdebdc3237bc36d87236b83f0, target_version: 1 }
+  - { holder: DES-26, link: serves, target: removed-links/R2, holder_sha256: 980e730b49d9ff75bfe0700ddd08b1b114a1b08626809ed255fa11cbc60cd506, target_sha256: 3a48959b5d476d95a590355cb620e60f0bd6712543fbedc4915ac74bec4efbe2, target_version: 1 }
+  - { holder: DES-38, link: serves, target: removed-links/R1, holder_sha256: a1f19233a1c30a8bfa32aedaf6f4c13bfe8635e6a20f55c8d70b7efa2a6695de, target_sha256: 802374ed4943b64d591db08cf6e8aa40fb739ebcdebdc3237bc36d87236b83f0, target_version: 1 }
+dispositions: []

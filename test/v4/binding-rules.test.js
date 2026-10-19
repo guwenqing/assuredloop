@@ -143,12 +143,19 @@ test('with no commit at all, every link is new and bound; "base unknown" is prin
   ]) binding(rec, from, link, to);
 });
 
-test('a link removed from its marker keeps its binding as history', (t) => {
+// #11 R1: a link removed from its marker loses its binding; al index names it
+// on a line that says removed. Git history keeps the old binding.
+test('a link removed from its marker loses its binding, and al index names it as removed; the link the marker keeps stays bound', (t) => {
   const dir = bound(t);
-  const old = binding(record(dir, 'inv'), 'inv/SP-1', 'builds-on', 'INV-12');
+  binding(record(dir, 'inv'), 'inv/SP-1', 'builds-on', 'INV-12');
+  const serves = binding(record(dir, 'inv'), 'inv/SP-1', 'serves', 'inv/R2');
   editFile(dir, CS, '<!-- SP-1 rule serves:R2 builds-on:INV-12 -->', '<!-- SP-1 rule serves:R2 -->');
-  index(dir);
-  assert.deepEqual(binding(record(dir, 'inv'), 'inv/SP-1', 'builds-on', 'INV-12'), old);
+  const r = index(dir);
+  const rec = record(dir, 'inv');
+  assert.equal(bindingsOf(rec, 'inv/SP-1', 'builds-on', 'INV-12').length, 0, 'the binding of the removed link is gone');
+  assert.ok(r.stdout.split('\n').some((l) => /remov/i.test(l) && l.includes('inv/SP-1') && /\bbuilds-on\b/.test(l) && /\bINV-12\b/.test(l)),
+    `al index names inv/SP-1 builds-on INV-12 on a line that says removed:\n${r.stdout}`);
+  assert.deepEqual(binding(rec, 'inv/SP-1', 'serves', 'inv/R2'), serves, 'the link that the marker keeps keeps its binding');
 });
 
 test('--align <ID> sets that paragraph\'s bindings to now and leaves the others', (t) => {

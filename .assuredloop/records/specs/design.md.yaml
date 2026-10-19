@@ -115,7 +115,7 @@ paragraphs:
     display: DES-25 (4:1, in 4. The change spec honors the consolidated spec)
   - id: DES-26
     kind: rule
-    text_sha256: d893af46139b3e3b436e06c79a7d71287dd5e54107a4f6e2c8476319125c6464
+    text_sha256: 9e89fb3521f77e0be803fc09bfbf8166b769dbf3f3b3f66baed5f4f7ec591acf
     display: DES-26 (4:2, in 4. The change spec honors the consolidated spec)
   - id: DES-27
     kind: note
@@ -163,7 +163,7 @@ paragraphs:
     display: DES-37 (5:10, in 5. Consolidation and the close rule)
   - id: DES-38
     kind: rule
-    text_sha256: 61222a6fdae80e663d0bb1912df8fa1ed67a32a6a60755c29fc10a95209732cb
+    text_sha256: a1f19233a1c30a8bfa32aedaf6f4c13bfe8635e6a20f55c8d70b7efa2a6695de
     display: DES-38 (5:11, in 5. Consolidation and the close rule)
   - id: DES-39
     kind: definition

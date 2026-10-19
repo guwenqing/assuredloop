@@ -2,9 +2,9 @@
 // stale-base hint for a binding whose target changed since it was bound, but
 // only while the holder still declares that link (the same link word and the
 // same target). A holder that dropped the link, changed its link word, or is
-// gone gets no stale-base for the old binding. The old binding stays in the
-// record (DES-38: "the old link stays in the binding history"); al index and
-// al index --align do not remove or change it.
+// gone gets no stale-base for the old binding. Since #11 (R1), al index
+// removes the old binding and names it in its output; git history keeps it
+// (DES-38). al index --align does not bring it back.
 //
 // Each test has a control in the same state that still fires: a holder that
 // still declares a link to the target that changed.
@@ -142,7 +142,6 @@ function fires(r, b) {
 }
 const silent = (r, b) => assert.deepEqual(staleFor(r, b), [], `no stale-base on ${b.join(' ')}, whose link is gone:\n${show(r)}`);
 
-const bindingKey = (b) => `${b.holder} ${b.link} ${b.target}`;
 const oneBinding = (rec, [holder, link, target]) => {
   const found = bindingsOf(rec, holder, link, target);
   assert.equal(found.length, 1, `one binding ${holder} ${link} ${target}; bindings:\n${stringify(rec.bindings)}`);
@@ -192,42 +191,48 @@ test('a declared output that no longer implements INV-13 (src/count.js): no stal
   fires(r, ['src/lines.js', 'implements', 'INV-13']);
 });
 
-test('the bindings of the gone links stay in the record, unchanged, after al index (twice) and after al index --align on their holders', (t) => {
+// A line of al index's output that says the binding [holder, link, target]
+// was removed (#11 R1): it names all three and has a word like "removed".
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const token = (s, w) => new RegExp(`(^|[^\\w/.-])${esc(w)}($|[^\\w/-])`).test(s);
+const namesRemoved = (r, [holder, link, target]) => r.stdout.split('\n')
+  .some((l) => /remov/i.test(l) && token(l, holder) && token(l, link) && token(l, target));
+
+test('#11 R1: al index removes the bindings of the gone links and names each one; the controls keep theirs, unchanged, after al index (twice) and after al index --align on the holders', (t) => {
   const dir = linked(t);
   const before = record(dir, 'inv');
   const gone = Object.values(GONE).flat();
-  const kept = new Map(gone.map((b) => [b.join(' '), oneBinding(before, b)]));
-  const same = (when) => {
+  for (const b of gone) oneBinding(before, b);
+  const kept = new Map(CONTROLS.map((b) => [b.join(' '), oneBinding(before, b)]));
+  const removed = (when) => {
     const rec = record(dir, 'inv');
-    for (const b of gone) {
-      assert.deepEqual(oneBinding(rec, b), kept.get(b.join(' ')), `${b.join(' ')} unchanged ${when}`);
-    }
+    for (const b of gone) assert.equal(bindingsOf(rec, ...b).length, 0, `${b.join(' ')} is removed ${when}:\n${stringify(rec.bindings)}`);
+    for (const b of CONTROLS) assert.deepEqual(oneBinding(rec, b), kept.get(b.join(' ')), `control ${b.join(' ')} unchanged ${when}`);
   };
   dropLinks(dir);
-  index(dir);
-  same('after al index with the links dropped');
+  const r = index(dir);
+  for (const b of gone) assert.ok(namesRemoved(r, b), `al index names the removed binding ${b.join(' ')}:\n${show(r)}`);
+  removed('after al index with the links dropped');
   changeTarget(dir);
-  index(dir);
-  same('after al index with INV-13 changed');
-  // The record file text names each gone binding.
+  const again = index(dir);
+  for (const b of gone) assert.ok(!namesRemoved(again, b), `${b.join(' ')} is not reported again:\n${show(again)}`);
+  removed('after al index with INV-13 changed');
+  // The record file text no longer names a gone binding.
   const text = read(dir, recordPath('inv'));
   for (const [holder, link, target] of gone) {
-    assert.match(text, new RegExp(`holder: ${holder.replace('/', '\\/').replace('.', '\\.')}\\n\\s+link: ${link}\\n\\s+target: ${target}\\n`),
-      `the record file holds ${holder} ${link} ${target}:\n${text}`);
+    assert.doesNotMatch(text, new RegExp(`holder: ${holder.replace('/', '\\/').replace('.', '\\.')}\\n\\s+link: ${link}\\n\\s+target: ${target}\\n`),
+      `the record file no longer holds ${holder} ${link} ${target}:\n${text}`);
   }
   // --align on a holder that is still there, but dropped the link.
   for (const holder of ['inv/SP-2', 'INV-60', 'inv/SP-5', 'ADR-4', 'src/count.js']) {
     ok(dir, ['index', '--align', holder]);
-    same(`after al index --align ${holder}`);
+    removed(`after al index --align ${holder}`);
   }
-  // --align on a gone holder: it may be refused, but it never drops the binding.
+  // --align on a gone holder: it may be refused, but it never brings the binding back.
   for (const holder of ['inv/SP-3', 'INV-61']) {
     al(dir, ['index', '--align', holder]);
-    same(`after al index --align ${holder} (a gone holder)`);
+    removed(`after al index --align ${holder} (a gone holder)`);
   }
-  // No binding of a gone link is held twice.
-  const keys = record(dir, 'inv').bindings.map(bindingKey);
-  for (const b of gone) assert.equal(keys.filter((k) => k === b.join(' ')).length, 1, b.join(' '));
 });
 
 test('a record whose outputs is a mapping, not a list: al check still gives its findings, with the stale-base on inv/SP-1, which still builds on INV-13', (t) => {
