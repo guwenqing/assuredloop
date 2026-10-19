@@ -292,6 +292,41 @@ describe('#3 (SP-5, SP-7): when the folder names no own item for a request, no i
     assert.equal(ownItemUnknown(r, 'pay'), 0, show(r));
   });
 
+  // The review of #3: the entry does not depend on whether a task's item is
+  // in the folder. It is there for each open request with a task that has a
+  // ref, and not for one with no such task (nothing to check).
+  for (const ref of ['#31', `${OWN}#31`]) {
+    for (const [what, files] of [['an empty folder', {}], ['a folder without that item', { '50.json': own(50, { parent: null }) }]]) {
+      test(`a task names ${ref}, not in the folder (${what}), and no file: issue-missing as before, and one Not known entry for inv`, (t) => {
+        const w = world(t, { tasks: [{ id: 'T1', ref }] });
+        save(w, files);
+        const r = checked(w, ...ISSUES);
+        assert.equal(coded(r, 'issue-missing').length, 1, show(r));
+        assert.equal(coded(r, 'issue-missing')[0].id, `${NAME}/T1`, show(r));
+        assert.equal(ownItemUnknown(r, NAME), 1, `the Not known line says once that the own item of ${NAME} is not known:\n${show(r)}`);
+      });
+    }
+  }
+
+  test('a task names #31, not in the folder, and the file lists only pay: issue-missing for inv, one Not known entry for inv, none for pay', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: '#31' }], second: { name: 'pay', tasks: [{ id: 'T1', ref: '#34' }] } });
+    save(w, { '34.json': own(34, { parent: `${OWN}#8` }) });
+    ownItems(w, { pay: ghUrl(OWN, 8) });
+    const r = checked(w, ...ISSUES);
+    assert.deepEqual(coded(r, 'issue-missing').map((f) => f.id), [`${NAME}/T1`], show(r));
+    assert.equal(ownItemUnknown(r, NAME), 1, `the Not known line says once that the own item of ${NAME} is not known:\n${show(r)}`);
+    assert.equal(ownItemUnknown(r, 'pay'), 0, show(r));
+  });
+
+  test('control: an open request with no tasks, or with a task that has no ref, gets no Not known entry about its own item, with no file', (t) => {
+    for (const tasks of [[], [{ id: 'T1' }]]) {
+      const w = world(t, { tasks });
+      save(w, { '50.json': own(50, { parent: null }) });
+      const r = checked(w, ...ISSUES);
+      assert.equal(ownItemUnknown(r, NAME), 0, `tasks ${JSON.stringify(tasks)}:\n${show(r)}`);
+    }
+  });
+
   test('two requests and no file: one Not known entry for each request', (t) => {
     const w = world(t, { tasks, second: { name: 'pay', tasks: [{ id: 'T1', ref: '#34' }, { id: 'T2', ref: '#31' }] } });
     save(w, { ...files, '34.json': own(34, { parent: null }) });
