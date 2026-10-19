@@ -302,3 +302,36 @@ describe('several-successors/R1 (SCH-37): each listed successor, and the chain a
     noneNotOk(both(dir));
   });
 });
+
+// =====================================================================
+// A cycle: ADR-1 and ADR-2 each supersede the other. The chain up from ADR-1
+// comes back to ADR-1, but ADR-1 is not its own successor: a place that names
+// ADR-1 alone names no ADR that supersedes it (as al 1.0.0 gives).
+
+describe('several-successors/R1 (SCH-37): a cycle of superseded ADRs', () => {
+  function cycleWorld(t) {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, SPEC, doc([
+      ['INV-1 note', '# Invoices'],
+      ['INV-2 note', 'Invoices are sent by email.'],
+    ]));
+    write(dir, ADR1, adr('superseded by ADR-2', 'ADR-1 choice decides:INV-2 supersedes:ADR-2', '# ADR-1: Paper invoices', 'Context: invoices were printed and posted.'));
+    write(dir, ADR2, adr('superseded by ADR-1', 'ADR-2 choice decides:INV-2 supersedes:ADR-1', '# ADR-2: PDF invoices', 'Context: postage cost too much.'));
+    commitAll(dir, 'base');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    return dir;
+  }
+
+  const setInv2Text = (dir, text) => editFile(dir, SPEC, 'Invoices are sent by email.', text);
+
+  test('ADR-1 and ADR-2 supersede each other; a spec paragraph names ADR-1 alone: not ok superseded-cited on INV-2, naming ADR-1; --strict exits 1', (t) => {
+    const dir = cycleWorld(t);
+    setInv2Text(dir, 'Invoices were posted under ADR-1.');
+    const r = both(dir);
+    const found = cited(r).filter((f) => f.file === SPEC && f.id === 'INV-2');
+    assert.equal(found.length, 1, `one not ok superseded-cited on INV-2:\n${show(r)}`);
+    assert.match(found[0].msg, /\bADR-1\b/, show(r));
+    assert.equal(check(dir, '--strict').code, 1);
+  });
+});
