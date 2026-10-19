@@ -12,7 +12,17 @@ requirements:
     version: 1
     sha256: f621d01c5a052cf926ac75ad3b12d71f7dbedaaf12d46c39d25cc7009e7e591a
     title: A paragraph that applies a promise
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-19-signoff.md
+    sha256: 8e242b56196d1da3be1f06448e25e77d879f0f6c74409a46db2073bebe3c1e40
+    signed: 2026-10-19T19:59Z
+    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-19 at 19:51Z
+    words: Yes I am good on both
+    presented: 'R1 and the Out: line word for word, marker lines not shown, first at 19:38Z, and again at 19:50Z with a plain account and an example after the owner asked "Tell me more what to sign"; the one answer covers this text and the text of issue #11'
+    transcribed_by: assuredloop/architect
+    covers:
+      - { id: R1, version: 1, sha256: f621d01c5a052cf926ac75ad3b12d71f7dbedaaf12d46c39d25cc7009e7e591a }
 decisions: []
 tasks: []
 bindings:
