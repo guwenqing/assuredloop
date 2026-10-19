@@ -204,3 +204,39 @@ test('--strict, a bare "Status: superseded": adr-status stays a hint; the only n
   hinted(r, 'adr-status', 'ADR-2');
   assert.deepEqual(notOk(r).filter((f) => !['superseded-status', 'superseded-cited'].includes(f.code)).map((f) => f.line), [], show(r));
 });
+
+// --- R1 part b: a line that starts like a marker but is not well formed
+// (case adr-edits-malformed: a proposed ADR-5 with source: and decides:)
+
+const malformedArms = {
+  arrows: ['ADR-5-1', 7, 'a paragraph marker that ends "-->-->"'],
+  open: ['ADR-5-1', 7, 'a paragraph marker that ends "--> <!--"'],
+  tail: ['ADR-5', 3, 'text after the "-->" of the heading marker'],
+  tight: ['ADR-5-1', 7, 'a paragraph marker with no spaces, "<!--ADR-5-1 rationale-->"'],
+  indented: ['ADR-5-1', 7, 'spaces before the "<!--" of a paragraph marker'],
+  prefix: ['INV-99', 11, 'a line "<!--INV-99 note-->" with another prefix'],
+};
+for (const [arm, [id, line, what]] of Object.entries(malformedArms)) {
+  test(`malformed marker line, ${what} (arm ${arm}): hint adr-marker on ${id} at that line`, (t) => {
+    const r = run(t, 'adr-edits-malformed', arm);
+    at(r, hinted(r, 'adr-marker', id), ADR5, line);
+  });
+  test(`--strict, malformed marker line (arm ${arm}): adr-marker stays a hint; exit 0 and no not ok`, (t) => {
+    const r = run(t, 'adr-edits-malformed', arm, '--strict');
+    hinted(r, 'adr-marker', id);
+    assert.equal(r.code, 0, show(r));
+    assert.deepEqual(notOk(r).map((f) => f.line), [], show(r));
+  });
+}
+
+test('well-formed markers, with or without spaces after "-->" (arms clean, spaces): no adr-marker', (t) => {
+  none(run(t, 'adr-edits-malformed', 'clean'), 'adr-marker');
+  none(run(t, 'adr-edits-malformed', 'spaces'), 'adr-marker');
+});
+
+test('a plain HTML comment and malformed markers inside fenced code (arm control): no adr-marker; --strict exits 0', (t) => {
+  none(run(t, 'adr-edits-malformed', 'control'), 'adr-marker');
+  const r = run(t, 'adr-edits-malformed', 'control', '--strict');
+  assert.equal(r.code, 0, show(r));
+  assert.deepEqual(notOk(r).map((f) => f.line), [], show(r));
+});
