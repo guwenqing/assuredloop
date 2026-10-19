@@ -364,7 +364,7 @@ Why: the change's design must honor "the existing consolidated design"
 input 25). A link is only useful if it remembers what the target said when
 the link was made.
 
-<!-- DES-26 rule serves:assuredloop-v4/R6,design-links/R1 -->
+<!-- DES-26 rule serves:assuredloop-v4/R6,design-links/R1,removed-links/R1,removed-links/R2 -->
 
 - A change paragraph that relies on a spec paragraph says `builds on <ID>`.
   One that replaces it says `changes <ID>`. It holds no copy of the old text.
@@ -384,9 +384,24 @@ the link was made.
     project declares them. Where a project declares no outputs, the tool
     cannot say that an output's declared claim went stale; the context view
     says which holds.
+  - When no current marker declares a link any more (the same holder, link
+    word and target), `al index` removes its binding and names it in its
+    output. This holds for the records of the open and the archived requests.
+    An archived change spec's markers, its requirements' `from` links and its
+    record's `outputs` still declare their links. Git history keeps the
+    removed binding. While `al index` cannot read a file that can declare
+    links, it removes no binding and says why.
 - When a bound target changes, the source paragraph gets a hint until it is
   aligned: "your change builds on INV-41, which change X changed on <date>.
   Align it." Running the index again does not remove the hint.
+- When the source paragraph's text changes after a link was bound, it gets a
+  hint until it is aligned: "this paragraph changed after its link builds-on
+  INV-41 was bound. Check it, then al index --align <ID>." The hint covers
+  the links that a paragraph in a spec doc, an ADR or a change spec still
+  declares, to a target that still resolves, in the records of the open
+  requests: the bindings that `al index --align` reaches. A requirement is
+  out, because a changed requirement already needs a new sign-off. An output
+  file is out.
 - Request-local IDs resolve by request name, never by path:
   `invoice-exports/R2`, `invoice-exports/SP-12`. A request's name is
   permanent, so its IDs still resolve after a move or an archive.
@@ -515,13 +530,14 @@ fate, explanations included.
   main's history, not from the working tree.
 - Code or tests that still cite a removed or abandoned ID get a hint.
 
-<!-- DES-38 rule serves:assuredloop-v4/R5,assuredloop-v4/R7 -->
+<!-- DES-38 rule serves:assuredloop-v4/R5,assuredloop-v4/R7,removed-links/R1 -->
 
 **Path 1 and adoption.** A promise paragraph edited directly on path 1
 names its requirement in its marker, `serves:<request>/R<n>`, with a binding.
-A direct edit moves that `serves` link to the new request's requirement; the
-old link stays in the binding history. A typo fix (path 0) keeps the link. The
-request's record names where the spec text came from in a `source:` field:
+A direct edit moves that `serves` link to the new request's requirement;
+`al index` then removes the old binding, and git history keeps it. A typo
+fix (path 0) keeps the link. The request's record names where the spec
+text came from in a `source:` field:
 `source: <request>/SP-12` for consolidated change text, `source:
 <request>/R2` on path 1, and `source: adoption` with the captured baseline
 (the commit and its hash) for a paragraph that existed before adoption. A

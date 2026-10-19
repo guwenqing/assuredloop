@@ -18,8 +18,9 @@
 // Controls: an accepted ADR that keeps its source aligns; a superseded ADR
 // that keeps its source aligns; plain al index moves none of these bindings;
 // aligning one holder leaves every other holder's bindings as they were; a
-// binding whose link the holder no longer declares is not changed by
-// --align. Nothing here reads the code under test.
+// binding whose link the holder no longer declares is removed by plain al
+// index (#11 R1, named on a removed line), and --align does not bring it
+// back. Nothing here reads the code under test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
@@ -44,6 +45,16 @@ const INV12 = 'An invoice has a number, a customer, lines, a total and a paid da
 const INV12b = 'An invoice has a unique number, a customer, lines, a total and a paid date.';
 const INV60 = 'A credit note MUST have at least one line.';
 const INV60b = 'Each credit note MUST have at least one line.';
+
+// A line of al index's output that says the binding [holder, link, target]
+// was removed (#11 R1): it names all three and has a word like "removed".
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const token = (s, w) => new RegExp(`(^|[^\\w/.-])${esc(w)}($|[^\\w/-])`).test(s);
+const namesRemoved = (r, [holder, link, target]) => r.stdout.split('\n')
+  .some((l) => /remov/i.test(l) && token(l, holder) && token(l, link) && token(l, target));
+function reportsRemoved(r, b) {
+  assert.ok(namesRemoved(r, b), `al index removes ${b.join(' ')}, whose link is no longer declared, and names it (#11 R1):\n${show(r)}`);
+}
 
 const adr = (status, marker, heading) => `Status: ${status}\n\n${doc([[marker, heading]])}`;
 
@@ -97,7 +108,8 @@ function changed(t) {
   editFile(dir, ADR7, '# ADR-7: Link expiry', '# ADR-7: When a link expires');
   editFile(dir, SPEC, INV13, INV13b);
   editFile(dir, SPEC, INV12, INV12b);
-  index(dir);
+  const r = index(dir);
+  for (const { dropped } of Object.values(HELD)) for (const b of dropped) reportsRemoved(r, b);
   return dir;
 }
 
@@ -158,7 +170,8 @@ function alignMoves(dir, holder) {
     assert.match(r.stdout, new RegExp(`^aligned: ${b.join(' ').replace(/\//g, '\\/')}\\b`, 'm'), `an aligned: line for ${b.join(' ')}:\n${show(r)}`);
   }
   for (const b of dropped) {
-    assert.deepEqual(oneBinding(rec, b), oneBinding(before, b), `${b.join(' ')}, whose link ${holder} no longer declares, is not changed by --align`);
+    assert.deepEqual(bindingsOf(before, ...b), [], `${b.join(' ')}, whose link ${holder} no longer declares, was removed by al index (#11 R1)`);
+    assert.deepEqual(bindingsOf(rec, ...b), [], `--align ${holder} does not bring back ${b.join(' ')}`);
   }
   assert.doesNotMatch(r.stdout, /No record changed/, `the record ${name} changed:\n${show(r)}`);
   const othersAfter = othersOf(dir, holder);
@@ -185,7 +198,7 @@ test('the world: every holder is bound in its request\'s record with its text of
   const targets = { 'INV-13': hashNow(dir, 'INV-13'), 'INV-12': hashNow(dir, 'INV-12') };
 
   // The same project after the change: the texts did change, and plain al
-  // index kept every binding as it was.
+  // index kept every binding that is still declared as it was.
   const after = changed(t);
   for (const h of Object.keys(HELD)) assert.notEqual(hashNow(after, h), bound[h], `${h}'s text changed`);
   for (const id of Object.keys(targets)) assert.notEqual(hashNow(after, id), targets[id], `${id}'s text changed`);
@@ -204,7 +217,7 @@ test('#11: al index --align ADR-4, a superseded ADR whose marker dropped source:
 test('#11: the superseded ADR-4 alone (status, dropped source, reworded heading; no other change), then --align ADR-4 moves its bindings', (t) => {
   const dir = linked(t);
   supersede(dir);
-  index(dir);
+  reportsRemoved(index(dir), ['ADR-4', 'source', 'inv/D1']);
   alignMoves(dir, 'ADR-4');
 });
 

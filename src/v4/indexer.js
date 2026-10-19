@@ -2,7 +2,7 @@
 // with the agents' hints kept), appends requirement versions, freezes the
 // bindings of new links and fills the hashes of new dispositions. Ordinary
 // indexing never advances a binding; only --align does (design.md 4, 10).
-import { readdirSync } from 'node:fs';
+import { accessSync, constants, lstatSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { isMap, parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
@@ -201,6 +201,63 @@ export function declaredNow(top, state) {
   return (b) => keys.has(tripleKey(b));
 }
 
+// Whether al index --align can move a binding to `target` now, by its own
+// target rules, in al check's state (state.js): holder-changed names --align
+// only where it works (#11).
+export function canAlignTo(state) {
+  const adrs = [...state.adrs.values()].flatMap((a) => a.paragraphs.filter((p) => p.id).map((p) => [p.id, p]));
+  const view = { spec: new Map([...state.spec, ...adrs]), requests: state.requests };
+  const central = isCentral(state.config);
+  return (target) => Boolean(targetOf(qualify(String(target), null, new Set(), central), view));
+}
+
+// A state whose archived requests declare their links too: their change
+// specs' markers, their requirements' from: and their records' outputs: (#11).
+function everyDeclaration(state) {
+  const old = [...state.requests.values()].filter((r) => !r.open);
+  return {
+    docs: [...state.docs, ...old.map((r) => ({ request: r.name, ids: new Set(r.paras.keys()), paragraphs: [...r.paras.values()] }))],
+    requests: new Map([...state.requests].map(([n, r]) => [n, { ...r, open: true }])),
+  };
+}
+
+// The files and folders that can declare links but are not read, each with
+// why: reached through a symlink, a file that cannot be read, or a folder that
+// cannot be listed. They are the spec root's, the requests' (open and
+// archived) request.md, spec.md and record, whose outputs: declare links, and
+// the docs that config lists (#11).
+function notRead(top, root, config) {
+  const out = [];
+  const blocked = (p) => {
+    let stat;
+    try { stat = lstatSync(join(top, p)); } catch { return false; }
+    if (stat.isSymbolicLink()) { out.push(`${p}: through a symlink`); return true; }
+    try { accessSync(join(top, p), stat.isDirectory() ? constants.R_OK | constants.X_OK : constants.R_OK); } catch { out.push(`${p}: cannot be read`); return true; }
+    return false;
+  };
+  const tree = (dir) => {
+    if (blocked(dir)) return;
+    for (const e of list(top, dir)) {
+      if (e.isDirectory()) tree(`${dir}/${e.name}`);
+      else blocked(`${dir}/${e.name}`);
+    }
+  };
+  tree(root);
+  const records = !blocked('.assuredloop/records/requests');
+  for (const dir of ['requests', 'requests/archive']) {
+    if (blocked(dir)) continue;
+    for (const e of list(top, dir)) {
+      const d = `${dir}/${e.name}`;
+      if (d === 'requests/archive' || (!e.isDirectory() && !e.isSymbolicLink()) || blocked(d)) continue;
+      blocked(`${d}/request.md`);
+      blocked(`${d}/spec.md`);
+      if (records) blocked(recordPath(e.name));
+    }
+  }
+  for (const d of config.docs) blocked(posix.normalize(String(d.file)));
+  return out;
+}
+
 export function index({ top, opts }) {
   let loaded;
   try { loaded = loadConfig(top); } catch (e) { throw new Fail(e.message, 'fix .assuredloop/config.yaml'); }
@@ -304,6 +361,33 @@ export function index({ top, opts }) {
     }
   }
 
+  // Removed links (removed-links/R1, #11): a binding whose link no current
+  // marker, requirement or outputs: entry declares is removed from the records
+  // of the open and the archived requests, and named. An archived change spec
+  // and request.md still declare their links. While a file that can declare
+  // links is not read, nothing is removed: a missing file is not a removed link.
+  const archived = new Map();
+  for (const n of names.archived) {
+    try { const rec = openRecord(top, n); if (rec) archived.set(n, rec); } catch (e) { if (!e.invalid) throw e; notes.push(`not read: ${e.message}`); }
+  }
+  const unread = [...new Set([
+    ...notes.filter((l) => /^not (indexed|read): /.test(l)).map((l) => l.replace(/^not (indexed|read): /, '')),
+    ...notRead(top, root, config),
+  ])];
+  const declared = new Set(linksOf(top, everyDeclaration(now), config, false).map(tripleKey));
+  const undeclared = (it) => it?.get && !declared.has(tripleKey({ holder: it.get('holder'), link: it.get('link'), target: it.get('target') }));
+  const dead = [...recs, ...archived].flatMap(([n, rec]) => (rec.doc.get('bindings')?.items ?? []).filter(undeclared).map((it) => [n, rec, it]));
+  if (unread.length) {
+    body.push(`not removed: no binding is removed in this run, as al index could not read ${unread.join('; ')}`);
+  } else {
+    for (const [n, rec, it] of dead) {
+      const items = rec.doc.get('bindings').items;
+      items.splice(items.indexOf(it), 1);
+      body.push(`removed: ${it.get('holder')} ${it.get('link')} ${it.get('target')} from the record of ${n}: no longer declared`);
+      rec.changed = true;
+    }
+  }
+
   // Dispositions: the hashes of the source version, and of the spec text it
   // produced, frozen when first indexed.
   for (const [n, rec] of recs) {
@@ -359,7 +443,7 @@ export function index({ top, opts }) {
     const rec = { schema: SCHEMA, file: d.file, ...(status ? { status } : {}), paragraphs };
     outputs.push([path, stringify(rec, YAML_OPTIONS)]);
   }
-  for (const [, rec] of recs) if (rec.changed) outputs.push([rec.path, recordText(rec)]);
+  for (const [, rec] of [...recs, ...archived]) if (rec.changed) outputs.push([rec.path, recordText(rec)]);
   guard(top, outputs.map(([path]) => path));
   const written = outputs.filter(([path, text]) => write(top, path, text)).map(([path]) => path);
 

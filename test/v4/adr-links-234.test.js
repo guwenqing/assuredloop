@@ -197,14 +197,22 @@ test('review view, ADR-4 with a source: link (adr-governs decided): both lines e
   assert.ok(lines(marked).includes(GOVERNED_NO_SOURCE), show(marked));
 });
 
-test('review view: nothing else is added; with the two marks taken back, the view equals the control view but for the Read line', (t) => {
+// The marks are taken back from the governed line and from each hint line
+// that names ADR-4 (SCH-22 marks every hint that names an ADR with no
+// source:; since #11 R2 a holder-changed hint on EXP-6 names ADR-4 too).
+test('review view: nothing else is added; with the marks taken back (the governed line, each hint line that names ADR-4), the view equals the control view but for the Read line', (t) => {
   const marked = review(t, 'adr-governs-nosource');
   const plain = review(t, 'adr-governs', 'decided');
   const ls = lines(marked);
   assert.ok(ls.includes(GOVERNED_NO_SOURCE) && ls.includes(HINT_NO_SOURCE), show(marked));
-  const back = { [GOVERNED_NO_SOURCE]: GOVERNED, [HINT_NO_SOURCE]: HINT };
+  const MARK = '; ADR-4 has no source:';
+  const back = (l) => {
+    if (l === GOVERNED_NO_SOURCE) return GOVERNED;
+    if (/^ {2}hint \S+ .*\bADR-4\b/.test(l) && l.endsWith(MARK)) return l.slice(0, -MARK.length);
+    return l;
+  };
   const strip = (list) => list.filter((l) => !l.startsWith('Read '));
-  assert.deepEqual(strip(ls.map((l) => back[l] ?? l)), strip(lines(plain)), `${show(marked)}\n${show(plain)}`);
+  assert.deepEqual(strip(ls.map(back)), strip(lines(plain)), `${show(marked)}\n${show(plain)}`);
 });
 
 test("al check in the same world: its adr-governs line has no '; ADR-4 has no source:' ending, and ADR-4 gets adr-links (no source:)", (t) => {
