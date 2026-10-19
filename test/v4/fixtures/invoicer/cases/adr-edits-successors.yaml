@@ -1,0 +1,38 @@
+# #4 R2 with #1: a superseded ADR's status line may name several successors.
+# Each arm adds ADR-5 and ADR-6 (accepted, each with supersedes:ADR-3), and
+# changes ADR-3's status line (base: "Status: superseded by ADR-4"). Known
+# list forms: comma ("ADR-4, ADR-5"), and ("ADR-4 and ADR-5"), three
+# ("ADR-4, ADR-5 and ADR-6"). Not a known form: or ("ADR-4 or ADR-5").
+title: ADR-3 is superseded by several ADRs
+base: base
+claim: "Tier: 2 — invoice-exports"
+steps:
+  - files: {from: adr, to: specs/adr}
+arms:
+  comma:
+    steps:
+      - edit:
+          file: specs/adr/0003-signed-urls.md
+          from: "Status: superseded by ADR-4\n"
+          to: "Status: superseded by ADR-4, ADR-5\n"
+  and:
+    steps:
+      - edit:
+          file: specs/adr/0003-signed-urls.md
+          from: "Status: superseded by ADR-4\n"
+          to: "Status: superseded by ADR-4 and ADR-5\n"
+  three:
+    steps:
+      - edit:
+          file: specs/adr/0003-signed-urls.md
+          from: "Status: superseded by ADR-4\n"
+          to: "Status: superseded by ADR-4, ADR-5 and ADR-6\n"
+  or:
+    steps:
+      - edit:
+          file: specs/adr/0003-signed-urls.md
+          from: "Status: superseded by ADR-4\n"
+          to: "Status: superseded by ADR-4 or ADR-5\n"
+after:
+  - index: true
+    date: 2026-07-25

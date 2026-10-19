@@ -240,3 +240,27 @@ test('a plain HTML comment and malformed markers inside fenced code (arm control
   assert.equal(r.code, 0, show(r));
   assert.deepEqual(notOk(r).map((f) => f.line), [], show(r));
 });
+
+// --- R2 with #1: a status line that names several successors
+// (case adr-edits-successors: ADR-4, ADR-5 and ADR-6 each hold supersedes:ADR-3)
+
+const listArms = {
+  comma: 'Status: superseded by ADR-4, ADR-5',
+  and: 'Status: superseded by ADR-4 and ADR-5',
+  three: 'Status: superseded by ADR-4, ADR-5 and ADR-6',
+};
+for (const [arm, line] of Object.entries(listArms)) {
+  test(`ADR-3 with "${line}" (arm ${arm}): no adr-status and no not ok; --strict exits 0`, (t) => {
+    const r = run(t, 'adr-edits-successors', arm);
+    none(r, 'adr-status');
+    assert.deepEqual(notOk(r).map((f) => f.line), [], show(r));
+    const strict = run(t, 'adr-edits-successors', arm, '--strict');
+    assert.equal(strict.code, 0, show(strict));
+    none(strict, 'adr-status');
+  });
+}
+
+test('ADR-3 with "Status: superseded by ADR-4 or ADR-5" (arm or, not a known form): hint adr-status on ADR-3 at line 1', (t) => {
+  const r = run(t, 'adr-edits-successors', 'or');
+  at(r, hinted(r, 'adr-status', 'ADR-3'), ADR3, 1);
+});
