@@ -13,3 +13,4 @@ Tier: 1 · Status: open
 A paragraph that is not a promise can hold a requirement word, such as MUST or never, because it applies a promise. When that paragraph links to the promise paragraph that it applies, `al check` MUST NOT give the hint "promise kind?" for it.
 
 Out: other hints on that paragraph.
+Signed off: 2026-10-19 owner, origin/2026-10-19-signoff.md
