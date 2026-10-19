@@ -191,7 +191,8 @@ it"; it is only a hint.
   the marker of an accepted ADR, with nothing else changed, get no finding.
 - A marker line of an ADR that holds anything other than its ID, its kind and
   links gets a hint, in every mode: an unknown token, a second `<!--` or
-  `-->`, or an empty item in a list of links.
+  `-->`, or an empty item in a list of links. A line of an ADR that starts
+  like a marker, but that `al` does not read as one, gets the same hint.
 - An ADR whose first line is not a status that `al` knows gets a hint, in
   every mode. The known first lines are `Status: proposed`,
   `Status: accepted` and `Status: superseded by ADR-n`.
