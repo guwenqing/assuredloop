@@ -1,0 +1,67 @@
+schema: assuredloop/1
+file: requests/own-item/spec.md
+paragraphs:
+  - id: SP-1
+    kind: note
+    text_sha256: 4359e9ba0405ca7eb5ec0c13f26275d7986682ac11e9b03297f72e4dee7c6be7
+    display: "SP-1 (0, The saved items name each request's own item: the change spec)"
+  - id: SP-2
+    kind: note
+    text_sha256: 5f6e599cd08a9c287e522383816e6602606c704f530ca1a89ca28b7755248775
+    display: "SP-2 (0:1, in The saved items name each request's own item: the change spec)"
+  - id: SP-3
+    kind: note
+    text_sha256: 5fca802eb8ac27d6c927e318185c8a99ba1bb3c07cd0a8118f4e18c8329fa392
+    display: SP-3 (1, The promise)
+  - id: SP-4
+    kind: rule
+    text_sha256: 69be2afea0a84f83a7f8bbb9d24184719511fb08e3a6715a3a8f63874bc13a1e
+    display: SP-4 (1:1, in The promise)
+  - id: SP-5
+    kind: rule
+    text_sha256: 6330067681ad95c7be736db7f72528db4f3465b25c6aed26e878b96522a25275
+    display: SP-5 (1:2, in The promise)
+  - id: SP-6
+    kind: note
+    text_sha256: c6635138a7ab6785fdd1c3e3edb49392a79a595d0c1260acaa6de50dcdbbe2f3
+    display: SP-6 (2, The request's own item)
+  - id: SP-7
+    kind: data
+    text_sha256: c1d853e7fc839f5ebea14b0c4331ec9ca7b22a51f3d4d46469c01c4197c0983f
+    display: SP-7 (2:1, in The request's own item)
+  - id: SP-8
+    kind: interface
+    text_sha256: 51dad679dba1255bbd84c56ad931458109f98d922ebb6a9a15dc16452230fe7c
+    display: SP-8 (2:2, in The request's own item)
+  - id: SP-9
+    kind: interface
+    text_sha256: e2b6b3db29fcec168c4022a0e5ad1f9dc707c9ce070c1ae502043b60a9cf17e5
+    display: SP-9 (2:3, in The request's own item)
+  - id: SP-10
+    kind: interface
+    text_sha256: f69326e8cc8f2c0ee78725d318e78e4619816ff423a89227c92ccb53e29d54d5
+    display: SP-10 (2:4, in The request's own item)
+  - id: SP-11
+    kind: interface
+    text_sha256: 12f555b9990a09e51c5e9bbb44d5a310a496c28241d5c46c0dc490ce637bfd58
+    display: SP-11 (2:5, in The request's own item)
+  - id: SP-12
+    kind: interface
+    text_sha256: 04c3e5959e54b6a1c1ef80db5cc765ca7415061ecda6f809fa52bbec1226775c
+    display: SP-12 (2:6, in The request's own item)
+  - id: SP-13
+    kind: example
+    text_sha256: 06725e209869f91c6ffbd9ff4b31235a2338857727855692a5d84db65f512f49
+    display: SP-13 (2:7, in The request's own item)
+  - id: SP-14
+    kind: rationale
+    text_sha256: b0cb22a5c247622580127aca093ea38c55700b6c7de895fd54e2c6119a42ecb6
+    display: SP-14 (2:8, in The request's own item)
+  - id: SP-15
+    kind: note
+    text_sha256: a7b3aa35ccacc6d980d74ff116df747a0f67a39f64c8905084a8b9abd7a70aa7
+    display: SP-15 (3, Migration)
+  - id: SP-16
+    kind: migration
+    text_sha256: b639e97630128e8ad9ef99635376ca61b452b4390bbe2364af2a4b56bb039c88
+    display: SP-16 (3:1, in Migration)
