@@ -227,3 +227,20 @@ test('the bindings of the gone links stay in the record, unchanged, after al ind
   const keys = record(dir, 'inv').bindings.map(bindingKey);
   for (const b of gone) assert.equal(keys.filter((k) => k === b.join(' ')).length, 1, b.join(' '));
 });
+
+test('a record whose outputs is a mapping, not a list: al check still gives its findings, with the stale-base on inv/SP-1, which still builds on INV-13', (t) => {
+  const dir = baseProject(t);
+  newRequest(dir, 'inv');
+  appendSection(dir, 'inv', organized([R1]));
+  write(dir, CS, doc([['SP-1 rule serves:R1 builds-on:INV-13', SP[1]]]));
+  index(dir);
+  commitAll(dir, 'The request inv and its link');
+  changeTarget(dir);
+  editRecord(dir, 'inv', (rec) => {
+    rec.outputs = {};
+  });
+  const r = check(dir);
+  assert.ok(r.code === 0 || r.code === 1, `al check gives its report, not an error:\n${show(r)}`);
+  assert.doesNotMatch(r.stdout + r.stderr, /internal error/, show(r));
+  fires(r, ['inv/SP-1', 'builds-on', 'INV-13']);
+});
