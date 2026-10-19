@@ -7,7 +7,7 @@ import { parse } from 'yaml';
 import { exists, read, recordPath, sha256 } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { fileAt, filesAt, git } from './git.js';
-import { KINDS, groupOf, parseMarkdown } from './markers.js';
+import { KINDS, groupOf, lf, parseMarkdown } from './markers.js';
 import { frameOf, requirements, signedText } from './request-md.js';
 import { SIGNED } from './snapshot.js';
 import { SPEC, docsInScope, parseScopes, symlinkOn } from './scope.js';
@@ -166,11 +166,16 @@ export function loadState(top, rev = null) {
     const id = `ADR-${Number(m[1])}`;
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
     const head = paragraphs.find((p) => p.id === id) ?? null;
-    // The ADRs that its status line names: `Status: superseded by ADR-n` (#238),
-    // or a list joined by commas and `and`, `ADR-11, ADR-12 and ADR-13` (#1).
-    const list = /^\s*Status:[ \t]*superseded[ \t]+by[ \t]+(ADR-\d+(?:(?:[ \t]*,[ \t]*(?:and[ \t]+)?|[ \t]+and[ \t]+)ADR-\d+)*)[ \t]*\r?(?:\n|$)/i.exec(text)?.[1];
-    const by = [...new Set([...(list ?? '').matchAll(/ADR-(\d+)/gi)].map((m) => `ADR-${Number(m[1])}`))];
-    adrs.set(id, { id, file, text, status, by, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head });
+    // The status line that al knows: `Status: proposed`, `accepted` or
+    // `superseded by ADR-n` (#238), or by a list joined by commas and `and`,
+    // `ADR-11, ADR-12 and ADR-13` (#1). `by` is the ADRs that it names;
+    // `known` is whether it is the file's first line (#4). One parse gives
+    // both, so superseded-status and adr-status agree.
+    const s = /^(\s*)Status:[ \t]*(?:proposed|accepted|superseded[ \t]+by[ \t]+(ADR-\d+(?:(?:[ \t]*,[ \t]*(?:and[ \t]+)?|[ \t]+and[ \t]+)ADR-\d+)*))[ \t]*\r?(?:\n|$)/i.exec(text);
+    const by = [...new Set([...(s?.[2] ?? '').matchAll(/ADR-(\d+)/gi)].map((m) => `ADR-${Number(m[1])}`))];
+    const known = Boolean(s) && !/[\r\n]/.test(s[1]);
+    const marker = head && lf(text).split('\n')[head.line - 1];
+    adrs.set(id, { id, file, text, status, by, known, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head, marker });
   }
   return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, unreadableAdrs };
 }

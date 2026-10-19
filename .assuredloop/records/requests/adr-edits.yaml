@@ -1,0 +1,38 @@
+schema: assuredloop/1
+request: adr-edits
+tier: "1"
+status: concluded
+sources:
+  - file: 2026-10-19-owner-words.md
+    kind: owner-words
+    sha256: 34667dc3b698e0fcf156c66770b87234c2ec5d8550b7a68caa83fc698e7624ab
+    taken: 2026-10-19T18:22Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: 37f34d019858afdb7a175b80c56f986b38b6b3b4c8910eab0d9e1e5baf819d1a
+    title: Hidden text in an ADR's marker line
+  - id: R2
+    version: 1
+    sha256: 30444637c018b02d23b2ede3153f34f0324bc04eaacf9aba4884b4131aecd354
+    title: An ADR without a clear status
+signoff:
+  - id: S1
+    file: 2026-10-19-signoff.md
+    sha256: 42fd0fe99c4b3cee2401ee3302f17e8e958201c9789b5c8f36045beaf6030525
+    signed: 2026-10-19T18:23Z
+    source: the owner, in the chat with the architect, 2026-10-19 about 18:21Z
+    words: "The 4: this is ok"
+    presented: "R1, R2 and the Out: line word for word, marker lines not shown, about 18:20Z, in simpler words after the owner said the first text was hard to understand, with a plain account of the two kinds of edit"
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: 37f34d019858afdb7a175b80c56f986b38b6b3b4c8910eab0d9e1e5baf819d1a }
+      - { id: R2, version: 1, sha256: 30444637c018b02d23b2ede3153f34f0324bc04eaacf9aba4884b4131aecd354 }
+decisions: []
+tasks: []
+bindings:
+  - { holder: adr-edits/R1, link: from, target: adr-edits/2026-10-19-owner-words.md, holder_sha256: 37f34d019858afdb7a175b80c56f986b38b6b3b4c8910eab0d9e1e5baf819d1a, target_sha256: 34667dc3b698e0fcf156c66770b87234c2ec5d8550b7a68caa83fc698e7624ab }
+  - { holder: adr-edits/R2, link: from, target: adr-edits/2026-10-19-owner-words.md, holder_sha256: 30444637c018b02d23b2ede3153f34f0324bc04eaacf9aba4884b4131aecd354, target_sha256: 34667dc3b698e0fcf156c66770b87234c2ec5d8550b7a68caa83fc698e7624ab }
+  - { holder: SCH-22, link: serves, target: adr-edits/R1, holder_sha256: 2967b7d924c46d7ff0b8dc8d686a4a3bbfab886713ea94877a580473c9d4b8d2, target_sha256: 37f34d019858afdb7a175b80c56f986b38b6b3b4c8910eab0d9e1e5baf819d1a, target_version: 1 }
+  - { holder: SCH-22, link: serves, target: adr-edits/R2, holder_sha256: 2967b7d924c46d7ff0b8dc8d686a4a3bbfab886713ea94877a580473c9d4b8d2, target_sha256: 30444637c018b02d23b2ede3153f34f0324bc04eaacf9aba4884b4131aecd354, target_version: 1 }
+dispositions: []

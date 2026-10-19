@@ -170,7 +170,7 @@ it"; it is only a hint.
 
 ## 5. ADRs
 
-<!-- SCH-22 rule serves:assuredloop-v4/R1,adr-links/R1,hints-and-blocks/R1,hints-and-blocks/R2 -->
+<!-- SCH-22 rule serves:assuredloop-v4/R1,adr-links/R1,hints-and-blocks/R1,hints-and-blocks/R2,adr-edits/R1,adr-edits/R2 -->
 
 - One file per decision, numbered, in `specs/adr/`. Its status changes:
   proposed → accepted → superseded by ADR-n. Who accepts it is the project's
@@ -186,9 +186,17 @@ it"; it is only a hint.
 - So a changed text of an accepted or superseded ADR gets a hint: "ADR-3's
   text changed: check that its decision is unchanged; if the decision
   changed, write a new ADR that supersedes it." A changed or removed link in
-  its marker gets the same hint. A deleted ADR file gets a hint with its own
-  message. Links added to the marker of an accepted ADR, with nothing else
-  changed, get no finding.
+  its marker gets the same hint, and so does any other change of its marker
+  line. A deleted ADR file gets a hint with its own message. Links added to
+  the marker of an accepted ADR, with nothing else changed, get no finding.
+- A marker line of an ADR that holds anything other than its ID, its kind and
+  links gets a hint, in every mode: an unknown token, a second `<!--` or
+  `-->`, or an empty item in a list of links. A line of an ADR that starts
+  like a marker, but that `al` does not read as one, gets the same hint.
+- An ADR whose first line is not a status that `al` knows gets a hint, in
+  every mode. The known first lines are `Status: proposed`,
+  `Status: accepted` and `Status: superseded by ADR-n`, which may name more
+  than one ADR, as SCH-37 says.
 - A proposed or accepted ADR with no `source` or no `decides` link gets a
   hint, in every mode. A superseded ADR gets none: it is history.
 - A PR that changes a paragraph that an ADR governs gets a hint: "check that

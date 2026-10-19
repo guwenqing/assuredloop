@@ -1,0 +1,42 @@
+# #4 R1: marker lines that start like a marker but are not well formed. Each
+# arm adds a proposed ADR-5 with a clean heading marker, source: and
+# decides:, and one change: arrows (ADR-5-1's marker ends "-->-->"), open
+# (it ends "--> <!--"), tail (text after the heading marker's "-->"), tight
+# (no spaces: "<!--ADR-5-1 rationale-->"), indented (spaces before "<!--"),
+# prefix (an "<!--INV-99 note-->" line). Controls: clean (no change), spaces
+# (only spaces after "-->"), control (a plain HTML comment, and malformed
+# markers inside fenced code).
+title: Add ADR-5 with malformed marker lines
+base: base
+claim: "Tier: 2 — invoice-exports"
+arms:
+  clean:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: clean.md}}
+  spaces:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: spaces.md}}
+  control:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: control.md}}
+  arrows:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: arrows.md}}
+  open:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: open.md}}
+  tail:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: tail.md}}
+  tight:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: tight.md}}
+  indented:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: indented.md}}
+  prefix:
+    steps:
+      - write: {file: specs/adr/0005-pdf-invoices.md, text: {file: prefix.md}}
+after:
+  - index: true
+    date: 2026-07-25

@@ -81,6 +81,10 @@ Each step is a map with one key.
 | `adr-links-pre`, `adr-links` | on main, ADR-1 has no `decides:`, ADR-2 no `source:`, the superseded ADR-3 and a proposed ADR-5 no link (#234); arms `untouched`, links added only (`word`, `order`, `target`, `status`), `superseded` (ADR-2's status only), other changes (`removed`, `swapped`, `retarget`, `kind`, `text`, `para`, `frozen`), `proposed` (ADR-5 changes) |
 | `adr-links-nomarker` | an accepted ADR-5 whose file has no `ADR-5` marker |
 | `adr-governs-nosource-pre`, `adr-governs-nosource` | ADR-4 has no `source:` on main; then the PR of `adr-governs` arm `decided` |
+| `adr-edits` | edits of ADR marker and status lines (#4): links added only (`added`); other marker changes (`hidden`, `word`, `kind2`, `unknown`, `reorder`, `items`, `kind`, `removed`, `arrow`, `addeditem`, `addedtoken`, `frozen`); status lines (`nostatus`, `draft`, `moved`, `blankfirst`, `trailing`) |
+| `adr-edits-malformed` | a proposed ADR-5 with lines that start like a marker but are not well formed (#4): arms `arrows`, `open`, `tail`, `tight`, `indented`, `prefix`; controls `clean`, `spaces`, `control` |
+| `adr-edits-successors` | ADR-5 and ADR-6 also supersede ADR-3 (#4 with #1); ADR-3's status line names a list: arms `comma`, `and`, `three`, and `or` (not a known form) |
+| `adr-edits-pre`, `adr-edits-unchanged` | on main, ADR-5 to ADR-8 with marker lines that hold more than links, and ADR-7 with `Status: draft` (#4); then a PR that changes no ADR |
 | `cr-wording` | part 2 of invoice-exports, with a wording decision D3 |
 | `cr-supersede`, `cr-chain` | A→B (link-refresh) and A→B→C (portal-downloads removes EXP-4) |
 | `cr-revert-m8`, `cr-revert-m9`, `cr-revert` | an incorporation, an unexplained revert on main, then the closing PR |

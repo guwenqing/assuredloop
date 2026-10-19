@@ -15,7 +15,7 @@ import {
   hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
-import { groupOf, sameBlocks } from './markers.js';
+import { groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
 import { declaredNow, isCentral } from './indexer.js';
 import { recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
@@ -362,15 +362,25 @@ export function checks(top, { base, phrases = [], issues = null }) {
 
   // ADRs (schema.md 5). An ADR's text may be rewritten when its decision
   // stays, so a change is a hint for the review (#238). Links may be added to
-  // the heading marker of an accepted ADR: the same kind, each old link kept,
-  // the rest unchanged; that gives no finding.
-  const linksAdded = (a, h) => a.status === 'accepted' && a.head && h.head && a.rest === h.rest && a.head.kind === h.head.kind
-    && Object.entries(a.head.links).every(([k, refs]) => refs.every((x) => h.head.links[k].includes(x)));
+  // the heading marker of an accepted ADR, with nothing else in that line
+  // changed (#4) and the rest unchanged; that gives no finding.
+  const linksAdded = (a, h) => a.status === 'accepted' && a.head && h.head && a.rest === h.rest
+    && onlyLinksAdded(a.marker, h.marker, now.kinds);
   for (const [id, a] of was?.adrs ?? []) {
     if (!['accepted', 'superseded'].includes(a.status)) continue;
     const h = now.adrs.get(id);
     if (!h) add('hint', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone: check that its decision is not lost; an ADR that no longer holds is superseded by a new ADR, not deleted`);
     else if (h.body !== a.body && !linksAdded(a, h)) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s text changed: check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
+  }
+  // Every ADR, whatever its status (#4): a first line that is not a known
+  // status, and a marker line that holds more than its ID, a kind and links.
+  for (const a of now.adrs.values()) {
+    if (!a.known) add('hint', 'adr-status', `${a.file}:1`, a.id, `${a.id}'s first line is not a status that al knows: write "Status: proposed", "Status: accepted" or "Status: superseded by ADR-<n>" (or by a list, "ADR-11, ADR-12")`);
+    for (const m of markerLines(a.text, now.kinds)) {
+      const where = `${a.file}:${m.line}`;
+      if (!m.extras) add('hint', 'adr-marker', where, m.id, `the marker line of ${m.id} is not a well-formed marker, so al does not read it: write "<!-- ${m.id} <kind> <links> -->" alone on the line; a page can show text after its -->`);
+      else if (m.extras.length) add('hint', 'adr-marker', where, m.id, `the marker of ${m.id} holds more than its ID, a kind and links: ${m.extras.map((x) => `"${x}"`).join(', ')}; a page can show text that it hides`);
+    }
   }
   for (const a of now.adrs.values()) {
     if (!['proposed', 'accepted'].includes(a.status)) continue;

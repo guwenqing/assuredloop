@@ -1,0 +1,14 @@
+# On main (#4): ADRs whose marker lines hold more than links, and one ADR
+# with an unknown status. ADR-5 (proposed): an unknown link word extra:x in
+# its heading marker; ADR-5-1 is clean. ADR-6 (accepted): a clean heading
+# marker; ADR-6-1 to ADR-6-4 have an empty item in a list of links, ADR-6-5
+# has a second kind, ADR-6-6 is clean. ADR-7 (Status: draft): a token that
+# holds "<!--" in its heading marker. ADR-8 (superseded by ADR-6): a token
+# that holds "-->" in its heading marker.
+title: "ADRs with marker lines that hold more than links"
+base: base
+claim: "Tier: 2 — invoice-exports"
+steps:
+  - files: {from: adr, to: specs/adr}
+  - index: true
+    date: 2026-07-24

@@ -201,9 +201,17 @@ ADRs that supersede it: `superseded by ADR-11, ADR-12` or
   an accepted or superseded ADR's text too. A new ADR that supersedes it is
   needed only when the decision changes, in whole or in part.
 - The review judges whether a rewrite keeps the decision; `al` does not. So
-  a changed ADR text, or a changed or removed link in its marker, gives a
-  hint: check that its decision is unchanged. Links added to the marker of
-  an accepted ADR, with nothing else changed, give no finding.
+  a changed ADR text, a changed or removed link in its marker, or any other
+  change of its marker line, gives a hint: check that its decision is
+  unchanged. Links added to the marker of an accepted ADR, with nothing else
+  changed, give no finding.
+- `al check` gives a hint for a marker line of an ADR that holds anything
+  other than its ID, its kind and links: an unknown token, a second `<!--`
+  or `-->`, or an empty item in a list of links. A line that starts like a
+  marker, but that `al` does not read as one, gets the same hint.
+- `al check` gives a hint for an ADR whose first line is not
+  `Status: proposed`, `Status: accepted` or `Status: superseded by ADR-<n>`,
+  with one ADR or a list of them.
 - After a rewrite, `al index --align <ID>` moves the bindings of paragraph
   `<ID>` to the ADR's new text, for an accepted or a superseded ADR.
 - `al check` gives a hint for a proposed or accepted ADR with no `source:`
