@@ -255,13 +255,25 @@ export function index({ top, opts }) {
     if (!froms.has(align)) throw new Fail(`--align ${align}: no paragraph, requirement or output with that ID (a change spec's ID is <request>/<ID>)`, 'al index --align <ID>');
   }
 
+  // The records that already hold each binding: a holder whose marker names
+  // no request any more, such as a superseded ADR that dropped `source:`,
+  // still reaches the bindings it holds (#11).
+  const held = new Map();
+  for (const [n, rec] of recs) {
+    for (const it of rec.doc.get('bindings')?.items ?? []) {
+      if (!it?.get) continue;
+      const k = tripleKey({ holder: it.get('holder'), link: it.get('link'), target: it.get('target') });
+      held.set(k, [...(held.get(k) ?? []), n]);
+    }
+  }
+
   let bound = 0;
   const seen = new Set();
   const once = (line) => { if (!seen.has(line)) { seen.add(line); body.push(line); } };
   for (const l of links) {
     const name = `${l.holder} ${l.link} ${l.target}`;
     if (l.t.cross) { once(`not bound: ${name}: cross-repo`); continue; }
-    const homes = l.homes.filter((h) => recs.has(h));
+    const homes = [...new Set([...l.homes.filter((h) => recs.has(h)), ...(held.get(tripleKey(l)) ?? [])])];
     if (!homes.length) { once(`not bound: ${name}: no request record holds it`); continue; }
     const aligning = align !== undefined && l.holder === align;
     for (const h of homes) {
