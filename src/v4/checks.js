@@ -318,7 +318,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
       // A superseded ADR's links are history (schema.md 5).
       if (now.adrs.get(String(b.holder))?.status === 'superseded') continue;
       // A link that its holder no longer declares, or whose holder is gone, is history too (#2).
-      declared ??= declaredNow(top, { ...now.config, root: now.root });
+      declared ??= declaredNow(top, now);
       if (!declared(b)) continue;
       const hq = qualify(String(b.holder), null);
       const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : now.spec.get(hq.id);

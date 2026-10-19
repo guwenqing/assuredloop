@@ -188,10 +188,16 @@ export function targetOf(t, state) {
 const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
 const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
-// Whether a binding's holder declares its link in the working tree now: the
-// same holder, link word and target (#2).
-export function declaredNow(top, config) {
-  const keys = new Set(linksOf(top, loadState(top, null, config, requestNames(top)), config, false).map(tripleKey));
+// Whether a binding's holder declares its link now: the same holder, link
+// word and target (#2). It reads al check's own state (state.js), so each
+// file is read once, by al check's rules.
+export function declaredNow(top, state) {
+  const docs = [
+    { request: null, ids: new Set(), paragraphs: [...state.spec.values()].filter((p) => p.id) },
+    ...[...state.requests.values()].filter((r) => r.open).map((r) => ({ request: r.name, ids: new Set(r.paras.keys()), paragraphs: [...r.paras.values()].filter((p) => p.id) })),
+    ...[...state.adrs.values()].map((a) => ({ request: null, ids: new Set(), paragraphs: a.paragraphs.filter((p) => p.id) })),
+  ];
+  const keys = new Set(linksOf(top, { docs, requests: state.requests }, state.config, false).map(tripleKey));
   return (b) => keys.has(tripleKey(b));
 }
 
