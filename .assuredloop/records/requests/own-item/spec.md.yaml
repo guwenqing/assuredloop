@@ -43,7 +43,7 @@ paragraphs:
     display: SP-10 (2:4, in The request's own item)
   - id: SP-11
     kind: interface
-    text_sha256: 12f555b9990a09e51c5e9bbb44d5a310a496c28241d5c46c0dc490ce637bfd58
+    text_sha256: 71da44ff7b6cf6b74677ac0a71706d00d422b83db27b199482317437137964cf
     display: SP-11 (2:5, in The request's own item)
   - id: SP-12
     kind: interface

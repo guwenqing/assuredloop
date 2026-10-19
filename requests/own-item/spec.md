@@ -120,7 +120,7 @@ write them and check them. The schema of an item file, which says what
       "type": "object",
       "required": ["body"],
       "anyOf": [
-        {"required": ["url"], "properties": {"url": {"pattern": "^https?://[^/\\s]+/[^/\\s]+/[^/\\s]+/issues/[0-9]+"}}},
+        {"required": ["url"], "properties": {"url": {"type": "string", "pattern": "^https?://[^/\\s]+/[^/\\s]+/[^/\\s]+/issues/[0-9]+"}}},
         {"required": ["number", "repository"]},
         {"required": ["ref"]}
       ],
