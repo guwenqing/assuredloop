@@ -16,7 +16,7 @@ import {
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
-import { declaredNow, isCentral } from './indexer.js';
+import { canAlignTo, declaredNow, isCentral } from './indexer.js';
 import { recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
 import { issueHints } from './issues.js';
@@ -306,18 +306,20 @@ export function checks(top, { base, phrases = [], issues = null }) {
 
   // Bindings whose target changed since they were bound (design.md 4, 6).
   let declared = null;
+  let alignable = null;
   for (const r of open) {
     for (const b of Array.isArray(r.data?.bindings) ? r.data.bindings : []) {
       if (!b?.target || !b.holder || !b.target_sha256) continue;
       // A holder paragraph whose text changed since the link was bound
       // (removed-links/R2, #11). Output files and requirements are not
-      // paragraphs; a link no longer declared is history (#2); a target that
-      // does not resolve cannot be aligned to.
+      // paragraphs; a link no longer declared is history (#2); the target
+      // must be one that al index --align can move the binding to.
       if (b.holder_sha256) {
         const hq = qualify(String(b.holder), null);
         const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : now.spec.get(hq.id) ?? adrParagraph(now, hq.id);
         declared ??= declaredNow(top, now);
-        if (hp && hp.sha256 !== b.holder_sha256 && declared(b) && resolve(now, qualify(String(b.target), null))?.sha) {
+        alignable ??= canAlignTo(now);
+        if (hp && hp.sha256 !== b.holder_sha256 && declared(b) && alignable(b.target)) {
           add('hint', 'holder-changed', hp, b.holder, `${b.link} ${b.target}: this paragraph changed after the link was bound. Check that it still ${b.link} ${b.target}, then al index --align ${b.holder}`);
         }
       }
