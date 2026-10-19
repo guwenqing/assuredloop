@@ -1,0 +1,20 @@
+schema: assuredloop/1
+request: several-successors
+tier: "1"
+status: open
+sources:
+  - file: 2026-10-19-owner-words.md
+    kind: owner-words
+    sha256: bee3985871fc76e1038695ca3c5ee7d7bc3634e17632f0c71d42a2373327d6e6
+    taken: 2026-10-19T18:20Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: bb7dce968cc5309edcdd0262604b903c6eb7d95b9c43c22db3108b3c3437428c
+    title: An ADR that several ADRs supersede
+signoff: []
+decisions: []
+tasks: []
+bindings:
+  - { holder: several-successors/R1, link: from, target: several-successors/2026-10-19-owner-words.md, holder_sha256: bb7dce968cc5309edcdd0262604b903c6eb7d95b9c43c22db3108b3c3437428c, target_sha256: bee3985871fc76e1038695ca3c5ee7d7bc3634e17632f0c71d42a2373327d6e6 }
+dispositions: []
