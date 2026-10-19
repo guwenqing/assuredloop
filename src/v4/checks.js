@@ -185,11 +185,14 @@ export function checks(top, { base, phrases = [], issues = null }) {
     }
   }
 
+  // In the central repo, `central:X` is its own X (design.md 12).
+  const self = (ref) => (isCentral(now.config) && ref.startsWith('central:') ? ref.slice('central:'.length) : ref);
+
   // Requirement words in a non-promise kind (design.md 3). A paragraph that
   // builds on a promise paragraph that exists applies that promise: no hint.
   const appliesPromise = (p, request) => {
     const own = new Set(now.requests.get(request)?.paras.keys() ?? []);
-    return p.links.buildsOn.some((ref) => promise(resolve(now, qualify(ref, request, own))?.p?.kind));
+    return p.links.buildsOn.some((ref) => promise(resolve(now, qualify(self(ref), request, own))?.p?.kind));
   };
   for (const c of changes) {
     const p = c.head;
@@ -268,8 +271,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // Design links (design.md 3): a design or approach paragraph of a change
   // spec that serves a requirement, where promise paragraphs of the same
   // change spec serve it, and that builds on or changes none of them. In the
-  // central repo, `central:X` is its own X (design.md 12).
-  const self = (ref) => (isCentral(now.config) && ref.startsWith('central:') ? ref.slice('central:'.length) : ref);
+  // central repo, `central:X` is its own X (self, above).
   for (const r of open) {
     const own = new Set(r.paras.keys());
     const key = (ref) => qualify(self(ref), r.name, own).key;
