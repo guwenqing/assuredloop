@@ -185,6 +185,13 @@ export function targetOf(t, state) {
 const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
 const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
+// Whether a binding's holder declares its link in the working tree now: the
+// same holder, link word and target (#2).
+export function declaredNow(top, config) {
+  const keys = new Set(linksOf(top, loadState(top, null, config, requestNames(top)), config, false).map(tripleKey));
+  return (b) => keys.has(tripleKey(b));
+}
+
 export function index({ top, opts }) {
   let loaded;
   try { loaded = loadConfig(top); } catch (e) { throw new Fail(e.message, 'fix .assuredloop/config.yaml'); }
