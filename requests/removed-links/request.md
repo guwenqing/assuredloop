@@ -18,3 +18,4 @@ When no current marker declares a link any more, `al index` MUST remove its reco
 When a paragraph's text changed after one of its links was bound, `al check` MUST give a hint until the link is aligned.
 
 Out: blocks for these cases; each one is a hint or a line of output.
+Signed off: 2026-10-19 owner, origin/2026-10-19-signoff.md
