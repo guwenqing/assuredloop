@@ -185,10 +185,15 @@ export function checks(top, { base, phrases = [], issues = null }) {
     }
   }
 
-  // Requirement words in a non-promise kind (design.md 3).
+  // Requirement words in a non-promise kind (design.md 3). A paragraph that
+  // builds on a promise paragraph that exists applies that promise: no hint.
+  const appliesPromise = (p, request) => {
+    const own = new Set(now.requests.get(request)?.paras.keys() ?? []);
+    return p.links.buildsOn.some((ref) => promise(resolve(now, qualify(ref, request, own))?.p?.kind));
+  };
   for (const c of changes) {
     const p = c.head;
-    if (!p?.kind || promise(p.kind) || !c.changed) continue;
+    if (!p?.kind || promise(p.kind) || !c.changed || appliesPromise(p, c.request)) continue;
     const w = requirementWords(p.text);
     if (w.length) add('hint', 'promise-kind', p, c.name, `promise kind? a ${p.kind} paragraph holds ${w.join(', ')}`);
   }
