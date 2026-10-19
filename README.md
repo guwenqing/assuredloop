@@ -192,8 +192,10 @@ default. A bad entry or an invalid pattern stops `al check` with exit 2.
 `al spec --add-ids` writes both files when they are absent.
 
 ADRs are `specs/adr/NNNN-<slug>.md`, with `Status: proposed`, `accepted` or
-`superseded by ADR-<n>` on the first line. The heading's marker holds
-`ADR-<n>` and its `decides:`, `source:` and `supersedes:` links.
+`superseded by ADR-<n>` on the first line. A status line may name several
+ADRs that supersede it: `superseded by ADR-11, ADR-12` or
+`ADR-11 and ADR-12`. The heading's marker holds `ADR-<n>` and its
+`decides:`, `source:` and `supersedes:` links.
 
 - Any text may be rewritten in other words when its meaning stays the same,
   an accepted or superseded ADR's text too. A new ADR that supersedes it is

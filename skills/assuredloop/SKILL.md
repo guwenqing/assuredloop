@@ -92,9 +92,11 @@ The export link MUST expire 30 minutes after the email is sent.
   rewrite, run `al index --align <ID>` for each paragraph that links to it.
 - When an ADR is superseded, set its first line to
   `Status: superseded by ADR-<m>`, and put `supersedes:ADR-<n>` in the marker
-  of ADR-m. Where a spec paragraph, an open request or a proposed or accepted
-  ADR names ADR-n, name ADR-m beside it: in the same marker for a link, in
-  the same paragraph for a word. Else `al check` gives `not ok`.
+  of ADR-m. When several ADRs supersede it, name each one:
+  `Status: superseded by ADR-11, ADR-12`. Where a spec paragraph, an open
+  request or a proposed or accepted ADR names ADR-n, name an ADR that
+  supersedes it beside it: in the same marker for a link, in the same
+  paragraph for a word. Else `al check` gives `not ok`.
 - `al` writes every hash and every derived field. Do not write them by hand.
 
 ## Path 0: a fix

@@ -166,9 +166,10 @@ export function loadState(top, rev = null) {
     const id = `ADR-${Number(m[1])}`;
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
     const head = paragraphs.find((p) => p.id === id) ?? null;
-    // The ADR that its status line names: `Status: superseded by ADR-n` (#238).
-    const n = /^\s*Status:[ \t]*superseded[ \t]+by[ \t]+ADR-(\d+)[ \t]*\r?(?:\n|$)/i.exec(text)?.[1];
-    const by = n === undefined ? null : `ADR-${Number(n)}`;
+    // The ADRs that its status line names: `Status: superseded by ADR-n` (#238),
+    // or a list joined by commas and `and`, `ADR-11, ADR-12 and ADR-13` (#1).
+    const list = /^\s*Status:[ \t]*superseded[ \t]+by[ \t]+(ADR-\d+(?:(?:[ \t]*,[ \t]*(?:and[ \t]+)?|[ \t]+and[ \t]+)ADR-\d+)*)[ \t]*\r?(?:\n|$)/i.exec(text)?.[1];
+    const by = [...new Set([...(list ?? '').matchAll(/ADR-(\d+)/gi)].map((m) => `ADR-${Number(m[1])}`))];
     adrs.set(id, { id, file, text, status, by, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head });
   }
   return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, unreadableAdrs };

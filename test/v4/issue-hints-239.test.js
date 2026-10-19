@@ -522,6 +522,22 @@ describe('R1 (SP-4, SP-13): issue-superseded, an item that names a superseded AD
   });
 });
 
+// several-successors/R1 (SCH-37): ADR-1 superseded by two ADRs. The items
+// follow every listed successor, as the spec does.
+describe('several-successors/R1 (SCH-37): issue-superseded with a status line that names several ADRs', () => {
+  test('ADR-1 superseded by ADR-2, ADR-4: an item that names ADR-1 and only ADR-4 gives none; one that names neither successor gives the hint, naming ADR-1', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: '#31' }, { id: 'T2', ref: '#32' }] });
+    write(w.dir, 'specs/adr/0001-paper.md', adrFile('superseded by ADR-2, ADR-4', 'ADR-1 choice decides:INV-2', '# ADR-1: Paper invoices', 'Context: invoices were posted.'));
+    write(w.dir, 'specs/adr/0004-portal.md', adrFile('accepted', 'ADR-4 choice decides:INV-2 supersedes:ADR-1', '# ADR-4: Invoices on a portal', 'Context: customers want a portal.'));
+    save(w, { 'a.json': own(31, { body: 'ADR-1 gave way to ADR-4.\n' }), 'b.json': own(32, { body: 'We keep ADR-1.\n' }) });
+    const r = checked(w, ...ISSUES);
+    assert.equal(coded(r, 'issue-superseded').length, 1, show(r));
+    assert.match(one(r, 'issue-superseded', `${OWN}#32`, 1).msg, /\bADR-1\b/, show(r));
+    assert.deepEqual(notOk(r).map((x) => x.line), [], show(r));
+    assertInfo(r, 2);
+  });
+});
+
 // =====================================================================
 // R1: issue-bare-ref (SP-13, SP-14, SP-22).
 
