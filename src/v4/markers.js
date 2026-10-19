@@ -184,6 +184,26 @@ export function markerExtras(line, kinds = KINDS) {
   return extras;
 }
 
+// The lines of `text`, outside fenced code, that start like a marker: `<!--`
+// and an ID, spaces allowed. Each is { id, line, extras }: the extras of a
+// well-formed marker, or null for a line that MARKER does not read, whose
+// paragraph is then lost (#4).
+export function markerLines(text, kinds = KINDS) {
+  const out = [];
+  let fence = null;
+  lf(text).split('\n').forEach((l, i) => {
+    const f = FENCE.exec(l);
+    if (fence) {
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.trim() === f[1]) fence = null;
+      return;
+    }
+    if (f) { fence = f[1]; return; }
+    const m = /^[ \t]*<!--[ \t]*(ADR-[0-9]+-[0-9]+|[A-Z][A-Z0-9]*-[0-9]+)/.exec(l);
+    if (m) out.push({ id: m[1], line: i + 1, extras: MARKER.test(l) ? markerExtras(l, kinds) : null });
+  });
+  return out;
+}
+
 // Whether marker line `now` is marker line `was` with links added and nothing
 // else (schema.md 5, #4): with each link item that `was` does not hold taken
 // out, and each token left with no item, `now` is `was` exactly. A marker

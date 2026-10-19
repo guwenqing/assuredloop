@@ -15,7 +15,7 @@ import {
   hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
-import { groupOf, markerExtras, onlyLinksAdded, sameBlocks } from './markers.js';
+import { groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
 import { declaredNow, isCentral } from './indexer.js';
 import { recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
@@ -376,10 +376,10 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // status, and a marker line that holds more than its ID, a kind and links.
   for (const a of now.adrs.values()) {
     if (!a.known) add('hint', 'adr-status', `${a.file}:1`, a.id, `${a.id}'s first line is not a status that al knows: write "Status: proposed", "Status: accepted" or "Status: superseded by ADR-<n>"`);
-    const lines = a.text.replace(/\r\n?/g, '\n').split('\n');
-    for (const p of a.paragraphs) {
-      const extras = markerExtras(lines[p.line - 1], now.kinds);
-      if (extras.length) add('hint', 'adr-marker', p, p.id, `the marker of ${p.id} holds more than its ID, a kind and links: ${extras.map((x) => `"${x}"`).join(', ')}; a page can show text that it hides`);
+    for (const m of markerLines(a.text, now.kinds)) {
+      const where = `${a.file}:${m.line}`;
+      if (!m.extras) add('hint', 'adr-marker', where, m.id, `the marker line of ${m.id} is not a well-formed marker, so al does not read it: write "<!-- ${m.id} <kind> <links> -->" alone on the line; a page can show text after its -->`);
+      else if (m.extras.length) add('hint', 'adr-marker', where, m.id, `the marker of ${m.id} holds more than its ID, a kind and links: ${m.extras.map((x) => `"${x}"`).join(', ')}; a page can show text that it hides`);
     }
   }
   for (const a of now.adrs.values()) {
