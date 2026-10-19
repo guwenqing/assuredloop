@@ -87,7 +87,7 @@ paragraphs:
     display: SCH-21 (5, 5. ADRs)
   - id: SCH-22
     kind: rule
-    text_sha256: d7f1bc21627de85fa3c16875d1cebe763183d6ca293cc363299ed9df80c4075a
+    text_sha256: 2967b7d924c46d7ff0b8dc8d686a4a3bbfab886713ea94877a580473c9d4b8d2
     display: SCH-22 (5:1, in 5. ADRs)
   - id: SCH-37
     kind: rule

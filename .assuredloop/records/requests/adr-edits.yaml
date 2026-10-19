@@ -33,4 +33,6 @@ tasks: []
 bindings:
   - { holder: adr-edits/R1, link: from, target: adr-edits/2026-10-19-owner-words.md, holder_sha256: 37f34d019858afdb7a175b80c56f986b38b6b3b4c8910eab0d9e1e5baf819d1a, target_sha256: 34667dc3b698e0fcf156c66770b87234c2ec5d8550b7a68caa83fc698e7624ab }
   - { holder: adr-edits/R2, link: from, target: adr-edits/2026-10-19-owner-words.md, holder_sha256: 30444637c018b02d23b2ede3153f34f0324bc04eaacf9aba4884b4131aecd354, target_sha256: 34667dc3b698e0fcf156c66770b87234c2ec5d8550b7a68caa83fc698e7624ab }
+  - { holder: SCH-22, link: serves, target: adr-edits/R1, holder_sha256: 2967b7d924c46d7ff0b8dc8d686a4a3bbfab886713ea94877a580473c9d4b8d2, target_sha256: 37f34d019858afdb7a175b80c56f986b38b6b3b4c8910eab0d9e1e5baf819d1a, target_version: 1 }
+  - { holder: SCH-22, link: serves, target: adr-edits/R2, holder_sha256: 2967b7d924c46d7ff0b8dc8d686a4a3bbfab886713ea94877a580473c9d4b8d2, target_sha256: 30444637c018b02d23b2ede3153f34f0324bc04eaacf9aba4884b4131aecd354, target_version: 1 }
 dispositions: []
