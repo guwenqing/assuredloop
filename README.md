@@ -210,7 +210,8 @@ ADRs that supersede it: `superseded by ADR-11, ADR-12` or
   or `-->`, or an empty item in a list of links. A line that starts like a
   marker, but that `al` does not read as one, gets the same hint.
 - `al check` gives a hint for an ADR whose first line is not
-  `Status: proposed`, `Status: accepted` or `Status: superseded by ADR-<n>`.
+  `Status: proposed`, `Status: accepted` or `Status: superseded by ADR-<n>`,
+  with one ADR or a list of them.
 - After a rewrite, `al index --align <ID>` moves the bindings of paragraph
   `<ID>` to the ADR's new text, for an accepted or a superseded ADR.
 - `al check` gives a hint for a proposed or accepted ADR with no `source:`

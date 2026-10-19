@@ -195,7 +195,8 @@ it"; it is only a hint.
   like a marker, but that `al` does not read as one, gets the same hint.
 - An ADR whose first line is not a status that `al` knows gets a hint, in
   every mode. The known first lines are `Status: proposed`,
-  `Status: accepted` and `Status: superseded by ADR-n`.
+  `Status: accepted` and `Status: superseded by ADR-n`, which may name more
+  than one ADR, as SCH-37 says.
 - A proposed or accepted ADR with no `source` or no `decides` link gets a
   hint, in every mode. A superseded ADR gets none: it is history.
 - A PR that changes a paragraph that an ADR governs gets a hint: "check that

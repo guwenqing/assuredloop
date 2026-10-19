@@ -375,7 +375,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // Every ADR, whatever its status (#4): a first line that is not a known
   // status, and a marker line that holds more than its ID, a kind and links.
   for (const a of now.adrs.values()) {
-    if (!a.known) add('hint', 'adr-status', `${a.file}:1`, a.id, `${a.id}'s first line is not a status that al knows: write "Status: proposed", "Status: accepted" or "Status: superseded by ADR-<n>"`);
+    if (!a.known) add('hint', 'adr-status', `${a.file}:1`, a.id, `${a.id}'s first line is not a status that al knows: write "Status: proposed", "Status: accepted" or "Status: superseded by ADR-<n>" (or by a list, "ADR-11, ADR-12")`);
     for (const m of markerLines(a.text, now.kinds)) {
       const where = `${a.file}:${m.line}`;
       if (!m.extras) add('hint', 'adr-marker', where, m.id, `the marker line of ${m.id} is not a well-formed marker, so al does not read it: write "<!-- ${m.id} <kind> <links> -->" alone on the line; a page can show text after its -->`);
