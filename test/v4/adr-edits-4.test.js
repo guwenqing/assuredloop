@@ -146,6 +146,8 @@ const statusArms = {
   nostatus: 'the status line removed',
   draft: 'the status line changed to Status: draft',
   moved: 'the status line moved below the marker',
+  blankfirst: 'a blank first line and Status: accepted on line 2',
+  trailing: 'text after the status word, Status: accepted (2026-07-01)',
 };
 for (const [arm, what] of Object.entries(statusArms)) {
   test(`ADR-2 with ${what} (arm ${arm}): hint adr-status on ADR-2 at line 1`, (t) => {

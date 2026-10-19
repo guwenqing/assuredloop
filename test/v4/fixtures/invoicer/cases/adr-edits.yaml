@@ -12,7 +12,9 @@
 # addedtoken (an added for: token that holds "-->" and "<!--"), frozen (the
 # superseded ADR-3 gets the issue's example token).
 # R2, arms that change ADR-2's status line: nostatus (the line removed),
-# draft (Status: draft), moved (the line moved below the marker).
+# draft (Status: draft), moved (the line moved below the marker),
+# blankfirst (a blank first line, then Status: accepted), trailing (text
+# after the status word: Status: accepted (2026-07-01)).
 title: Edit ADR markers and status lines
 base: base
 claim: "Tier: 2 — invoice-exports"
@@ -113,6 +115,18 @@ arms:
           file: specs/adr/0002-csv-not-xlsx.md
           from: "Status: accepted\n\n<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->\n"
           to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->\n\nStatus: accepted\n"
+  blankfirst:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n"
+          to: "\nStatus: accepted\n"
+  trailing:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n"
+          to: "Status: accepted (2026-07-01)\n"
 after:
   - index: true
     date: 2026-07-25
