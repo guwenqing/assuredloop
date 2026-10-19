@@ -182,10 +182,12 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
 
   // The items that each task of each open request names, in order (SP-8, SP-9).
   const named = []; // [{ r, task, it }]
+  const tasked = []; // the open requests with a task that has a ref
   for (const r of state.requests.values()) {
     if (!r.open) continue;
     for (const t of Array.isArray(r.data?.tasks) ? r.data.tasks : []) {
       if (!isMap(t) || t.ref == null) continue;
+      if (!tasked.includes(r)) tasked.push(r);
       const task = String(t.id ?? '-');
       const id = `${r.name}/${task}`;
       const found = [];
@@ -255,16 +257,12 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
     return ids;
   };
   const seen = new Set();
-  const noOwn = new Map();
   for (const n of named) {
     const pair = `${n.r.name} ${slug(n.it.key)}`;
     if (seen.has(pair)) continue;
     seen.add(pair);
     const mine = ownItem(n.r);
-    if (mine.unknown) {
-      noOwn.set(n.r.name, mine.unknown);
-      continue;
-    }
+    if (mine.unknown) continue;
     const it = n.it;
     if (mine.keys.has(slug(it.key)) || (it.ref && mine.keys.has(slug(it.ref)))) continue;
     if (it.parent === undefined) {
@@ -286,7 +284,11 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
     const named = parent[0] ?? url;
     add('hint', 'issue-not-sub', it.key, `${n.r.name}/${n.task}`, `is not a child of the request's own item (${[...mine.keys][0]})${named ? `; its parent is ${named}` : ''}`);
   }
-  for (const [name, why] of noOwn) notKnown.push(`whether the items of ${name} are children of its own item: ${why}`);
+  // Once for each request with a task that has a ref, whether or not its items are in the folder.
+  for (const r of tasked) {
+    const why = ownItem(r).unknown;
+    if (why) notKnown.push(`whether the items of ${r.name} are children of its own item: ${why}`);
+  }
 
   const others = items.filter((it) => !first.has(it)).length;
   if (others) notKnown.push(`${others} item${others === 1 ? '' : 's'} in ${folder} that no task names, not checked`);
