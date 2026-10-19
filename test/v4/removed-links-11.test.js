@@ -21,7 +21,7 @@ import { stringify } from 'yaml';
 import { check } from './helpers/invoicer.js';
 import {
   WORDS_FILE, al, appendSection, baseProject, bindingsOf, commitAll, doc, editFile, editRecord, editRequest, git, index,
-  newRequest, ok, organized, read, record, recordPath, req, show, tree, write, writeConfig,
+  newRequest, ok, organized, read, readYaml, record, recordPath, req, show, tree, write, writeConfig, writeYaml,
 } from './helpers/project.js';
 
 const SPEC = 'specs/invoices.md';
@@ -546,6 +546,58 @@ for (const [what, rel] of [
   });
 }
 
+// --- a request record that declares links by its outputs: cannot be read
+
+// main: config, specs/invoices.md. Branch feature: the requests inv and
+// other; both records declare src/lines.js implements INV-13 in outputs:.
+// Indexed (other concluded and archived, when archive is set) and committed.
+// Then inv's outputs: drops the entry; other still declares the same link.
+const LINES = ['src/lines.js', 'implements', 'INV-13'];
+function sharedOutput(t, { archive }) {
+  const dir = baseProject(t);
+  newRequest(dir, 'inv');
+  appendSection(dir, 'inv', organized([R1]));
+  newRequest(dir, 'other');
+  appendSection(dir, 'other', organized([req('R1', 'Yearly ZIP', 'A user MUST be able to download a year as one ZIP file.')]));
+  write(dir, 'src/lines.js', 'export const minLines = 1;\n');
+  for (const name of ['inv', 'other']) editRecord(dir, name, (rec) => { rec.outputs = [{ file: 'src/lines.js', implements: ['INV-13'] }]; });
+  index(dir);
+  if (archive) {
+    ok(dir, ['record', 'other', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+    index(dir);
+    ok(dir, ['conclude', 'other', '--yes']);
+  }
+  commitAll(dir, 'The requests inv and other, with one shared output');
+  oneBinding(record(dir, 'inv'), LINES);
+  oneBinding(record(dir, 'other'), LINES);
+  editRecord(dir, 'inv', (rec) => { rec.outputs = []; });
+  return dir;
+}
+
+for (const archive of [false, true]) {
+  const kind = archive ? 'an archived' : 'an open';
+  test(`R1 safety: the record of ${kind} request that declares a link by outputs: cannot be read (mode 000): al index removes no binding and names the record on its "not removed" line; readable again, the link that it still declares keeps its binding`, { skip: SKIP_ROOT }, (t) => {
+    const dir = sharedOutput(t, { archive });
+    const rel = recordPath('other');
+    const before = record(dir, 'inv').bindings;
+    const r = unreadable(t, dir, rel, () => al(dir, ['index']));
+    const lines = (r.stdout + r.stderr).split('\n');
+    assert.ok(r.code === 0 || r.code === 2, show(r));
+    assert.deepEqual(record(dir, 'inv').bindings, before, `no binding of inv changes while ${rel} cannot be read:\n${show(r)}`);
+    if (r.code === 0) {
+      assert.ok(lines.some((l) => /remov/i.test(l) && l.includes(rel)), `a line names ${rel} and says why no binding was removed:\n${show(r)}`);
+    } else {
+      assert.ok(lines.some((l) => l.startsWith('al: ') && l.includes(rel)), `an "al: " line that names ${rel}:\n${show(r)}`);
+    }
+    assert.ok(!namesRemoved(r, LINES), `${LINES.join(' ')} is not reported as removed:\n${show(r)}`);
+    // Readable again: other still declares the same holder, link and target.
+    const kept = oneBinding(record(dir, 'inv'), LINES);
+    const again = index(dir);
+    assert.deepEqual(oneBinding(record(dir, 'inv'), LINES), kept, `other's outputs: still declares ${LINES.join(' ')}, so inv keeps its binding:\n${show(again)}`);
+    assert.ok(!namesRemoved(again, LINES), `${LINES.join(' ')} is not reported as removed:\n${show(again)}`);
+  });
+}
+
 // --- a superseded disposition loses its evidence
 
 // main: config, specs/invoices.md. Branch feature: the request first, its
@@ -812,10 +864,61 @@ test('R2: a binding whose target does not resolve now (INV-13 deleted) gets no h
   noHint(after, 'inv/SP-1');
 });
 
-test('R2 guard: after al index --align <holder> for each holder that has holder-changed, al check gives no holder-changed at all (holders changed, and INV-13, the target of several, deleted)', (t) => {
+// The holders world as a central repo (its config lists outputs, here one
+// absent clone), with the request other (R1) and two more paragraphs:
+// SP-4 builds on central:INV-13, which al index binds and aligns in a central
+// repo; SP-5 serves R1 and other/R1. Indexed and committed.
+const R2SP4 = 'An export MUST show the invoice total in its last row.';
+const R2SP5 = 'An export MUST be the same for an invoice and its credit notes.';
+function scoped(t) {
   const dir = holders(t);
+  writeYaml(dir, '.assuredloop/config.yaml', { ...readYaml(dir, '.assuredloop/config.yaml'), repo: 'invoicer', outputs: [{ name: 'invoicer-web', path: '../invoicer-web' }] });
+  newRequest(dir, 'other');
+  appendSection(dir, 'other', organized([req('R1', 'Credit notes', 'A user MUST be able to issue a credit note.')]));
+  write(dir, CS, `${read(dir, CS)}\n${doc([
+    ['SP-4 rule serves:R1 builds-on:central:INV-13', R2SP4],
+    ['SP-5 rule serves:R1,other/R1', R2SP5],
+  ])}`);
+  index(dir);
+  commitAll(dir, 'A central repo; the request other; SP-4 and SP-5');
+  const rec = record(dir, 'inv');
+  oneBinding(rec, ['inv/SP-4', 'builds-on', 'central:INV-13']);
+  oneBinding(rec, ['inv/SP-5', 'serves', 'other/R1']);
+  return dir;
+}
+const changeSp4 = (dir) => editFile(dir, CS, R2SP4, 'An export MUST show the invoice total in its last row, with the currency.');
+const changeSp5 = (dir) => editFile(dir, CS, R2SP5, 'An export MUST be the same for an invoice and each of its credit notes.');
+// other's record is deleted; requests/other/request.md still holds R1.
+const otherRecordGone = (dir) => rmSync(join(dir, recordPath('other')));
+
+test('R2: in a central repo, a changed holder with builds-on:central:INV-13 gets holder-changed for it, and al index --align clears it', (t) => {
+  const dir = scoped(t);
+  changeSp4(dir);
+  const r = check(dir);
+  hints(r, ['inv/SP-4', 'builds-on', 'central:INV-13']);
+  hints(r, ['inv/SP-4', 'serves', 'inv/R1']);
+  ok(dir, ['index', '--align', 'inv/SP-4']);
+  noHint(check(dir), 'inv/SP-4');
+});
+
+test('R2: a requirement target whose request\'s record is gone (other/R1) gets no holder-changed; the holder\'s link to inv/R1 does, and al index --align clears it', (t) => {
+  const dir = scoped(t);
+  otherRecordGone(dir);
+  changeSp5(dir);
+  const r = check(dir);
+  assert.deepEqual(holderChanged(r, ['inv/SP-5', 'serves', 'other/R1']), [], `no holder-changed for a target that --align cannot find:\n${show(r)}`);
+  hints(r, ['inv/SP-5', 'serves', 'inv/R1']);
+  ok(dir, ['index', '--align', 'inv/SP-5']);
+  noHint(check(dir), 'inv/SP-5');
+});
+
+test('R2 guard: after al index --align <holder> for each holder that has holder-changed, al check gives no holder-changed at all (holders changed; INV-13, the target of several, deleted; a central: target; a requirement whose record is gone)', (t) => {
+  const dir = scoped(t);
   changeHolders(dir);
+  changeSp4(dir);
+  changeSp5(dir);
   deleteInv13(dir);
+  otherRecordGone(dir);
   index(dir);
   const r = check(dir);
   const named = [...new Set(holderChangedAll(r).map((f) => f.id))];
