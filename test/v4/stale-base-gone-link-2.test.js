@@ -10,6 +10,8 @@
 // still declares a link to the target that changed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { rmSync, symlinkSync } from 'node:fs';
+import { join } from 'node:path';
 import { stringify } from 'yaml';
 import { check } from './helpers/invoicer.js';
 import {
@@ -243,4 +245,30 @@ test('a record whose outputs is a mapping, not a list: al check still gives its 
   assert.ok(r.code === 0 || r.code === 1, `al check gives its report, not an error:\n${show(r)}`);
   assert.doesNotMatch(r.stdout + r.stderr, /internal error/, show(r));
   fires(r, ['inv/SP-1', 'builds-on', 'INV-13']);
+});
+
+test('another request\'s record is a symlink to an unchanged copy in the repo: not ok record-unreadable other, and al check still gives the stale-base on inv/SP-1; plain exits 0, --strict exits 1', (t) => {
+  const dir = baseProject(t);
+  newRequest(dir, 'inv');
+  appendSection(dir, 'inv', organized([R1]));
+  write(dir, CS, doc([['SP-1 rule serves:R1 builds-on:INV-13', SP[1]]]));
+  newRequest(dir, 'other');
+  appendSection(dir, 'other', organized([req('R1', 'Yearly ZIP', 'A user MUST be able to download a year as one ZIP file.')]));
+  index(dir);
+  commitAll(dir, 'The requests inv and other');
+  changeTarget(dir);
+  // other's record: a symlink to an unchanged copy of itself, inside the repo.
+  write(dir, 'copies/other.yaml', read(dir, recordPath('other')));
+  rmSync(join(dir, recordPath('other')));
+  symlinkSync(join(dir, 'copies/other.yaml'), join(dir, recordPath('other')));
+  const r = check(dir);
+  assert.equal(r.code, 0, `al check gives its report, and exits 0 by default:\n${show(r)}`);
+  assert.doesNotMatch(r.stdout + r.stderr, /internal error/, show(r));
+  const unreadable = r.findings.filter((f) => f.code === 'record-unreadable' && f.severity === 'not ok'
+    && /(^|[\s/])other(\.yaml|\/|\s|$)/.test(f.line));
+  assert.ok(unreadable.length > 0, `a not ok record-unreadable line that names other:\n${show(r)}`);
+  fires(r, ['inv/SP-1', 'builds-on', 'INV-13']);
+  const strict = check(dir, '--strict');
+  assert.equal(strict.code, 1, show(strict));
+  fires(strict, ['inv/SP-1', 'builds-on', 'INV-13']);
 });
