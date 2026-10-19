@@ -97,7 +97,14 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
 - **Bindings.** When a link is first indexed, `al index` records the hash of
   both ends. Ordinary indexing never moves a binding. When the target
   changes, the source gets a hint until someone checks it and runs
-  `al index --align <ID>`.
+  `al index --align <ID>`. When the source paragraph's own text changes,
+  it gets the hint `holder-changed` until it is aligned in the same way.
+  This hint covers the links that a paragraph of a spec doc, an ADR or an
+  open change spec still declares, in the records of the open requests. A
+  requirement is out, because a changed requirement needs a new sign-off.
+  An output file is out. When no current marker declares a link any more,
+  `al index` removes its binding, in the open and the archived records, and
+  names it in its output. Git history keeps it.
 - **Consolidation is by hand.** A PR copies a change paragraph into `specs/`
   word for word, and records its disposition: `incorporated`, `removed`,
   `superseded` or `abandoned`. No command writes the spec.
@@ -139,9 +146,10 @@ with a baseline effect has no valid disposition for its current version.
 - `al spec`: every doc's IDs, display numbers and kinds.
   `al spec --add-ids <file> [--prefix <P>]`: give each unmarked paragraph the
   next free ID.
-- `al index`: write the derived facts and the new bindings, and list the AI
-  hints to refresh. `al index --align <ID>` moves the bindings of one
-  paragraph to its targets' current text, on purpose.
+- `al index`: write the derived facts and the new bindings, remove the
+  bindings of links that no marker declares, and list the AI hints to
+  refresh. `al index --align <ID>` moves the bindings of one paragraph to its
+  targets' current text and to its own, on purpose.
 - `al check [--strict] [--issues <folder>]`: the checks of this branch
   against its base. With `--issues <folder>`, it also checks the work items
   that the caller saved in the folder (see "Hints from the linked work

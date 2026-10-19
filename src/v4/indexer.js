@@ -201,6 +201,25 @@ export function declaredNow(top, state) {
   return (b) => keys.has(tripleKey(b));
 }
 
+// A state whose archived requests declare their links too: their change
+// specs' markers, their requirements' from: and their records' outputs: (#11).
+function everyDeclaration(state) {
+  const old = [...state.requests.values()].filter((r) => !r.open);
+  return {
+    docs: [...state.docs, ...old.map((r) => ({ request: r.name, ids: new Set(r.paras.keys()), paragraphs: [...r.paras.values()] }))],
+    requests: new Map([...state.requests].map(([n, r]) => [n, { ...r, open: true }])),
+  };
+}
+
+// Every symlink below `dir`, not followed: al index reads no file through one.
+function symlinksUnder(top, dir) {
+  return list(top, dir).flatMap((e) => {
+    const p = `${dir}/${e.name}`;
+    if (e.isSymbolicLink()) return [p];
+    return e.isDirectory() ? symlinksUnder(top, p) : [];
+  });
+}
+
 export function index({ top, opts }) {
   let loaded;
   try { loaded = loadConfig(top); } catch (e) { throw new Fail(e.message, 'fix .assuredloop/config.yaml'); }
@@ -292,6 +311,34 @@ export function index({ top, opts }) {
     }
   }
 
+  // Removed links (removed-links/R1, #11): a binding whose link no current
+  // marker, requirement or outputs: entry declares is removed from the records
+  // of the open and the archived requests, and named. An archived change spec
+  // and request.md still declare their links. While a file that can declare
+  // links is not read, nothing is removed: a missing file is not a removed link.
+  const archived = new Map();
+  for (const n of names.archived) {
+    try { const rec = openRecord(top, n); if (rec) archived.set(n, rec); } catch (e) { if (!e.invalid) throw e; notes.push(`not read: ${e.message}`); }
+  }
+  const unread = [...new Set([
+    ...notes.filter((l) => /^not (indexed|read): /.test(l)).map((l) => l.replace(/^not (indexed|read): /, '')),
+    ...symlinksUnder(top, root).map((p) => `${p}: through a symlink`),
+    ...names.open.filter((n) => symlinkOn(top, `requests/${n}/spec.md`)).map((n) => `requests/${n}/spec.md: through a symlink`),
+  ])];
+  const declared = new Set(linksOf(top, everyDeclaration(now), config, false).map(tripleKey));
+  const undeclared = (it) => it?.get && !declared.has(tripleKey({ holder: it.get('holder'), link: it.get('link'), target: it.get('target') }));
+  const dead = [...recs, ...archived].flatMap(([n, rec]) => (rec.doc.get('bindings')?.items ?? []).filter(undeclared).map((it) => [n, rec, it]));
+  if (dead.length && unread.length) {
+    body.push(`not removed: ${dead.length} binding${dead.length === 1 ? '' : 's'} of links that no marker declares, as al index could not read ${unread.join('; ')}`);
+  } else {
+    for (const [n, rec, it] of dead) {
+      const items = rec.doc.get('bindings').items;
+      items.splice(items.indexOf(it), 1);
+      body.push(`removed: ${it.get('holder')} ${it.get('link')} ${it.get('target')} from the record of ${n}: no longer declared`);
+      rec.changed = true;
+    }
+  }
+
   // Dispositions: the hashes of the source version, and of the spec text it
   // produced, frozen when first indexed.
   for (const [n, rec] of recs) {
@@ -347,7 +394,7 @@ export function index({ top, opts }) {
     const rec = { schema: SCHEMA, file: d.file, ...(status ? { status } : {}), paragraphs };
     outputs.push([path, stringify(rec, YAML_OPTIONS)]);
   }
-  for (const [, rec] of recs) if (rec.changed) outputs.push([rec.path, recordText(rec)]);
+  for (const [, rec] of [...recs, ...archived]) if (rec.changed) outputs.push([rec.path, recordText(rec)]);
   guard(top, outputs.map(([path]) => path));
   const written = outputs.filter(([path, text]) => write(top, path, text)).map(([path]) => path);
 

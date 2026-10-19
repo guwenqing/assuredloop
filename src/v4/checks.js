@@ -12,7 +12,7 @@ import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
+  adrParagraph, hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
@@ -309,6 +309,17 @@ export function checks(top, { base, phrases = [], issues = null }) {
   for (const r of open) {
     for (const b of Array.isArray(r.data?.bindings) ? r.data.bindings : []) {
       if (!b?.target || !b.holder || !b.target_sha256) continue;
+      // A holder paragraph whose text changed since the link was bound
+      // (removed-links/R2, #11). Output files and requirements are not
+      // paragraphs; a link no longer declared is history (#2).
+      if (b.holder_sha256) {
+        const hq = qualify(String(b.holder), null);
+        const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : now.spec.get(hq.id) ?? adrParagraph(now, hq.id);
+        declared ??= declaredNow(top, now);
+        if (hp && hp.sha256 !== b.holder_sha256 && declared(b)) {
+          add('hint', 'holder-changed', hp, b.holder, `${b.link} ${b.target}: this paragraph changed after the link was bound. Check that it still ${b.link} ${b.target}, then al index --align ${b.holder}`);
+        }
+      }
       const t = qualify(String(b.target), null);
       if (t.cross) continue;
       const cur = resolve(now, t);
