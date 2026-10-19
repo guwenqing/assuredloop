@@ -1,7 +1,7 @@
 schema: assuredloop/1
 request: own-item
 tier: "2"
-status: open
+status: concluded
 sources:
   - file: 2026-10-19-owner-words.md
     kind: owner-words
