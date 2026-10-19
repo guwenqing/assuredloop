@@ -15,7 +15,7 @@
 // Output files, requirements and archived records are out. Nothing blocks.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { stringify } from 'yaml';
 import { check } from './helpers/invoicer.js';
@@ -463,6 +463,88 @@ test('R1 safety: a change spec reached through a symlink never looks like remove
   }
 });
 
+// --- a file or folder that exists but cannot be read (mode 000)
+
+// root reads a file or lists a folder whatever its mode, so a test that runs
+// as root cannot make EACCES; these tests are skipped then.
+const ROOT = process.getuid?.() === 0;
+const SKIP_ROOT = ROOT && 'runs as root: root reads a file whatever its mode, so EACCES cannot be made';
+
+// Runs fn while rel (a file or a folder) has mode 000, then gives the mode back.
+// t.after gives it back too, so the temp dir can be removed if fn throws.
+function unreadable(t, dir, rel, fn) {
+  const path = join(dir, rel);
+  const mode = statSync(path).mode & 0o777;
+  t.after(() => { try { chmodSync(path, mode); } catch { /* already removed */ } });
+  chmodSync(path, 0o000);
+  try {
+    return fn();
+  } finally {
+    chmodSync(path, mode);
+  }
+}
+
+// One al index while a file it needs cannot be read. It removes no binding:
+// either it is refused (exit 2, an "al: " line that names the file), or it
+// runs (exit 0) and its output names the file and says why no binding was
+// removed. It never fails with an internal error. names: the records to compare.
+function indexRemovesNothing(t, dir, rel, names, gone) {
+  const before = Object.fromEntries(names.map((n) => [n, record(dir, n).bindings]));
+  const r = unreadable(t, dir, rel, () => al(dir, ['index']));
+  assert.doesNotMatch(r.stdout + r.stderr, /internal error/, `no internal error:\n${show(r)}`);
+  assert.ok(r.code === 0 || r.code === 2, show(r));
+  for (const n of names) assert.deepEqual(record(dir, n).bindings, before[n], `no binding of ${n} changes in this run:\n${show(r)}`);
+  assert.ok(r.stdout.includes(rel), `the output names ${rel}:\n${show(r)}`);
+  if (r.code === 0) assert.ok(removalLines(r).length > 0, `a line says why no binding was removed:\n${show(r)}`);
+  else assert.match(r.stdout, /^al: /m, show(r));
+  assert.ok(!namesRemoved(r, gone), `no line reports ${gone.join(' ')} as removed:\n${show(r)}`);
+  for (const n of names) {
+    for (const b of before[n]) {
+      const found = [b.holder, b.link, b.target];
+      assert.ok(!namesRemoved(r, found), `${found.join(' ')} never looks removed:\n${show(r)}`);
+    }
+  }
+  return r;
+}
+
+for (const [what, rel] of [
+  ['an ADR (decides:INV-13 source:inv/D1)', ADR4],
+  ['a spec doc that config names', 'specs/extra.md'],
+  ['an open change spec', CS],
+  ['an open request.md with from:', 'requests/inv/request.md'],
+  ['the folder specs/adr/, which cannot be listed', 'specs/adr'],
+]) {
+  test(`R1 safety: ${what} exists but cannot be read (mode 000): al index removes no binding in that run and says why; the next run that reads it removes the gone link`, { skip: SKIP_ROOT }, (t) => {
+    const dir = readable(t);
+    indexRemovesNothing(t, dir, rel, ['inv', 'other'], SP2_GONE);
+    removesAfterFix(dir);
+  });
+}
+
+// The archived world, and a gone link in the archived record of old.
+const INV70_GONE = ['INV-70', 'builds-on', 'INV-13'];
+function archivedGone(t) {
+  const dir = archived(t);
+  editFile(dir, SPEC, '<!-- INV-70 rule serves:old/R1 builds-on:INV-13 -->', '<!-- INV-70 rule serves:old/R1 -->');
+  return dir;
+}
+
+for (const [what, rel] of [
+  ['an archived request.md with from:', 'requests/archive/old/request.md'],
+  ['an archived change spec', 'requests/archive/old/spec.md'],
+  ['the folder requests/archive/, which cannot be listed', 'requests/archive'],
+]) {
+  test(`R1 safety: ${what} exists but cannot be read (mode 000): al index removes no binding in that run and says why; the next run that reads it removes the gone link`, { skip: SKIP_ROOT }, (t) => {
+    const dir = archivedGone(t);
+    indexRemovesNothing(t, dir, rel, ['old', 'inv'], INV70_GONE);
+    const r = index(dir);
+    const rec = record(dir, 'old');
+    noBinding(rec, INV70_GONE, 'once every file can be read');
+    reportsRemoved(r, INV70_GONE);
+    for (const b of [['old/SP-1', 'builds-on', 'INV-13'], ['old/R1', 'from', `old/${WORDS_FILE}`], ['INV-70', 'serves', 'old/R1']]) oneBinding(rec, b);
+  });
+}
+
 // --- a superseded disposition loses its evidence
 
 // main: config, specs/invoices.md. Branch feature: the request first, its
@@ -705,4 +787,39 @@ test('R2 and R1: nothing new blocks: with only holder-changed hints and a remove
     for (const b of CHANGED) hints(r, b);
     assert.ok(holderChangedAll(r).every((f) => f.severity === 'hint'), show(r));
   }
+});
+
+// --- R2: holder-changed only where al index --align can move the binding
+
+// INV-13 is deleted from specs/ while inv/SP-1 keeps builds-on:INV-13, and
+// SP-1's text changes. The binding's target does not resolve now, so --align
+// cannot move it: no holder-changed for it. SP-1 serves inv/R1 resolves.
+const deleteInv13 = (dir) => editFile(dir, SPEC, '<!-- INV-13 rule -->\n\nAn invoice MUST have at least one line.\n\n', '');
+function targetGone(dir) {
+  deleteInv13(dir);
+  editFile(dir, CS, R2SP[1], 'An export MUST hold one row per invoice line, in line order.');
+}
+
+test('R2: a binding whose target does not resolve now (INV-13 deleted) gets no holder-changed; the holder\'s link that resolves does, and al index --align clears it', (t) => {
+  const dir = holders(t);
+  targetGone(dir);
+  const r = check(dir);
+  assert.deepEqual(holderChanged(r, ['inv/SP-1', 'builds-on', 'INV-13']), [], `no holder-changed for a target that is gone:\n${show(r)}`);
+  hints(r, ['inv/SP-1', 'serves', 'inv/R1']);
+  ok(dir, ['index', '--align', 'inv/SP-1']);
+  const after = check(dir);
+  noHint(after, 'inv/SP-1');
+});
+
+test('R2 guard: after al index --align <holder> for each holder that has holder-changed, al check gives no holder-changed at all (holders changed, and INV-13, the target of several, deleted)', (t) => {
+  const dir = holders(t);
+  changeHolders(dir);
+  deleteInv13(dir);
+  index(dir);
+  const r = check(dir);
+  const named = [...new Set(holderChangedAll(r).map((f) => f.id))];
+  assert.ok(named.length > 0, `some holder-changed to start with:\n${show(r)}`);
+  for (const holder of named) ok(dir, ['index', '--align', holder]);
+  const after = check(dir);
+  assert.deepEqual(holderChangedAll(after), [], `no holder-changed once each named holder is aligned (${named.join(', ')}):\n${show(after)}`);
 });
