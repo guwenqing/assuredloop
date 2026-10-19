@@ -163,7 +163,7 @@ function supersedes(state) {
   const out = new Map([...state.adrs.keys()].map((id) => [id, new Set()]));
   for (const a of state.adrs.values()) {
     for (const x of (a.head?.links.supersedes ?? []).map(adrOf).filter(Boolean)) out.get(a.id).add(x);
-    if (a.by && out.has(a.by)) out.get(a.by).add(a.id);
+    for (const b of a.by) if (out.has(b)) out.get(b).add(a.id);
   }
   return out;
 }
@@ -212,15 +212,23 @@ function places(textOf, skip) {
 }
 
 // R5's rule on one text: each place that names a superseded ADR, but no ADR
-// that supersedes it, in the same marker or the same paragraph. Gives
-// (text, { skip, exempt }) => [{ line, id, link, adr, next }]. al check
-// --issues reads the issues with the same rule (issue-hints D7).
+// that supersedes it, directly or through a chain (#1), in the same marker or
+// the same paragraph. Gives (text, { skip, exempt }) => [{ line, id, link,
+// adr, next }]. al check --issues reads the issues with the same rule
+// (issue-hints D7).
 export function supersededIn(state) {
   const down = supersedes(state);
   const up = (id) => [...down].filter(([, xs]) => xs.has(id)).map(([y]) => y);
+  // The ADRs that supersede `id`, directly or through a chain.
+  const above = (id) => {
+    const seen = new Set();
+    const walk = (x) => { for (const y of up(x)) if (!seen.has(y)) { seen.add(y); walk(y); } };
+    walk(id);
+    return seen;
+  };
   const superseded = (id) => state.adrs.get(id)?.status === 'superseded';
   return (textOf, { skip = null, exempt = new Set() } = {}) => places(textOf, skip).flatMap((p) => [...p.names]
-    .filter((x) => superseded(x) && !exempt.has(x) && !up(x).some((y) => p.names.has(y)))
+    .filter((x) => superseded(x) && !exempt.has(x) && ![...above(x)].some((y) => p.names.has(y)))
     .map((x) => ({ line: p.line, id: p.id, link: p.link, adr: x, next: up(x) })));
 }
 
@@ -259,10 +267,12 @@ export function supersededBlocks(top, state, add) {
   for (const a of state.adrs.values()) {
     if (a.status !== 'superseded') continue;
     const where = `${a.file}:1`;
-    if (!a.by) add('not ok', 'superseded-status', where, a.id, `${a.id} is superseded, but its status line does not say by which ADR: write "Status: superseded by ADR-<n>"`);
-    else if (!state.adrs.has(a.by)) add('not ok', 'superseded-status', where, a.id, `${a.id} says it is superseded by ${a.by}, which does not exist`);
-    else if (!(state.adrs.get(a.by).head?.links.supersedes ?? []).some((x) => adrOf(x) === a.id)) {
-      add('not ok', 'superseded-status', where, a.id, `${a.id} says it is superseded by ${a.by}, but the marker of ${a.by} has no supersedes:${a.id}`);
+    if (!a.by.length) add('not ok', 'superseded-status', where, a.id, `${a.id} is superseded, but its status line does not say by which ADR: write "Status: superseded by ADR-<n>"`);
+    for (const b of a.by) {
+      if (!state.adrs.has(b)) add('not ok', 'superseded-status', where, a.id, `${a.id} says it is superseded by ${b}, which does not exist`);
+      else if (!(state.adrs.get(b).head?.links.supersedes ?? []).some((x) => adrOf(x) === a.id)) {
+        add('not ok', 'superseded-status', where, a.id, `${a.id} says it is superseded by ${b}, but the marker of ${b} has no supersedes:${a.id}`);
+      }
     }
   }
 
