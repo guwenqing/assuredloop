@@ -9,10 +9,11 @@
 // - issue-superseded: the item's text names a superseded ADR without its
 //   successor, by R5's own code (supersededIn, D7);
 // - issue-bare-ref: a bare `#n` in an item of another repository;
-// - issue-not-sub: not a child of the request's own item (D3);
+// - issue-not-sub: not a child of the request's own item, which the file
+//   assuredloop-requests.json of the folder names (own-item R1);
 // - phrase: a phrase of the config matches (R2, phrases.js);
 // - issue-unread: a file of the folder that is not valid JSON, or an entry
-//   that is not an item.
+//   that is not an item, or an assuredloop-requests.json that is not valid.
 // An item's text is its body and its comments that are not minimized (D4).
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -30,6 +31,9 @@ const BARE = /(?<![\w/#&-])#(\d+)\b/g;
 const slug = (s) => String(s).toLowerCase();
 const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const once = (re) => new RegExp(re.source);
+// The file of the folder that names each request's own item (own-item SP-8).
+const OWN_ITEMS = 'assuredloop-requests.json';
+const FORMAT = 'assuredloop-items/1';
 // `text` holds `word` as a whole word: no letter, digit, `_` or `-` beside it.
 const holds = (text, word) => new RegExp(`(?<![\\w-])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(text);
 
@@ -64,8 +68,29 @@ function itemOf(x, file) {
   return { key, ref, url: typeof x.url === 'string' ? x.url : null, repository, number, body: x.body, comments: x.comments, parent: x.parent, file };
 }
 
-// The items of the folder that the caller saved (SP-12): { items, unread }.
-// A folder that is not there is a refusal.
+// The own items that assuredloop-requests.json names (own-item SP-8, SP-9):
+// { requests } (a Map of name to value), { absent: true }, or { why } when
+// the file is not valid and so is ignored as a whole.
+function ownItems(path) {
+  if (!existsSync(path)) return { absent: true };
+  let data;
+  try {
+    data = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (e) {
+    return { why: e instanceof SyntaxError ? 'it is not valid JSON' : `it cannot be read (${e.code ?? e.message})` };
+  }
+  if (!isMap(data)) return { why: 'it is not a JSON object' };
+  const other = Object.keys(data).filter((k) => k !== 'format' && k !== 'requests');
+  if (other.length) return { why: `it has a field other than format and requests: ${other.join(', ')}` };
+  if (data.format !== FORMAT) return { why: `its format is not ${FORMAT}` };
+  if (!isMap(data.requests)) return { why: 'its requests is not an object' };
+  const bad = Object.entries(data.requests).filter(([, v]) => typeof v !== 'string' || !v).map(([k]) => k);
+  if (bad.length) return { why: `the value of ${bad.join(', ')} is not a text that is not empty` };
+  return { requests: new Map(Object.entries(data.requests)) };
+}
+
+// The items of the folder that the caller saved (SP-12): { items, unread,
+// owns }. A folder that is not there is a refusal.
 export function loadItems(cwd, folder) {
   const dir = resolve(cwd, folder);
   let isDir = false;
@@ -78,7 +103,9 @@ export function loadItems(cwd, folder) {
   const items = [];
   const unread = [];
   const shown = (name) => `${folder.replace(/\/+$/, '')}/${name}`;
-  for (const name of readdirSync(dir).filter((n) => n.endsWith('.json')).sort()) {
+  const owns = ownItems(join(dir, OWN_ITEMS));
+  if (owns.why) unread.push({ file: shown(OWN_ITEMS), why: owns.why });
+  for (const name of readdirSync(dir).filter((n) => n.endsWith('.json') && n !== OWN_ITEMS).sort()) {
     const file = shown(name);
     let data;
     try {
@@ -94,7 +121,7 @@ export function loadItems(cwd, folder) {
       else unread.push({ file, why: `${Array.isArray(data) ? `its entry ${i + 1}` : 'it'} is not an item: an item needs a body, and a url, a number with a repository, or a ref` });
     });
   }
-  return { folder, items, unread };
+  return { folder, items, unread, owns };
 }
 
 // The names of the repos that the config names, each with its folder or why it has none.
@@ -133,7 +160,7 @@ function written(ref, names, own, folders) {
   return out;
 }
 
-export function issueHints(top, state, matchers, add, { folder, items, unread }) {
+export function issueHints(top, state, matchers, add, { folder, items, unread, owns }) {
   const notKnown = [];
   const names = namedRepos(top, state.config);
   const cited = supersededIn(state);
@@ -155,10 +182,12 @@ export function issueHints(top, state, matchers, add, { folder, items, unread })
 
   // The items that each task of each open request names, in order (SP-8, SP-9).
   const named = []; // [{ r, task, it }]
+  const tasked = []; // the open requests with a task that has a ref
   for (const r of state.requests.values()) {
     if (!r.open) continue;
     for (const t of Array.isArray(r.data?.tasks) ? r.data.tasks : []) {
       if (!isMap(t) || t.ref == null) continue;
+      if (!tasked.includes(r)) tasked.push(r);
       const task = String(t.id ?? '-');
       const id = `${r.name}/${task}`;
       const found = [];
@@ -199,34 +228,41 @@ export function issueHints(top, state, matchers, add, { folder, items, unread })
   }
   if (!own.repo) notKnown.push(`the request's own repository, for #n and the issue-bare-ref check: ${own.unknown}`);
 
-  // Children (SP-10): once for each request and item.
+  // Children (SP-10): once for each request and item. The own item is the one
+  // that assuredloop-requests.json names (own-item SP-7); nothing else names it.
   const ownOf = new Map();
   const ownItem = (r) => {
     if (ownOf.has(r.name)) return ownOf.get(r.name);
-    let ids = null;
-    for (const s of Array.isArray(r.data?.sources) ? r.data.sources : []) {
-      const url = isMap(s) && typeof s.url === 'string' ? s.url : null;
-      if (!url) continue;
-      const k = keyOf(url);
-      const it = items.find((x) => (x.url && x.url === url) || (x.ref && holds(url, x.ref)) || (k && slug(x.key) === slug(k)));
-      if (it) ids = { keys: new Set([it.key, it.ref].filter(Boolean).map(slug)), urls: new Set([url, it.url].filter(Boolean)), ref: it.ref };
-      else if (k) ids = { keys: new Set([slug(k)]), urls: new Set([url]), ref: null };
-      if (ids) break;
+    let ids;
+    const value = owns.requests?.get(r.name);
+    if (owns.absent) ids = { unknown: `${folder} has no ${OWN_ITEMS}` };
+    else if (!owns.requests) ids = { unknown: `${folder.replace(/\/+$/, '')}/${OWN_ITEMS} was not read` };
+    else if (value === undefined) ids = { unknown: `${OWN_ITEMS} names no own item for ${r.name}` };
+    else {
+      const w = written(value, names, own, folders);
+      const lost = w.find((x) => x.unknown);
+      if (lost) ids = { unknown: `its own item ${value}: ${lost.unknown}` };
+      else if (w.length) {
+        const keys = new Set(w.map((x) => slug(x.key)));
+        const its = items.filter((x) => keys.has(slug(x.key)));
+        ids = { keys: new Set([...keys, ...its.map((x) => x.ref).filter(Boolean).map(slug)]), urls: new Set([value, ...its.map((x) => x.url).filter(Boolean)]), ref: its.find((x) => x.ref)?.ref ?? null };
+      } else {
+        // Another tracker's key: the item that holds it as its ref, or else the value itself.
+        const it = items.find((x) => x.ref && holds(value, x.ref));
+        ids = it ? { keys: new Set([it.key, it.ref].map(slug)), urls: new Set([value, it.url].filter(Boolean)), ref: it.ref }
+          : { keys: new Set([slug(value)]), urls: new Set([value]), ref: value };
+      }
     }
     ownOf.set(r.name, ids);
     return ids;
   };
   const seen = new Set();
-  const noOwn = new Set();
   for (const n of named) {
     const pair = `${n.r.name} ${slug(n.it.key)}`;
     if (seen.has(pair)) continue;
     seen.add(pair);
     const mine = ownItem(n.r);
-    if (!mine) {
-      noOwn.add(n.r.name);
-      continue;
-    }
+    if (mine.unknown) continue;
     const it = n.it;
     if (mine.keys.has(slug(it.key)) || (it.ref && mine.keys.has(slug(it.ref)))) continue;
     if (it.parent === undefined) {
@@ -237,17 +273,22 @@ export function issueHints(top, state, matchers, add, { folder, items, unread })
     // A parent's number is in the item's repository only when no url names its own.
     const parent = isMap(p) ? [keyOf(p.url), typeof p.ref === 'string' ? p.ref : null,
       !keyOf(p.url) && Number.isInteger(p.number) && it.repository ? `${it.repository}#${p.number}` : null].filter(Boolean) : [];
-    if (p !== null && !parent.length) {
+    // A parent's url names the own item when it is the own item's url or the value, or holds its ref.
+    const url = isMap(p) && typeof p.url === 'string' && p.url ? p.url : null;
+    if (p !== null && !parent.length && !url) {
       notKnown.push(`whether ${it.key} is a child of the own item of ${n.r.name}: its parent names no item`);
       continue;
     }
-    // A parent's url names the own item when it is the own item's url or its source's, or holds its ref.
-    const url = isMap(p) && typeof p.url === 'string' ? p.url : null;
     if (url && (mine.urls.has(url) || (mine.ref && holds(url, mine.ref)))) continue;
     if (parent.some((x) => mine.keys.has(slug(x)))) continue;
-    add('hint', 'issue-not-sub', it.key, `${n.r.name}/${n.task}`, `is not a child of the request's own item (${[...mine.keys][0]})${parent.length ? `; its parent is ${parent[0]}` : ''}`);
+    const named = parent[0] ?? url;
+    add('hint', 'issue-not-sub', it.key, `${n.r.name}/${n.task}`, `is not a child of the request's own item (${[...mine.keys][0]})${named ? `; its parent is ${named}` : ''}`);
   }
-  for (const name of noOwn) notKnown.push(`whether the items of ${name} are children of its own item: no origin source of ${name} names an item`);
+  // Once for each request with a task that has a ref, whether or not its items are in the folder.
+  for (const r of tasked) {
+    const why = ownItem(r).unknown;
+    if (why) notKnown.push(`whether the items of ${r.name} are children of its own item: ${why}`);
+  }
 
   const others = items.filter((it) => !first.has(it)).length;
   if (others) notKnown.push(`${others} item${others === 1 ? '' : 's'} in ${folder} that no task names, not checked`);

@@ -13,6 +13,11 @@
 //   requests, not the records), and with --issues in the items. A bad
 //   `phrases:` is a refusal.
 //
+// #3 (requests/own-item/spec.md SP-7 to SP-9): the request's own item comes
+// only from the file assuredloop-requests.json in the folder, never from an
+// origin source. The tests here set it through that file; the new rules have
+// their own tests in own-item-3.test.js.
+//
 // Each run has a PATH with a fake `gh` that only logs, and a folder of links
 // to git and node only. Every run checks that al did not run gh (D9).
 // Nothing here reads the code under test.
@@ -93,10 +98,12 @@ const own = (n, opts) => ghItem(OWN, n, opts);
 // git@github.com:acme/invoicer.git (unless remote says otherwise), with the
 // config, a spec with an ADR chain (ADR-1 superseded by ADR-2, superseded by
 // ADR-3, accepted), and the open request inv. Its own item is
-// acme/invoicer#7 (an origin source with that url), unless ownItem says
-// otherwise. Its record has `tasks`. <root>/items is the folder of items.
-// Optional: <root>/web, an output repo named `web` in the config; a second
-// open request; an archived request `old` with its own tasks.
+// acme/invoicer#7, unless ownItem says otherwise: the file
+// <root>/items/assuredloop-requests.json names it (SP-7, SP-8 of #3). Its
+// record has `tasks`, and an origin source for each url of `origins`.
+// <root>/items is the folder of items. Optional: <root>/web, an output repo
+// named `web` in the config; a second open request (its own item in the same
+// file); an archived request `old` with its own tasks.
 
 const adrFile = (status, marker, heading, rationale) => `Status: ${status}\n\n${doc([[marker, heading], [`${marker.split(' ')[0]}-1 rationale`, rationale]])}`;
 const ADRS = {
@@ -126,8 +133,16 @@ function initRepo(dir, remote) {
 const addOrigin = (dir, name, url, text = 'The item as the owner filed it.\n') =>
   ok(dir, ['record', name, 'origin', '--url', url, '--from', '-', '--yes'], { input: text, env: { PATH: SAFE_PATH } });
 
+// The file of own items in the folder (#3, SP-8): {request name: its own item}.
+const OWN_ITEMS = 'assuredloop-requests.json';
+const ownItems = (w, requests) =>
+  write(w.items, OWN_ITEMS, `${JSON.stringify({ format: 'assuredloop-items/1', requests }, null, 2)}\n`);
+// How many times the Not known line says that it does not know whether the
+// items of the request are children of its own item (#3, SP-5: once).
+const ownItemUnknown = (r, name) => notKnown(r).split(`whether the items of ${name} are children of its own item:`).length - 1;
+
 function world(t, {
-  tasks = [{ id: 'T1', ref: 'issue #31' }], ownItem = OWN_ITEM, remote = OWN_REMOTE, outputs = false, config = {}, archived = null, second = null,
+  tasks = [{ id: 'T1', ref: 'issue #31' }], ownItem = OWN_ITEM, origins = [], remote = OWN_REMOTE, outputs = false, config = {}, archived = null, second = null,
 } = {}) {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'al-v4-239-'));
   const gh = fakeGh();
@@ -151,11 +166,10 @@ function world(t, {
   write(dir, SPEC, specText());
   for (const [file, text] of Object.entries(ADRS)) write(dir, file, text);
   newRequest(dir, NAME, WORDS);
-  if (ownItem) addOrigin(dir, NAME, ownItem);
+  for (const url of origins) addOrigin(dir, NAME, url);
   editRecord(dir, NAME, (rec) => { rec.tasks = tasks; });
   if (second) {
     newRequest(dir, second.name, `The owner wants ${second.name}.\n`);
-    if (second.ownItem) addOrigin(dir, second.name, second.ownItem);
     editRecord(dir, second.name, (rec) => { rec.tasks = second.tasks; });
   }
   if (archived) {
@@ -166,7 +180,12 @@ function world(t, {
   }
   commitAll(dir, 'base');
   git(dir, 'checkout', '-q', '-b', 'feature');
-  return { root, dir, web, items, gh };
+  const w = { root, dir, web, items, gh };
+  const named = {};
+  if (ownItem) named[NAME] = ownItem;
+  if (second?.ownItem) named[second.name] = second.ownItem;
+  if (Object.keys(named).length) ownItems(w, named);
+  return w;
 }
 
 // Item files in the folder: {file name: an item, a list, or a string as written}.
@@ -290,7 +309,7 @@ describe('R1 (SP-5, D13): a project with no tracker gets, without --issues, exac
   });
 
   test('the world with no tasks, with an origin remote and an issue url as an origin source', (t) => {
-    const w = world(t, { tasks: [] });
+    const w = world(t, { tasks: [], origins: [OWN_ITEM] });
     sameAsMain(t, w.dir, w.gh.env.PATH);
     assert.deepEqual(w.gh.calls(), []);
   });
@@ -606,6 +625,7 @@ describe('R1 (SP-4, SP-14): issue-bare-ref, a bare #n in an item of another repo
       assert.deepEqual(coded(r, 'issue-bare-ref').map(where), ['acme/web#5:1'], show(r));
       assert.deepEqual(coded(r, 'issue-missing'), [], show(r));
       assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
+      assert.equal(ownItemUnknown(r, NAME), 0, `the own item is known:\n${show(r)}`);
     });
   }
 
@@ -663,38 +683,53 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
     assert.deepEqual(coded(r, 'issue-not-sub').map((f) => `${where(f)} ${f.id}`), [`${OWN}#32 ${NAME}/T2`], show(r));
   });
 
-  test('the own item is the first source whose url names an item: a url that names none is passed over, and a later item url is not the own item', (t) => {
-    const w = world(t, { ownItem: null, tasks: [{ id: 'T1', ref: '#31' }, { id: 'T2', ref: '#33' }] });
-    addOrigin(w.dir, NAME, 'https://example.com/notes', 'Notes.\n');
-    addOrigin(w.dir, NAME, OWN_ITEM, 'The item.\n');
-    addOrigin(w.dir, NAME, 'https://github.com/acme/invoicer/issues/8', 'Another item.\n');
+  test('#3: an origin source url names no own item: sources with a note url, issue 7 and issue 8, and no file of own items: no issue-not-sub, and the Not known line says so once; control: the file names issue 7, then issue 8', (t) => {
+    const w = world(t, {
+      ownItem: null,
+      origins: ['https://example.com/notes', OWN_ITEM, 'https://github.com/acme/invoicer/issues/8'],
+      tasks: [{ id: 'T1', ref: '#31' }, { id: 'T2', ref: '#33' }],
+    });
     save(w, { 'a.json': own(31), 'b.json': own(33, { parent: `${OWN}#8` }) });
     const r = checked(w, ...ISSUES);
-    assert.deepEqual(coded(r, 'issue-not-sub').map((f) => f.id), [`${NAME}/T2`], show(r));
+    assert.deepEqual(coded(r, 'issue-not-sub'), [], `no source url names the own item:\n${show(r)}`);
+    assert.equal(ownItemUnknown(r, NAME), 1, `the Not known line says once that the own item of ${NAME} is not known:\n${show(r)}`);
+    // Controls: the file names the own item, and the sources change nothing.
+    ownItems(w, { [NAME]: OWN_ITEM });
+    const c7 = checked(w, ...ISSUES);
+    assert.deepEqual(coded(c7, 'issue-not-sub').map((f) => f.id), [`${NAME}/T2`], show(c7));
+    assert.equal(ownItemUnknown(c7, NAME), 0, show(c7));
+    ownItems(w, { [NAME]: 'https://github.com/acme/invoicer/issues/8' });
+    const c8 = checked(w, ...ISSUES);
+    assert.deepEqual(coded(c8, 'issue-not-sub').map((f) => f.id), [`${NAME}/T1`], show(c8));
   });
 
-  test('a source url in the form owner/repo#n names the own item too', (t) => {
-    const w = world(t, { ownItem: null, tasks: [{ id: 'T1', ref: '#31' }, { id: 'T2', ref: '#32' }] });
-    addOrigin(w.dir, NAME, 'https://example.com/notes', 'Notes.\n');
+  test('#3: a value in the form owner/repo#n names the own item; a source url in that form names none', (t) => {
+    const w = world(t, { ownItem: null, origins: ['https://example.com/notes'], tasks: [{ id: 'T1', ref: '#31' }, { id: 'T2', ref: '#32' }] });
     editRecord(w.dir, NAME, (rec) => { rec.sources.at(-1).url = `${OWN}#7`; });
     save(w, { 'a.json': own(31), 'b.json': own(32, { parent: null }) });
     const r = checked(w, ...ISSUES);
-    assert.deepEqual(coded(r, 'issue-not-sub').map((f) => f.id), [`${NAME}/T2`], show(r));
+    assert.deepEqual(coded(r, 'issue-not-sub'), [], `the source url ${OWN}#7 names no own item:\n${show(r)}`);
+    assert.equal(ownItemUnknown(r, NAME), 1, show(r));
+    ownItems(w, { [NAME]: `${OWN}#7` });
+    const c = checked(w, ...ISSUES);
+    assert.deepEqual(coded(c, 'issue-not-sub').map((f) => f.id), [`${NAME}/T2`], show(c));
   });
 
-  test('no source names an own item: no issue-not-sub, and the Not known line says so (control: with the own item, #32 gets one)', (t) => {
+  test('the folder names no own item (no file of own items): no issue-not-sub, and the Not known line says so once (control: with the file, #32 gets one)', (t) => {
     const tasks = [{ id: 'T1', ref: '#32' }];
     const files = { 'a.json': own(32, { parent: null }) };
     const w0 = world(t, { tasks });
     save(w0, files);
     const control = checked(w0, ...ISSUES);
     assert.equal(coded(control, 'issue-not-sub').length, 1, show(control));
+    assert.equal(ownItemUnknown(control, NAME), 0, show(control));
     const w = world(t, { tasks, ownItem: null });
     save(w, files);
     const r = checked(w, ...ISSUES);
     assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
     assertInfo(r, 1);
     assert.notEqual(notKnown(r), notKnown(control), `the Not known line says why:\n${show(r)}`);
+    assert.equal(ownItemUnknown(r, NAME), 1, show(r));
   });
 
   test('an item with no parent field says nothing about its parent: no issue-not-sub, and the Not known line says so (control: parent null gives one)', (t) => {
@@ -720,7 +755,7 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
     assertInfo(r, 2);
   });
 
-  test('another tracker: the own item PROJ-1 (a source url that holds its ref); PROJ-12 with parent {ref: PROJ-1} none; PROJ-13 with parent {ref: PROJ-9} one, at PROJ-13', (t) => {
+  test('another tracker: the own item PROJ-1 (a value, a url, that holds its ref); PROJ-12 with parent {ref: PROJ-1} none; PROJ-13 with parent {ref: PROJ-9} one, at PROJ-13', (t) => {
     const w = world(t, { ownItem: 'https://tracker.example.com/browse/PROJ-1', tasks: [{ id: 'T1', ref: 'PROJ-12' }, { id: 'T2', ref: 'Build PROJ-13 next' }] });
     save(w, {
       'proj.json': [
@@ -736,9 +771,10 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
   });
 
   // Clause B (review of PR #243): a parent's url names the own item when it is
-  // the own item's url, the url of the origin source that named the own item,
-  // a url that holds the own item's ref as a whole word, or a form of SP-8.
-  // Then the item is a child, also when the parent's number names another item.
+  // the own item's url, the value that names the own item in the file of own
+  // items (#3, SP-7; it was the url of the origin source), a url that holds
+  // the own item's ref as a whole word, or a form of SP-8. Then the item is a
+  // child, also when the parent's number names another item.
   const OWN_PROJ = 'https://tracker.example.test/browse/PROJ-1';
   const projWorld = (t, parent, extra = []) => {
     const w = world(t, { ownItem: OWN_PROJ, tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
@@ -752,11 +788,12 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
     return w;
   };
 
-  test('B1: the parent of PROJ-12 is {url: the origin source url of the own item PROJ-1, number: 1}: a child, no issue-not-sub', (t) => {
+  test('B1: the parent of PROJ-12 is {url: the value that names the own item PROJ-1, number: 1}: a child, no issue-not-sub', (t) => {
     const w = projWorld(t, { url: OWN_PROJ, number: 1 });
     const r = checked(w, ...ISSUES);
     assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
     assert.deepEqual(coded(r, 'issue-missing'), [], show(r));
+    assert.equal(ownItemUnknown(r, NAME), 0, `the own item is known:\n${show(r)}`);
   });
 
   test('B2: the parent of PROJ-12 is {url: .../browse/PROJ-2, number: 2}, and PROJ-2 is in the folder: one issue-not-sub at PROJ-12, ID inv/T1', (t) => {
@@ -770,23 +807,26 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
     save(w, { 'a.json': { ...own(31), parent: { number: 8, url: OWN_ITEM } }, 'b.json': own(8, { parent: null }) });
     const r = checked(w, ...ISSUES);
     assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
+    assert.equal(ownItemUnknown(r, NAME), 0, `the own item is known:\n${show(r)}`);
   });
 
   // B4 and B5 keep the two ways apart: a parent url that equals the own
   // item's url and holds no ref (B4), and a parent url that holds the ref
-  // and equals neither the own item's url nor its source's url (B5).
+  // and equals neither the own item's url nor the value (B5). In B4 the value
+  // is PROJ-1, the ref of the own item (#3: a url value names an item only in
+  // a form of SP-8 or by a ref that it holds).
   const I10001 = 'https://tracker.example.test/i/10001';
   const I10002 = 'https://tracker.example.test/i/10002';
 
-  test('B4: the parent url equals the own item\'s url (and its source url) and holds no ref: a child, no issue-not-sub; control: the url of another item, PROJ-2, gives one', (t) => {
+  test('B4: the parent url equals the own item\'s url (not the value PROJ-1) and holds no ref: a child, no issue-not-sub; control: the url of another item, PROJ-2, gives one', (t) => {
     const ownProj = { ref: 'PROJ-1', repository: 'PROJ', url: I10001, body: 'request' };
-    const w = world(t, { ownItem: I10001, tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
+    const w = world(t, { ownItem: 'PROJ-1', tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
     save(w, { 'proj.json': [ownProj, { ref: 'PROJ-12', repository: 'PROJ', body: 'task', parent: { url: I10001, number: 10001 } }] });
     const r = checked(w, ...ISSUES);
     assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
     assert.deepEqual(coded(r, 'issue-missing'), [], show(r));
 
-    const c = world(t, { ownItem: I10001, tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
+    const c = world(t, { ownItem: 'PROJ-1', tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
     save(c, {
       'proj.json': [
         ownProj,
@@ -798,7 +838,7 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
     assert.deepEqual(coded(rc, 'issue-not-sub').map((f) => `${where(f)} ${f.id} ${f.severity}`), [`PROJ-12 ${NAME}/T1 hint`], show(rc));
   });
 
-  test('B5: the parent url holds the own item\'s ref PROJ-1 as a whole word and equals neither url (the own item has none; the source url is .../browse/PROJ-1): a child, no issue-not-sub', (t) => {
+  test('B5: the parent url holds the own item\'s ref PROJ-1 as a whole word and equals neither the own item\'s url (it has none) nor the value (.../browse/PROJ-1): a child, no issue-not-sub', (t) => {
     const w = world(t, { ownItem: 'https://tracker.example.test/browse/PROJ-1', tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
     save(w, {
       'proj.json': [
@@ -809,6 +849,7 @@ describe('R1 (SP-4, SP-10): issue-not-sub, an item that is not a child of the re
     const r = checked(w, ...ISSUES);
     assert.deepEqual(coded(r, 'issue-not-sub'), [], show(r));
     assert.deepEqual(coded(r, 'issue-missing'), [], show(r));
+    assert.equal(ownItemUnknown(r, NAME), 0, `the own item is known:\n${show(r)}`);
   });
 });
 
