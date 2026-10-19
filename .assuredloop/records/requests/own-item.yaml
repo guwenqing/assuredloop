@@ -1,0 +1,20 @@
+schema: assuredloop/1
+request: own-item
+tier: "2"
+status: open
+sources:
+  - file: 2026-10-19-owner-words.md
+    kind: owner-words
+    sha256: fdcfb387d2a508b393762e38f3cc5b7ea61a6ec83f3e884ef48965ace99bb45c
+    taken: 2026-10-19T18:26Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: 858945ff7f9160b1dc3ae61209e4dcc40c14e0ff16bfb36bffa43e7a18168c07
+    title: The saved items name each request's own item
+signoff: []
+decisions: []
+tasks: []
+bindings:
+  - { holder: own-item/R1, link: from, target: own-item/2026-10-19-owner-words.md, holder_sha256: 858945ff7f9160b1dc3ae61209e4dcc40c14e0ff16bfb36bffa43e7a18168c07, target_sha256: fdcfb387d2a508b393762e38f3cc5b7ea61a6ec83f3e884ef48965ace99bb45c }
+dispositions: []
