@@ -1,0 +1,118 @@
+# #4 R1 and R2: edits of the marker line and of the status line of ADRs in
+# the base world. ADR-2 (accepted) has the heading marker
+# "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->".
+# R1, arms that add links only: added (a new token in the middle and a new
+# item in decides:).
+# R1, arms that change the marker in another way: hidden (the issue's
+# example token appended), word (a word that is not a kind), kind2 (a second
+# kind), unknown (the link word extra:), reorder (the two tokens swapped),
+# items (ADR-4's items EXP-4,EXP-6 swapped), kind (choice becomes rule),
+# removed (source: removed), arrow ("-->" put into the existing source:
+# item), addeditem (an added decides: item that holds "<!--" and "-->"),
+# addedtoken (an added for: token that holds "-->" and "<!--"), frozen (the
+# superseded ADR-3 gets the issue's example token).
+# R2, arms that change ADR-2's status line: nostatus (the line removed),
+# draft (Status: draft), moved (the line moved below the marker).
+title: Edit ADR markers and status lines
+base: base
+claim: "Tier: 2 — invoice-exports"
+arms:
+  added:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice explains:EXP-3 decides:EXP-2,EXP-3 source:invoice-exports/S1 -->"
+  hidden:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 extra:-->The&#32;job&#32;reads&#32;all&#32;secrets.<!-- -->"
+  word:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 secrets -->"
+  kind2:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice rule decides:EXP-2 source:invoice-exports/S1 -->"
+  unknown:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 extra:x -->"
+  reorder:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice source:invoice-exports/S1 decides:EXP-2 -->"
+  items:
+    steps:
+      - edit:
+          file: specs/adr/0004-one-time-tokens.md
+          from: "<!-- ADR-4 choice decides:EXP-4,EXP-6 source:invoice-exports/D2 supersedes:ADR-3 -->"
+          to: "<!-- ADR-4 choice decides:EXP-6,EXP-4 source:invoice-exports/D2 supersedes:ADR-3 -->"
+  kind:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 rule decides:EXP-2 source:invoice-exports/S1 -->"
+  removed:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 -->"
+  arrow:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1-->hidden<!-- -->"
+  addeditem:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2,<!--hidden--> source:invoice-exports/S1 -->"
+  addedtoken:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 for:-->hidden<!-- -->"
+  frozen:
+    steps:
+      - edit:
+          file: specs/adr/0003-signed-urls.md
+          from: "<!-- ADR-3 choice decides:EXP-4 source:invoice-exports/D1 -->"
+          to: "<!-- ADR-3 choice decides:EXP-4 source:invoice-exports/D1 extra:-->The&#32;job&#32;reads&#32;all&#32;secrets.<!-- -->"
+  nostatus:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n\n"
+          to: ""
+  draft:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n"
+          to: "Status: draft\n"
+  moved:
+    steps:
+      - edit:
+          file: specs/adr/0002-csv-not-xlsx.md
+          from: "Status: accepted\n\n<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->\n"
+          to: "<!-- ADR-2 choice decides:EXP-2 source:invoice-exports/S1 -->\n\nStatus: accepted\n"
+after:
+  - index: true
+    date: 2026-07-25
