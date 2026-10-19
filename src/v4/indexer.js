@@ -2,7 +2,7 @@
 // with the agents' hints kept), appends requirement versions, freezes the
 // bindings of new links and fills the hashes of new dispositions. Ordinary
 // indexing never advances a binding; only --align does (design.md 4, 10).
-import { readdirSync } from 'node:fs';
+import { accessSync, constants, lstatSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { isMap, parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
@@ -211,13 +211,38 @@ function everyDeclaration(state) {
   };
 }
 
-// Every symlink below `dir`, not followed: al index reads no file through one.
-function symlinksUnder(top, dir) {
-  return list(top, dir).flatMap((e) => {
-    const p = `${dir}/${e.name}`;
-    if (e.isSymbolicLink()) return [p];
-    return e.isDirectory() ? symlinksUnder(top, p) : [];
-  });
+// The files and folders that can declare links but are not read, each with
+// why: reached through a symlink, a file that cannot be read, or a folder that
+// cannot be listed. They are the spec root's, the requests' (open and
+// archived) request.md and spec.md, and the docs that config lists (#11).
+function notRead(top, root, config) {
+  const out = [];
+  const blocked = (p) => {
+    let stat;
+    try { stat = lstatSync(join(top, p)); } catch { return false; }
+    if (stat.isSymbolicLink()) { out.push(`${p}: through a symlink`); return true; }
+    try { accessSync(join(top, p), stat.isDirectory() ? constants.R_OK | constants.X_OK : constants.R_OK); } catch { out.push(`${p}: cannot be read`); return true; }
+    return false;
+  };
+  const tree = (dir) => {
+    if (blocked(dir)) return;
+    for (const e of list(top, dir)) {
+      if (e.isDirectory()) tree(`${dir}/${e.name}`);
+      else blocked(`${dir}/${e.name}`);
+    }
+  };
+  tree(root);
+  for (const dir of ['requests', 'requests/archive']) {
+    if (blocked(dir)) continue;
+    for (const e of list(top, dir)) {
+      const d = `${dir}/${e.name}`;
+      if (d === 'requests/archive' || (!e.isDirectory() && !e.isSymbolicLink()) || blocked(d)) continue;
+      blocked(`${d}/request.md`);
+      blocked(`${d}/spec.md`);
+    }
+  }
+  for (const d of config.docs) blocked(posix.normalize(String(d.file)));
+  return out;
 }
 
 export function index({ top, opts }) {
@@ -334,14 +359,13 @@ export function index({ top, opts }) {
   }
   const unread = [...new Set([
     ...notes.filter((l) => /^not (indexed|read): /.test(l)).map((l) => l.replace(/^not (indexed|read): /, '')),
-    ...symlinksUnder(top, root).map((p) => `${p}: through a symlink`),
-    ...names.open.filter((n) => symlinkOn(top, `requests/${n}/spec.md`)).map((n) => `requests/${n}/spec.md: through a symlink`),
+    ...notRead(top, root, config),
   ])];
   const declared = new Set(linksOf(top, everyDeclaration(now), config, false).map(tripleKey));
   const undeclared = (it) => it?.get && !declared.has(tripleKey({ holder: it.get('holder'), link: it.get('link'), target: it.get('target') }));
   const dead = [...recs, ...archived].flatMap(([n, rec]) => (rec.doc.get('bindings')?.items ?? []).filter(undeclared).map((it) => [n, rec, it]));
-  if (dead.length && unread.length) {
-    body.push(`not removed: ${dead.length} binding${dead.length === 1 ? '' : 's'} of links that no marker declares, as al index could not read ${unread.join('; ')}`);
+  if (unread.length) {
+    body.push(`not removed: no binding is removed in this run, as al index could not read ${unread.join('; ')}`);
   } else {
     for (const [n, rec, it] of dead) {
       const items = rec.doc.get('bindings').items;

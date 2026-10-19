@@ -100,11 +100,12 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
   `al index --align <ID>`. When the source paragraph's own text changes,
   it gets the hint `holder-changed` until it is aligned in the same way.
   This hint covers the links that a paragraph of a spec doc, an ADR or an
-  open change spec still declares, in the records of the open requests. A
-  requirement is out, because a changed requirement needs a new sign-off.
-  An output file is out. When no current marker declares a link any more,
-  `al index` removes its binding, in the open and the archived records, and
-  names it in its output. Git history keeps it.
+  open change spec still declares, to a target that still resolves, in the
+  records of the open requests. A requirement is out, because a changed
+  requirement needs a new sign-off. An output file is out. When no current
+  marker declares a link any more, `al index` removes its binding, in the
+  open and the archived records, and names it in its output. Git history
+  keeps it.
 - **Consolidation is by hand.** A PR copies a change paragraph into `specs/`
   word for word, and records its disposition: `incorporated`, `removed`,
   `superseded` or `abandoned`. No command writes the spec.

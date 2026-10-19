@@ -115,7 +115,7 @@ paragraphs:
     display: DES-25 (4:1, in 4. The change spec honors the consolidated spec)
   - id: DES-26
     kind: rule
-    text_sha256: 980e730b49d9ff75bfe0700ddd08b1b114a1b08626809ed255fa11cbc60cd506
+    text_sha256: 9e89fb3521f77e0be803fc09bfbf8166b769dbf3f3b3f66baed5f4f7ec591acf
     display: DES-26 (4:2, in 4. The change spec honors the consolidated spec)
   - id: DES-27
     kind: note
