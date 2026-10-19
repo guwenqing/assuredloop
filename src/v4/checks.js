@@ -16,7 +16,7 @@ import {
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { groupOf, sameBlocks } from './markers.js';
-import { isCentral } from './indexer.js';
+import { declaredNow, isCentral } from './indexer.js';
 import { recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
 import { issueHints } from './issues.js';
@@ -305,6 +305,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   }
 
   // Bindings whose target changed since they were bound (design.md 4, 6).
+  let declared = null;
   for (const r of open) {
     for (const b of Array.isArray(r.data?.bindings) ? r.data.bindings : []) {
       if (!b?.target || !b.holder || !b.target_sha256) continue;
@@ -316,6 +317,9 @@ export function checks(top, { base, phrases = [], issues = null }) {
       if ((Array.isArray(r.data?.dispositions) ? r.data.dispositions : []).some((d) => d?.source === b.holder && d.spec === b.target && d.spec_sha256 === cur.sha)) continue;
       // A superseded ADR's links are history (schema.md 5).
       if (now.adrs.get(String(b.holder))?.status === 'superseded') continue;
+      // A link that its holder no longer declares, or whose holder is gone, is history too (#2).
+      declared ??= declaredNow(top, now);
+      if (!declared(b)) continue;
       const hq = qualify(String(b.holder), null);
       const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : now.spec.get(hq.id);
       const msg = /^[RQ]\d+$/.test(t.id ?? '')
