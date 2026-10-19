@@ -240,7 +240,7 @@ semantic coverage as "not checked".
   incomplete (only about 60% of commits named an issue, Rath et al., ICSE
   2018).
 
-<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,design-links/R1,adr-links/R1,hints-and-blocks/R2,issue-hints/R1,issue-hints/R2 -->
+<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,design-links/R1,adr-links/R1,hints-and-blocks/R2,issue-hints/R1,issue-hints/R2,applied-promise/R1 -->
 
 **What the script checks** (no AI):
 - A paragraph with no ID: a hint. A promise or design paragraph with no kind
@@ -274,7 +274,11 @@ semantic coverage as "not checked".
   NOT, SHOULD, MAY, never, always): the hint "promise kind?". ISO/IEC
   Directives Part 2 says notes "shall not contain requirements". It is only a
   hint: an example can quote a MUST correctly, and a new promise can hold no
-  such word.
+  such word. A paragraph that is not a promise can hold such a word because it
+  applies a promise. When it has a `builds on` link to a promise paragraph
+  that exists, it gets no hint "promise kind?". A `builds on` link to another
+  kind, or to an ID that does not exist, does not count. The other hints on
+  the paragraph stay.
 - A change paragraph whose text is close to an existing spec paragraph, with
   no `changes` or `builds on` link to it: the hint "does this change
   INV-12?".

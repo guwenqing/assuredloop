@@ -413,6 +413,13 @@ claim, a link that does not resolve, an ADR's changed text or missing links,
 an invalid disposition, and the rest. `--strict` changes only the exit code:
 it is 1 when a `not ok` prints.
 
+`al check` gives the hint "promise kind?" (`promise-kind`) for a paragraph
+that is not a promise kind and holds a requirement word: MUST, SHALL, SHOULD,
+MAY, never or always. When the paragraph is a promise, change its kind. When
+it applies a promise, for example a flow step that keeps a rule, give it
+`builds-on:` the promise paragraph in its marker. The hint then goes. A
+`builds-on:` to another kind, or to an ID that does not exist, keeps it.
+
 ## What is enforced, and by whom
 
 | The tool checks | The skill asks | The owner decides |

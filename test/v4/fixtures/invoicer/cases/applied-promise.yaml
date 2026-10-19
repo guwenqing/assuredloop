@@ -1,0 +1,180 @@
+# A paragraph that applies a promise (#13, requests/applied-promise R1): a
+# non-promise paragraph that holds a requirement word, with or without a
+# builds-on link to the promise paragraph that it applies.
+#
+# Both arms add the same paragraphs with the same text. Only the builds-on
+# links differ: arm `linked` has them, arm `unlinked` has none.
+#
+# specs/exports.md, after EXP-6 (each serves an invoice-exports requirement):
+#   EXP-20 flow       builds-on:EXP-4 (a rule)        never
+#   EXP-21 flow       builds-on:INV-4 (a limit)       never
+#   EXP-22 component  builds-on:INV-6 (a definition)  never
+#   EXP-23 choice     builds-on:INV-2 (a purpose)     always
+#   EXP-24 interface  builds-on:INV-3 (a scope)       MUST
+#   EXP-25 flow       builds-on:EXP-6 (a component)   never
+#   EXP-26 data       builds-on:EXP-5 (a rationale)   never
+#   EXP-27 flow       builds-on:EXP-99 (no such ID)   never
+#   EXP-28 flow       builds-on:EXP-6,EXP-4 (a component and a rule)  always
+#
+# requests/reminder-emails/spec.md, after SP-5 (each serves R1, which the
+# promise paragraphs SP-2, a rule, and SP-3, a definition, also serve):
+#   SP-6  flow       builds-on:SP-2 (a rule of this change spec)        MUST
+#   SP-7  approach   builds-on:INV-10 (a rule in specs/)                MUST
+#   SP-8  component  builds-on:SP-3 (a definition of this change spec)  MUST
+#   SP-9  component  builds-on:SP-4 (a flow of this change spec)        MUST
+#   SP-10 flow       builds-on:INV-10 (a rule in specs/)                SHOULD;
+#                    its text is close to INV-11 (a near match)
+#   SP-11 data       builds-on:SP-99 (no such ID)                       MUST
+title: Apply the promises in the design
+claim: "Tier: 2 — invoice-exports"
+base: base
+arms:
+  linked:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: time at which the token expires.
+          to: |-
+            time at which the token expires.
+
+            <!-- EXP-20 flow serves:invoice-exports/R2 builds-on:EXP-4 -->
+
+            The link service never opens a link after its expiry time.
+
+            <!-- EXP-21 flow serves:invoice-exports/R1 builds-on:INV-4 -->
+
+            The monthly export never shows a tax amount.
+
+            <!-- EXP-22 component serves:invoice-exports/R1 builds-on:INV-6 -->
+
+            The paid date column never holds a date before the full amount arrived.
+
+            <!-- EXP-23 choice serves:invoice-exports/R1 builds-on:INV-2 -->
+
+            We always keep a copy of each export with the record of its invoices.
+
+            <!-- EXP-24 interface serves:invoice-exports/R1 builds-on:INV-3 -->
+
+            The export endpoint MUST refuse a request in a second currency.
+
+            <!-- EXP-25 flow serves:invoice-exports/R2 builds-on:EXP-6 -->
+
+            The link service never issues two tokens for one export.
+
+            <!-- EXP-26 data serves:invoice-exports/R2 builds-on:EXP-5 -->
+
+            A link row never holds the email address of the person who opens it.
+
+            <!-- EXP-27 flow serves:invoice-exports/R2 builds-on:EXP-99 -->
+
+            The link service never gives a cancelled token to a new export.
+
+            <!-- EXP-28 flow serves:invoice-exports/R2 builds-on:EXP-6,EXP-4 -->
+
+            The link service always reads the expiry time from the stored token.
+      - edit:
+          file: requests/reminder-emails/spec.md
+          from: the definition to `specs/invoices.md`.
+          to: |-
+            the definition to `specs/invoices.md`.
+
+            <!-- SP-6 flow serves:R1 builds-on:SP-2 -->
+
+            The reminder job MUST stop after the third reminder for one invoice.
+
+            <!-- SP-7 approach serves:R1 builds-on:INV-10 -->
+
+            The first PR MUST read the billing address from the customer record.
+
+            <!-- SP-8 component serves:R1 builds-on:SP-3 -->
+
+            The invoice store MUST answer which invoices were sent and are not paid.
+
+            <!-- SP-9 component serves:R1 builds-on:SP-4 -->
+
+            The job runner MUST start the reminder job once a day.
+
+            <!-- SP-10 flow serves:R1 builds-on:INV-10 -->
+
+            Invoicer SHOULD send a reminder 7 days after the due date of an open
+            invoice, to the billing address.
+
+            <!-- SP-11 data serves:R1 builds-on:SP-99 -->
+
+            A reminder row MUST hold the invoice number and the send date.
+  unlinked:
+    steps:
+      - edit:
+          file: specs/exports.md
+          from: time at which the token expires.
+          to: |-
+            time at which the token expires.
+
+            <!-- EXP-20 flow serves:invoice-exports/R2 -->
+
+            The link service never opens a link after its expiry time.
+
+            <!-- EXP-21 flow serves:invoice-exports/R1 -->
+
+            The monthly export never shows a tax amount.
+
+            <!-- EXP-22 component serves:invoice-exports/R1 -->
+
+            The paid date column never holds a date before the full amount arrived.
+
+            <!-- EXP-23 choice serves:invoice-exports/R1 -->
+
+            We always keep a copy of each export with the record of its invoices.
+
+            <!-- EXP-24 interface serves:invoice-exports/R1 -->
+
+            The export endpoint MUST refuse a request in a second currency.
+
+            <!-- EXP-25 flow serves:invoice-exports/R2 -->
+
+            The link service never issues two tokens for one export.
+
+            <!-- EXP-26 data serves:invoice-exports/R2 -->
+
+            A link row never holds the email address of the person who opens it.
+
+            <!-- EXP-27 flow serves:invoice-exports/R2 -->
+
+            The link service never gives a cancelled token to a new export.
+
+            <!-- EXP-28 flow serves:invoice-exports/R2 -->
+
+            The link service always reads the expiry time from the stored token.
+      - edit:
+          file: requests/reminder-emails/spec.md
+          from: the definition to `specs/invoices.md`.
+          to: |-
+            the definition to `specs/invoices.md`.
+
+            <!-- SP-6 flow serves:R1 -->
+
+            The reminder job MUST stop after the third reminder for one invoice.
+
+            <!-- SP-7 approach serves:R1 -->
+
+            The first PR MUST read the billing address from the customer record.
+
+            <!-- SP-8 component serves:R1 -->
+
+            The invoice store MUST answer which invoices were sent and are not paid.
+
+            <!-- SP-9 component serves:R1 -->
+
+            The job runner MUST start the reminder job once a day.
+
+            <!-- SP-10 flow serves:R1 -->
+
+            Invoicer SHOULD send a reminder 7 days after the due date of an open
+            invoice, to the billing address.
+
+            <!-- SP-11 data serves:R1 -->
+
+            A reminder row MUST hold the invoice number and the send date.
+after:
+  - index: true
+    date: 2026-07-31
