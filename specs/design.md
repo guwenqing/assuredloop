@@ -394,9 +394,10 @@ the link was made.
   hint until it is aligned: "this paragraph changed after its link builds-on
   INV-41 was bound. Check it, then al index --align <ID>." The hint covers
   the links that a paragraph in a spec doc, an ADR or a change spec still
-  declares, in the records of the open requests: the bindings that
-  `al index --align` reaches. A requirement is out, because a changed
-  requirement already needs a new sign-off. An output file is out.
+  declares, to a target that still resolves, in the records of the open
+  requests: the bindings that `al index --align` reaches. A requirement is
+  out, because a changed requirement already needs a new sign-off. An output
+  file is out.
 - Request-local IDs resolve by request name, never by path:
   `invoice-exports/R2`, `invoice-exports/SP-12`. A request's name is
   permanent, so its IDs still resolve after a move or an archive.
