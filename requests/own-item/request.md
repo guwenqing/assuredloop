@@ -13,3 +13,4 @@ Tier: 2 · Status: open
 The folder of saved work items MUST say which item is each request's own item, in one file whose format the README describes. `al` MUST NOT guess a request's own item from anything else. When the folder does not name a request's own item, `al check` MUST skip the check that each task's item sits under it, and MUST say so once.
 
 Out: reading the item from a tracker.
+Signed off: 2026-10-19 owner, origin/2026-10-19-signoff.md

@@ -12,7 +12,17 @@ requirements:
     version: 1
     sha256: 858945ff7f9160b1dc3ae61209e4dcc40c14e0ff16bfb36bffa43e7a18168c07
     title: The saved items name each request's own item
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-19-signoff.md
+    sha256: b7aa951dbc6954b645360477b21369ffff338abb64baac78ffcccb14a1972a4f
+    signed: 2026-10-19T18:27Z
+    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-19 about 18:24Z
+    words: Ok as you propose
+    presented: "R1 and the Out: line word for word, marker lines not shown, about 18:21Z, with the proposed file format and its JSON Schema; then about 18:23Z the advice to sign it as proposed and to keep a change warning apart as a separate issue"
+    transcribed_by: assuredloop/architect
+    covers:
+      - { id: R1, version: 1, sha256: 858945ff7f9160b1dc3ae61209e4dcc40c14e0ff16bfb36bffa43e7a18168c07 }
 decisions: []
 tasks: []
 bindings:
