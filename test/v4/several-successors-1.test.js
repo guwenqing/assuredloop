@@ -231,6 +231,15 @@ describe('several-successors/R1 (SCH-37): a current place that names ADR-1 names
     citedOnce(both(dir), { file: SPEC, id: 'INV-3', adr: 'ADR-2' });
   });
 
+  test('an ADR that the status line names counts as a successor without supersedes: ("ADR-2, ADR-5"; a paragraph names ADR-1 and only ADR-5): superseded-status naming ADR-5, and no superseded-cited', (t) => {
+    const dir = world(t);
+    setStatus(dir, 'superseded by ADR-2, ADR-5');
+    setInv3(dir, 'Invoices were posted under ADR-1; ADR-5 numbers them now.');
+    const r = both(dir);
+    assert.deepEqual(cited(r), [], show(r));
+    statusFor(r, ['ADR-5']);
+  });
+
   test('a marker link governed-by:ADR-1,ADR-3 (one listed successor): no not ok', (t) => {
     const dir = world(t);
     setInv2(dir, 'INV-2 rule governed-by:ADR-1,ADR-3');
