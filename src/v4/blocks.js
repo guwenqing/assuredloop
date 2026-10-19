@@ -219,11 +219,13 @@ function places(textOf, skip) {
 export function supersededIn(state) {
   const down = supersedes(state);
   const up = (id) => [...down].filter(([, xs]) => xs.has(id)).map(([y]) => y);
-  // The ADRs that supersede `id`, directly or through a chain.
+  // The ADRs that supersede `id`, directly or through a chain; never `id`
+  // itself, when the chain is a cycle.
   const above = (id) => {
-    const seen = new Set();
+    const seen = new Set([id]);
     const walk = (x) => { for (const y of up(x)) if (!seen.has(y)) { seen.add(y); walk(y); } };
     walk(id);
+    seen.delete(id);
     return seen;
   };
   const superseded = (id) => state.adrs.get(id)?.status === 'superseded';
