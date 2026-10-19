@@ -96,6 +96,7 @@ Each step is a map with one key.
 | `adoption-gap` | promise paragraphs with no link and no adoption entry: arm `unlisted` (INV-10's entry removed), arm `new` (a new rule INV-17) |
 | `abandon-changes` | reminder-emails/SP-2 (`changes:INV-11`) abandoned with no decision: arm `kept` (INV-11 unchanged), arm `applied` (INV-11 holds SP-2's text), arm `changed` (INV-11 changed in another way) |
 | `req-words` | a sentence added to EXP-5, a rationale: arm `lower` (may, should, must, shall), arm `upper` (MAY), arm `never`, arm `always` (Always) |
+| `applied-promise` | new non-promise paragraphs that hold a requirement word (#13): EXP-20 to EXP-28 in `specs/exports.md`, SP-6 to SP-11 in the change spec of reminder-emails; arm `linked` (each has a `builds-on:` to a promise, to another kind, or to no such ID), arm `unlinked` (the same text with no `builds-on:`) |
 | `remove-promise`, `remove-merged-unsigned`, `remove-merged-signed` | drop-tax removes the adopted limit INV-4 with a note that serves R1 and declares `removes:INV-4`: arms `unsigned` and `signed`; then the same removal merged on main, with an empty closing PR |
 | `abandon-unsigned` | csv-bom, unsigned, with one rule SP-2: arm `abandoned` (never in specs/), arm `incorporated` (as EXP-9) |
 | `code-cite` | EXP-2 named by code only (arm `code`), by a test file (arm `test`), or by a review file that a result names as its check (arm `result`) |
