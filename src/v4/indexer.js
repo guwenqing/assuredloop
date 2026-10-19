@@ -109,6 +109,9 @@ export const isCentral = (config) => Array.isArray(config.outputs) && config.out
 // An output in another repo (T12): its repo is named, and is not this one.
 const foreign = (o, config) => Boolean(o.repo) && o.repo !== config.repo && o.repo !== 'central';
 
+// A record's declared outputs; a value that is not a list declares none, so al check still runs (#2).
+const outputsOf = (r) => (Array.isArray(r.data?.outputs) ? r.data.outputs : []);
+
 // Every declared link of a state: { holder, holderSha, link, target, homes }, with
 // `homes` the requests whose record holds it. An output in another repo also
 // has `commit` (<repo>@<sha>), or `unknown` with the reason; `repos` are the
@@ -119,7 +122,7 @@ function linksOf(top, state, config, live, repos = new Map()) {
   const batches = new Map();
   const outputFiles = (repo) => {
     if (!batches.has(repo.name)) {
-      const files = [...state.requests.values()].filter((r) => r.open).flatMap((r) => r.data?.outputs ?? [])
+      const files = [...state.requests.values()].filter((r) => r.open).flatMap(outputsOf)
         .filter((o) => o?.file && o.repo === repo.name).map((o) => String(o.file));
       batches.set(repo.name, filesAt(repo.dir, repo.sha, [...new Set(files)], null));
     }
@@ -139,7 +142,7 @@ function linksOf(top, state, config, live, repos = new Map()) {
       for (const f of q.from) out.push({ holder: `${r.name}/${q.id}`, holderSha: q.sha256, link: 'from', target: `${r.name}/${f}`, t: { req: r.name, id: f }, homes: [r.name] });
     }
     const own = new Set(r.paras.keys());
-    for (const o of r.data?.outputs ?? []) {
+    for (const o of outputsOf(r)) {
       if (!o?.file) continue;
       const other = foreign(o, config);
       const repo = other ? repos.get(o.repo) : null;
