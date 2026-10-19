@@ -203,18 +203,18 @@ it"; it is only a hint.
   advances the bindings that paragraph `<ID>` holds to it, as for any other
   target.
 
-<!-- SCH-37 rule serves:hints-and-blocks/R5 -->
+<!-- SCH-37 rule serves:hints-and-blocks/R5,several-successors/R1 -->
 
 **A citation of a superseded ADR.** A current place that names a superseded
-ADR also names the ADR that supersedes it. When that ADR is itself
-superseded, the same rule applies to it. Else `al check` gives
-`not ok superseded-cited`.
+ADR also names at least one ADR that supersedes it, directly or through a
+chain. When an ADR that it names is itself superseded, the same rule applies
+to it. Else `al check` gives `not ok superseded-cited`.
 - A place names ADR-n by a link in a marker, with any link word, or by the
   word `ADR-n` in its text. `ADR-n-k`, a paragraph of ADR-n, names ADR-n.
   For a link, the successor is named in the same marker. For a word, it is
   named in the same paragraph's text.
-- The ADR that supersedes ADR-n is the one that ADR-n's status line names,
-  or one whose marker has `supersedes:ADR-n`.
+- The ADRs that supersede ADR-n are the ones that ADR-n's status line
+  names, and each one whose marker has `supersedes:ADR-n`.
 - The current places are each paragraph of the spec docs, with its marker;
   the Markdown files of an open request, except its `origin/` folder; and
   each proposed or accepted ADR, with its marker. A current place that cannot
@@ -228,9 +228,12 @@ superseded, the same rule applies to it. Else `al check` gives
   supersedes ADR-n, directly or through a chain; a superseded ADR; an ADR's
   `## History` section; a request's `## Decisions` section (D1, D2...);
   origin files; and archived requests.
-- Each superseded ADR's status line is `Status: superseded by ADR-m`. ADR-m
-  exists, and its marker has `supersedes:` for it. Else `al check` gives
-  `not ok superseded-status`.
+- Each superseded ADR's status line is `Status: superseded by ADR-m`. It
+  may name more than one ADR, joined by commas or `and`, for example
+  `Status: superseded by ADR-11, ADR-12` or `ADR-11 and ADR-12`. Each ADR
+  that it names exists, and its marker has `supersedes:` for the superseded
+  ADR. Else `al check` gives `not ok superseded-status`, once for each ADR
+  that fails.
 
 <!-- SCH-23 note -->
 

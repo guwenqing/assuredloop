@@ -539,10 +539,16 @@ describe('R5: a current place that names a superseded ADR names the ADR that sup
     noneCited(both(dir));
   });
 
-  test('a link to a paragraph of ADR-1 (builds-on:ADR-1-1) names ADR-1: not ok on INV-2', (t) => {
+  test('a link to a paragraph of ADR-1 (builds-on:ADR-1-1) names ADR-1: with no ADR that supersedes it (governed-by:ADR-4), not ok on INV-2', (t) => {
+    const dir = adrWorld(t);
+    setInv2(dir, 'INV-2 rule governed-by:ADR-4 builds-on:ADR-1-1');
+    citedOnce(both(dir), { file: SPEC, id: 'INV-2', adr: 'ADR-1' });
+  });
+
+  test('control: builds-on:ADR-1-1 with ADR-3, which supersedes ADR-1 through ADR-2, in the same marker (governed-by:ADR-3): no not ok', (t) => {
     const dir = adrWorld(t);
     setInv2(dir, 'INV-2 rule governed-by:ADR-3 builds-on:ADR-1-1');
-    citedOnce(both(dir), { file: SPEC, id: 'INV-2', adr: 'ADR-1' });
+    noneCited(both(dir));
   });
 
   test('control: the successor in another link word of the same marker counts (governed-by:ADR-3 builds-on:ADR-2-1)', (t) => {
