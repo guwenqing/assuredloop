@@ -528,7 +528,11 @@ describe('al check', () => {
     assert.equal(r.code, 0, show(r));
     assert.match(startsWith(r, 'hint no-kind guide/use.md:')[0] ?? '', /^hint no-kind guide\/use\.md:1 USE-1 \S/, show(r));
     assert.match(startsWith(r, 'hint no-kind requests/totals/spec.md:')[0] ?? '', /^hint no-kind requests\/totals\/spec\.md:1 SP-1 \S/, show(r));
-    assert.ok(!r.stdout.includes('ADR-1'), show(r));
+    // The ADR's marker is not linted as a spec doc. The one line that names
+    // ADR-1 is its adr-status hint: the file has no status line (#4 R2).
+    const adr = r.stdout.split('\n').filter((l) => l.includes('ADR-1'));
+    assert.equal(adr.length, 1, show(r));
+    assert.ok(adr[0].startsWith('hint adr-status specs/adr/0001-pick.md:1 ADR-1 '), show(r));
     assert.ok(!r.stdout.includes('NOTE-1'), show(r));
   });
 

@@ -163,6 +163,69 @@ export function sameBlocks(text, paragraphs, { file = '', living = new Set(parag
 
 const emptyLinks = () => Object.fromEntries(Object.values(LINK_WORDS).map((k) => [k, []]));
 
+// The tokens of a marker line that are not its ID, one kind or a link (#4): a
+// word that is no kind or a second kind, a word that is no link word, a token
+// that holds `<!--` or `-->`, and a link with an empty item. An HTML renderer
+// can show text that such a token hides.
+export function markerExtras(line, kinds = KINDS) {
+  const m = MARKER.exec(line);
+  if (!m) return [];
+  const known = new Set(Object.values(kinds).flat());
+  const extras = [];
+  let kind = false;
+  for (const token of m[2].trim().split(/[ \t]+/).filter(Boolean)) {
+    const c = token.indexOf(':');
+    if (/<!--|-->/.test(token)) extras.push(token);
+    else if (c < 0) {
+      if (kind || !known.has(token)) extras.push(token);
+      kind = true;
+    } else if (!Object.hasOwn(LINK_WORDS, token.slice(0, c)) || token.slice(c + 1).split(',').includes('')) extras.push(token);
+  }
+  return extras;
+}
+
+// The lines of `text`, outside fenced code, that start like a marker: `<!--`
+// and an ID, spaces allowed. Each is { id, line, extras }: the extras of a
+// well-formed marker, or null for a line that MARKER does not read, whose
+// paragraph is then lost (#4).
+export function markerLines(text, kinds = KINDS) {
+  const out = [];
+  let fence = null;
+  lf(text).split('\n').forEach((l, i) => {
+    const f = FENCE.exec(l);
+    if (fence) {
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.trim() === f[1]) fence = null;
+      return;
+    }
+    if (f) { fence = f[1]; return; }
+    const m = /^[ \t]*<!--[ \t]*(ADR-[0-9]+-[0-9]+|[A-Z][A-Z0-9]*-[0-9]+)/.exec(l);
+    if (m) out.push({ id: m[1], line: i + 1, extras: MARKER.test(l) ? markerExtras(l, kinds) : null });
+  });
+  return out;
+}
+
+// Whether marker line `now` is marker line `was` with links added and nothing
+// else (schema.md 5, #4): with each link item that `was` does not hold taken
+// out, and each token left with no item, `now` is `was` exactly. A marker
+// with extras never qualifies, so an added item cannot hide text.
+export function onlyLinksAdded(was, now, kinds = KINDS) {
+  const w = MARKER.exec(was);
+  const n = MARKER.exec(now);
+  if (!w || !n || markerExtras(now, kinds).length) return false;
+  const old = new Set((w[2].match(/\S+/g) ?? []).filter((t) => t.includes(':')).flatMap((t) => {
+    const c = t.indexOf(':');
+    return t.slice(c + 1).split(',').map((x) => `${t.slice(0, c)}:${x}`);
+  }));
+  const kept = (n[2].match(/[ \t]+\S+/g) ?? []).map((piece) => {
+    const c = piece.indexOf(':');
+    if (c < 0) return piece;
+    const items = piece.slice(c + 1).split(',').filter((x) => old.has(`${piece.slice(0, c).trim()}:${x}`));
+    return items.length ? `${piece.slice(0, c + 1)}${items.join(',')}` : '';
+  }).join('');
+  const start = now.indexOf(n[1]) + n[1].length;
+  return now.slice(0, start) + kept + now.slice(start + n[2].length) === was;
+}
+
 export function parseMarkdown(text, file, options = {}) {
   const kinds = options.kinds ?? KINDS;
   const known = new Set(Object.values(kinds).flat());
