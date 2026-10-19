@@ -13,3 +13,4 @@ Tier: 1 · Status: open
 The status line of a superseded ADR MAY name more than one ADR that supersedes it, for example `Status: superseded by ADR-11, ADR-12`. Each ADR that it names MUST exist, and its marker MUST have `supersedes:` for the superseded ADR. A current place that names the superseded ADR MUST also name at least one ADR that supersedes it, directly or through a chain.
 
 Out: other forms of the status line, and an ADR with no status line (#4).
+Signed off: 2026-10-19 owner, origin/2026-10-19-signoff.md
