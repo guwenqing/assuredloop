@@ -18,7 +18,7 @@ import {
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
 import { canAlignTo, declaredNow, isCentral } from './indexer.js';
-import { recordBlocks, supersededBlocks } from './blocks.js';
+import { adrOf, recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
 import { issueHints } from './issues.js';
 
@@ -421,7 +421,8 @@ export function checks(top, { base, phrases = [], issues = null }) {
     if (missing.length) add('hint', 'adr-links', a.head ?? a.file, a.id, `${a.id} has ${missing.map((w) => `no ${w}:`).join(' and ')}; add the links to its marker`);
   }
   for (const a of now.adrs.values()) {
-    for (const old of a.head?.links.supersedes ?? []) {
+    // ADR-n-k, a paragraph of ADR-n, names ADR-n (schema.md 5), once each.
+    for (const old of new Set((a.head?.links.supersedes ?? []).map(adrOf).filter(Boolean))) {
       const o = now.adrs.get(old);
       if (o && o.status !== 'superseded') add('hint', 'adr-supersede', a.head, a.id, `${a.id} supersedes ${old}, whose status is ${o.status ?? 'missing'}; set it to superseded`);
       // The other direction of superseded-status (#31): the status line of
