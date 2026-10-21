@@ -1,5 +1,5 @@
 # adr-lists
-Tier: 1 · Status: open
+Tier: 1 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -14,3 +14,11 @@ A paragraph also names an ADR when it writes the number after "ADR" or "ADRs" wi
 
 Out: ADR numbers without the word "ADR" or "ADRs" before them.
 Signed off: 2026-10-21 owner, origin/2026-10-21-signoff.md
+
+## Outcome
+
+Concluded 2026-10-21 with al conclude, on the working tree at b12125e.
+
+- R1 ADRs named in a list, version 1, signed in S1:
+  - SCH-37 rule: in specs/schema.md, serves it
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
