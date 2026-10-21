@@ -18,7 +18,7 @@ import {
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
 import { canAlignTo, declaredNow, isCentral } from './indexer.js';
-import { recordBlocks, supersededBlocks } from './blocks.js';
+import { adrOf, recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
 import { issueHints } from './issues.js';
 
@@ -388,11 +388,22 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // changed (#4) and the rest unchanged; that gives no finding.
   const linksAdded = (a, h) => a.status === 'accepted' && a.head && h.head && a.rest === h.rest
     && onlyLinksAdded(a.marker, h.marker, now.kinds);
+  // A status goes only forward: accepted to superseded, and a superseded-by
+  // list only gains ADRs (#31). Any other change of a known status line is a
+  // change of the ADR; an unknown one has its own hint, adr-status.
+  const statusBack = (a, h) => h.known
+    && !(h.status === 'superseded' ? a.by.every((b) => h.by.includes(b)) : h.status === a.status);
   for (const [id, a] of was?.adrs ?? []) {
     if (!['accepted', 'superseded'].includes(a.status)) continue;
     const h = now.adrs.get(id);
-    if (!h) add('hint', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone: check that its decision is not lost; an ADR that no longer holds is superseded by a new ADR, not deleted`);
-    else if (h.body !== a.body && !linksAdded(a, h)) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s text changed: check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
+    if (!h) {
+      add('hint', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone: check that its decision is not lost; an ADR that no longer holds is superseded by a new ADR, not deleted`);
+      continue;
+    }
+    const back = statusBack(a, h);
+    const changed = h.body !== a.body && !linksAdded(a, h);
+    if (back) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s status changed from "${a.line}" to "${h.line}"${changed ? ', and its text changed' : ''}, but a status goes only forward: proposed, accepted, superseded by ADR-n; check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
+    else if (changed) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s text changed: check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
   }
   // Every ADR, whatever its status (#4): a first line that is not a known
   // status, and a marker line that holds more than its ID, a kind and links.
@@ -410,9 +421,13 @@ export function checks(top, { base, phrases = [], issues = null }) {
     if (missing.length) add('hint', 'adr-links', a.head ?? a.file, a.id, `${a.id} has ${missing.map((w) => `no ${w}:`).join(' and ')}; add the links to its marker`);
   }
   for (const a of now.adrs.values()) {
-    for (const old of a.head?.links.supersedes ?? []) {
+    // ADR-n-k, a paragraph of ADR-n, names ADR-n (schema.md 5), once each.
+    for (const old of new Set((a.head?.links.supersedes ?? []).map(adrOf).filter(Boolean))) {
       const o = now.adrs.get(old);
       if (o && o.status !== 'superseded') add('hint', 'adr-supersede', a.head, a.id, `${a.id} supersedes ${old}, whose status is ${o.status ?? 'missing'}; set it to superseded`);
+      // The other direction of superseded-status (#31): the status line of
+      // the superseded ADR names each ADR that supersedes it.
+      else if (o && !o.by.includes(a.id)) add('hint', 'adr-supersede', a.head, a.id, `${a.id} supersedes ${old}, but the status line of ${old} leaves out ${a.id}: write "Status: superseded by ${[...o.by, a.id].join(', ')}"`);
     }
   }
   for (const c of changes.filter((x) => !x.request)) {

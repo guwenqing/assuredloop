@@ -175,7 +175,9 @@ export function loadState(top, rev = null) {
     const by = [...new Set([...(s?.[2] ?? '').matchAll(/ADR-(\d+)/gi)].map((m) => `ADR-${Number(m[1])}`))];
     const known = Boolean(s) && !/[\r\n]/.test(s[1]);
     const marker = head && lf(text).split('\n')[head.line - 1];
-    adrs.set(id, { id, file, text, status, by, known, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head, marker });
+    // The words after `Status:`, for a hint that names a changed status (#31).
+    const line = /^\s*Status:[ \t]*([^\r\n]*)/i.exec(text)?.[1].trim() ?? null;
+    adrs.set(id, { id, file, text, status, by, known, line, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head, marker });
   }
   return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, unreadableAdrs };
 }
