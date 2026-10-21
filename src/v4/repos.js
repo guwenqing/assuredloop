@@ -289,7 +289,7 @@ export function crossRepo(top) {
   return { repos: repos.map(({ dir, ...r }) => r), links, results };
 }
 
-// In an output repo: the files that the branch changed (merge-base with main
+// In an output repo: the files that the branch changed (the base, mergeBase,
 // to the working tree, and untracked files not ignored), or with no base every
 // file; never under .assuredloop/.
 function changedFiles(top, base) {

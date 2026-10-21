@@ -281,8 +281,9 @@ export function index({ top, opts }) {
   if (symlinkOn(top, `${root}/adr`)) notes.push(`not indexed: ${root}/adr: through a symlink`);
   const names = requestNames(top);
 
-  // The base: the merge-base with main; with no main, HEAD (so a committed
-  // link with no binding stays unknown); with no commit, nothing.
+  // The base: mergeBase (the merge-base with main or origin/main); with no
+  // main, HEAD (so a committed link with no binding stays unknown); with no
+  // commit, nothing.
   const main = mergeBase(top);
   const head = git(top, ['rev-parse', '--verify', '--quiet', 'HEAD'], { allowFail: true });
   const base = main ?? head ?? null;

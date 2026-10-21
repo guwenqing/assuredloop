@@ -1,17 +1,17 @@
 // al check (design.md 3, What the script checks): the lints of every marker in
 // scope, and per scope the ID lints of the branch against its base (lost, used
 // again, one ID in two files), then each paragraph's change (T8); then the
-// checks that read records (T10, checks.js). The base is the merge-base of
-// HEAD with main; the head is the working tree. It exits 0; with --strict, 1
-// when it prints a `not ok`. A finding has the same severity in both modes:
-// the marker and ID lints are hints for the review, and only the exact rules
-// of checks.js are `not ok` (#238). With --issues <folder> it also checks the
+// checks that read records (T10, checks.js). The base is baseOf (git.js), the
+// merge-base of HEAD with main or origin/main; the head is the working tree.
+// It exits 0; with --strict, 1 when it prints a `not ok`. A finding has the
+// same severity in both modes: the marker and ID lints are hints for the
+// review, and only the exact rules of checks.js are `not ok` (#238). With --issues <folder> it also checks the
 // work items that the caller saved there (issue-hints R1).
 import { relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { read, recordPath } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
-import { mergeBase } from './git.js';
+import { baseOf } from './git.js';
 import { diffParagraphs, idLints } from './ids.js';
 import { docsInScope, idsEverUsed, isShallow, notRead, parseScopes, rootNotOk, rootProblem, SPEC } from './scope.js';
 import { Fail } from './spec.js';
@@ -41,7 +41,8 @@ function checkAll({ top, cwd, opts }) {
   const phrases = loadPhrases(config);
   // The work items that the caller saved; a folder that is not there is a refusal.
   const issues = opts.issues === undefined ? null : loadItems(cwd ?? top, opts.issues);
-  const base = mergeBase(top);
+  const found = baseOf(top);
+  const base = found?.commit ?? null;
   const now = parseScopes(docsInScope(top, config), kinds);
   const was = base ? parseScopes(docsInScope(top, config, base), kinds) : null;
   const used = base ? idsEverUsed(top, config, base) : null;
@@ -85,7 +86,7 @@ function checkAll({ top, cwd, opts }) {
   else if (isShallow(top)) notKnown.unshift('IDs used before the shallow history begins');
   return {
     body,
-    read: base ? `working tree · base ${base.slice(0, 7)} (merge-base with main)` : 'working tree · no base',
+    read: base ? `working tree · base ${base.slice(0, 7)} (merge-base with ${found.ref})` : 'working tree · no base',
     next: nextStep([...(rootLine ? ['not ok'] : []), ...lints.map((l) => l.severity), ...t10.findings.map((f) => f.severity),
       ...central.body.map((l) => (/^not ok /.test(l) ? 'not ok' : /^hint /.test(l) ? 'hint' : 'info'))], lints.some((l) => l.code === 'no-id'),
       t10.findings.some((f) => f.code === 'unsigned-requirement')),
