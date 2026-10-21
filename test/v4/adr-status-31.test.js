@@ -214,10 +214,12 @@ describe('#31 part 1 (SCH-22): any other change of the status line gives hint ad
     hinted(both(dir), 'adr-changed', 'ADR-1');
   });
 
-  test('control: an unknown status line, accepted ADR-1 to "Status: rejected": hint adr-status on ADR-1', (t) => {
+  test('control: an unknown status line, accepted ADR-1 to "Status: rejected": hint adr-status on ADR-1, and no adr-changed on ADR-1', (t) => {
     const dir = world(t);
     setStatus(dir, ADR1, 'accepted', 'rejected');
-    hinted(both(dir), 'adr-status', 'ADR-1');
+    const r = both(dir);
+    hinted(r, 'adr-status', 'ADR-1');
+    none(r, 'adr-changed', 'ADR-1');
   });
 
   test('control: a changed body text with the status line unchanged: hint adr-changed on ADR-1', (t) => {
@@ -270,5 +272,43 @@ describe('#31 part 2 (SCH-37): a supersedes: link that the status line does not 
     const r = both(world(t));
     none(r, 'adr-supersede', 'ADR-12');
     none(r, 'adr-supersede', 'ADR-13');
+  });
+});
+
+// SCH-37: "ADR-n-k, a paragraph of ADR-n, names ADR-n", for a link with any
+// link word. So supersedes:ADR-7-1 counts as supersedes:ADR-7 here. In the
+// world, each ADR has a paragraph ADR-n-1 (its rationale).
+const adr9Linking = (items) => adr('accepted', `ADR-9 choice decides:INV-2 supersedes:${items}`, '# ADR-9: A print shop', 'Context: some customers want paper.');
+
+describe('#31 part 2 (SCH-37): a supersedes: link to a paragraph ADR-n-k names ADR-n', () => {
+  test('a new ADR-9 with supersedes:ADR-7-1, and ADR-7 still "superseded by ADR-8": hint adr-supersede on ADR-9 that names ADR-9', (t) => {
+    const dir = world(t);
+    write(dir, ADR9, adr9Linking('ADR-7-1'));
+    const r = both(dir);
+    messageNames(r, hinted(r, 'adr-supersede', 'ADR-9'), ['ADR-9']);
+    none(r, 'adr-supersede', 'ADR-8');
+  });
+
+  test('control: ADR-7 is "superseded by ADR-8, ADR-9", and ADR-9 has supersedes:ADR-7-1: no adr-supersede on ADR-9 or ADR-8', (t) => {
+    const dir = world(t);
+    setStatus(dir, ADR7, 'superseded by ADR-8', 'superseded by ADR-8, ADR-9');
+    write(dir, ADR9, adr9Linking('ADR-7-1'));
+    const r = both(dir);
+    none(r, 'adr-supersede', 'ADR-9');
+    none(r, 'adr-supersede', 'ADR-8');
+  });
+
+  test('ADR-9 with supersedes:ADR-7,ADR-7-1 (both items in one link), and ADR-7 "superseded by ADR-8": exactly one hint adr-supersede on ADR-9', (t) => {
+    const dir = world(t);
+    write(dir, ADR9, adr9Linking('ADR-7,ADR-7-1'));
+    const r = both(dir);
+    assert.equal(coded(r, 'adr-supersede', 'ADR-9').length, 1, `exactly one adr-supersede on ADR-9:\n${show(r)}`);
+    hinted(r, 'adr-supersede', 'ADR-9');
+  });
+
+  test('ADR-1 is still accepted, and a new ADR-2 has supersedes:ADR-1-1: hint adr-supersede on ADR-2', (t) => {
+    const dir = world(t);
+    write(dir, ADR2, adr('accepted', 'ADR-2 choice decides:INV-2 supersedes:ADR-1-1', '# ADR-2: Portal invoices', 'Context: customers log in.'));
+    hinted(both(dir), 'adr-supersede', 'ADR-2');
   });
 });
