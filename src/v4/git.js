@@ -12,14 +12,28 @@ export function git(top, args, { allowFail = false } = {}) {
   }
 }
 
-// The merge-base of HEAD with main (or origin/main), or null.
-export function mergeBase(top) {
-  for (const main of ['main', 'origin/main']) {
-    if (git(top, ['rev-parse', '--verify', '--quiet', `${main}^{commit}`], { allowFail: true }) === null) continue;
-    return git(top, ['merge-base', 'HEAD', main], { allowFail: true }) || null;
-  }
-  return null;
+// The base of the branch, { commit, ref }, or null: the merge-base of HEAD
+// with main or with origin/main, and the ref that gave it. With only one of
+// the two, that one. With both, the later merge-base (the other is its
+// ancestor), so a local main that is behind origin/main does not give an old
+// base; when neither is the later, the local main (#22). It reads only the
+// refs in the clone, and never fetches.
+export function baseOf(top) {
+  const refs = ['main', 'origin/main'].filter((ref) => git(top, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { allowFail: true }) !== null);
+  const of = (ref) => {
+    const commit = git(top, ['merge-base', 'HEAD', ref], { allowFail: true });
+    return commit ? { commit, ref } : null;
+  };
+  if (!refs.length) return null;
+  const local = of(refs[0]);
+  if (refs.length === 1) return local;
+  const remote = of(refs[1]);
+  if (!local || !remote || local.commit === remote.commit) return local;
+  return git(top, ['merge-base', '--is-ancestor', local.commit, remote.commit], { allowFail: true }) === null ? local : remote;
 }
+
+// The base commit of the branch (baseOf), or null.
+export const mergeBase = (top) => baseOf(top)?.commit ?? null;
 
 // Git objects by name (a blob hash, or `<commit>:<path>`), read with one
 // `git cat-file --batch` process: Map name -> bytes for each name that is a

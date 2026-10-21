@@ -3,7 +3,7 @@
 // state, and refuses while a promise change has no signed requirement, a
 // spike's current question is not signed, or a change paragraph with a
 // baseline effect has no valid disposition for its current version. A promise
-// change of the branch, against the merge-base with main, counts as al check
+// change of the branch, against its base (baseOf), counts as al check
 // counts it (branchOf, #217). With
 // --yes it writes the Outcome, sets the status and archives the request.
 import { mkdirSync, renameSync, statSync } from 'node:fs';
@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { Fail, day, exists, guard, isName, now, write } from './base.js';
 import { branchOf } from './checks.js';
 import { judgeRequest } from './dispositions.js';
-import { git, mergeBase } from './git.js';
+import { baseOf, git } from './git.js';
 import { openRecord, recordText } from './records.js';
 import { isPromise, loadState, qualify, servesSigned } from './state.js';
 import { signState } from './views.js';
@@ -95,9 +95,10 @@ export function conclude({ top, args, opts }) {
   const r = state.requests.get(name);
   if (!r) throw new Fail(`no request named ${name}`, 'al context lists the open requests');
   if (!r.open) throw new Fail(`${name} is already archived (requests/archive/${name}); an archived request is not concluded again`, `al context ${name}`);
-  const base = mergeBase(top);
+  const found = baseOf(top);
+  const base = found?.commit ?? null;
   const branch = base ? branchOf(top, state, loadState(top, base), base).uncovered : [];
-  const read = base ? `working tree · base ${base.slice(0, 7)} (merge-base with main)` : 'working tree · no base';
+  const read = base ? `working tree · base ${base.slice(0, 7)} (merge-base with ${found.ref})` : 'working tree · no base';
   const notKnown = base ? NOT_KNOWN : ['the promise changes of the branch: no base (no main branch, or no commit)', ...NOT_KNOWN];
   const { out, judged } = reasons(state, r, branch);
   if (out.length) {
