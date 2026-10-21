@@ -18,7 +18,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mergeBase } from '../../src/v4/git.js';
 import {
-  al, appendSection, baseProject, commitAll, editFile, git, index, newRequest, organized, record, req, show, write,
+  al, appendSection, baseProject, commitAll, editFile, git, index, newRequest, organized, project, record, req, show, write,
+  writeConfig,
 } from './helpers/project.js';
 
 const SPEC = 'specs/invoices.md';
@@ -310,6 +311,51 @@ test('control: al index with only main says "binding unknown" for a committed li
   git(dir, 'checkout', '-q', '-b', 'pr2');
   const r = index(dir);
   assert.equal(linesWith(r, `binding unknown: INV-13 serves ${NAME}/R1`).length, 1, show(r));
+});
+
+// --- al check in an output repo: the central IDs of the files changed since the base
+
+// A central repo (baseProject, indexed) and an output repo that names it.
+// Commit A in the output repo holds the config; commit B on main adds
+// docs/feature.md, which cites central:INV-13; origin/main is at B; the local
+// main goes back to A; pr2 is cut from B and changes only README.md, which
+// cites central:INV-12. With `origin: false`, origin/main is then removed.
+function outputBehind(t, { origin = true } = {}) {
+  const central = baseProject(t, { branch: null });
+  index(central);
+  commitAll(central, 'the records');
+  const dir = project(t);
+  writeConfig(dir, [], { central: { path: central } });
+  const a = commitAll(dir, 'the config');
+  write(dir, 'docs/feature.md', 'Lines follow central:INV-13.\n');
+  const b = commitAll(dir, 'the citation, merged on origin/main');
+  git(dir, 'update-ref', 'refs/remotes/origin/main', b);
+  git(dir, 'reset', '-q', '--hard', a);
+  git(dir, 'checkout', '-q', '-b', 'pr2', b);
+  if (!origin) git(dir, 'update-ref', '-d', 'refs/remotes/origin/main');
+  write(dir, 'README.md', 'The data: central:INV-12.\n');
+  commitAll(dir, 'only the readme');
+  return { dir, a, b };
+}
+
+const CITES = /^(info cites|hint unresolved-central) /;
+const citeLines = (r) => r.stdout.split('\n').filter((l) => CITES.test(l));
+
+test('output repo, local main behind origin/main: a citation merged on origin/main is not looked up', (t) => {
+  const { dir, b } = outputBehind(t);
+  const r = check(dir);
+  // The lookup runs: README.md, changed on the branch, gives its line.
+  assert.ok(citeLines(r).some((l) => l.startsWith('info cites README.md:1 central:INV-12 ')), show(r));
+  assert.deepEqual(citeLines(r).filter((l) => l.includes('docs/feature.md')), [], show(r));
+  assert.match(r.stdout, readLine(b, 'origin/main'), show(r));
+});
+
+test('control: output repo with no origin/main: the citation of docs/feature.md is looked up', (t) => {
+  const { dir, a } = outputBehind(t, { origin: false });
+  const r = check(dir);
+  assert.ok(citeLines(r).some((l) => l.startsWith('info cites README.md:1 central:INV-12 ')), show(r));
+  assert.equal(citeLines(r).filter((l) => l.startsWith('info cites docs/feature.md:1 central:INV-13 ')).length, 1, show(r));
+  assert.match(r.stdout, readLine(a, 'main'), show(r));
 });
 
 // --- al never fetches
