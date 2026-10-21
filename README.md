@@ -228,6 +228,8 @@ ADRs that supersede it: `superseded by ADR-11, ADR-12` or
 - A current place that names a superseded ADR also names the ADR that
   supersedes it, in the same marker or the same paragraph. Current places
   are the spec docs, the open requests and the proposed and accepted ADRs.
+  The text names an ADR by `ADR-40`, by `ADR 0040`, or in a list or a range
+  such as `ADRs 0003, 0005 and 0040` or `ADRs 0003 to 0005`.
   The chain itself and dated records are exempt: an ADR that supersedes it,
   a superseded ADR, an ADR's `## History`, a request's `## Decisions`, the
   `origin/` files and the archived requests. Else `al check` gives
