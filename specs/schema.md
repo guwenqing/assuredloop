@@ -211,7 +211,7 @@ it"; it is only a hint.
   advances the bindings that paragraph `<ID>` holds to it, as for any other
   target.
 
-<!-- SCH-37 rule serves:hints-and-blocks/R5,several-successors/R1 -->
+<!-- SCH-37 rule serves:hints-and-blocks/R5,several-successors/R1,adr-lists/R1 -->
 
 **A citation of a superseded ADR.** A current place that names a superseded
 ADR also names at least one ADR that supersedes it, directly or through a
@@ -221,6 +221,17 @@ to it. Else `al check` gives `not ok superseded-cited`.
   word `ADR-n` in its text. `ADR-n-k`, a paragraph of ADR-n, names ADR-n.
   For a link, the successor is named in the same marker. For a word, it is
   named in the same paragraph's text.
+- The text also names ADR-n by the number after `ADR` or `ADRs` and a space,
+  for example `ADR 0040`, and in a list or a range that starts with `ADR`,
+  `ADRs` or `ADR-n`. The number names the ADR whose file name has that
+  number: `0040` and `40` name ADR-40. Each item of the list or range is a
+  number or `ADR-n`, for example `ADRs 0003, 0005 and 0040`, `ADR-3, 5 and 7`
+  or `ADRs 3 and ADR-5`. A comma, `and`, or a comma and `and` join a list.
+  Only `to` joins a range, for example `ADRs 0003 to 0005` or `ADR-3 to 5`.
+  A range names each ADR that exists from its first number to its last. A
+  reversed range, such as `ADRs 5 to 3`, names only its two ends. A number
+  outside such a list or range names nothing. `or` and a dash between two
+  numbers join nothing, and `adr` in small letters names nothing.
 - The ADRs that supersede ADR-n are the ones that ADR-n's status line
   names, and each one whose marker has `supersedes:ADR-n`.
 - The current places are each paragraph of the spec docs, with its marker;

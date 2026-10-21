@@ -27,4 +27,5 @@ decisions: []
 tasks: []
 bindings:
   - { holder: adr-lists/R1, link: from, target: adr-lists/2026-10-21-owner-words.md, holder_sha256: 6f6c3217cd3bd3be5ae5377a8eb436481363142eec879fdcb7a6efe77ac5ab40, target_sha256: 8466fae9bb804193a2167f1b39a11e6d1565b46f0dda27a5df6331584bc3b8bd }
+  - { holder: SCH-37, link: serves, target: adr-lists/R1, holder_sha256: 429aecbbb67d2ffb8d2274acf1112e6e2f8f2c0675f55cd8de6b1b2f8ee6e7b7, target_sha256: 6f6c3217cd3bd3be5ae5377a8eb436481363142eec879fdcb7a6efe77ac5ab40, target_version: 1 }
 dispositions: []

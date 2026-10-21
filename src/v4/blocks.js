@@ -178,18 +178,44 @@ const ADR_REF = /^ADR-(\d+)(?:-\d+)?$/;
 const adrOf = (ref) => (ADR_REF.test(ref) ? `ADR-${Number(ADR_REF.exec(ref)[1])}` : null);
 const MARKER = /^\s*<!--(.*)-->\s*$/;
 
+// The words that name ADRs in a text (adr-lists R1): `ADR-n`, or the number
+// after `ADR` or `ADRs` and a space, and each item of a list or a range that
+// follows. An item is a number or `ADR-n`; a comma, `and` or both join a
+// list, and `to` a range. A range names its two ends and each ADR in `known`
+// (the numbers of the ADRs that exist) between them, so a long one costs
+// nothing; a reversed range names only its ends.
+const ITEM = String.raw`(?:ADR-\d+(?:-\d+)?|\d+)\b`;
+const NAMING = new RegExp(String.raw`\b(?:ADRs?\s+(?=\d)|(?=ADR-\d))${ITEM}(?:(?:\s*,\s*(?:and\s+)?|\s+(?:and|to)\s+)${ITEM})*`, 'g');
+function adrsNamed(text, known) {
+  const out = new Set();
+  for (const m of text.matchAll(NAMING)) {
+    let last = null;
+    let range = false;
+    for (const t of m[0].matchAll(/ADR-(\d+)(?:-\d+)?|\d+|\bto\b/g)) {
+      if (t[0] === 'to') { range = true; continue; }
+      const n = Number(t[1] ?? t[0]);
+      if (range && last < n) for (const k of known) if (k > last && k < n) out.add(`ADR-${k}`);
+      out.add(`ADR-${n}`);
+      last = n;
+      range = false;
+    }
+  }
+  return out;
+}
+
 // The places of a Markdown text: each marker line and each run of text lines,
 // with the ADRs it names and the ID of the marker it falls under. A heading
 // that `skip` matches starts a section that is not read, up to the next
 // heading of level 1 or 2.
-function places(textOf, skip) {
+function places(textOf, skip, known) {
   const lines = textOf.replace(/\r\n?/g, '\n').split('\n');
   const out = [];
   let id = null;
   let skipping = false;
   let run = null;
   const close = () => {
-    if (run && run.names.size) out.push(run);
+    const names = run ? adrsNamed(run.lines.join('\n'), known) : new Set();
+    if (names.size) out.push({ line: run.line, id: run.id, link: false, names });
     run = null;
   };
   lines.forEach((l, i) => {
@@ -204,8 +230,8 @@ function places(textOf, skip) {
       if (names.size) out.push({ line: i + 1, id, link: true, names });
       return;
     }
-    if (!run) run = { line: i + 1, id, link: false, names: new Set() };
-    for (const w of l.matchAll(/\bADR-(\d+)(?:-\d+)?\b/g)) run.names.add(`ADR-${Number(w[1])}`);
+    if (!run) run = { line: i + 1, id, lines: [] };
+    run.lines.push(l);
   });
   close();
   return out;
@@ -229,7 +255,8 @@ export function supersededIn(state) {
     return seen;
   };
   const superseded = (id) => state.adrs.get(id)?.status === 'superseded';
-  return (textOf, { skip = null, exempt = new Set() } = {}) => places(textOf, skip).flatMap((p) => [...p.names]
+  const known = [...state.adrs.keys()].map((id) => Number(id.slice('ADR-'.length)));
+  return (textOf, { skip = null, exempt = new Set() } = {}) => places(textOf, skip, known).flatMap((p) => [...p.names]
     .filter((x) => superseded(x) && !exempt.has(x) && ![...above(x)].some((y) => p.names.has(y)))
     .map((x) => ({ line: p.line, id: p.id, link: p.link, adr: x, next: up(x) })));
 }
