@@ -1,8 +1,9 @@
 // The checks that read records (T10; design.md 3-7 and 9, schema.md 5; the
 // architect's answers for #179, decision D15). Each finding is
 // { severity, code, file, line, id, message }: `not ok`, `hint` or `info`.
-// They compare the working tree with the base (the merge-base with main) and
-// read the records of the open requests. No AI, no network.
+// They compare the working tree with the base (baseOf in git.js: the
+// merge-base with main or origin/main) and read the records of the open
+// requests. No AI, no network.
 import { createHash } from 'node:crypto';
 import { parse as parseYaml } from 'yaml';
 import { read } from './base.js';
