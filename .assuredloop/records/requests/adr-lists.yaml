@@ -12,7 +12,17 @@ requirements:
     version: 1
     sha256: 6f6c3217cd3bd3be5ae5377a8eb436481363142eec879fdcb7a6efe77ac5ab40
     title: ADRs named in a list
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-21-signoff.md
+    sha256: 9d1fbea1735cc230390f7329834b92a5c9130ea932ad7ca95e51004c222b1995
+    signed: 2026-10-21T20:30Z
+    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-21 at 20:26:42Z
+    words: Ok to both. Assuming you mean that ecen if a change related to adr change is merged and next pr doesn’t change this can also show the precious warning
+    presented: "R1 and the Out: line word for word, marker lines not shown, first on 2026-10-19 at about 20:22Z, and again on 2026-10-21 at 20:23:48Z with a plain account; the one answer covers this text and the text of issue #19; its second sentence is about issue #19"
+    transcribed_by: assuredloop/architect
+    covers:
+      - { id: R1, version: 1, sha256: 6f6c3217cd3bd3be5ae5377a8eb436481363142eec879fdcb7a6efe77ac5ab40 }
 decisions: []
 tasks: []
 bindings:
