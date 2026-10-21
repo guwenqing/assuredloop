@@ -207,11 +207,14 @@ describe('#31 part 1 (SCH-22): any other change of the status line gives hint ad
     messageNames(r, hinted(r, 'adr-changed', 'ADR-7'), ['ADR-8', 'ADR-9']);
   });
 
-  test('the status line and the body text both change, accepted ADR-1 to proposed: at least one hint adr-changed on ADR-1', (t) => {
+  test('the status line and the body text both change, accepted ADR-1 to proposed: exactly one hint adr-changed on ADR-1; the message names "accepted" and "proposed"', (t) => {
     const dir = world(t);
     setStatus(dir, ADR1, 'accepted', 'proposed');
     editFile(dir, ADR1, ADR1_TEXT, 'Context: customers want a file they can print.');
-    hinted(both(dir), 'adr-changed', 'ADR-1');
+    const r = both(dir);
+    const found = hinted(r, 'adr-changed', 'ADR-1');
+    assert.equal(coded(r, 'adr-changed', 'ADR-1').length, 1, `exactly one adr-changed on ADR-1:\n${show(r)}`);
+    messageNames(r, found, ['accepted', 'proposed']);
   });
 
   test('control: an unknown status line, accepted ADR-1 to "Status: rejected": hint adr-status on ADR-1, and no adr-changed on ADR-1', (t) => {
