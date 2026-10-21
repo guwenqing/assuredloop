@@ -175,7 +175,7 @@ export const citedMessage = (c) => (c.next.length
 
 // The ADR that a link value or word names: `ADR-n` and `ADR-n-k` name ADR-n.
 const ADR_REF = /^ADR-(\d+)(?:-\d+)?$/;
-const adrOf = (ref) => (ADR_REF.test(ref) ? `ADR-${Number(ADR_REF.exec(ref)[1])}` : null);
+export const adrOf = (ref) => (ADR_REF.test(ref) ? `ADR-${Number(ADR_REF.exec(ref)[1])}` : null);
 const MARKER = /^\s*<!--(.*)-->\s*$/;
 
 // The words that name ADRs in a text (adr-lists R1): `ADR-n`, or the number
