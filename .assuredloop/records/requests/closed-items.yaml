@@ -13,7 +13,17 @@ requirements:
     sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e
     title: Closed work items
 signoff: []
-decisions: []
+decisions:
+  - id: D1
+    date: 2026-10-22
+    source: the agent (architect)
+    text: A state value other than OPEN or CLOSED is a value of the wrong type. The format ignores such a value, as for its other fields, so the item counts as open.
+    sha256: 5973aecf8648443825f5edaa103fb615e6adfa2e0489d908f57a902ff84445c1
+  - id: D2
+    date: 2026-10-22
+    source: the agent (architect)
+    text: "The PR also adds state to DES-96, DES-104 and DES-109 and to the README, so that the design and the README agree. It amends DES-92, which said that each item finding is a hint. The claim is Tier: 1 — amends DES-91, DES-92."
+    sha256: b95ee71cb7d06fb194ddb3649c992e2e000a6683ffe9b08356edf0456c7fdba6
 tasks: []
 bindings:
   - { holder: closed-items/R1, link: from, target: closed-items/2026-10-22-owner-words.md, holder_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_sha256: eeef32ff9de2615cb616d94e0e2e2ad117510d430f76b88715184ab98c02ebd6 }
