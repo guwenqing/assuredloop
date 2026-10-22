@@ -542,7 +542,18 @@ describe('#3 (SP-11, SP-12): the README gives the JSON Schema of each kind of fi
     const parsed = blocks.map((b) => { try { return JSON.parse(b); } catch { return undefined; } });
     const schemas = parsed.filter((p) => p && typeof p === 'object' && !Array.isArray(p) && '$schema' in p);
     const has = (schema) => schemas.some((s) => { try { assert.deepEqual(s, schema); return true; } catch { return false; } });
-    assert.ok(has(item), `the README section holds the item schema of SP-11; its JSON Schema blocks:\n${JSON.stringify(schemas, null, 2)}`);
+    // closed-items R1 (#33) adds one optional item property, state, with the
+    // values OPEN and CLOSED. Without that one property, the README's item
+    // schema is SP-11 exactly; closed-items-33.test.js checks state itself.
+    const withoutState = (s) => {
+      const props = s?.$defs?.item?.properties;
+      if (!props || !('state' in props)) return s;
+      const copy = structuredClone(s);
+      delete copy.$defs.item.properties.state;
+      return copy;
+    };
+    const hasItem = schemas.some((s) => { try { assert.deepEqual(withoutState(s), item); return true; } catch { return false; } });
+    assert.ok(hasItem, `the README section holds the item schema of SP-11 (plus only the state of closed-items R1); its JSON Schema blocks:\n${JSON.stringify(schemas, null, 2)}`);
     assert.ok(has(requests), `the README section holds the schema of ${OWN_ITEMS} of SP-12; its JSON Schema blocks:\n${JSON.stringify(schemas, null, 2)}`);
     // Each block that looks like a schema is valid JSON.
     blocks.forEach((b, i) => { if (b.includes('"$schema"')) assert.notEqual(parsed[i], undefined, `a schema block that is not valid JSON:\n${b}`); });

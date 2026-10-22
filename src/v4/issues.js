@@ -1,13 +1,14 @@
 // Hints from the linked work items (issue-hints R1, design.md 8). `al` never
 // contacts a tracker (D9): the caller saves the items in a folder, and
 // `al check --issues <folder>` reads them. An item is the JSON that
-// `gh issue view --json number,url,body,comments,parent` prints, or the same
+// `gh issue view --json number,url,body,comments,parent,state` prints, or the same
 // shape with `ref` and `repository` for another tracker (D10). Only the
 // items that the `tasks:` of the open requests name are checked (D11). Each
 // finding is a hint (R1, hints-and-blocks R2):
 // - issue-missing: a task names an item that is not in the folder;
 // - issue-superseded: the item's text names a superseded ADR without its
-//   successor, by R5's own code (supersededIn, D7);
+//   successor, by R5's own code (supersededIn, D7); `info` for a closed
+//   item, which records what held when it closed (closed-items R1);
 // - issue-bare-ref: a bare `#n` in an item of another repository;
 // - issue-not-sub: not a child of the request's own item, which the file
 //   assuredloop-requests.json of the folder names (own-item R1);
@@ -65,7 +66,8 @@ function itemOf(x, file) {
   const ref = typeof x.ref === 'string' && x.ref ? x.ref : null;
   const key = repository && number !== null ? `${repository}#${number}` : ref;
   if (!key) return null;
-  return { key, ref, url: typeof x.url === 'string' ? x.url : null, repository, number, body: x.body, comments: x.comments, parent: x.parent, file };
+  // `state` is OPEN or CLOSED, as gh prints it; any other value is ignored, so the item counts as open (closed-items D1).
+  return { key, ref, url: typeof x.url === 'string' ? x.url : null, repository, number, closed: x.state === 'CLOSED', body: x.body, comments: x.comments, parent: x.parent, file };
 }
 
 // The own items that assuredloop-requests.json names (own-item SP-8, SP-9):
@@ -214,7 +216,7 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
     const other = own.repo && it.repository && slug(it.repository) !== slug(own.repo);
     for (const { where, text } of texts) {
       if (typeof text !== 'string' || !text) continue;
-      for (const c of cited(text)) add('hint', 'issue-superseded', `${where}:${c.line}`, id, citedMessage(c));
+      for (const c of cited(text)) add(it.closed ? 'info' : 'hint', 'issue-superseded', `${where}:${c.line}`, id, citedMessage(c));
       if (other) {
         text.replace(/\r\n?/g, '\n').split('\n').forEach((l, i) => {
           const refs = [...l.matchAll(BARE)].map((m) => `#${m[1]}`);
