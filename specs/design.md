@@ -723,7 +723,7 @@ way" (input 115). The chain must still reach from the requirement to the work
 - The context and the outcome never claim that a merged task or a reconciled
   spec proves the work complete. They show the evidence and what is unknown.
 
-<!-- DES-91 rule serves:issue-hints/R1,own-item/R1 -->
+<!-- DES-91 rule serves:issue-hints/R1,own-item/R1,closed-items/R1 -->
 
 **Hints from the linked work items.** A project may keep its work items in
 any tracker, or in none. `al check` never contacts a tracker. With
@@ -742,10 +742,15 @@ comment that is not hidden. It gives a hint:
   its parent;
 - `phrase`: a phrase or pattern of the config matches the item's text
   ("Phrases for the review", section 3).
+An item may say whether it is open or closed, in its `state`. An item that
+does not say counts as open. For a closed item, `issue-superseded` is
+`info`, not a hint, because a closed item records what held when it closed.
+The other hints are the same for a closed item.
 
-<!-- DES-92 rule serves:issue-hints/R1,own-item/R1 -->
+<!-- DES-92 rule serves:issue-hints/R1,own-item/R1,closed-items/R1 -->
 
-Each of these is a hint in every mode; none is `not ok`. Without
+Each of these is a hint in every mode, except that a closed item's
+`issue-superseded` is `info` (DES-91); none is `not ok`. Without
 `--issues`, `al check` reads no item and gives no line about items.
 Archived requests are history, and their tasks are not read. Reading items
 is optional: a project needs no tracker, and every other check works the
@@ -832,12 +837,12 @@ value of another type gets `issue-unread` at the file, and is ignored as a
 whole: no request has an own item then, and `al check` goes on. A key
 that names no open request is ignored.
 
-<!-- DES-96 interface serves:issue-hints/R1 builds-on:DES-91 -->
+<!-- DES-96 interface serves:issue-hints/R1,closed-items/R1 builds-on:DES-91 -->
 
 **The format of an item.** An item is a JSON object. Its GitHub fields are
 the ones that the GitHub CLI prints with
-`--json number,url,body,comments,parent`, so a GitHub user saves the output
-of `gh` as it is, with no conversion:
+`--json number,url,body,comments,parent,state`, so a GitHub user saves the
+output of `gh` as it is, with no conversion:
 - `body`: the item's text (gh);
 - `url`: the item's address (gh);
 - `number`: its number in its repository (gh);
@@ -848,7 +853,10 @@ of `gh` as it is, with no conversion:
 - `ref`: the reference that a task names, for an item of another tracker,
   for example `PROJ-12`; optional;
 - `repository`: the item's repository or project, as `owner/repo` or as a
-  project key; optional.
+  project key; optional;
+- `state`: `OPEN` or `CLOSED` (gh); another tracker maps its states to these
+  two; optional. Any other value is ignored, as a value of the wrong type is
+  for the other fields, so the item counts as open.
 
 <!-- DES-105 interface serves:issue-hints/R1 builds-on:DES-91 -->
 
@@ -912,9 +920,9 @@ it can leave comments out.
 ```sh
 mkdir -p /tmp/items
 gh issue view 31 --repo acme/invoicer \
-  --json number,url,body,comments,parent > /tmp/items/invoicer-31.json
+  --json number,url,body,comments,parent,state > /tmp/items/invoicer-31.json
 GH_HOST=github.example.com gh issue view 5 --repo acme/web \
-  --json number,url,body,comments,parent > /tmp/items/web-5.json
+  --json number,url,body,comments,parent,state > /tmp/items/web-5.json
 al check --issues /tmp/items
 ```
 
@@ -927,7 +935,7 @@ An item of another tracker, saved by the caller:
  "comments": [{"body": "Done.", "isMinimized": false}], "parent": {"ref": "PROJ-1"}}
 ```
 
-<!-- DES-109 interface serves:own-item/R1 builds-on:DES-91 -->
+<!-- DES-109 interface serves:own-item/R1,closed-items/R1 builds-on:DES-91 -->
 
 **The JSON Schema of the files.** The README gives a JSON Schema (draft
 2020-12) for each of the two kinds of file, so that a person or an AI can
@@ -973,7 +981,8 @@ write them and check them. The schema of an item file, which says what
           ]
         },
         "ref": {"type": "string", "minLength": 1},
-        "repository": {"type": "string", "minLength": 1}
+        "repository": {"type": "string", "minLength": 1},
+        "state": {"enum": ["OPEN", "CLOSED"]}
       }
     }
   }

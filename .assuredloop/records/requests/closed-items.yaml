@@ -1,0 +1,44 @@
+schema: assuredloop/1
+request: closed-items
+tier: "1"
+status: concluded
+sources:
+  - file: 2026-10-22-owner-words.md
+    kind: owner-words
+    sha256: eeef32ff9de2615cb616d94e0e2e2ad117510d430f76b88715184ab98c02ebd6
+    taken: 2026-10-22T01:14Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e
+    title: Closed work items
+signoff:
+  - id: S1
+    file: 2026-10-22-signoff.md
+    sha256: 0a56dffefd3af6745365d891583045ba39659c6517786e4bc90e3feb6a3a07bb
+    signed: 2026-10-22T01:15Z
+    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-22 at 00:48:36Z
+    words: I am good for the rest.
+    presented: "R1 and the Out: line word for word, marker lines not shown, first on 2026-10-21 at 22:03:00Z, and again on 2026-10-22 at 00:46:41Z with a plain account; the words are the line of the owner's answer that signs this text"
+    transcribed_by: assuredloop/architect
+    covers:
+      - { id: R1, version: 1, sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e }
+decisions:
+  - id: D1
+    date: 2026-10-22
+    source: the agent (architect)
+    text: A state value other than OPEN or CLOSED is a value of the wrong type. The format ignores such a value, as for its other fields, so the item counts as open.
+    sha256: 5973aecf8648443825f5edaa103fb615e6adfa2e0489d908f57a902ff84445c1
+  - id: D2
+    date: 2026-10-22
+    source: the agent (architect)
+    text: "The PR also adds state to DES-96, DES-104 and DES-109 and to the README, so that the design and the README agree. It amends DES-92, which said that each item finding is a hint. The claim is Tier: 1 — amends DES-91, DES-92."
+    sha256: b95ee71cb7d06fb194ddb3649c992e2e000a6683ffe9b08356edf0456c7fdba6
+tasks: []
+bindings:
+  - { holder: closed-items/R1, link: from, target: closed-items/2026-10-22-owner-words.md, holder_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_sha256: eeef32ff9de2615cb616d94e0e2e2ad117510d430f76b88715184ab98c02ebd6 }
+  - { holder: DES-91, link: serves, target: closed-items/R1, holder_sha256: 2ab9140c74a68dcf23146a6c91e2822e39099f4a707b2c322442d93457f184f2, target_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_version: 1 }
+  - { holder: DES-92, link: serves, target: closed-items/R1, holder_sha256: 0b8e74459d77254305d9ef6f4da15abbe9d568d3c5b56abd568bd9a953bd1722, target_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_version: 1 }
+  - { holder: DES-96, link: serves, target: closed-items/R1, holder_sha256: c52e17a2941652184269710826dbbc5fc54f3d7f7c3ed5c91870a1f131b86995, target_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_version: 1 }
+  - { holder: DES-109, link: serves, target: closed-items/R1, holder_sha256: dec1ac583a484cc3051daf90ca3138672c091fbec49de21e6595775c5855d852, target_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_version: 1 }
+dispositions: []
