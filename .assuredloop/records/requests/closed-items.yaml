@@ -37,4 +37,8 @@ decisions:
 tasks: []
 bindings:
   - { holder: closed-items/R1, link: from, target: closed-items/2026-10-22-owner-words.md, holder_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_sha256: eeef32ff9de2615cb616d94e0e2e2ad117510d430f76b88715184ab98c02ebd6 }
+  - { holder: DES-91, link: serves, target: closed-items/R1, holder_sha256: 2ab9140c74a68dcf23146a6c91e2822e39099f4a707b2c322442d93457f184f2, target_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_version: 1 }
+  - { holder: DES-92, link: serves, target: closed-items/R1, holder_sha256: 0b8e74459d77254305d9ef6f4da15abbe9d568d3c5b56abd568bd9a953bd1722, target_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_version: 1 }
+  - { holder: DES-96, link: serves, target: closed-items/R1, holder_sha256: c52e17a2941652184269710826dbbc5fc54f3d7f7c3ed5c91870a1f131b86995, target_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_version: 1 }
+  - { holder: DES-109, link: serves, target: closed-items/R1, holder_sha256: dec1ac583a484cc3051daf90ca3138672c091fbec49de21e6595775c5855d852, target_sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e, target_version: 1 }
 dispositions: []
