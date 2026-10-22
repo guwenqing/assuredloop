@@ -246,11 +246,14 @@ contacts a tracker. The caller saves the items in a folder, and
 requests name. Without `--issues`, `al check` reads no item. A task's `ref`
 names an item as `#n`, `owner/repo#n`, `<name>#n` for an output repo that
 config names, an issue URL on any host, or the item's own `ref`, for
-example `PROJ-12`. Each finding is a hint:
+example `PROJ-12`. Each finding is a hint, except that a closed item gives
+`issue-superseded` as `info`:
 
 - `issue-missing`: a task names an item that is not in the folder;
 - `issue-superseded`: the item's text names a superseded ADR without the ADR
-  that supersedes it, by the rule of `superseded-cited`;
+  that supersedes it, by the rule of `superseded-cited`. A closed item gives
+  it as `info`, not as a hint, because a closed item records what held when
+  it closed;
 - `issue-bare-ref`: a bare `#n` in an item of another repository, which
   GitHub reads as that repository's issue. The request's own repository
   comes from `git remote get-url origin`;
@@ -262,7 +265,7 @@ example `PROJ-12`. Each finding is a hint:
 
 The folder holds `*.json` files. Each file holds one item, or a list of
 items. An item is the JSON that the GitHub CLI prints with
-`--json number,url,body,comments,parent`, so GitHub issues need no
+`--json number,url,body,comments,parent,state`, so GitHub issues need no
 conversion:
 
 | Field | What it is | Needed |
@@ -274,6 +277,7 @@ conversion:
 | `parent` | the parent item, with `url` and `number`, or `ref`; `null` for none | no: with no `parent`, the child check is not made |
 | `ref` | the reference that a task names, for another tracker, for example `PROJ-12` | for another tracker |
 | `repository` | `owner/repo`, or a project key | no |
+| `state` | `OPEN` or `CLOSED`, as `gh` gives it; another tracker maps its states to these two. Any other value is ignored | no: with no `state`, the item counts as open |
 
 To save GitHub issues, GitHub Enterprise included, save each issue with
 `gh issue view`. `gh issue list` gives at most 100 comments of an issue.
@@ -281,9 +285,9 @@ To save GitHub issues, GitHub Enterprise included, save each issue with
 ```sh
 mkdir -p /tmp/items
 gh issue view 31 --repo acme/invoicer \
-  --json number,url,body,comments,parent > /tmp/items/invoicer-31.json
+  --json number,url,body,comments,parent,state > /tmp/items/invoicer-31.json
 GH_HOST=github.example.com gh issue view 5 --repo acme/web \
-  --json number,url,body,comments,parent > /tmp/items/web-5.json
+  --json number,url,body,comments,parent,state > /tmp/items/web-5.json
 al check --issues /tmp/items
 ```
 
@@ -366,7 +370,8 @@ writes them. An item file:
           ]
         },
         "ref": {"type": "string", "minLength": 1},
-        "repository": {"type": "string", "minLength": 1}
+        "repository": {"type": "string", "minLength": 1},
+        "state": {"enum": ["OPEN", "CLOSED"]}
       }
     }
   }
