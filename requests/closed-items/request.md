@@ -13,6 +13,7 @@ Tier: 1 · Status: open
 A saved work item MAY say whether it is open or closed. For a closed item, `al check --issues` MUST show a citation of a superseded ADR as information, not as a hint, because a closed item records what held when it closed. An item that does not say MUST count as open.
 
 Out: the other hints on work items, which stay as they are.
+Signed off: 2026-10-22 owner, origin/2026-10-22-signoff.md
 
 ## Decisions
 
