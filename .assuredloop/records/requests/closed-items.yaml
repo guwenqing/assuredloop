@@ -12,7 +12,17 @@ requirements:
     version: 1
     sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e
     title: Closed work items
-signoff: []
+signoff:
+  - id: S1
+    file: 2026-10-22-signoff.md
+    sha256: 0a56dffefd3af6745365d891583045ba39659c6517786e4bc90e3feb6a3a07bb
+    signed: 2026-10-22T01:15Z
+    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-22 at 00:48:36Z
+    words: I am good for the rest.
+    presented: "R1 and the Out: line word for word, marker lines not shown, first on 2026-10-21 at 22:03:00Z, and again on 2026-10-22 at 00:46:41Z with a plain account; the words are the line of the owner's answer that signs this text"
+    transcribed_by: assuredloop/architect
+    covers:
+      - { id: R1, version: 1, sha256: 163ef1440f01fe15efeb786738efc98bf9a419633ea8bee61420843fb504760e }
 decisions:
   - id: D1
     date: 2026-10-22
