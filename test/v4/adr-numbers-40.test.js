@@ -777,4 +777,39 @@ describe('#40: a link that only the second file of a number declares', () => {
     assert.ok(removedLines(ix).length >= 1, `a removal line for ${B.join(' ')}:\n${show(ix)}`);
     assert.equal(held(dir).length, 0, 'the binding is gone');
   });
+
+  // holder-changed (#11 R2): the holder of ADR-1 source inv/D1 is the
+  // heading of 1-b.md, the paragraph that declares the link (DES-113). Its
+  // message starts with "<link> <target>:". Checked before and after a plain
+  // al index, which does not clear it.
+  const holderChanged = (r) => r.findings.filter((f) => f.code === 'holder-changed' && f.id === 'ADR-1' && f.msg.startsWith('source inv/D1'));
+
+  test('only the heading text of 1-b.md changes: one holder-changed on ADR-1 for source inv/D1, at 1-b.md, none at 001-a.md', (t) => {
+    const dir = declared(t);
+    editFile(dir, B1, '# ADR-1: Beta', '# ADR-1: Beta, reworded');
+    for (const when of ['before al index', 'after al index']) {
+      if (when === 'after al index') index(dir);
+      const r = check(dir);
+      assert.equal(r.code, 0, show(r));
+      const found = holderChanged(r);
+      assert.equal(found.length, 1, `${when}: one holder-changed on ADR-1 for source inv/D1:\n${show(r)}`);
+      assert.equal(found[0].severity, 'hint', show(r));
+      assert.equal(found[0].file, B1, `${when}: it is at 1-b.md:\n${show(r)}`);
+      assert.deepEqual(r.findings.filter((f) => f.code === 'holder-changed' && f.file === A1).map((f) => f.line), [],
+        `${when}: no holder-changed at 001-a.md:\n${show(r)}`);
+    }
+  });
+
+  test('only the heading text of 001-a.md changes: no holder-changed on ADR-1 for source inv/D1', (t) => {
+    const dir = declared(t);
+    editFile(dir, A1, '# ADR-1: Alpha', '# ADR-1: Alpha, reworded');
+    for (const when of ['before al index', 'after al index']) {
+      if (when === 'after al index') index(dir);
+      const r = check(dir);
+      assert.equal(r.code, 0, show(r));
+      assert.deepEqual(holderChanged(r).map((f) => f.line), [], `${when}: no holder-changed for source inv/D1:\n${show(r)}`);
+    }
+    // This world must still hold the binding, else the test proves nothing.
+    assert.equal(held(dir).length, 1, 'the binding is still recorded');
+  });
 });
