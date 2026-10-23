@@ -887,3 +887,93 @@ describe('#40: a link that both files of a number declare', () => {
       `after the commit, no holder-changed at 001-a.md:\n${show(again)}`);
   });
 });
+
+// =====================================================================
+// Regression tests from the review of #40.
+
+// A link to a paragraph ADR-<n>-<k> looks ADR-<n> up by its number, so it
+// uses the first file of the number in name order (DES-113). al index and
+// al check agree on it: a paragraph that only the second file has is not a
+// target. al index then does not bind it and names it on a "not bound:"
+// line; al check gives hint unresolved-link on the holder.
+describe('#40: a link to ADR-1-<k> uses the first file of ADR-1', () => {
+  const A1 = 'specs/adr/001-a.md';
+  const B1 = 'specs/adr/1-b.md';
+  const A1_TEXT = `Status: accepted\n\n${doc([['ADR-1 choice decides:INV-2 source:INV-2', '# ADR-1: Alpha'], ['ADR-1-1 rationale', 'Context: Alpha.']])}`;
+  const B1_TEXT = `Status: accepted\n\n${doc([['ADR-1 choice decides:INV-2 source:INV-2', '# ADR-1: Beta'], ['ADR-1-2 rationale', 'Context: Beta.']])}`;
+
+  function linkTo(t, target) {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, SPEC, doc([['INV-1 note', '# Invoices'], [`INV-2 rule serves:inv/R1 governed-by:${target}`, 'An invoice MUST be sent to the customer.']]));
+    newRequest(dir, 'inv');
+    appendSection(dir, 'inv', organized([req('R1', 'Send invoices', 'An invoice MUST reach the customer.')]));
+    write(dir, A1, A1_TEXT);
+    write(dir, B1, B1_TEXT);
+    const ix = index(dir);
+    return { dir, ix };
+  }
+  const unresolved = (r, target) => r.findings.filter((f) => f.code === 'unresolved-link' && f.id === 'INV-2' && f.line.includes(target));
+
+  test('governed-by:ADR-1-2, a paragraph of 1-b.md only: al index does not bind it and says "not bound", and al check gives hint unresolved-link on INV-2', (t) => {
+    const { dir, ix } = linkTo(t, 'ADR-1-2');
+    assert.deepEqual(bindingsOf(record(dir, 'inv'), 'INV-2', 'governed-by', 'ADR-1-2').map((b) => b.target_sha256), [],
+      `no binding INV-2 governed-by ADR-1-2:\n${show(ix)}`);
+    assert.ok(ix.stdout.split('\n').some((l) => l.startsWith('not bound:') && l.includes('INV-2') && l.includes('ADR-1-2')),
+      `a "not bound:" line for INV-2 governed-by ADR-1-2:\n${show(ix)}`);
+    const r = check(dir);
+    assert.equal(r.code, 0, show(r));
+    const found = unresolved(r, 'ADR-1-2');
+    assert.ok(found.length >= 1, `hint unresolved-link on INV-2 for ADR-1-2:\n${show(r)}`);
+    assert.ok(found.every((f) => f.severity === 'hint'), show(r));
+  });
+
+  test('control: governed-by:ADR-1-1, a paragraph of 001-a.md (the first file): bound to its text, and no unresolved-link', (t) => {
+    const { dir, ix } = linkTo(t, 'ADR-1-1');
+    const found = bindingsOf(record(dir, 'inv'), 'INV-2', 'governed-by', 'ADR-1-1');
+    assert.equal(found.length, 1, `one binding INV-2 governed-by ADR-1-1:\n${show(ix)}`);
+    assert.equal(found[0].target_sha256, hashOf(dir, A1, 'ADR-1-1'), 'the target hash is of ADR-1-1 in 001-a.md');
+    const r = check(dir);
+    assert.deepEqual(r.findings.filter((f) => f.code === 'unresolved-link').map((f) => f.line), [], show(r));
+  });
+});
+
+// The number is the exact value of the digits (R1), also past 2^53.
+describe('#40: the exact value of a long digit run', () => {
+  const N2 = '9007199254740992';
+  const N3 = '9007199254740993';
+  const F2 = `specs/adr/${N2}-x.md`;
+  const F3 = `specs/adr/${N3}-x.md`;
+
+  test(`${N2}-x.md and ${N3}-x.md are two numbers: no adr-number, no adr-links, no adr-status`, (t) => {
+    const r = hintsOnly(world(t, { [F2]: adr(N2, 'accepted', 'Two'), [F3]: adr(N3, 'accepted', 'Three') }));
+    assert.deepEqual(linesOf(r, 'adr-number'), [], show(r));
+    assert.deepEqual(r.findings.filter((f) => ['adr-links', 'adr-status'].includes(f.code)).map((f) => f.line), [], show(r));
+  });
+
+  test(`a citation of ADR-${N3}, superseded by ADR-5, is not ok superseded-cited; a citation of the accepted ADR-${N2} is not`, (t) => {
+    const dir = world(t, {
+      [F2]: adr(N2, 'accepted', 'Two'),
+      [F3]: adr(N3, 'superseded by ADR-5', 'Three'),
+      'specs/adr/005-y.md': adr(5, 'accepted', 'Five', { links: `decides:INV-2 source:INV-2 supersedes:ADR-${N3}` }),
+    });
+    write(dir, SPEC, doc([
+      ['INV-1 note', '# Invoices'],
+      ['INV-2 rule', `An invoice MUST be sent to the customer, as ADR-${N3} says.`],
+      ['INV-3 rule', `An invoice MUST have a number, as ADR-${N2} says.`],
+    ]));
+    const r = check(dir);
+    assert.equal(r.code, 0, show(r));
+    const cited = (id) => r.findings.filter((f) => f.code === 'superseded-cited' && f.id === id);
+    assert.ok(cited('INV-2').length >= 1, `not ok superseded-cited on INV-2:\n${show(r)}`);
+    assert.ok(cited('INV-2').every((f) => f.severity === 'not ok'), show(r));
+    assert.ok(cited('INV-2').some((f) => f.line.includes(`ADR-${N3}`)), `it names ADR-${N3}:\n${show(r)}`);
+    assert.deepEqual(cited('INV-3').map((f) => f.line), [], `no superseded-cited on INV-3:\n${show(r)}`);
+  });
+
+  test('leading zeros drop: 00012345678901234567-x.md is ADR-12345678901234567', (t) => {
+    const file = 'specs/adr/00012345678901234567-x.md';
+    const r = hintsOnly(world(t, { [file]: adr('12345678901234567', 'bogus', 'Long') }));
+    statusHint(r, file, 'ADR-12345678901234567');
+  });
+});
