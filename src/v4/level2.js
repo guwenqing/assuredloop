@@ -11,7 +11,7 @@
 // search without words loads it.
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const BATCH = 32;
@@ -135,11 +135,22 @@ export function level2(path) {
   let extractor = null;
   async function embed(texts) {
     if (!extractor) {
-      // The path is the library's require entry; its exports may come as a default.
-      const mod = await import(pathToFileURL(path).href);
-      const pipeline = mod.pipeline ?? mod.default?.pipeline;
-      if (typeof pipeline !== 'function') throw new Error(`${path} has no pipeline function`);
-      extractor = await pipeline('feature-extraction', MODEL, { revision: REVISION, dtype: 'q8' });
+      try {
+        // The path is the library's require entry; its exports may come as a default.
+        const mod = await import(pathToFileURL(path).href);
+        const pipeline = mod.pipeline ?? mod.default?.pipeline;
+        const env = mod.env ?? mod.default?.env;
+        if (typeof pipeline !== 'function') throw new Error(`${path} has no pipeline function`);
+        // The library's pipeline() looks for some files at revision main,
+        // whatever its revision option says, and so asks the network on each
+        // load (#39). So the revision goes into every remote URL instead, and
+        // into the cache folder, as the cache's keys do not name it.
+        env.remotePathTemplate = `{model}/resolve/${REVISION}/`;
+        if (basename(env.cacheDir) !== REVISION) env.cacheDir = join(env.cacheDir, REVISION);
+        extractor = await pipeline('feature-extraction', MODEL, { dtype: 'q8' });
+      } catch (e) {
+        throw new Error(`the model ${MODEL} did not load: ${e.message ?? e}`);
+      }
     }
     // bge takes the first token's vector (CLS pooling).
     const out = await extractor(texts, { pooling: 'cls', normalize: true });

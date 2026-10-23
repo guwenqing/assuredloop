@@ -33,7 +33,13 @@ test('level 2 answers when @huggingface/transformers is in the project; the Leve
 });
 
 // #212: what al asks of the library. The stand-in logs each call.
-test('level 2 calls the library as pinned: pipeline once per process, with the model, its revision and q8; the extractor with cls pooling and normalize, at most 32 texts at a time', (t) => {
+// #39: the pin is the requirement, not the shape of the call. With the
+// options `{ revision, dtype }` alone, the library 4.3.1 still asks for files
+// at revision `main` on each load. So al may give the revision through the
+// options or through the library's `env` settings (remotePathTemplate, for
+// example), and may pass more options. The task, the model and q8 (which
+// model file is used) stay as they are.
+test('level 2 calls the library as pinned: pipeline once per process, with the model, its revision (in the options or in env) and q8; the extractor with cls pooling and normalize, at most 32 texts at a time', (t) => {
   const dir = project(t);
   write(dir, '.gitignore', 'node_modules/\n');
   writeConfig(dir, [{ file: 'specs/many.md', prefix: 'MNY' }], { repo: 'acme' });
@@ -51,7 +57,12 @@ test('level 2 calls the library as pinned: pipeline once per process, with the m
   const first = callsOf(calls);
   const pipes = first.filter((c) => c.call === 'pipeline');
   assert.equal(pipes.length, 1, `pipeline is called once in one process:\n${JSON.stringify(first)}`);
-  assert.deepEqual([pipes[0].task, pipes[0].model, pipes[0].options], ['feature-extraction', MODEL, { revision: REVISION, dtype: 'q8' }]);
+  assert.deepEqual([pipes[0].task, pipes[0].model], ['feature-extraction', MODEL]);
+  assert.equal(pipes[0].options?.dtype, 'q8', `the q8 model: ${JSON.stringify(pipes[0].options)}`);
+  assert.ok(pipes[0].options?.revision === REVISION || JSON.stringify(pipes[0].env).includes(REVISION),
+    `the pinned revision ${REVISION} reaches the library, in the options or in env: ${JSON.stringify(pipes[0])}`);
+  assert.ok(pipes[0].options?.revision === undefined || pipes[0].options.revision === REVISION,
+    `no other revision is asked for: ${JSON.stringify(pipes[0].options)}`);
   const extracts = first.filter((c) => c.call === 'extract');
   assert.ok(extracts.length >= 4, `70 rows and a query need at least 4 calls of the extractor: ${extracts.length}`);
   for (const c of extracts) {
@@ -171,6 +182,21 @@ test('fallback 2 -> 1: @huggingface/transformers in the project does not load', 
   const r = runOk(dir, ['search', 'export', 'link']);
   assert.match(r.stdout.split('\n')[0], /^Level\s+1\b/, show(r));
   assert.ok(r.stdout.split('\n').some((l) => /^Fallback\s+\S/.test(l)), `a Fallback line says why:\n${show(r)}`);
+});
+
+// #39: when the model does not load (no network and no cache, or a broken
+// cache), al says so, with the model's name and the first line of the
+// library's error.
+test('fallback 2 -> 1: the model does not load (pipeline throws); the fallback names the model and gives the first line of the error', (t) => {
+  const { dir } = smallRepo(t, { embedder: { mode: 'pipeline-throws' } });
+  const out = search(dir, ['export', 'link']);
+  assert.equal(out.level, 1);
+  assert.equal(out.fallback, `level 2 failed: the model ${MODEL} did not load: test embedder: the model does not load`);
+  has(out, 'EXP-4 v1 baseline');
+  const r = runOk(dir, ['search', 'export', 'link']);
+  assert.match(r.stdout.split('\n')[0], /^Level\s+1\b/, show(r));
+  assert.ok(r.stdout.split('\n').some((l) => /^Fallback\s+\S/.test(l) && l.includes(`the model ${MODEL} did not load`)),
+    `a Fallback line says that the model did not load:\n${show(r)}`);
 });
 
 test('fallback 2 -> 1: the extractor of @huggingface/transformers throws', (t) => {
