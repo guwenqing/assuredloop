@@ -86,6 +86,46 @@ describe('diffParagraphs on parsed text: a renamed heading with an ID', () => {
   });
 });
 
+describe('diffParagraphs on parsed text: a deeper heading before a shallower one', () => {
+  // # T / ## A / ### A1 / a paragraph / ## B / P. Every heading carries an ID.
+  const deep = (a1) => doc(
+    '<!-- D-1 note -->', '', '# T', '',
+    '<!-- D-2 note -->', '', '## A', '',
+    ...(a1 === null ? [] : ['<!-- D-3 note -->', '', `### ${a1}`, '']),
+    '<!-- D-4 rule -->', '', 'Text under A1.', '',
+    '<!-- D-5 note -->', '', '## B', '',
+    '<!-- D-6 rule -->', '', 'Text P under B.',
+  );
+
+  test('the ### A1 heading renamed: only A1 is Changed; P under ## B has no change', () => {
+    assert.deepEqual(diffText(deep('A1'), deep('A1 renamed')), {
+      'D-1': [], 'D-2': [], 'D-3': ['Changed'], 'D-4': [], 'D-5': [], 'D-6': [],
+    });
+  });
+
+  test('the ### A1 heading paragraph removed: A1 is Removed; P under ## B has no change', () => {
+    const c = diffText(deep('A1'), deep(null));
+    assert.deepEqual(c['D-3'], ['Removed']);
+    assert.deepEqual(c['D-5'], []);
+    assert.deepEqual(c['D-6'], [], `P must keep its place: ${JSON.stringify(c)}`);
+    assert.deepEqual(c['D-1'], []);
+    assert.deepEqual(c['D-2'], []);
+  });
+
+  test('a level-3 heading directly after a level-1 heading (a skipped level), renamed, moves nothing', () => {
+    const skip = (h3) => doc(
+      '<!-- S-1 note -->', '', '# T', '',
+      '<!-- S-2 note -->', '', `### ${h3}`, '',
+      '<!-- S-3 rule -->', '', 'Text under the level-3 heading.', '',
+      '<!-- S-4 note -->', '', '## B', '',
+      '<!-- S-5 rule -->', '', 'Text under B.',
+    );
+    assert.deepEqual(diffText(skip('Deep'), skip('Deep renamed')), {
+      'S-1': [], 'S-2': ['Changed'], 'S-3': [], 'S-4': [], 'S-5': [],
+    });
+  });
+});
+
 describe('diffParagraphs: behaviour that #42 keeps', () => {
   test('a paragraph moved under another heading with an ID is Moved, and nothing else changes', () => {
     // A-2 goes from below the H1 (A-1) to the end, below the H2 (A-4).
