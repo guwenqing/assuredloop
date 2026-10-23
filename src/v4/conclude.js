@@ -68,7 +68,10 @@ function outcome(state, r, judged, top) {
     // A path-1 promise is served by the spec paragraph itself (design.md 5).
     const inSpec = [...state.spec.values()].filter((p) => p.links.serves.some((s) => qualify(s, null).key === `${r.name}/${q.id}`));
     for (const p of inSpec) lines.push(`  - ${p.id} ${p.kind ?? '-'}: in ${p.file}, serves it`);
-    if (!mine.length && !inSpec.length) lines.push('  - no change paragraph and no spec paragraph serves it');
+    // An ADR whose `decides:` names the requirement is evidence too (#41).
+    const decided = [...state.adrs.values()].filter((a) => (a.head?.links.decides ?? []).some((s) => qualify(s, null).key === `${r.name}/${q.id}`));
+    for (const a of decided) lines.push(`  - ${a.id}: decides it (${a.status ?? 'no status'})`);
+    if (!mine.length && !inSpec.length && !decided.length) lines.push('  - no change paragraph and no spec paragraph serves it');
   }
   const rest = judged.filter((j) => !placed.has(j.id));
   if (rest.length) lines.push('- Other paragraphs with a baseline effect:', ...rest.map(shown));
