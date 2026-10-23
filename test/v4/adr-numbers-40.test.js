@@ -976,4 +976,17 @@ describe('#40: the exact value of a long digit run', () => {
     const r = hintsOnly(world(t, { [file]: adr('12345678901234567', 'bogus', 'Long') }));
     statusHint(r, file, 'ADR-12345678901234567');
   });
+
+  // The status line and the supersedes: link name long numbers exactly.
+  // 9007199254740995 is not a double: Number() makes it 9007199254740996.
+  test(`${N3}-x.md "superseded by ADR-9007199254740995", which supersedes:ADR-${N3}: no adr-supersede, no superseded-status, no adr-number; --strict exits 0`, (t) => {
+    const N4 = '9007199254740995';
+    const r = hintsOnly(world(t, {
+      [F2]: adr(N2, 'accepted', 'Two'),
+      [F3]: adr(N3, `superseded by ADR-${N4}`, 'Three'),
+      [`specs/adr/${N4}-y.md`]: adr(N4, 'accepted', 'Four', { links: `decides:INV-2 source:INV-2 supersedes:ADR-${N3}` }),
+    }));
+    assert.deepEqual(r.findings.filter((f) => ['adr-supersede', 'superseded-status'].includes(f.code)).map((f) => f.line), [], show(r));
+    assert.deepEqual(linesOf(r, 'adr-number'), [], show(r));
+  });
 });
