@@ -447,7 +447,7 @@ paragraphs:
     display: DES-78 (15:3, in 17. Building v4)
   - id: DES-113
     kind: choice
-    text_sha256: 35c92dd1b345b54e240444d75c43cbf50a61084438fe0806ab4753b0c83cb2ab
+    text_sha256: e895e08a95561bfc72f073c30f22d46031a7a9b8745d0fed549b803fd73ad4ba
     display: DES-113 (15:4, in 17. Building v4)
   - id: DES-86
     kind: data

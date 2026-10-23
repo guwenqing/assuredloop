@@ -1495,7 +1495,9 @@ compares a file with the same file at the base. When the number has one file
 at the base and one file now, it compares those two, also after a rename.
 Else a file that is gone gets the hint that its file is gone. A link whose
 holder is an ID of several files has as its holder the paragraph with the
-bound text, else the paragraph that declares the link. Where `al` looks an ADR up by its number (a link, a citation, a
+bound text. Else it is the paragraph that declares the link and names the
+request whose record holds the binding. When that leaves more than one,
+the hint says that it is unclear, and names each file. Where `al` looks an ADR up by its number (a link, a citation, a
 status line or a `supersedes:` that names it, the `Governed` line of
 `al context`), it uses the first of those files in name order. The hint
 `adr-number` names each file of the number and the file that `al` uses. When `specs/adr/` holds

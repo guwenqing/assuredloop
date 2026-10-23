@@ -324,17 +324,22 @@ export function checks(top, { base, phrases = [], issues = null }) {
       // must be one that al index --align can move the binding to.
       if (b.holder_sha256) {
         const hq = qualify(String(b.holder), null);
-        // An ID in several files of one ADR number: the paragraph with the
-        // bound text, else the one that declares the link (DES-113).
-        const word = LINK_WORDS[b.link];
+        // An ID in several files of one ADR number (DES-113): the paragraph
+        // with the bound text; else the one that declares the link and names
+        // this record's request, as al index binds it; else it is unclear.
         const twins = hq.req || now.spec.has(hq.id) ? [] : now.adrList.flatMap((a) => a.paragraphs.filter((p) => p.id === hq.id));
+        const declaring = twins.filter((p) => (p.links[LINK_WORDS[b.link]] ?? []).some((x) => qualify(x, null).key === String(b.target)));
+        const homed = declaring.filter((p) => Object.values(p.links).flat().some((x) => qualify(String(x), null).req === r.name));
+        const holders = homed.length ? homed : declaring.length ? declaring : twins;
         const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : twins.length > 1
-          ? twins.find((p) => p.sha256 === b.holder_sha256) ?? twins.find((p) => (p.links[word] ?? []).some((x) => qualify(x, null).key === String(b.target))) ?? twins[0]
+          ? twins.find((p) => p.sha256 === b.holder_sha256) ?? holders[0]
           : now.spec.get(hq.id) ?? adrParagraph(now, hq.id);
+        const unclear = twins.length > 1 && hp?.sha256 !== b.holder_sha256 && holders.length > 1
+          ? ` It is unclear which of ${holders.map((p) => p.file).join(', ')} holds it.` : '';
         declared ??= declaredNow(top, now);
         alignable ??= canAlignTo(now);
         if (hp && hp.sha256 !== b.holder_sha256 && declared(b) && alignable(b.target)) {
-          add('hint', 'holder-changed', hp, b.holder, `${b.link} ${b.target}: this paragraph changed after the link was bound. Check that it still ${b.link} ${b.target}, then al index --align ${b.holder}`);
+          add('hint', 'holder-changed', hp, b.holder, `${b.link} ${b.target}: this paragraph changed after the link was bound.${unclear} Check that it still ${b.link} ${b.target}, then al index --align ${b.holder}`);
         }
       }
       const t = qualify(String(b.target), null);
