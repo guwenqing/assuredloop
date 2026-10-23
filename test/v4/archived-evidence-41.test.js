@@ -215,3 +215,23 @@ test('the summary line: (3 open and 0 archived) before the archive, (2 open and 
   assert.equal(r.code, 0, show(r));
   counted(r, { open: 2, archived: 1, bound: 0 });
 });
+
+// --- 6. the same for an open request's record (DES-26)
+
+test('ADR-8 at the base is bound in the record of the open request inv; the branch adds source:other/D1 of the open request other: no "binding unknown" for the links inv\'s record holds', (t) => {
+  const dir = linked(t);
+  toMain(dir);
+  const inv = record(dir, NAME);
+  assert.equal(inv.status, 'open');
+  for (const b of HELD) assert.equal(bindingsOf(inv, ...b).length, 1, `the open record of inv holds ${b.join(' ')}:\n${stringify(inv.bindings)}`);
+  signedRequest(dir, 'other', [req('R1', 'Credit notes', 'A user MUST be able to issue a credit note.')]);
+  editFile(dir, ADR8, `source:${NAME}/D1`, `source:${NAME}/D1,other/D1`);
+  const r = al(dir, ['index']);
+  assert.equal(r.code, 0, show(r));
+  notReported(r, HELD);
+  const other = record(dir, 'other');
+  assert.equal(bindingsOf(other, 'ADR-8', 'source', 'other/D1').length, 1, `the new link ADR-8 source other/D1 is bound in other's record:\n${stringify(other.bindings)}`);
+  for (const b of HELD) assert.deepEqual(bindingsOf(other, ...b), [], `other's record gets no copy of ${b.join(' ')}:\n${stringify(other.bindings)}`);
+  const held = (rec) => (rec.bindings ?? []).filter((b) => HELD.some(([h, l, to]) => b.holder === h && b.link === l && b.target === to));
+  assert.deepEqual(held(record(dir, NAME)), held(inv), `inv's record keeps its held bindings as they were:\n${show(r)}`);
+});
