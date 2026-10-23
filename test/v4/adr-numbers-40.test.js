@@ -21,10 +21,10 @@
 // reads the code under test.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { check } from './helpers/invoicer.js';
-import { al, commitAll, doc, git, project, show, write, writeConfig } from './helpers/project.js';
+import { al, commitAll, doc, editFile, git, project, show, write, writeConfig } from './helpers/project.js';
 
 const SPEC = 'specs/invoices.md';
 const DIR = 'specs/adr';
@@ -400,5 +400,147 @@ describe('#40: the new findings are hints; no exit code changes', () => {
     const r = hintsOnly(dir);
     assert.equal(linesOf(r, 'adr-none').length, 1, `one adr-none line:\n${show(r)}`);
     assert.ok(linesOf(r, 'adr-none').every((l) => l.startsWith('hint ')), show(r));
+  });
+});
+
+// =====================================================================
+// The checks of one ADR file run on each file of a number (DES-113). Each
+// test checks that the finding is at the file that earns it, and not at the
+// other file of the same number.
+
+// main: config, the spec and the files `base`, committed; then the branch
+// feature.
+function baseWorld(t, base, { inv2 = 'An invoice MUST be sent to the customer.' } = {}) {
+  const dir = world(t, {}, { inv2 });
+  git(dir, 'checkout', '-q', 'main');
+  for (const [file, text] of Object.entries(base)) write(dir, file, text);
+  commitAll(dir, 'base ADRs');
+  git(dir, 'checkout', '-q', 'feature');
+  git(dir, 'merge', '-q', '--ff-only', 'main');
+  return dir;
+}
+
+const none = (r, code, file) => assert.deepEqual(at(r, code, file).map((f) => f.line), [], `no ${code} at ${file}:\n${show(r)}`);
+function hintAt(r, code, file) {
+  const found = at(r, code, file);
+  assert.ok(found.length >= 1, `hint ${code} at ${file}:\n${show(r)}`);
+  assert.ok(found.every((f) => f.severity === 'hint'), `${code} at ${file} is a hint:\n${show(r)}`);
+  return found;
+}
+function notOkAt(r, code, file) {
+  const found = at(r, code, file);
+  assert.ok(found.length >= 1, `not ok ${code} at ${file}:\n${show(r)}`);
+  assert.ok(found.every((f) => f.severity === 'not ok'), `${code} at ${file} is not ok:\n${show(r)}`);
+  return found;
+}
+
+describe('#40: the checks of one ADR file on each file of a number', () => {
+  const A40 = 'specs/adr/0040-a.md';
+  const B40 = 'specs/adr/0040-b.md';
+  const A1 = 'specs/adr/001-a.md';
+  const B1 = 'specs/adr/1-b.md';
+  const TWO40 = { [A40]: adr(40, 'accepted', 'Alpha'), [B40]: adr(40, 'accepted', 'Beta') };
+
+  // adr-changed: each file is compared with the same file at the base.
+  test('control: 0040-a.md and 0040-b.md accepted at the base, no change on the branch: no adr-changed', (t) => {
+    const r = hintsOnly(baseWorld(t, TWO40));
+    assert.deepEqual(r.findings.filter((f) => f.code === 'adr-changed').map((f) => f.line), [], show(r));
+  });
+
+  test('adr-changed on the second file: only the text of 0040-b.md changes: hint adr-changed at 0040-b.md, none at 0040-a.md', (t) => {
+    const dir = baseWorld(t, TWO40);
+    editFile(dir, B40, 'Context: Beta.', 'Context: Beta, and more.');
+    const r = hintsOnly(dir);
+    hintAt(r, 'adr-changed', B40);
+    none(r, 'adr-changed', A40);
+  });
+
+  test('adr-changed on the first file: only the text of 0040-a.md changes: hint adr-changed at 0040-a.md, none at 0040-b.md', (t) => {
+    const dir = baseWorld(t, TWO40);
+    editFile(dir, A40, 'Context: Alpha.', 'Context: Alpha, and more.');
+    const r = hintsOnly(dir);
+    hintAt(r, 'adr-changed', A40);
+    none(r, 'adr-changed', B40);
+  });
+
+  // 0040-a.md did not change, so no hint may point at it as if it had. The
+  // hint must name the deleted 0040-b.md, at its path or in its message.
+  test('adr-changed on a deleted second file: 0040-b.md deleted on the branch: a hint adr-changed that names 0040-b.md, none at 0040-a.md', (t) => {
+    const dir = baseWorld(t, TWO40);
+    rmSync(join(dir, B40));
+    const r = hintsOnly(dir);
+    const found = r.findings.filter((f) => f.code === 'adr-changed' && f.line.includes('0040-b.md'));
+    assert.ok(found.length >= 1, `a hint adr-changed that names 0040-b.md:\n${show(r)}`);
+    assert.ok(found.every((f) => f.severity === 'hint'), show(r));
+    none(r, 'adr-changed', A40);
+  });
+
+  // adr-links: a proposed or accepted ADR with no source or no decides link.
+  test('adr-links on the second file: 1-b.md accepted with no source: hint adr-links at 1-b.md, none at 001-a.md', (t) => {
+    const r = hintsOnly(world(t, {
+      [A1]: adr(1, 'accepted', 'Alpha'),
+      [B1]: adr(1, 'accepted', 'Beta', { links: 'decides:INV-2' }),
+    }));
+    hintAt(r, 'adr-links', B1);
+    none(r, 'adr-links', A1);
+  });
+
+  // adr-supersede: ADR-m's marker has supersedes:ADR-n, and ADR-n's status
+  // line does not name ADR-m.
+  test('adr-supersede on the second file: 1-b.md supersedes:ADR-5 and 005-x.md is accepted: hint adr-supersede at 1-b.md, none at 001-a.md', (t) => {
+    const r = hintsOnly(world(t, {
+      'specs/adr/005-x.md': adr(5, 'accepted', 'Five'),
+      [A1]: adr(1, 'accepted', 'Alpha'),
+      [B1]: adr(1, 'accepted', 'Beta', { links: 'decides:INV-2 source:INV-2 supersedes:ADR-5' }),
+    }));
+    hintAt(r, 'adr-supersede', B1);
+    none(r, 'adr-supersede', A1);
+  });
+
+  test('control: the same world with 005-x.md "superseded by ADR-1": no adr-supersede at 1-b.md', (t) => {
+    const r = check(world(t, {
+      'specs/adr/005-x.md': adr(5, 'superseded by ADR-1', 'Five'),
+      [A1]: adr(1, 'accepted', 'Alpha'),
+      [B1]: adr(1, 'accepted', 'Beta', { links: 'decides:INV-2 source:INV-2 supersedes:ADR-5' }),
+    }));
+    none(r, 'adr-supersede', B1);
+  });
+
+  // superseded-status: an existing not ok rule, run on the second file.
+  test('superseded-status on the second file: 1-b.md says "Status: superseded" with no "by": not ok superseded-status at 1-b.md, none at 001-a.md', (t) => {
+    const dir = world(t, {
+      [A1]: adr(1, 'accepted', 'Alpha'),
+      [B1]: adr(1, 'superseded', 'Beta'),
+    });
+    const r = check(dir);
+    assert.equal(r.code, 0, `plain al check exits 0:\n${show(r)}`);
+    notOkAt(r, 'superseded-status', B1);
+    none(r, 'superseded-status', A1);
+    const strict = check(dir, '--strict');
+    assert.equal(strict.code, 1, `--strict exits 1 on the not ok:\n${show(strict)}`);
+  });
+
+  // superseded-cited in the second file's own text.
+  test('superseded-cited, exempt: 1-b.md (accepted, supersedes:ADR-5) cites ADR-5, superseded by ADR-1: no superseded-cited at 1-b.md', (t) => {
+    const r = check(world(t, {
+      'specs/adr/005-x.md': adr(5, 'superseded by ADR-1', 'Five'),
+      [A1]: adr(1, 'accepted', 'Alpha'),
+      [B1]: adr(1, 'accepted', 'Beta', { links: 'decides:INV-2 source:INV-2 supersedes:ADR-5', text: 'Context: this replaces ADR-5.' }),
+    }));
+    // This world must read 1-b.md, else the test proves nothing.
+    assert.equal(linesOf(r, 'adr-number').length, 1, `one adr-number line:\n${show(r)}`);
+    none(r, 'superseded-cited', B1);
+  });
+
+  test('superseded-cited in the second file: 1-b.md (accepted) cites ADR-7, superseded by ADR-8: not ok superseded-cited at 1-b.md, none at 001-a.md', (t) => {
+    const r = check(world(t, {
+      'specs/adr/007-p.md': adr(7, 'superseded by ADR-8', 'Paper'),
+      'specs/adr/008-q.md': adr(8, 'accepted', 'Fax', { links: 'decides:INV-2 source:INV-2 supersedes:ADR-7' }),
+      [A1]: adr(1, 'accepted', 'Alpha'),
+      [B1]: adr(1, 'accepted', 'Beta', { text: 'Context: as ADR-7 said.' }),
+    }));
+    assert.equal(r.code, 0, `plain al check exits 0:\n${show(r)}`);
+    notOkAt(r, 'superseded-cited', B1);
+    none(r, 'superseded-cited', A1);
   });
 });
