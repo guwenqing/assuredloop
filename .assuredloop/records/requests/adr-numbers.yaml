@@ -1,0 +1,34 @@
+schema: assuredloop/1
+request: adr-numbers
+tier: "1"
+status: concluded
+sources:
+  - file: 2026-10-23-owner-words.md
+    kind: owner-words
+    sha256: 645f976ece73dc14e64a4cf4edd4215038a9bef9c6829cd1bde09ac8e34a2008
+    taken: 2026-10-23T22:00Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6
+    title: ADR file numbers
+signoff:
+  - id: S1
+    file: 2026-10-23-signoff.md
+    sha256: 26f8f186cb2efb23dcbc57364e7ff2fe74b440e5efd3cef502610406ca93392b
+    signed: 2026-10-23T22:01Z
+    source: owner chat with the architect, 2026-10-23 about 19:53Z
+    words: Okay, I agree
+    presented: 2026-10-23 at about 19:48Z, as item A of four, with a plain account; all four asked again at about 19:52Z
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6 }
+decisions: []
+tasks: []
+bindings:
+  - { holder: DES-78, link: serves, target: adr-numbers/R1, holder_sha256: 2da7ad4e53634e6c34efce33426d2763406205548b451d4009ea293e8cb40dca, target_sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6, target_version: 1 }
+  - { holder: DES-113, link: serves, target: adr-numbers/R1, holder_sha256: e895e08a95561bfc72f073c30f22d46031a7a9b8745d0fed549b803fd73ad4ba, target_sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6, target_version: 1 }
+  - { holder: DES-113, link: builds-on, target: DES-78, holder_sha256: e895e08a95561bfc72f073c30f22d46031a7a9b8745d0fed549b803fd73ad4ba, target_sha256: 2da7ad4e53634e6c34efce33426d2763406205548b451d4009ea293e8cb40dca }
+  - { holder: SCH-7, link: serves, target: adr-numbers/R1, holder_sha256: 0e1dc07b616a4294d27699fb85941592642900a255895443ece1248859b89492, target_sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6, target_version: 1 }
+  - { holder: adr-numbers/R1, link: from, target: adr-numbers/2026-10-23-owner-words.md, holder_sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6, target_sha256: 645f976ece73dc14e64a4cf4edd4215038a9bef9c6829cd1bde09ac8e34a2008 }
+dispositions: []

@@ -14,7 +14,7 @@ import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { read, recordPath, sha256 } from './base.js';
 import { SIGNED } from './snapshot.js';
-import { SPEC, linkedDocs, rootNotOk } from './scope.js';
+import { SPEC, adrId, linkedDocs, rootNotOk } from './scope.js';
 
 const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const text = (x) => typeof x === 'string' && x.length > 0;
@@ -175,7 +175,7 @@ export const citedMessage = (c) => (c.next.length
 
 // The ADR that a link value or word names: `ADR-n` and `ADR-n-k` name ADR-n.
 const ADR_REF = /^ADR-(\d+)(?:-\d+)?$/;
-export const adrOf = (ref) => (ADR_REF.test(ref) ? `ADR-${Number(ADR_REF.exec(ref)[1])}` : null);
+export const adrOf = (ref) => (ADR_REF.test(ref) ? adrId(ADR_REF.exec(ref)[1]) : null);
 const MARKER = /^\s*<!--(.*)-->\s*$/;
 
 // The words that name ADRs in a text (adr-lists R1): `ADR-n`, or the number
@@ -193,7 +193,7 @@ function adrsNamed(text, known) {
     let range = false;
     for (const t of m[0].matchAll(/ADR-(\d+)(?:-\d+)?|\d+|\bto\b/g)) {
       if (t[0] === 'to') { range = true; continue; }
-      const n = Number(t[1] ?? t[0]);
+      const n = BigInt(t[1] ?? t[0]);
       if (range && last < n) for (const k of known) if (k > last && k < n) out.add(`ADR-${k}`);
       out.add(`ADR-${n}`);
       last = n;
@@ -255,7 +255,7 @@ export function supersededIn(state) {
     return seen;
   };
   const superseded = (id) => state.adrs.get(id)?.status === 'superseded';
-  const known = [...state.adrs.keys()].map((id) => Number(id.slice('ADR-'.length)));
+  const known = [...state.adrs.keys()].map((id) => BigInt(id.slice('ADR-'.length)));
   return (textOf, { skip = null, exempt = new Set() } = {}) => places(textOf, skip, known).flatMap((p) => [...p.names]
     .filter((x) => superseded(x) && !exempt.has(x) && ![...above(x)].some((y) => p.names.has(y)))
     .map((x) => ({ line: p.line, id: p.id, link: p.link, adr: x, next: up(x) })));
@@ -293,7 +293,7 @@ export function supersededBlocks(top, state, add) {
     return seen;
   };
 
-  for (const a of state.adrs.values()) {
+  for (const a of state.adrList) {
     if (a.status !== 'superseded') continue;
     const where = `${a.file}:1`;
     if (!a.by.length) add('not ok', 'superseded-status', where, a.id, `${a.id} is superseded, but its status line does not say by which ADR: write "Status: superseded by ADR-<n>"`);
@@ -353,7 +353,7 @@ export function supersededBlocks(top, state, add) {
   // An ADR file that cannot be read: neither its status nor its citations are known.
   for (const file of state.unreadableAdrs ?? []) unreadable(file, 'it is there, but it cannot be read as a file');
   // Each proposed or accepted ADR, but its History section and the ADRs it supersedes.
-  for (const a of state.adrs.values()) {
+  for (const a of state.adrList) {
     if (!['proposed', 'accepted'].includes(a.status)) continue;
     check(a.file, a.text, { skip: /^#{1,2}\s+History\s*$/, exempt: chain(a.id) });
   }

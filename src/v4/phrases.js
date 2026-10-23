@@ -57,7 +57,7 @@ export function phraseFindings(top, state, matchers, add) {
   if (!matchers.length) return;
   const files = [
     ...(state.docs ?? []).filter((d) => d.scope === SPEC && typeof d.text === 'string').map((d) => [d.path, d.text]),
-    ...[...state.adrs.values()].map((a) => [a.file, a.text]),
+    ...state.adrList.map((a) => [a.file, a.text]),
   ];
   for (const r of state.requests.values()) {
     if (!r.open) continue;

@@ -200,8 +200,13 @@ default. A bad entry or an invalid pattern stops `al check` with exit 2.
 `.assuredloop/schema.yaml` holds the kinds and the link words, with a version.
 `al spec --add-ids` writes both files when they are absent.
 
-ADRs are `specs/adr/NNNN-<slug>.md`, with `Status: proposed`, `accepted` or
-`superseded by ADR-<n>` on the first line. A status line may name several
+ADRs are `specs/adr/<n>-<slug>.md`, with `Status: proposed`, `accepted` or
+`superseded by ADR-<n>` on the first line. The name starts with one or more
+digits and a dash, and the digits are the ADR's number: `001-x.md` is ADR-1.
+Two files with the same number give the hint `adr-number`; `al` reads each
+of them, and uses the first in name order where the number is named. When
+`specs/adr/` holds Markdown files and none of them is an ADR, `al check`
+gives the hint `adr-none`. A status line may name several
 ADRs that supersede it: `superseded by ADR-11, ADR-12` or
 `ADR-11 and ADR-12`. The heading's marker holds `ADR-<n>` and its
 `decides:`, `source:` and `supersedes:` links.
