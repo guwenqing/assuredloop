@@ -1491,11 +1491,12 @@ Two ADR files with the same number (adr-numbers/R1): `al` reads each
 file, and runs the checks of one ADR file on each of them: `adr-status`,
 `adr-marker`, `adr-links`, `adr-supersede`, `adr-changed`,
 `superseded-status`, and `superseded-cited` in its own text. `adr-changed`
-compares a file with the same file at the base, and else with the ADR of the
-same number. Where `al` looks an ADR up by its number (a link, a citation, a
-status line or a `supersedes:` that names it, `al context ADR-<n>`), it uses
-the first of those files in name order. The hint `adr-number` names each
-file of the number and the file that `al` uses. When `specs/adr/` holds
+compares a file with the same file at the base. When the number has one file
+at the base and one file now, it compares those two, also after a rename.
+Else a file that is gone gets the hint that its file is gone. Where `al` looks an ADR up by its number (a link, a citation, a
+status line or a `supersedes:` that names it, the `Governed` line of
+`al context`), it uses the first of those files in name order. The hint
+`adr-number` names each file of the number and the file that `al` uses. When `specs/adr/` holds
 Markdown files and `al` reads none of them as an ADR, `al check` gives the
 hint `adr-none` once.
 

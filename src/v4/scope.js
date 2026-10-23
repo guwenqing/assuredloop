@@ -10,6 +10,9 @@ import { parseMarkdown } from './markers.js';
 
 export const SPEC = 'spec';
 const REQUEST = /^requests\/(?:archive\/)?([^/]+)\/spec\.md$/;
+// The name of an ADR file in <root>/adr/: one or more digits and a dash; the
+// digits are its number (adr-numbers/R1).
+export const ADR_FILE = /^(\d+)-[^/]*\.md$/;
 
 const clean = (p) => posix.normalize(String(p)).replace(/^\.\//, '').replace(/\/+$/, '');
 const outside = (p) => posix.isAbsolute(String(p)) || /^\.\.(\/|$)/.test(clean(p));
