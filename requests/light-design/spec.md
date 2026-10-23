@@ -109,8 +109,8 @@ evidence that the AI quotes (section 4a). `al` calls no model.
 | K1 kinds | 18 kinds in each marker | six groups, each read exactly as today's checks read it: `promise` (purpose, scope, rule, limit, definition), `design` (component, interface, data, flow, choice), `approach`, `explain` (rationale, example, open), `plan` (plan, step, migration), `note`. Old kinds are read as their group; no file changes | none: a paragraph still has a kind (v4/R2); the list is shorter |
 | K4 dispositions | written by hand for each change paragraph with a lasting effect | `al` derives a disposition where it can prove it: the text is in `specs/` word for word (incorporated), or a `removes:` names it and it is gone (removed), or a later signed change replaced its target. Only what `al` cannot prove is asked for, in one line. The guard cases of today (a lost edit, a wrong consolidation, a revert, two parallel changes) stay tests | v4/R5 |
 | K5 test outcomes | result files, which the surveyed adopters never wrote | `al` also reads the project's CI test reports, with the commit of the run. A report from another commit is shown as "last reported at <commit>", never as a result for the selected commit. Result files stay for checks that are not code tests | v4/R8 |
-| K7 context and search | `al context`, `al export`, search levels 1 and 2 over marked paragraphs only | the questions of section 4, the code side of section 4a, and the knowledge base setting of section 5. `al context` and `al export` stay as names for one release, then go with the migration skill | v4/R9, v4/R10, level2-peer/R1, context-all/R1 |
-| K8 hints that cannot be cleared | a hint comes back on every run until the text changes | the recorded judgement of LD-12, for hints only; the time rule of LD-11; an ID-only edit or a move does not flag | none: it adds a way to clear a hint; every `not ok` rule stays as signed |
+| K7 context and search | `al context`, `al export`, search levels 1 and 2 over marked paragraphs only | the questions of section 4, the code side of section 4a, and the knowledge base setting of section 5. `al context` and `al export` stay as names for one release, then go with the migration skill | v4/R10, level2-peer/R1, context-all/R1, design-links/R1; v4/R9 holds as written: it names no command |
+| K8 hints that cannot be cleared | a hint comes back on every run until the text changes | the recorded judgement of LD-12, for hints only; the time rule of LD-11; an ID-only edit or a move of a paragraph does not flag; an edit of an accepted or replaced ADR's marker line keeps the hint of adr-edits/R1 | hints-and-blocks/R1, which names `al index --align`; every `not ok` rule stays as signed |
 
 <!-- LD-16 plan -->
 
@@ -401,11 +401,11 @@ tests give their results and the owner signs these new versions.
 |---|---|
 | v4/R5 | At close, `al` derives a disposition where it can prove it; a person writes one line only where `al` cannot. |
 | v4/R8 | Test outcomes also come from the project's CI reports, with the commit of the run. |
-| v4/R9 | `al status <request>` shows where a request stands and what to do next. |
 | v4/R10 | Search is the user's own knowledge base, `al`'s local one over today's searchable text and a rough line for each file (full text, or with a model), or none. Setup asks for the user's own one first. |
 | hints-and-blocks/R1 | A changed ADR text is a hint until the change is judged in one recorded line, in place of `--align`. |
 | level2-peer/R1 | `al ask` answers with full text without the model library, and says how to add one. |
 | context-all/R1 | The questions never leave a line out; `--full` shows everything. |
+| design-links/R1 | Asked about an ID, `al` lists the paragraphs that build on, explain or illustrate it, with no `al context`. |
 
 <!-- LD-36 note -->
 
