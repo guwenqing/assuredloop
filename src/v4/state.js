@@ -10,9 +10,7 @@ import { fileAt, filesAt, git } from './git.js';
 import { KINDS, groupOf, lf, parseMarkdown } from './markers.js';
 import { frameOf, requirements, signedText } from './request-md.js';
 import { SIGNED } from './snapshot.js';
-import { SPEC, docsInScope, parseScopes, symlinkOn } from './scope.js';
-
-const ADR_FILE = /^(\d{4})-[^/]*\.md$/;
+import { ADR_FILE, SPEC, docsInScope, parseScopes, symlinkOn } from './scope.js';
 
 // The names in folder `dir` of the state: its folders, or its files.
 function names(top, rev, dir, folders) {
@@ -150,7 +148,10 @@ export function loadState(top, rev = null) {
   for (const n of openNames) add(n, true);
   for (const n of archivedNames) if (!requests.has(n)) add(n, false);
 
+  // Every ADR file, in name order (adrList), and by number the first file of
+  // that number, which a lookup by number uses (DES-113).
   const adrs = new Map();
+  const adrList = [];
   // The ADR files that are there but cannot be read (#238): R5 reports them.
   const unreadableAdrs = [];
   for (const f of adrFiles) {
@@ -177,9 +178,13 @@ export function loadState(top, rev = null) {
     const marker = head && lf(text).split('\n')[head.line - 1];
     // The words after `Status:`, for a hint that names a changed status (#31).
     const line = /^\s*Status:[ \t]*([^\r\n]*)/i.exec(text)?.[1].trim() ?? null;
-    adrs.set(id, { id, file, text, status, by, known, line, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head, marker });
+    const adr = { id, file, text, status, by, known, line, body: adrBody(text), rest: head && adrRest(text, head), paragraphs, head, marker };
+    adrList.push(adr);
+    if (!adrs.has(id)) adrs.set(id, adr);
   }
-  return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, unreadableAdrs };
+  // Markdown files in the ADR folder, none of them named as an ADR (adr-none).
+  const noAdrs = adrFiles.some((f) => f.endsWith('.md')) && !adrFiles.some((f) => ADR_FILE.test(f));
+  return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, adrList, noAdrs, unreadableAdrs };
 }
 
 // The kind groups a check asks about.

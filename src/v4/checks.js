@@ -393,9 +393,14 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // change of the ADR; an unknown one has its own hint, adr-status.
   const statusBack = (a, h) => h.known
     && !(h.status === 'superseded' ? a.by.every((b) => h.by.includes(b)) : h.status === a.status);
-  for (const [id, a] of was?.adrs ?? []) {
+  // Each file is compared with the same file; else, when its number has one
+  // file at the base and one now, with that file, as after a rename (DES-113).
+  const filesOf = (state, id) => state.adrList.filter((x) => x.id === id).length;
+  for (const a of was?.adrList ?? []) {
+    const { id } = a;
     if (!['accepted', 'superseded'].includes(a.status)) continue;
-    const h = now.adrs.get(id);
+    const h = now.adrList.find((x) => x.file === a.file)
+      ?? (filesOf(was, id) === 1 && filesOf(now, id) === 1 ? now.adrs.get(id) : undefined);
     if (!h) {
       add('hint', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone: check that its decision is not lost; an ADR that no longer holds is superseded by a new ADR, not deleted`);
       continue;
@@ -405,9 +410,9 @@ export function checks(top, { base, phrases = [], issues = null }) {
     if (back) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s status changed from "${a.line}" to "${h.line}"${changed ? ', and its text changed' : ''}, but a status goes only forward: proposed, accepted, superseded by ADR-n; check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
     else if (changed) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s text changed: check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
   }
-  // Every ADR, whatever its status (#4): a first line that is not a known
+  // Every ADR file, whatever its status (#4): a first line that is not a known
   // status, and a marker line that holds more than its ID, a kind and links.
-  for (const a of now.adrs.values()) {
+  for (const a of now.adrList) {
     if (!a.known) add('hint', 'adr-status', `${a.file}:1`, a.id, `${a.id}'s first line is not a status that al knows: write "Status: proposed", "Status: accepted" or "Status: superseded by ADR-<n>" (or by a list, "ADR-11, ADR-12")`);
     for (const m of markerLines(a.text, now.kinds)) {
       const where = `${a.file}:${m.line}`;
@@ -415,12 +420,12 @@ export function checks(top, { base, phrases = [], issues = null }) {
       else if (m.extras.length) add('hint', 'adr-marker', where, m.id, `the marker of ${m.id} holds more than its ID, a kind and links: ${m.extras.map((x) => `"${x}"`).join(', ')}; a page can show text that it hides`);
     }
   }
-  for (const a of now.adrs.values()) {
+  for (const a of now.adrList) {
     if (!['proposed', 'accepted'].includes(a.status)) continue;
     const missing = ['source', 'decides'].filter((w) => !a.head?.links[w].length);
     if (missing.length) add('hint', 'adr-links', a.head ?? a.file, a.id, `${a.id} has ${missing.map((w) => `no ${w}:`).join(' and ')}; add the links to its marker`);
   }
-  for (const a of now.adrs.values()) {
+  for (const a of now.adrList) {
     // ADR-n-k, a paragraph of ADR-n, names ADR-n (schema.md 5), once each.
     for (const old of new Set((a.head?.links.supersedes ?? []).map(adrOf).filter(Boolean))) {
       const o = now.adrs.get(old);
@@ -430,6 +435,12 @@ export function checks(top, { base, phrases = [], issues = null }) {
       else if (o && !o.by.includes(a.id)) add('hint', 'adr-supersede', a.head, a.id, `${a.id} supersedes ${old}, but the status line of ${old} leaves out ${a.id}: write "Status: superseded by ${[...o.by, a.id].join(', ')}"`);
     }
   }
+  // Two files with one number, and an ADR folder with no ADR in it (adr-numbers/R1).
+  for (const [id, a] of now.adrs) {
+    const files = now.adrList.filter((x) => x.id === id).map((x) => x.file);
+    if (files.length > 1) add('hint', 'adr-number', a.head ?? a.file, id, `${id} is the number of ${files.length} files: ${files.join(', ')}; al reads each one, and uses ${a.file}, the first in name order, where ${id} is named; give each ADR its own number`);
+  }
+  if (now.noAdrs) add('hint', 'adr-none', `${now.root}/adr`, '-', `${now.root}/adr holds Markdown files, but al reads none of them as an ADR, so no ADR check runs: an ADR file's name starts with its number and a dash, for example 001-<slug>.md`);
   for (const c of changes.filter((x) => !x.request)) {
     const p = c.head ?? c.base;
     const govern = [...now.adrs.values()].filter((a) => a.status === 'accepted'

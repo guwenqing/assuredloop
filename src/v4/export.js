@@ -10,7 +10,7 @@ import { parseMarkdown } from './markers.js';
 import { requirements } from './request-md.js';
 import { git, readObjects } from './git.js';
 import { findCites, namedIds, outputRepos, repoConfigAt } from './repos.js';
-import { SPEC, scopeOf } from './scope.js';
+import { ADR_FILE, SPEC, scopeOf } from './scope.js';
 import { Fail, exists, guard, write } from './base.js';
 
 const OUTPUT_LINKS = ['implements', 'verifies', 'documents'];
@@ -79,7 +79,7 @@ function kindOfPath(path, config, extra) {
     return { type, doc: request, request, archived: Boolean(archived), file: origin };
   }
   const adr = `${config.root}/adr/`;
-  if (path.startsWith(adr) && /^\d{4}-[^/]*\.md$/.test(path.slice(adr.length))) return { type: 'adr', doc: path };
+  if (path.startsWith(adr) && ADR_FILE.test(path.slice(adr.length))) return { type: 'adr', doc: path };
   if (scopeOf(path, config) === SPEC) return { type: 'spec', doc: path };
   const rec = /^\.assuredloop\/records\/requests\/([^/]+)\.yaml$/.exec(path);
   if (rec) return { type: 'record', doc: rec[1], request: rec[1] };

@@ -8,7 +8,7 @@ import { isMap, parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
 import { git, mergeBase, fileAt, filesAt } from './git.js';
 import { loadConfig } from './config.js';
-import { SPEC, docsInScope, symlinkOn } from './scope.js';
+import { ADR_FILE, SPEC, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
 import { outputRepos } from './repos.js';
@@ -51,7 +51,7 @@ export function loadState(top, at, config, names) {
   const adrs = (at
     ? (git(top, ['ls-tree', '--name-only', at, `${adr}/`], { allowFail: true }) ?? '').split('\n')
     : symlinkOn(top, adr) ? [] : list(top, adr).filter((e) => e.isFile()).map((e) => `${adr}/${e.name}`))
-    .filter((f) => f.startsWith(`${adr}/`) && /^\d{4}-[^/]*\.md$/.test(f.slice(adr.length + 1))).sort();
+    .filter((f) => f.startsWith(`${adr}/`) && ADR_FILE.test(f.slice(adr.length + 1))).sort();
   // At a commit, every file below is read in one batch.
   const atCommit = at ? filesAt(top, at, [...adrs,
     ...names.open.flatMap((n) => [`requests/${n}/request.md`, recordPath(n)]),
@@ -87,7 +87,10 @@ export function loadState(top, at, config, names) {
     }
     requests.set(n, { name: n, open, md, reqs: requirements(md), data: data && typeof data === 'object' ? data : null, paras: new Map((paras ?? []).map((p) => [p.id, p])) });
   }
-  return { docs, requests, spec: new Map(docs.filter((d) => !d.request).flatMap((d) => d.paragraphs.map((p) => [p.id, p]))) };
+  // An ADR's ID names the first of its files in name order (DES-113).
+  const spec = new Map();
+  for (const d of docs.filter((x) => !x.request)) for (const p of d.paragraphs) if (!(d.adr && spec.has(p.id))) spec.set(p.id, p);
+  return { docs, requests, spec };
 }
 
 // A link target as written, made exact: `name:ID` is another repo's;
@@ -195,7 +198,7 @@ export function declaredNow(top, state) {
   const docs = [
     { request: null, ids: new Set(), paragraphs: [...state.spec.values()].filter((p) => p.id) },
     ...[...state.requests.values()].filter((r) => r.open).map((r) => ({ request: r.name, ids: new Set(r.paras.keys()), paragraphs: [...r.paras.values()].filter((p) => p.id) })),
-    ...[...state.adrs.values()].map((a) => ({ request: null, ids: new Set(), paragraphs: a.paragraphs.filter((p) => p.id) })),
+    ...state.adrList.map((a) => ({ request: null, ids: new Set(), paragraphs: a.paragraphs.filter((p) => p.id) })),
   ];
   const keys = new Set(linksOf(top, { docs, requests: state.requests }, state.config, false).map(tripleKey));
   return (b) => keys.has(tripleKey(b));

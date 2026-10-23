@@ -285,15 +285,17 @@ export function requestMarkdown(top, dir, sub = '') {
 export function supersededBlocks(top, state, add) {
   const down = supersedes(state);
   const cited = supersededIn(state);
-  // The ADRs that `id` supersedes, directly or through a chain.
-  const chain = (id) => {
+  // The ADRs that ADR file `a` supersedes, directly or through a chain: its
+  // own marker's, then those of the ADR of each number (DES-113).
+  const chain = (a) => {
     const seen = new Set();
     const walk = (x) => { for (const y of down.get(x) ?? []) if (!seen.has(y)) { seen.add(y); walk(y); } };
-    walk(id);
+    for (const y of (a.head?.links.supersedes ?? []).map(adrOf).filter(Boolean)) if (!seen.has(y)) { seen.add(y); walk(y); }
+    walk(a.id);
     return seen;
   };
 
-  for (const a of state.adrs.values()) {
+  for (const a of state.adrList) {
     if (a.status !== 'superseded') continue;
     const where = `${a.file}:1`;
     if (!a.by.length) add('not ok', 'superseded-status', where, a.id, `${a.id} is superseded, but its status line does not say by which ADR: write "Status: superseded by ADR-<n>"`);
@@ -353,8 +355,8 @@ export function supersededBlocks(top, state, add) {
   // An ADR file that cannot be read: neither its status nor its citations are known.
   for (const file of state.unreadableAdrs ?? []) unreadable(file, 'it is there, but it cannot be read as a file');
   // Each proposed or accepted ADR, but its History section and the ADRs it supersedes.
-  for (const a of state.adrs.values()) {
+  for (const a of state.adrList) {
     if (!['proposed', 'accepted'].includes(a.status)) continue;
-    check(a.file, a.text, { skip: /^#{1,2}\s+History\s*$/, exempt: chain(a.id) });
+    check(a.file, a.text, { skip: /^#{1,2}\s+History\s*$/, exempt: chain(a) });
   }
 }
