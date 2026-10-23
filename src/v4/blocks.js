@@ -285,13 +285,11 @@ export function requestMarkdown(top, dir, sub = '') {
 export function supersededBlocks(top, state, add) {
   const down = supersedes(state);
   const cited = supersededIn(state);
-  // The ADRs that ADR file `a` supersedes, directly or through a chain: its
-  // own marker's, then those of the ADR of each number (DES-113).
-  const chain = (a) => {
+  // The ADRs that `id` supersedes, directly or through a chain.
+  const chain = (id) => {
     const seen = new Set();
     const walk = (x) => { for (const y of down.get(x) ?? []) if (!seen.has(y)) { seen.add(y); walk(y); } };
-    for (const y of (a.head?.links.supersedes ?? []).map(adrOf).filter(Boolean)) if (!seen.has(y)) { seen.add(y); walk(y); }
-    walk(a.id);
+    walk(id);
     return seen;
   };
 
@@ -357,6 +355,6 @@ export function supersededBlocks(top, state, add) {
   // Each proposed or accepted ADR, but its History section and the ADRs it supersedes.
   for (const a of state.adrList) {
     if (!['proposed', 'accepted'].includes(a.status)) continue;
-    check(a.file, a.text, { skip: /^#{1,2}\s+History\s*$/, exempt: chain(a) });
+    check(a.file, a.text, { skip: /^#{1,2}\s+History\s*$/, exempt: chain(a.id) });
   }
 }
