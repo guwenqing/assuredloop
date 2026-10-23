@@ -342,15 +342,15 @@ export function index({ top, opts }) {
     const homes = [...new Set([...l.homes.filter((h) => recs.has(h)), ...(held.get(tripleKey(l)) ?? [])])];
     if (!homes.length) { once(`not bound: ${name}: no request record holds it`); continue; }
     const aligning = align !== undefined && l.holder === align;
-    const heldArchived = homes.some((h) => !recs.has(h));
+    const isHeld = held.has(tripleKey(l));
     for (const h of homes) {
       if (!recs.has(h)) continue;
       const rec = recs.get(h);
       const items = seq(rec, 'bindings').items;
       const at = items.findIndex((it) => it?.get?.('holder') === l.holder && it.get('link') === l.link && it.get('target') === l.target);
       if (at >= 0 && !aligning) continue;
-      // Held in an archived record, the binding is not gone (DES-26).
-      if (at < 0 && !aligning && atBase.has(tripleKey(l))) { if (!heldArchived) once(`binding unknown: ${name}`); continue; }
+      // Held in another record, open or archived, the binding is not gone (DES-26).
+      if (at < 0 && !aligning && atBase.has(tripleKey(l))) { if (!isHeld) once(`binding unknown: ${name}`); continue; }
       if (l.unknown) { once(`unknown: ${name}: ${l.unknown}`); continue; }
       const target = targetOf(l.t, now);
       if (!target) { once(`not bound: ${name}: target not found`); continue; }
