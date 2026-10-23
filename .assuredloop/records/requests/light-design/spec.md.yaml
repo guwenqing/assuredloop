@@ -59,7 +59,7 @@ paragraphs:
     display: LD-14 (3, 3. The cuts (plans; each waits for its test and, where it changes a signed requirement, for the owner's signature))
   - id: LD-15
     kind: plan
-    text_sha256: 2e9eefcb9faca85887f35b6c8fe9d7a46c1459552aead99df2586d066a967634
+    text_sha256: 9159eb79fd26cce2e600cfc614c8d65bb10a40ff09e557aeab9fa52efacb1c80
     display: LD-15 (3:1, in 3. The cuts (plans; each waits for its test and, where it changes a signed requirement, for the owner's signature))
   - id: LD-16
     kind: plan
@@ -163,7 +163,7 @@ paragraphs:
     display: LD-34 (7, 6. Signed requirements to sign again (plan))
   - id: LD-35
     kind: plan
-    text_sha256: 7d639018ccd29ac9f657df2c5afd083c8567bce396f052f971a6754a4d721ccf
+    text_sha256: 914570a86517e31156fcfcf429221aaf667ef1bf605c3c37e9db2824a5c66ce4
     display: LD-35 (7:1, in 6. Signed requirements to sign again (plan))
   - id: LD-36
     kind: note
