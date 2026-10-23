@@ -50,7 +50,7 @@ owner said to what was shipped:
 
 ## 2. The kinds of item
 
-<!-- SCH-7 data serves:assuredloop-v4/R3,assuredloop-v4/R8 -->
+<!-- SCH-7 data serves:assuredloop-v4/R3,assuredloop-v4/R8,adr-numbers/R1 -->
 
 | Item | Where its text lives | Written by | ID | Needs the owner's sign-off |
 |---|---|---|---|---|
@@ -58,7 +58,7 @@ owner said to what was shipped:
 | Requirement | `requests/<name>/request.md` | the agent organizes; the owner signs | R1, R2… | yes, as a set, when it touches a promise |
 | Sign-off | `origin/` | the owner | S1, S2… | it is the sign-off |
 | Decision | `request.md`, Decisions | the agent records; the source decides | D1, D2… | when its source is the owner |
-| ADR | `specs/adr/NNNN-*.md`, written by the PR that makes the decision | the agent; it records its source | ADR-3 | no; who accepts an ADR is the project's way of working |
+| ADR | `specs/adr/<n>-*.md`, a name that starts with one or more digits and a dash (`001-x.md` is ADR-1), written by the PR that makes the decision | the agent; it records its source | ADR-3 | no; who accepts an ADR is the project's way of working |
 | Change spec paragraph | `requests/<name>/spec.md`: the change's promises, design and plan | the agent, in the PR | SP-12 | a signed requirement that covers it, for a promise kind |
 | Spec paragraph | `specs/*.md`: the promises and the lasting design, by kind | the agent, in the PR (consolidation by hand) | INV-41 | a signed requirement that covers it, for a promise kind |
 | Task | a line in `tasks.md`, an issue, a tracker key, or a title | whoever divides the work | T1, T2… | no |

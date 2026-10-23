@@ -443,9 +443,13 @@ paragraphs:
     display: DES-85 (15:2, in 17. Building v4)
   - id: DES-78
     kind: rule
-    text_sha256: 579d3c6500aeeaffe6111b95aa199fef3d5db8b0d284249b3d25443990d30faa
+    text_sha256: 2da7ad4e53634e6c34efce33426d2763406205548b451d4009ea293e8cb40dca
     display: DES-78 (15:3, in 17. Building v4)
+  - id: DES-113
+    kind: choice
+    text_sha256: 3edce9768cb8110c65dbcaeed571f71a1b632b03565a430f1c23e49bc21437cf
+    display: DES-113 (15:4, in 17. Building v4)
   - id: DES-86
     kind: data
     text_sha256: 5d5ed6675ba29172b9dda9fb0e058482e7b41da37a98203ea224d69ff8248adc
-    display: DES-86 (15:4, in 17. Building v4)
+    display: DES-86 (15:5, in 17. Building v4)
