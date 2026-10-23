@@ -1,0 +1,24 @@
+schema: assuredloop/1
+request: adr-numbers
+tier: "1"
+status: open
+sources:
+  - file: 2026-10-23-owner-words.md
+    kind: owner-words
+    sha256: 645f976ece73dc14e64a4cf4edd4215038a9bef9c6829cd1bde09ac8e34a2008
+    taken: 2026-10-23T22:00Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6
+    title: ADR file numbers
+signoff: []
+decisions: []
+tasks: []
+bindings:
+  - { holder: DES-78, link: serves, target: adr-numbers/R1, holder_sha256: 2da7ad4e53634e6c34efce33426d2763406205548b451d4009ea293e8cb40dca, target_sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6, target_version: 1 }
+  - { holder: DES-113, link: serves, target: adr-numbers/R1, holder_sha256: 3edce9768cb8110c65dbcaeed571f71a1b632b03565a430f1c23e49bc21437cf, target_sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6, target_version: 1 }
+  - { holder: DES-113, link: builds-on, target: DES-78, holder_sha256: 3edce9768cb8110c65dbcaeed571f71a1b632b03565a430f1c23e49bc21437cf, target_sha256: 2da7ad4e53634e6c34efce33426d2763406205548b451d4009ea293e8cb40dca }
+  - { holder: SCH-7, link: serves, target: adr-numbers/R1, holder_sha256: 0e1dc07b616a4294d27699fb85941592642900a255895443ece1248859b89492, target_sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6, target_version: 1 }
+  - { holder: adr-numbers/R1, link: from, target: adr-numbers/2026-10-23-owner-words.md, holder_sha256: f2e3d21c5bba5f60f271d44f9e7ebd1966dcdb6a8d56e98efc43b7b1f00490b6, target_sha256: 645f976ece73dc14e64a4cf4edd4215038a9bef9c6829cd1bde09ac8e34a2008 }
+dispositions: []
