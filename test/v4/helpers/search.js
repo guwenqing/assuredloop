@@ -84,9 +84,10 @@ export function exportRows(dir, extra = [], opts) {
 }
 
 // `al search ... --json`; `level` 0 or 1 adds `--level n`; level 2 adds nothing.
-export function search(dir, args, { level, nodeArgs = [], timeout } = {}) {
+// `env`: more environment for the run, as in run().
+export function search(dir, args, { level, nodeArgs = [], env = {}, timeout } = {}) {
   const lv = level === undefined || level === 2 ? [] : ['--level', String(level)];
-  const r = runOk(dir, ['search', ...args, ...lv, '--json'], { nodeArgs, timeout });
+  const r = runOk(dir, ['search', ...args, ...lv, '--json'], { nodeArgs, env, timeout });
   let out;
   try { out = JSON.parse(r.stdout); } catch { assert.fail(`--json gives one JSON object and nothing else:\n${show(r)}`); }
   return out;
@@ -134,11 +135,15 @@ export const CONCEPTS = [
 // model, options)` gives an extractor; `await extractor(texts, options)`
 // gives an object whose `tolist()` is one vector per text. With
 // `normalize: true` each vector has unit length, as the real library gives.
-// mode: 'ok', 'embed-throws' (the extractor throws) or 'load-throws' (the
-// import throws).
+// It also exports `env`, an object with the documented settings of the real
+// library 4.3.1 and their defaults (#39: al may set them before pipeline).
+// mode: 'ok', 'embed-throws' (the extractor throws), 'pipeline-throws'
+// (pipeline throws, as when the model does not load; the error has two
+// lines) or 'load-throws' (the import throws).
 // `log`: a file that gets one JSON line for each text the extractor is given.
 // `calls`: a file that gets one JSON line for each call of pipeline and of
-// the extractor, with its arguments (the texts as a count).
+// the extractor, with its arguments (the texts as a count). A pipeline line
+// also holds `env`: the settings in `env` when pipeline was called.
 // `marker`: a file that gets one line each time the module is imported: the
 // process id and al's arguments.
 export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = null } = {}) {
@@ -158,8 +163,16 @@ export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = n
     'const vector = (t) => [...CONCEPTS.map((re) => (re.test(t) ? 1 : 0)), 0.1];',
     'const unit = (v) => { const n = Math.sqrt(v.reduce((a, x) => a + x * x, 0)); return v.map((x) => x / n); };',
     'const call = (x) => { if (CALLS) appendFileSync(CALLS, `${JSON.stringify(x)}\\n`); };',
+    `const HERE = ${JSON.stringify(join(pkg, '/'))};`,
+    'export const env = {',
+    "  allowRemoteModels: true, remoteHost: 'https://huggingface.co/', remotePathTemplate: '{model}/resolve/{revision}/',",
+    "  allowLocalModels: true, localModelPath: `${HERE}models/`, useFSCache: true, cacheDir: `${HERE}.cache/`,",
+    '  fetch: globalThis.fetch,',
+    '};',
     'export async function pipeline(task, model, options) {',
-    "  call({ call: 'pipeline', task, model, options: options ?? null });",
+    "  const settings = Object.fromEntries(Object.entries(env).filter(([, v]) => typeof v !== 'function'));",
+    "  call({ call: 'pipeline', task, model, options: options ?? null, env: settings });",
+    mode === 'pipeline-throws' ? "  throw new Error('test embedder: the model does not load\\nsecond line of the error');" : '',
     '  return async (input, options) => {',
     '    const texts = Array.isArray(input) ? input : [input];',
     "    call({ call: 'extract', count: texts.length, options: options ?? null });",
@@ -184,6 +197,90 @@ export const clearLog = (log) => writeFileSync(log, '');
 // The lines of a `calls` or `marker` file; none when it is absent.
 export const callsOf = (file) => (existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
 export const importsOf = (file) => (existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : []);
+
+// --- the network of al's process (#39)
+
+// Writes a preload module into `file`, for `node --import <file URL>`. It
+// runs before al imports anything, so the library takes its fetch from it.
+// It watches each road to the network: globalThis.fetch, http and https
+// request and get, net.Socket connect, and dns lookup. It appends one JSON
+// line { road, target } to `log` for each attempt, at once and by a
+// synchronous write, so an error that the library catches cannot hide one.
+// mode 'block': each attempt fails (no byte leaves the machine).
+// mode 'record': each attempt goes on as usual.
+export function netGuard(file, { log, mode = 'block' }) {
+  writeFileSync(log, '');
+  writeFileSync(file, `// A test preload (#39): it records, and in mode block refuses, each network attempt.
+import { appendFileSync } from 'node:fs';
+import dns from 'node:dns';
+import http from 'node:http';
+import https from 'node:https';
+import net from 'node:net';
+import { syncBuiltinESMExports } from 'node:module';
+const LOG = ${JSON.stringify(log)};
+const BLOCK = ${JSON.stringify(mode === 'block')};
+const note = (road, target) => appendFileSync(LOG, JSON.stringify({ road, target: String(target) }) + '\\n');
+const refusal = (road, target) => Object.assign(new Error('network blocked by the test: ' + road + ' ' + target), { code: 'ENETUNREACH' });
+const urlOf = (x) => (typeof x === 'string' ? x : x instanceof URL ? x.href : x && typeof x.url === 'string' ? x.url : String(x));
+
+const realFetch = globalThis.fetch;
+globalThis.fetch = async function fetch(input, init) {
+  const url = urlOf(input);
+  note('fetch', url);
+  if (BLOCK) throw new TypeError('fetch failed', { cause: refusal('fetch', url) });
+  return realFetch(input, init);
+};
+
+for (const [scheme, mod] of [['http', http], ['https', https]]) {
+  for (const name of ['request', 'get']) {
+    const real = mod[name];
+    mod[name] = function (...args) {
+      const a = args[0];
+      const url = typeof a === 'string' || a instanceof URL ? String(a)
+        : scheme + '://' + (a?.hostname ?? a?.host ?? 'localhost') + (a?.port ? ':' + a.port : '') + (a?.path ?? '/');
+      note(scheme, url);
+      if (BLOCK) throw refusal(scheme, url);
+      return real.apply(this, args);
+    };
+  }
+}
+
+const realConnect = net.Socket.prototype.connect;
+net.Socket.prototype.connect = function (...args) {
+  let o = args[0];
+  if (Array.isArray(o)) o = o[0];
+  const target = o && typeof o === 'object' ? (o.path ?? (o.host ?? 'localhost') + ':' + o.port) : args.join(':');
+  note('socket', target);
+  if (BLOCK) {
+    process.nextTick(() => this.destroy(refusal('socket', target)));
+    return this;
+  }
+  return realConnect.apply(this, args);
+};
+
+const realLookup = dns.lookup;
+dns.lookup = function (host, ...rest) {
+  note('dns', host);
+  if (BLOCK) {
+    const cb = rest[rest.length - 1];
+    process.nextTick(() => cb(refusal('dns', host)));
+    return {};
+  }
+  return realLookup.call(this, host, ...rest);
+};
+const realPromiseLookup = dns.promises.lookup;
+dns.promises.lookup = async function (host, ...rest) {
+  note('dns', host);
+  if (BLOCK) throw refusal('dns', host);
+  return realPromiseLookup.call(this, host, ...rest);
+};
+syncBuiltinESMExports();
+`);
+  return file;
+}
+
+// The attempts in a netGuard log: [{ road, target }].
+export const netAttempts = (log) => callsOf(log);
 
 // True when @huggingface/transformers resolves beside al (from bin/). Then
 // "not installed" cannot be shown with this al, and the real library is there.
