@@ -228,3 +228,35 @@ test('#39 no cache and no network: al search falls back to level 1 and says that
   assert.match(String(out.fallback), NOT_LOADED);
   assert.ok(out.hits.some((h) => h.id === 'EXP-4' && h.role === 'baseline'), out.hits.map((h) => h.id).join(', '));
 });
+
+// Files in the library's cache that did not come from the pinned revision
+// are never used. The library's file cache keeps a file fetched at revision
+// `main` under <cacheDir>/<model>/<file>, with no revision in the key, and al
+// 3.2.0 left config.json there. Here every model file sits at that key, and
+// each one breaks the load if it is used. al must fetch the files at the
+// pinned revision instead, answer at level 2, and keep away from those files
+// on the next load with the network blocked too.
+const UNPINNED = ['config.json', 'tokenizer.json', 'tokenizer_config.json', 'onnx/model_quantized.onnx'];
+test('#39 files in the cache that were not fetched at the pinned revision are never used: al fetches at the pinned revision and answers at level 2', realModel, () => {
+  assert.ok(installed, `${TRANSFORMERS} does not resolve from the repo top, and AL_REQUIRE_REAL_MODEL=1 asks for the real model`);
+  const w = world();
+  const keyDir = join(w.dir, 'node_modules', TRANSFORMERS, '.cache', ...MODEL.split('/'));
+  for (const f of UNPINNED) {
+    mkdirSync(dirname(join(keyDir, f)), { recursive: true });
+    writeFileSync(join(keyDir, f), '{ this file did not come from the pinned revision');
+  }
+
+  const { out, attempts } = watched(w, QUERY, 'record', 'unpinned');
+  const urls = attempts.filter((a) => ['fetch', 'http', 'https'].includes(a.road)).map((a) => a.target);
+  const other = urls.filter((u) => !PINNED.test(u));
+  assert.deepEqual(other, [], `each request is ${PINNED}; these are not:\n${other.join('\n')}\n--- every attempt\n${list(attempts)}`);
+  assert.equal(out.level, 2, `level 2 answered, with no file from another revision used (fallback: ${out.fallback})`);
+  assert.equal(out.fallback, null);
+  assert.ok(out.hits.some((h) => h.id === 'EXP-4' && h.role === 'baseline'), out.hits.map((h) => h.id).join(', '));
+
+  // The next load, from the cache with the network blocked, still keeps away from them.
+  const off = watched(w, OTHER, 'block', 'unpinned-offline');
+  assert.deepEqual(off.attempts, [], `with the pinned files in the cache, level 2 makes no network attempt:\n${list(off.attempts)}`);
+  assert.equal(off.out.level, 2, `level 2 answered with the network blocked (fallback: ${off.out.fallback})`);
+  assert.equal(off.out.fallback, null);
+});
