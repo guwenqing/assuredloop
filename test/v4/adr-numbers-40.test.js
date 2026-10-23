@@ -24,8 +24,9 @@ import assert from 'node:assert/strict';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { check } from './helpers/invoicer.js';
+import { exportRows } from './helpers/search.js';
 import {
-  al, appendSection, bindingsOf, commitAll, doc, editFile, git, hashOf, index, move, newRequest, organized, project, record, req, show,
+  al, appendSection, bindingsOf, commitAll, doc, editFile, git, hashOf, index, move, newRequest, ok, organized, project, record, req, show,
   write, writeConfig,
 } from './helpers/project.js';
 
@@ -658,5 +659,122 @@ describe('#40: a binding to ADR-1 uses the first file of ADR-1', () => {
     // This world must still hold the binding, else the test proves nothing.
     assert.equal(bindingsOf(record(dir, 'inv'), 'INV-2', 'governed-by', 'ADR-1').length, 1, 'the binding is still recorded');
     assert.deepEqual(stale(r).map((f) => f.line), [], show(r));
+  });
+});
+
+// =====================================================================
+// Other places that read the ADR files: al export, the phrases: of config,
+// and the bindings of a link that only the second file of a number declares.
+
+describe('#40: al export reads 001-x.md as an ADR', () => {
+  test('001-x.md (accepted) gives the rows ADR-1 and ADR-1-1 with role baseline and source type adr, as 0002-y.md does; adr-1.md gives no row', (t) => {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, SPEC, doc([['INV-1 note', '# Invoices'], ['INV-2 rule', 'An invoice MUST be sent to the customer.']]));
+    write(dir, 'specs/adr/001-x.md', adr(1, 'accepted', 'One'));
+    write(dir, 'specs/adr/0002-y.md', adr(2, 'accepted', 'Two'));
+    write(dir, 'specs/adr/adr-1.md', adr(9, 'accepted', 'Not an ADR'));
+    index(dir);
+    commitAll(dir, 'base');
+    const { rows } = exportRows(dir);
+    const of = (file) => rows.filter((r) => r.doc_or_request === file).map((r) => [r.id, r.role, r.source_type, r.file]);
+    // The four-digit control, as test/v4/export.test.js has it.
+    assert.deepEqual(of('specs/adr/0002-y.md'),
+      [['ADR-2', 'baseline', 'adr', 'specs/adr/0002-y.md'], ['ADR-2-1', 'baseline', 'adr', 'specs/adr/0002-y.md']]);
+    assert.deepEqual(of('specs/adr/001-x.md'),
+      [['ADR-1', 'baseline', 'adr', 'specs/adr/001-x.md'], ['ADR-1-1', 'baseline', 'adr', 'specs/adr/001-x.md']]);
+    assert.deepEqual(rows.filter((r) => r.doc_or_request === 'specs/adr/adr-1.md' || r.file === 'specs/adr/adr-1.md').map((r) => r.id), [],
+      'adr-1.md gives no row');
+    assert.deepEqual(rows.filter((r) => r.id === 'ADR-9' || r.id === 'ADR-9-1').map((r) => r.id), [], 'no row has the IDs of adr-1.md');
+  });
+});
+
+describe('#40: phrases: match in each file of a number', () => {
+  const A1 = 'specs/adr/001-a.md';
+  const B1 = 'specs/adr/1-b.md';
+  const phraseAt = (r, file) => r.findings.filter((f) => f.code === 'phrase' && f.file === file);
+  function phrased(t, files) {
+    const dir = world(t, files);
+    writeConfig(dir, undefined, { phrases: ['the requester'] });
+    return check(dir);
+  }
+
+  test('a phrase only in 1-b.md (the second file of ADR-1): hint phrase at 1-b.md, none at 001-a.md', (t) => {
+    const r = phrased(t, {
+      [A1]: adr(1, 'accepted', 'Alpha'),
+      [B1]: adr(1, 'accepted', 'Beta', { text: 'Context: the requester wants it.' }),
+    });
+    assert.equal(r.code, 0, show(r));
+    const found = phraseAt(r, B1);
+    assert.ok(found.length >= 1, `hint phrase at 1-b.md:\n${show(r)}`);
+    assert.ok(found.every((f) => f.severity === 'hint'), show(r));
+    assert.deepEqual(phraseAt(r, A1).map((f) => f.line), [], show(r));
+  });
+
+  test('control: a phrase only in 001-a.md: hint phrase at 001-a.md, none at 1-b.md', (t) => {
+    const r = phrased(t, {
+      [A1]: adr(1, 'accepted', 'Alpha', { text: 'Context: the requester wants it.' }),
+      [B1]: adr(1, 'accepted', 'Beta'),
+    });
+    assert.ok(phraseAt(r, A1).length >= 1, `hint phrase at 001-a.md:\n${show(r)}`);
+    assert.deepEqual(phraseAt(r, B1).map((f) => f.line), [], show(r));
+  });
+});
+
+// The heading marker of 1-b.md has source:inv/D1, and the one of 001-a.md
+// does not. So the record of the open request inv holds the binding
+// ADR-1 source inv/D1, and only 1-b.md declares it. al index removes a
+// binding whose link no marker declares any more, and names it on a line
+// that says "removed" (#11 R1).
+describe('#40: a link that only the second file of a number declares', () => {
+  const A1 = 'specs/adr/001-a.md';
+  const B1 = 'specs/adr/1-b.md';
+  const B = ['ADR-1', 'source', 'inv/D1'];
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const token = (s, w) => new RegExp(`(^|[^\\w/.-])${esc(w)}($|[^\\w/-])`).test(s);
+  const removedLines = (r) => r.stdout.split('\n').filter((l) => /remov/i.test(l) && B.every((w) => token(l, w)));
+  const held = (dir) => bindingsOf(record(dir, 'inv'), ...B);
+
+  // main: config, the spec, the request inv with R1 and D1, 001-a.md and
+  // 1-b.md; indexed and committed. Then the branch feature.
+  function declared(t) {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, SPEC, doc([['INV-1 note', '# Invoices'], ['INV-2 rule', 'An invoice MUST be sent to the customer.']]));
+    newRequest(dir, 'inv');
+    appendSection(dir, 'inv', organized([req('R1', 'Send invoices', 'An invoice MUST reach the customer.')]));
+    ok(dir, ['record', 'inv', 'decision', '--source', 'owner', '--text', 'Invoices go by email.', '--clarifies', 'R1', '--yes']);
+    write(dir, A1, adr(1, 'accepted', 'Alpha'));
+    write(dir, B1, adr(1, 'accepted', 'Beta', { links: 'decides:INV-2 source:inv/D1' }));
+    index(dir);
+    commitAll(dir, 'base');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    return dir;
+  }
+
+  test('the binding ADR-1 source inv/D1 is recorded on main', (t) => {
+    const dir = declared(t);
+    assert.equal(held(dir).length, 1, `one binding ADR-1 source inv/D1:\n${JSON.stringify(record(dir, 'inv').bindings, null, 1)}`);
+  });
+
+  test('nothing changes on the branch: al index removes no binding of ADR-1 source inv/D1, and al check gives no binding hint on ADR-1', (t) => {
+    const dir = declared(t);
+    const ix = index(dir);
+    assert.deepEqual(removedLines(ix), [], `no removal line for ${B.join(' ')}:\n${show(ix)}`);
+    assert.equal(held(dir).length, 1, 'the binding is still recorded');
+    const r = check(dir);
+    assert.equal(r.code, 0, show(r));
+    const bindingHints = r.findings.filter((f) => ['stale-base', 'holder-changed'].includes(f.code) && f.id === 'ADR-1');
+    assert.deepEqual(bindingHints.map((f) => f.line), [], `no stale-base and no holder-changed on ADR-1:\n${show(r)}`);
+    assert.deepEqual(r.findings.filter((f) => f.id === 'ADR-1' && f.msg.includes('inv/D1')).map((f) => f.line), [],
+      `no finding on ADR-1 about inv/D1:\n${show(r)}`);
+  });
+
+  test('control: source:inv/D1 removed from 1-b.md: al index removes the binding and names it on a removal line', (t) => {
+    const dir = declared(t);
+    editFile(dir, B1, 'decides:INV-2 source:inv/D1', 'decides:INV-2 source:INV-2');
+    const ix = index(dir);
+    assert.ok(removedLines(ix).length >= 1, `a removal line for ${B.join(' ')}:\n${show(ix)}`);
+    assert.equal(held(dir).length, 0, 'the binding is gone');
   });
 });
