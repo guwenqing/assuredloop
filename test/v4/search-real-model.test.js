@@ -8,12 +8,19 @@
 // peer), and skips otherwise, as in test.yml. With AL_REQUIRE_REAL_MODEL=1, as
 // in publish.yml's test job, it never skips: it fails when the library or the
 // model does not load (#220). The first run downloads the model.
+//
+// #39: after that first search, the test runs al search once more with the
+// network blocked (helpers/search.js, netGuard): level 2 must answer from the
+// local cache, with no network attempt at all.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
-import { LEVEL2_LINE, REPO, TRANSFORMERS, runOk, search, show, smallRepo } from './helpers/search.js';
+import { pathToFileURL } from 'node:url';
+import {
+  LEVEL2_LINE, REPO, TRANSFORMERS, netAttempts, netGuard, runOk, search, show, smallRepo,
+} from './helpers/search.js';
 
 const TEN_MINUTES = 600_000;
 const required = process.env.AL_REQUIRE_REAL_MODEL === '1';
@@ -40,4 +47,16 @@ test('level 2 with the real model: al search answers at level 2 and finds the pa
   assert.ok(out.hits.some((h) => h.id === 'EXP-4' && h.role === 'baseline'), out.hits.map((h) => h.id).join(', '));
   const r = runOk(dir, ['search', 'link', 'lifetime'], { timeout: TEN_MINUTES });
   assert.equal(r.stdout.split('\n')[0], LEVEL2_LINE, show(r));
+
+  // #39: once more, with the network blocked. The model is in the cache now.
+  const log = join(dir, '.git', 'network.log');
+  const guard = netGuard(join(dir, '.git', 'no-network.mjs'), { log, mode: 'block' });
+  const off = search(dir, ['when', 'does', 'the', 'emailed', 'download', 'URL', 'stop', 'working'], {
+    nodeArgs: ['--import', pathToFileURL(guard).href], timeout: TEN_MINUTES,
+  });
+  const attempts = netAttempts(log);
+  assert.deepEqual(attempts, [], `with the model in the cache, level 2 makes no network attempt:\n${attempts.map((a) => `${a.road} ${a.target}`).join('\n')}`);
+  assert.equal(off.level, 2, `level 2 answered with the network blocked (fallback: ${off.fallback})`);
+  assert.equal(off.fallback, null);
+  assert.ok(off.hits.some((h) => h.id === 'EXP-4' && h.role === 'baseline'), off.hits.map((h) => h.id).join(', '));
 });
