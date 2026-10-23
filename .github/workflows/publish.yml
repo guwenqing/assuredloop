@@ -55,11 +55,13 @@ jobs:
           npm install --no-save --save-peer --ignore-scripts --no-audit --no-fund --before "$before" @huggingface/transformers@4.3.1
       # AL_REQUIRE_REAL_MODEL=1: the test fails, not skips, when the library or
       # the model does not load, so no release goes out without it. It
-      # downloads the model.
+      # downloads the model. The tests of #39 run here too: level 2 loads with
+      # the network blocked after the first download, and the first download
+      # fetches each file at the pinned revision.
       - name: The real-model smoke test
         env:
           AL_REQUIRE_REAL_MODEL: 1
-        run: node --test test/v4/search-real-model.test.js
+        run: node --test test/v4/search-real-model.test.js test/v4/search-offline-39.test.js
 
   # The only job that can prove who it is to npm, so it installs nothing.
   # Publishing packs the files package.json lists and needs no dependencies to
