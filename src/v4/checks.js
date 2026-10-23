@@ -16,7 +16,7 @@ import {
   adrParagraph, hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
-import { groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
+import { LINK_WORDS, groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
 import { canAlignTo, declaredNow, isCentral } from './indexer.js';
 import { adrOf, recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
@@ -324,7 +324,13 @@ export function checks(top, { base, phrases = [], issues = null }) {
       // must be one that al index --align can move the binding to.
       if (b.holder_sha256) {
         const hq = qualify(String(b.holder), null);
-        const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : now.spec.get(hq.id) ?? adrParagraph(now, hq.id);
+        // An ID in several files of one ADR number: the paragraph with the
+        // bound text, else the one that declares the link (DES-113).
+        const word = LINK_WORDS[b.link];
+        const twins = hq.req || now.spec.has(hq.id) ? [] : now.adrList.flatMap((a) => a.paragraphs.filter((p) => p.id === hq.id));
+        const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : twins.length > 1
+          ? twins.find((p) => p.sha256 === b.holder_sha256) ?? twins.find((p) => (p.links[word] ?? []).some((x) => qualify(x, null).key === String(b.target))) ?? twins[0]
+          : now.spec.get(hq.id) ?? adrParagraph(now, hq.id);
         declared ??= declaredNow(top, now);
         alignable ??= canAlignTo(now);
         if (hp && hp.sha256 !== b.holder_sha256 && declared(b) && alignable(b.target)) {
