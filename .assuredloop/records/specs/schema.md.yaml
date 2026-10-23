@@ -27,7 +27,7 @@ paragraphs:
     display: SCH-6 (2, 2. The kinds of item)
   - id: SCH-7
     kind: data
-    text_sha256: 7a0192230c92a3f0fa7785cf50c3717cf47d59a262d866f37f9f3e1fcb4f93c2
+    text_sha256: 0e1dc07b616a4294d27699fb85941592642900a255895443ece1248859b89492
     display: SCH-7 (2:1, in 2. The kinds of item)
   - id: SCH-8
     kind: rule

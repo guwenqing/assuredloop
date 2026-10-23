@@ -1459,7 +1459,7 @@ Why: "no need to take care of nbackward copatibility" (input 98).
 T13 tests `node:sqlite` with FTS5 on the minimum version; if Node 24 lacks
 it, the minimum goes up.
 
-<!-- DES-78 rule serves:assuredloop-v4/R2,assuredloop-v4/R3,promise-design-split/R1 -->
+<!-- DES-78 rule serves:assuredloop-v4/R2,assuredloop-v4/R3,promise-design-split/R1,adr-numbers/R1 -->
 
 Build decisions (the architect, 2026-10-10, recorded in the build PRs too):
 - Which files carry markers: every `*.md` under the spec root except
@@ -1471,15 +1471,38 @@ Build decisions (the architect, 2026-10-10, recorded in the build PRs too):
 - Display numbers: a single leading H1 is the title and is not numbered; H2
   is 1, 2, ...; H3 is 1.1, and so on. A paragraph shows as
   "INV-41 (2.3:4, in Export links)".
-- ADRs: `specs/adr/NNNN-<slug>.md`, with `Status: proposed|accepted|superseded`
-  at the top. The heading's marker holds the ADR's own ID `ADR-<n>` and its
-  `decides`, `source` and `supersedes` links; the other paragraphs take
-  `ADR-<n>-<k>`.
+- ADRs: `specs/adr/<n>-<slug>.md`, with `Status: proposed|accepted|superseded`
+  at the top. A Markdown file in `specs/adr/` is an ADR when its name starts
+  with one or more digits and a dash. Its number is the value of those
+  digits: `001-x.md` is ADR-1, `0040-y.md` is ADR-40. Two ADR files with the
+  same number give a hint. When `specs/adr/` holds Markdown files and `al`
+  reads none of them as an ADR, `al check` says so once. The heading's
+  marker holds the ADR's own ID `ADR-<n>` and its `decides`, `source` and
+  `supersedes` links; the other paragraphs take `ADR-<n>-<k>`.
 - A requirement in `request.md` carries a hidden marker too, with its links
   to the owner's words: `<!-- R2 from:<snapshot file name> -->`. Each
   requirement version is kept; a sign-off records the versions it covers,
   and may name what the owner was shown (`presented`) and who wrote the
   owner's words down (`transcribed_by`).
+
+<!-- DES-113 choice serves:adr-numbers/R1 builds-on:DES-78 -->
+
+Two ADR files with the same number (adr-numbers/R1): `al` reads each
+file, and runs the checks of one ADR file on each of them: `adr-status`,
+`adr-marker`, `adr-links`, `adr-supersede`, `adr-changed`,
+`superseded-status`, and `superseded-cited` in its own text. `adr-changed`
+compares a file with the same file at the base. When the number has one file
+at the base and one file now, it compares those two, also after a rename.
+Else a file that is gone gets the hint that its file is gone. A link whose
+holder is an ID of several files has as its holder the paragraph with the
+bound text. Else it is the paragraph that declares the link and names the
+request whose record holds the binding. When that leaves more than one,
+the hint says that it is unclear, and names each file. Where `al` looks an ADR up by its number (a link, a citation, a
+status line or a `supersedes:` that names it, the `Governed` line of
+`al context`), it uses the first of those files in name order. The hint
+`adr-number` names each file of the number and the file that `al` uses. When `specs/adr/` holds
+Markdown files and `al` reads none of them as an ADR, `al check` gives the
+hint `adr-none` once.
 
 <!-- DES-86 data serves:assuredloop-v4/R2,assuredloop-v4/R3,promise-design-split/R1 -->
 
