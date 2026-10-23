@@ -41,6 +41,10 @@ function inOrder(was, now) {
   return keep;
 }
 
+// The heading path that places a paragraph: by the headings' IDs where both
+// sides have them, so a changed heading text is no move (#42); else by text.
+const placeOf = (b, p) => (b.headingIds && p.headingIds ? [b.headingIds, p.headingIds] : [b.headingPath, p.headingPath]);
+
 export function diffParagraphs(base, head) {
   const was = byId(base);
   const now = byId(head);
@@ -54,7 +58,8 @@ export function diffParagraphs(base, head) {
     }
     const changes = [];
     if (b.sha256 !== p.sha256) changes.push('Changed');
-    if (b.file !== p.file || JSON.stringify(b.headingPath) !== JSON.stringify(p.headingPath) || !stays.has(id)) changes.push('Moved');
+    const [from, to] = placeOf(b, p);
+    if (b.file !== p.file || JSON.stringify(from) !== JSON.stringify(to) || !stays.has(id)) changes.push('Moved');
     out.push({ id, file: p.file, sha256: p.sha256, baseSha256: b.sha256, changes });
   }
   for (const [id, b] of was) {
