@@ -313,11 +313,19 @@ export function index({ top, opts }) {
     if (!froms.has(align)) throw new Fail(`--align ${align}: no paragraph, requirement or output with that ID (a change spec's ID is <request>/<ID>)`, 'al index --align <ID>');
   }
 
-  // The records that already hold each binding: a holder whose marker names
-  // no request any more, such as a superseded ADR that dropped `source:`,
-  // still reaches the bindings it holds (#11).
+  // The records of the archived requests: they still hold bindings (#41),
+  // and a binding that no current marker declares is removed from them too.
+  const archived = new Map();
+  for (const n of names.archived) {
+    try { const rec = openRecord(top, n); if (rec) archived.set(n, rec); } catch (e) { if (!e.invalid) throw e; notes.push(`not read: ${e.message}`); }
+  }
+
+  // The records that already hold each binding, open and archived: a holder
+  // whose marker names no request any more, such as a superseded ADR that
+  // dropped `source:`, still reaches the bindings it holds (#11). A binding in
+  // an archived record counts as held; al binds no new link there (#41).
   const held = new Map();
-  for (const [n, rec] of recs) {
+  for (const [n, rec] of [...recs, ...archived]) {
     for (const it of rec.doc.get('bindings')?.items ?? []) {
       if (!it?.get) continue;
       const k = tripleKey({ holder: it.get('holder'), link: it.get('link'), target: it.get('target') });
@@ -334,12 +342,15 @@ export function index({ top, opts }) {
     const homes = [...new Set([...l.homes.filter((h) => recs.has(h)), ...(held.get(tripleKey(l)) ?? [])])];
     if (!homes.length) { once(`not bound: ${name}: no request record holds it`); continue; }
     const aligning = align !== undefined && l.holder === align;
+    const heldArchived = homes.some((h) => !recs.has(h));
     for (const h of homes) {
+      if (!recs.has(h)) continue;
       const rec = recs.get(h);
       const items = seq(rec, 'bindings').items;
       const at = items.findIndex((it) => it?.get?.('holder') === l.holder && it.get('link') === l.link && it.get('target') === l.target);
       if (at >= 0 && !aligning) continue;
-      if (at < 0 && !aligning && atBase.has(tripleKey(l))) { once(`binding unknown: ${name}`); continue; }
+      // Held in an archived record, the binding is not gone (DES-26).
+      if (at < 0 && !aligning && atBase.has(tripleKey(l))) { if (!heldArchived) once(`binding unknown: ${name}`); continue; }
       if (l.unknown) { once(`unknown: ${name}: ${l.unknown}`); continue; }
       const target = targetOf(l.t, now);
       if (!target) { once(`not bound: ${name}: target not found`); continue; }
@@ -367,10 +378,6 @@ export function index({ top, opts }) {
   // of the open and the archived requests, and named. An archived change spec
   // and request.md still declare their links. While a file that can declare
   // links is not read, nothing is removed: a missing file is not a removed link.
-  const archived = new Map();
-  for (const n of names.archived) {
-    try { const rec = openRecord(top, n); if (rec) archived.set(n, rec); } catch (e) { if (!e.invalid) throw e; notes.push(`not read: ${e.message}`); }
-  }
   const unread = [...new Set([
     ...notes.filter((l) => /^not (indexed|read): /.test(l)).map((l) => l.replace(/^not (indexed|read): /, '')),
     ...notRead(top, root, config),
@@ -449,7 +456,7 @@ export function index({ top, opts }) {
   const written = outputs.filter(([path, text]) => write(top, path, text)).map(([path]) => path);
 
   return {
-    body: [`Indexed ${now.docs.length} docs and ${recs.size} request records; bound ${bound} new links`, ...(written.length ? [`Wrote ${written.join(', ')}`] : ['No record changed']), ...notes, ...body],
+    body: [`Indexed ${now.docs.length} docs and ${recs.size + archived.size} request records (${recs.size} open and ${archived.size} archived); bound ${bound} new links`, ...(written.length ? [`Wrote ${written.join(', ')}`] : ['No record changed']), ...notes, ...body],
     next: body.some((l) => l.startsWith('refresh hint:')) ? 'refresh the hints listed, then al index'
       : body.some((l) => l.startsWith('binding unknown:')) ? 'a binding unknown was in the marker at the base and its record is gone: check the link, then al index --align <its holder ID>' : 'al check',
   };
