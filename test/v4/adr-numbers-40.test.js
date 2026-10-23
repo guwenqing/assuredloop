@@ -24,7 +24,10 @@ import assert from 'node:assert/strict';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { check } from './helpers/invoicer.js';
-import { al, commitAll, doc, editFile, git, project, show, write, writeConfig } from './helpers/project.js';
+import {
+  al, appendSection, bindingsOf, commitAll, doc, editFile, git, hashOf, index, move, newRequest, organized, project, record, req, show,
+  write, writeConfig,
+} from './helpers/project.js';
 
 const SPEC = 'specs/invoices.md';
 const DIR = 'specs/adr';
@@ -542,5 +545,118 @@ describe('#40: the checks of one ADR file on each file of a number', () => {
     assert.equal(r.code, 0, `plain al check exits 0:\n${show(r)}`);
     notOkAt(r, 'superseded-cited', B1);
     none(r, 'superseded-cited', A1);
+  });
+});
+
+// =====================================================================
+// adr-changed when the number has one file at the base and one file now
+// (DES-113): al compares those two files, also after a rename. A new file
+// beside the one file of a number has nothing to compare with.
+
+describe('#40: adr-changed after a rename, and for a new file of a number', () => {
+  const A40 = 'specs/adr/0040-a.md';
+  const R40 = 'specs/adr/040-a.md';
+  const C40 = 'specs/adr/40-c.md';
+  const ONE40 = { [A40]: adr(40, 'accepted', 'Alpha') };
+  const changed = (r) => r.findings.filter((f) => f.code === 'adr-changed');
+
+  test('0040-a.md renamed to 040-a.md, its text unchanged: no adr-changed', (t) => {
+    const dir = baseWorld(t, ONE40);
+    move(dir, A40, R40);
+    const r = hintsOnly(dir);
+    assert.deepEqual(changed(r).map((f) => f.line), [], show(r));
+  });
+
+  test('0040-a.md renamed to 040-a.md with a changed text: a "text changed" hint adr-changed at 040-a.md, and no "file is gone" hint', (t) => {
+    const dir = baseWorld(t, ONE40);
+    move(dir, A40, R40);
+    editFile(dir, R40, 'Context: Alpha.', 'Context: Alpha, and more.');
+    const r = hintsOnly(dir);
+    const found = hintAt(r, 'adr-changed', R40);
+    assert.ok(found.some((f) => /text changed/.test(f.msg)), `a "text changed" message at 040-a.md:\n${show(r)}`);
+    assert.deepEqual(changed(r).filter((f) => /file is gone/.test(f.msg)).map((f) => f.line), [], `no "file is gone" hint:\n${show(r)}`);
+  });
+
+  test('control: 0040-a.md deleted and no other file of ADR-40: the "file is gone" hint adr-changed at 0040-a.md', (t) => {
+    const dir = baseWorld(t, ONE40);
+    rmSync(join(dir, A40));
+    const r = hintsOnly(dir);
+    const found = hintAt(r, 'adr-changed', A40);
+    assert.ok(found.some((f) => /file is gone/.test(f.msg)), `a "file is gone" message:\n${show(r)}`);
+  });
+
+  test('40-c.md added beside an unchanged 0040-a.md, with other text: no adr-changed at either file, and one adr-number line that names both', (t) => {
+    const dir = baseWorld(t, ONE40);
+    write(dir, C40, adr(40, 'accepted', 'Gamma'));
+    const r = hintsOnly(dir);
+    none(r, 'adr-changed', A40);
+    none(r, 'adr-changed', C40);
+    assert.deepEqual(changed(r).map((f) => f.line), [], `no adr-changed at all:\n${show(r)}`);
+    const found = linesOf(r, 'adr-number');
+    assert.equal(found.length, 1, `one adr-number line:\n${show(r)}`);
+    assert.ok(found[0].includes('0040-a.md') && found[0].includes('40-c.md'), `it names both files:\n${show(r)}`);
+  });
+});
+
+// =====================================================================
+// A binding to ADR-<n> uses the first file of the number in name order
+// (DES-113: a link that names the ADR). The spec paragraph INV-2 serves the
+// open request inv and is governed by ADR-1, so inv's record holds the
+// binding INV-2 governed-by ADR-1. A binding whose target changed since it
+// was bound gives hint stale-base on the holder; its message starts with
+// "<link> <target>,".
+
+describe('#40: a binding to ADR-1 uses the first file of ADR-1', () => {
+  const A1 = 'specs/adr/001-a.md';
+  const B1 = 'specs/adr/1-b.md';
+  const stale = (r) => r.findings.filter((f) => f.code === 'stale-base' && f.id === 'INV-2' && f.msg.startsWith('governed-by ADR-1,'));
+
+  // main: config, the spec, 001-a.md and 1-b.md (both ADR-1, accepted), the
+  // request inv with R1; indexed and committed. Then the branch feature.
+  function bound(t) {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, SPEC, doc([
+      ['INV-1 note', '# Invoices'],
+      ['INV-2 rule serves:inv/R1 governed-by:ADR-1', 'An invoice MUST be sent to the customer.'],
+    ]));
+    write(dir, A1, adr(1, 'accepted', 'Alpha'));
+    write(dir, B1, adr(1, 'accepted', 'Beta'));
+    newRequest(dir, 'inv');
+    appendSection(dir, 'inv', organized([req('R1', 'Send invoices', 'An invoice MUST reach the customer.')]));
+    index(dir);
+    commitAll(dir, 'base');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    return dir;
+  }
+
+  test('the binding INV-2 governed-by ADR-1 is recorded with the hash of the heading of 001-a.md, not of 1-b.md', (t) => {
+    const dir = bound(t);
+    const found = bindingsOf(record(dir, 'inv'), 'INV-2', 'governed-by', 'ADR-1');
+    assert.equal(found.length, 1, `one binding INV-2 governed-by ADR-1 in the record of inv:\n${JSON.stringify(record(dir, 'inv').bindings, null, 1)}`);
+    assert.notEqual(hashOf(dir, A1, 'ADR-1'), hashOf(dir, B1, 'ADR-1'), 'the two headings differ');
+    assert.equal(found[0].target_sha256, hashOf(dir, A1, 'ADR-1'), 'the target hash is of 001-a.md');
+  });
+
+  test('only the heading of 001-a.md (the first file) changes: hint stale-base on INV-2 for governed-by ADR-1', (t) => {
+    const dir = bound(t);
+    editFile(dir, A1, '# ADR-1: Alpha', '# ADR-1: Alpha, reworded');
+    index(dir);
+    const r = check(dir);
+    assert.equal(r.code, 0, show(r));
+    const found = stale(r);
+    assert.equal(found.length, 1, `one stale-base on INV-2 for governed-by ADR-1:\n${show(r)}`);
+    assert.equal(found[0].severity, 'hint', show(r));
+  });
+
+  test('only the heading of 1-b.md (the second file) changes: no stale-base on INV-2 for governed-by ADR-1', (t) => {
+    const dir = bound(t);
+    editFile(dir, B1, '# ADR-1: Beta', '# ADR-1: Beta, reworded');
+    index(dir);
+    const r = check(dir);
+    assert.equal(r.code, 0, show(r));
+    // This world must still hold the binding, else the test proves nothing.
+    assert.equal(bindingsOf(record(dir, 'inv'), 'INV-2', 'governed-by', 'ADR-1').length, 1, 'the binding is still recorded');
+    assert.deepEqual(stale(r).map((f) => f.line), [], show(r));
   });
 });
