@@ -813,3 +813,53 @@ describe('#40: a link that only the second file of a number declares', () => {
     assert.equal(held(dir).length, 1, 'the binding is still recorded');
   });
 });
+
+// Both headings of ADR-1 declare decides:INV-2 and source:inv/D1, so both
+// name the request inv. The holder of a link is the paragraph with the bound
+// text; else the paragraph that declares the link and names the request;
+// when more than one is left, the hint says that it is unclear and names
+// each file (DES-113).
+describe('#40: a link that both files of a number declare', () => {
+  const A1 = 'specs/adr/001-a.md';
+  const B1 = 'specs/adr/1-b.md';
+  const LINKS = 'decides:INV-2 source:inv/D1';
+  const decides = (r) => r.findings.filter((f) => f.code === 'holder-changed' && f.id === 'ADR-1' && f.msg.startsWith('decides INV-2'));
+
+  function both(t) {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, SPEC, doc([['INV-1 note', '# Invoices'], ['INV-2 rule', 'An invoice MUST be sent to the customer.']]));
+    newRequest(dir, 'inv');
+    appendSection(dir, 'inv', organized([req('R1', 'Send invoices', 'An invoice MUST reach the customer.')]));
+    ok(dir, ['record', 'inv', 'decision', '--source', 'owner', '--text', 'Invoices go by email.', '--clarifies', 'R1', '--yes']);
+    write(dir, A1, adr(1, 'accepted', 'Alpha', { links: LINKS }));
+    write(dir, B1, adr(1, 'accepted', 'Beta', { links: LINKS }));
+    index(dir);
+    commitAll(dir, 'base');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    return dir;
+  }
+
+  test('both heading texts change: exactly one holder-changed on ADR-1 for decides INV-2, that says it is unclear and names 001-a.md and 1-b.md', (t) => {
+    const dir = both(t);
+    assert.equal(bindingsOf(record(dir, 'inv'), 'ADR-1', 'decides', 'INV-2').length, 1, 'one binding ADR-1 decides INV-2');
+    editFile(dir, A1, '# ADR-1: Alpha', '# ADR-1: Alpha, reworded');
+    editFile(dir, B1, '# ADR-1: Beta', '# ADR-1: Beta, reworded');
+    const r = check(dir);
+    assert.equal(r.code, 0, show(r));
+    const found = decides(r);
+    assert.equal(found.length, 1, `exactly one holder-changed on ADR-1 for decides INV-2:\n${show(r)}`);
+    assert.equal(found[0].severity, 'hint', show(r));
+    assert.match(found[0].msg, /unclear/i, `its message says that it is unclear:\n${show(r)}`);
+    assert.ok(found[0].line.includes(A1) && found[0].line.includes(B1), `it names ${A1} and ${B1}:\n${show(r)}`);
+  });
+
+  test('control: only the heading text of 1-b.md changes: no holder-changed at 001-a.md', (t) => {
+    const dir = both(t);
+    editFile(dir, B1, '# ADR-1: Beta', '# ADR-1: Beta, reworded');
+    const r = check(dir);
+    assert.equal(r.code, 0, show(r));
+    assert.deepEqual(r.findings.filter((f) => f.code === 'holder-changed' && f.file === A1).map((f) => f.line), [],
+      `no holder-changed at 001-a.md, which did not change:\n${show(r)}`);
+  });
+});
