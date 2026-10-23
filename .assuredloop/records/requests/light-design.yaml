@@ -1,0 +1,52 @@
+schema: assuredloop/1
+request: light-design
+tier: "2"
+status: open
+sources:
+  - file: 2026-10-23-owner-words.md
+    kind: owner-words
+    sha256: 34bfcfde3b6e6160d18774022943a4dea68b93bc9356a9eb584e8bdb4aa67660
+    taken: 2026-10-23T20:28Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8
+    title: change-in-force
+  - id: R2
+    version: 1
+    sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b
+    title: evidence-check
+  - id: R3
+    version: 1
+    sha256: 9f5dc55ba2f2312e15674d7926ccd30725030d3a240fa139ea2cbd33326239b4
+    title: A work item that changed
+signoff:
+  - id: S1
+    file: 2026-10-23-signoff.md
+    sha256: ce2125aee4c5b580856bcc2c7f72d1568e23ad7041beda86d5a9434a6b411e66
+    signed: 2026-10-23T20:29Z
+    source: owner chat with the architect, 2026-10-23 about 19:53Z
+    words: Okay, I agree
+    presented: 2026-10-23, the three texts one at a time, then together with the reworded R3 at about 19:52Z
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8 }
+      - { id: R2, version: 1, sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b }
+      - { id: R3, version: 1, sha256: 9f5dc55ba2f2312e15674d7926ccd30725030d3a240fa139ea2cbd33326239b4 }
+decisions: []
+tasks: []
+bindings:
+  - { holder: light-design/LD-22, link: serves, target: light-design/R3, holder_sha256: 003e3b8ac274621c5884d6f30f8c39c049413ff6f72db4b7669325c33d4fae27, target_sha256: 9f5dc55ba2f2312e15674d7926ccd30725030d3a240fa139ea2cbd33326239b4, target_version: 1 }
+  - { holder: light-design/LD-24, link: serves, target: light-design/R1, holder_sha256: 721f88c4bf9bc1cbc31cb054d5bcc4d31a332093abf0c6da4a668142ea797ebe, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: light-design/LD-25, link: serves, target: light-design/R1, holder_sha256: 8be0fc37169ec23c3136adfff398c6fe1c36982c927fb9d825bfabdb698dc816, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: light-design/LD-26, link: serves, target: light-design/R1, holder_sha256: 89e7c76a1cc86572bcbd6e4e0ffcaa0f72410c7d30d86dbd29fa4a0d74c44d34, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: light-design/LD-27, link: serves, target: light-design/R2, holder_sha256: 82c81706edf72fae59e4b935afb0c6b9fcbf243282f7c231e78675c038fdc696, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
+  - { holder: light-design/LD-28, link: serves, target: light-design/R2, holder_sha256: 461bc8984466c542381760818512e3b40b81db07d86a6538d5eb99de83ed03cc, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
+  - { holder: light-design/LD-29, link: serves, target: light-design/R1, holder_sha256: d3cea60c461628013ae231ea9bbe30366c2a2bb9084ec615e5e7672a0a5ff262, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: light-design/R1, link: from, target: light-design/2026-10-23-owner-words.md, holder_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_sha256: 34bfcfde3b6e6160d18774022943a4dea68b93bc9356a9eb584e8bdb4aa67660 }
+  - { holder: light-design/R2, link: from, target: light-design/2026-10-23-owner-words.md, holder_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_sha256: 34bfcfde3b6e6160d18774022943a4dea68b93bc9356a9eb584e8bdb4aa67660 }
+  - { holder: light-design/R3, link: from, target: light-design/2026-10-23-owner-words.md, holder_sha256: 9f5dc55ba2f2312e15674d7926ccd30725030d3a240fa139ea2cbd33326239b4, target_sha256: 34bfcfde3b6e6160d18774022943a4dea68b93bc9356a9eb584e8bdb4aa67660 }
+  - { holder: light-design/LD-42, link: serves, target: light-design/R1, holder_sha256: afd2eeb7bbf4ba841a4b301e5dbc93f4a12b2f8dc41c700b69b66b613dc28a50, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: light-design/LD-43, link: serves, target: light-design/R1, holder_sha256: 423dae3d395d516c95f5fdfe2ca10f4b984151423457125b980361bfaf1e83f7, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: light-design/LD-44, link: serves, target: light-design/R2, holder_sha256: 9f49953cd260d43f0dc3bad643fa1cfa97eb13df326bad630f5a9a14a1c5ce4e, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
+dispositions: []
