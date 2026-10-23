@@ -317,6 +317,8 @@ export function parseMarkdown(text, file, options = {}) {
 
 // Display numbers and heading paths (design.md 3): a single leading H1 is the
 // title and is not numbered; below it, H2 is 1, 2, ... Without it, H1 is 1.
+// headingIds is the heading path by the headings' IDs, so a changed heading
+// text moves no paragraph below it (#42).
 function number(paragraphs) {
   const heads = paragraphs.filter((p) => p.heading !== null);
   const titled = heads.length > 0 && heads[0].level === 1 && !heads.slice(1).some((p) => p.level === 1);
@@ -324,6 +326,7 @@ function number(paragraphs) {
   const title = titled ? heads[0].heading : null;
   const counters = [];
   const path = [];
+  const ids = [];
   let section = '0';
   let where = title ?? 'the top';
   let idx = 0;
@@ -331,7 +334,10 @@ function number(paragraphs) {
     if (p.heading !== null) {
       path.length = p.level - 1;
       path[p.level - 1] = p.heading;
+      ids.length = p.level - 1;
+      ids[p.level - 1] = p.id;
       p.headingPath = path.filter((t) => t !== undefined);
+      p.headingIds = ids.filter((t) => t !== undefined);
       if (titled && p === heads[0]) {
         p.displayNumber = `${p.id} (0, ${p.heading})`;
       } else {
@@ -347,6 +353,7 @@ function number(paragraphs) {
     } else {
       idx += 1;
       p.headingPath = path.filter((t) => t !== undefined);
+      p.headingIds = ids.filter((t) => t !== undefined);
       p.displayNumber = `${p.id} (${section}:${idx}, in ${where})`;
     }
   }
