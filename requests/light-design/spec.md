@@ -106,22 +106,37 @@ evidence that the AI quotes (section 4a). `al` calls no model.
 
 | Cut | Today | After | Signed requirements touched |
 |---|---|---|---|
-| K1 kinds | 18 kinds in each marker | six groups, each read exactly as today's checks read it: `promise` (purpose, scope, rule, limit, definition), `design` (component, interface, data, flow, choice), `approach`, `explain` (rationale, example, open), `plan` (plan, step, migration), `note`. Old kinds are read as their group; no file changes | none |
-| K4 dispositions | written by hand for each change paragraph with a lasting effect | `al` derives a disposition where it can prove it: the text is in `specs/` word for word, or a `removes:` names it and it is gone, or a later signed change replaced its target. Only what `al` cannot prove is asked for, in one line. Today's guard cases stay tests | v4/R5 |
-| K5 test outcomes | result files, which the surveyed adopters never wrote | `al` also reads the project's CI test reports, with the commit of the run. A report from another commit is shown as "last reported at <commit>", never as a result for the selected commit | v4/R8 |
-| K7 context and search | `al context`, `al export`, search levels 1 and 2 over marked paragraphs only | the questions of section 4, the code side of section 4a, and the knowledge base setting of section 5. `al context` and `al export` stay as names for one release | v4/R9, v4/R10, level2-peer/R1, context-all/R1 |
-| K8 hints that cannot be cleared | a hint comes back on every run until the text changes | the recorded judgement of LD-12, for hints only; the time rule of LD-11; an ID-only edit or a move does not flag | none |
+| K1 kinds | 18 kinds in each marker | six groups, each read exactly as today's checks read it: `promise` (purpose, scope, rule, limit, definition), `design` (component, interface, data, flow, choice), `approach`, `explain` (rationale, example, open), `plan` (plan, step, migration), `note`. Old kinds are read as their group; no file changes | none: a paragraph still has a kind (v4/R2); the list is shorter |
+| K4 dispositions | written by hand for each change paragraph with a lasting effect | `al` derives a disposition where it can prove it: the text is in `specs/` word for word (incorporated), or a `removes:` names it and it is gone (removed), or a later signed change replaced its target. Only what `al` cannot prove is asked for, in one line. The guard cases of today (a lost edit, a wrong consolidation, a revert, two parallel changes) stay tests | v4/R5 |
+| K5 test outcomes | result files, which the surveyed adopters never wrote | `al` also reads the project's CI test reports, with the commit of the run. A report from another commit is shown as "last reported at <commit>", never as a result for the selected commit. Result files stay for checks that are not code tests | v4/R8 |
+| K7 context and search | `al context`, `al export`, search levels 1 and 2 over marked paragraphs only | the questions of section 4, the code side of section 4a, and the knowledge base setting of section 5. `al context` and `al export` stay as names for one release, then go with the migration skill | v4/R9, v4/R10, level2-peer/R1, context-all/R1 |
+| K8 hints that cannot be cleared | a hint comes back on every run until the text changes | the recorded judgement of LD-12, for hints only; the time rule of LD-11; an ID-only edit or a move does not flag | none: it adds a way to clear a hint; every `not ok` rule stays as signed |
 
 <!-- LD-16 plan -->
 
 Kept: the hashes, the requirement versions, the bindings and the records
-folder. They are `al`'s own, and the user never edits them. `al check`
-refreshes the records, so `al index` need not be run by hand. The skill
-commits them with the change. Design links stay in the marker as today.
-Also kept: the paths and the `Tier:` claim line; `al conclude` and the
-close rule; spikes and their signed question; C1 as `not ok` under
-`--strict`; every signed hint; the rule that an ID is never used again;
-`--at <commit>` on every question.
+folder. They are `al`'s own, and the user never edits them. Their loss
+breaks a requirement changed from A to B and back to A, a squash merge, and
+an edit before the first kept commit. `al check` refreshes the records, so
+`al index` need not be run by hand. The skill commits them with the change.
+Design links stay in the marker as today; prose that names an ID is a
+reference, not a typed link.
+
+<!-- LD-46 plan -->
+
+Also kept:
+
+- The paths and the `Tier:` claim line, and the skill asks the review agent
+  to judge whether a "fix" changes behaviour that a requirement covers.
+- `al conclude` and the close rule, with K4's lighter dispositions.
+- Spikes and their signed question.
+- C1 as `not ok` under `--strict` (signed hints-and-blocks/R2, R5).
+- Every signed hint (own-item, adr-edits, issue-hints with phrases,
+  hints-and-blocks/R1, closed-items, several-successors, adr-lists,
+  delete-in-change-spec). A hint goes only with usage evidence and the
+  owner's signature.
+- The rule that an ID is never used again.
+- `--at <commit>` on every question.
 
 <!-- LD-17 note -->
 
@@ -130,8 +145,8 @@ close rule; spikes and their signed question; C1 as `not ok` under
 <!-- LD-18 plan -->
 
 Small questions, the same as commands and MCP tools. Each answer is a few
-lines, groups repeated lines but never leaves one out, and says which
-question to ask next. `--full` shows everything; `--at <commit>` answers as
+lines, groups repeated lines but never leaves one out (context-all/R1), and
+says which question to ask next. `--full` shows everything; `--at <commit>` answers as
 of a past commit.
 
 - `al about <file or ID>`: the requirements and decisions in force that name
@@ -157,7 +172,8 @@ The default scope of a review is the change's affected IDs: the IDs that
 the diff touches, plus open text that cites an ID whose text or status the
 change alters, plus a requirement whose last naming test the change
 removes, plus what the list of section 4a shows by citation or by file
-scope. Answers are reused within one review.
+scope. Answers are reused within one review. `al cites` gives counts by
+place and the first lines, and "N more: al cites <ID> --full".
 
 <!-- LD-20 plan -->
 
@@ -167,9 +183,9 @@ from the IDs written:
 1. Read the diff and the task. Ask `al about` for what it touches, and read
    the list of section 4a for the change.
 2. Ask one search question about the changed behaviour, even when IDs are
-   written: "which requirement or decision governs <behaviour>?". Where the
-   list says that some items in force were not listed, this question covers
-   them.
+   written: "which requirement or decision governs <behaviour>?". Written
+   IDs can be incomplete or wrong. Where the list says that some items in
+   force were not listed, this question covers them.
 2a. Write a judgement for each item that applies to the change, or that you
    are not sure of, with its evidence (LD-27). Write none for an item that
    does not apply.
@@ -178,8 +194,8 @@ from the IDs written:
 4. For a design in the change, compare it with the request's organized
    requirement: does it answer that problem, and does any part serve none?
 5. For the changed behaviour, find the test assertions that check it, by
-   search or grep, whether or not a test names an ID. Read each assertion: a
-   name is not a check. When none is found, or none was read, say so as
+   search or grep, whether or not a test names an ID and whether or not the
+   test changed. Read each assertion: a name is not a check. When none is found, or none was read, say so as
    unknown. A code quote never stands for a test.
 6. Judge a "fix" claim: does the change alter behaviour that a requirement
    covers?
@@ -189,8 +205,9 @@ from the IDs written:
 
 <!-- LD-41 plan -->
 
-The coding agent asks `al about` on the task's files and IDs at the start,
-and one search question for what is new and has no ID.
+On an ordinary change `al` gives no hint; it shows only the list of section
+4a. The coding agent asks `al about` on the task's files and IDs at the
+start, and one search question for what is new and has no ID.
 
 <!-- LD-21 plan -->
 
@@ -216,17 +233,18 @@ reads it. The hint clears by a recorded judgement that the change was read
 
 <!-- LD-24 data serves:R1 -->
 
-What is in force, at the selected commit, for the selected change. `al`
-reads it from today's records: sign-offs, status lines, supersede links and
-`specs/`. No new record.
+"In force" is `al`'s own term. The kind `rule` keeps its meaning as one of
+the promise kinds. What is in force, at the selected commit, for the
+selected change. `al` reads it from today's records: sign-offs, status
+lines, supersede links and `specs/`. No new record.
 
 - The promise and design paragraphs in `specs/`: the requirements and the
   lasting design. An archived request's text is history; its result is in
   `specs/`.
 - The ADRs whose status is accepted and that no ADR replaced, each with its
   `decides` links. An ADR's text also names the alternatives that were
-  considered, so the review reads which part is the decision; `al` marks no
-  part as binding.
+  considered (SCH-22), so the review reads which part is the decision; `al`
+  marks no part as binding.
 - The selected change's own signed requirements and its proposed design,
   shown as "proposed by this change", apart from what already holds.
 
@@ -248,11 +266,13 @@ without search.
 - The items whose scope is all files.
 - When the set in force is small (300 items, provisional; a size
   calibration sets it): every other item in force, one line each, with its
-  ID and its text in one line.
+  ID and its text in one line. About 85 items cost about 1,300 tokens
+  (inferred: about 15 tokens a line; not measured).
 - When the set is larger: one grouped line with exact counts, "N further
   items in force: U with no known scope, K with a scope that does not match
   this change". The search question of skill step 2 covers both groups. A
-  scope that does not match is not proof that the item cannot apply.
+  scope that does not match is not proof that the item cannot apply: new
+  behaviour can make an old scope incomplete.
 
 <!-- LD-43 flow serves:R1 -->
 
@@ -303,8 +323,11 @@ same diff hash and the same item version. So a commit that only saves
 review notes or `al`'s records keeps it current, and a commit that changes
 any other file of the change, quoted or not, in any repo, makes it "stale:
 judged at <head>". A stale judgement needs a new judgement or an explicit
-renewed review, even when every quote is still there. A quote that is not
-there gives "evidence not found". `al` shows a quote that it found as
+renewed review, even when every quote is still there. The sequence: the
+review judges head A and writes its note; commit B saves the note and the
+records, and the judgement stays current; commit C changes a source file,
+and the judgement is stale; the renewed review judges C, and commit D saves
+it. A quote that is not there gives "evidence not found". `al` shows a quote that it found as
 "quote found", never as "complies": the meaning is the AI's judgement. C8
 gives hints only. A judgement never clears or hides a `not ok` or a refusal
 of `al conclude` (LD-12), and it never blocks. To make a judgement block
@@ -313,8 +336,9 @@ needs its own requirement and the owner's signature.
 <!-- LD-29 choice serves:R1 -->
 
 Search only adds. The search question of skill step 2 adds candidates for
-the review to read. It never adds to or removes from `al`'s list, and it
-never changes the result of a check.
+the review to read. It never adds to or removes from `al`'s list, which
+stays the same with or without search (LD-25), and it never changes the
+result of a check.
 
 <!-- LD-30 rationale -->
 
@@ -369,8 +393,10 @@ base.
 
 <!-- LD-35 plan -->
 
-When the tests give their results, each item goes to the owner as its own
-new version, one at a time.
+When the owner agrees with the direction of this design, each item below
+goes to the owner as its own new version, one at a time. Nothing is built
+or removed until the tests give their results and the owner signs these
+new versions.
 
 | Requirement | The new version says, in short |
 |---|---|
@@ -390,15 +416,18 @@ new version, one at a time.
 
 | Question | Test |
 |---|---|
-| Do the questions and the knowledge base give more right answers than the AI alone, or as many for fewer tokens, and how close do they come to the strongest model with a large budget? | an answer test on `al`'s own questions, with an upper bar |
-| Does the local knowledge base add right answers, or only cost? | the answer test, the light prototype with `local` and with `none` |
-| Do code syntax units add right answers? | the answer test, the same prototype with and without syntax units |
-| Which model, fusion and reranker | a local model bench with the published benchmarks, and the answer test's tuning |
-| Does it change the result of building and reviewing real changes, small to large? Do the list and the judgements of section 4a catch violations, and with how many false alarms and tokens? Which form of the list works better at the tested set size? | a real test on an open-source project, with a build arm and review modes for the light prototype; the conclusion on the list's form holds for that size only |
-| At which size of the set in force does the grouped line become the better form? | a size calibration before the release value is chosen: both forms on subsets of several sizes on both sides of 300, with the rule for the choice fixed before the runs |
-| The same for an ordinary one-file change | the answer test's ordinary changes: the list's tokens counted in full; the list alone is not a claim of drift |
+| Do the questions and the knowledge base give more right answers than the AI alone, or as many for fewer tokens, and how close do they come to the best effort (the strongest model with a large budget)? | an answer test on `al`'s own questions, with an upper bar |
+| Does the local knowledge base add right answers, or only cost? The light prototype runs twice, with `local` and with `none`. If `local` shows no gain, the architect brings this to the owner, who chose `local` as the default | the answer test, the light prototype in two settings |
+| Which model, fusion and reranker | a local model bench (#28), the Agent Retrieval Bench reproduction, and the answer test's tuning |
 | Do agents write IDs when the skill asks? | the real test's arm with commit-message IDs and a rough map |
-| Do the paths still work: a fix, an amendment, an epic in parts, two epics at once, a spike, a bug? A long ADR; a judgement renewed after a small amendment; a fresh setup with each `search` value; an upgrade that keeps every task, declared output, decision and sign-off readable | the build's own tests |
+| Does it change the result of building and reviewing real changes, small to large? | a real test on an open-source project |
+| Do the paths still work: a fix, an amendment, an epic in parts, two epics at once, a spike, a bug? | a case walk-through in the build's own tests |
+| Do the list and the judgements of section 4a catch the violations in real changes, against a plain review? How many false alarms, and how many tokens? Which form of the list works better at the tested set size? (#45, #29) | the real test, with one more build arm and review modes with a prototype of section 4a (no separate test); the real test already holds a real rule break, and its review comparison plants a decision violation. The review modes run the list in both forms (every item as one line, and the grouped line) on the project's own set in force; the conclusion holds for that size only |
+| At which size of the set in force does the grouped line become the better form? (the size of LD-25; 300 is provisional) | a size calibration before the release value is chosen: both list forms on sets of several sizes on both sides of 300, made as subsets of a real set in force that keep the decisions that the cases need and their known answers, with the rule for choosing the size fixed before the runs |
+| The same for an ordinary one-file change | the answer test's ordinary changes: the list's tokens counted in full; the list alone is not a claim of drift |
+| A long ADR; a judgement renewed after a small amendment (current, stale) | the build's own tests, with cases made for them; not answered by the real test |
+| A fresh setup with the user's own knowledge base, with `local` and with `none`; an upgrade that keeps every task, declared output, decision and sign-off readable | the build's own tests |
+| Do code syntax units add right answers? | the same light prototype with two index scopes (with and without syntax units) on the same questions: in the answer test if its frozen plan can take it, else a run after it |
 | Speed at 1,000 requests and 20 repos | a scale test before release |
 | The cost, in tokens and owner round trips | the answer test, the real test, and the adopters after release (#26) |
 
@@ -416,12 +445,14 @@ new version, one at a time.
   knowledge base serve its purpose (the architect's proposal).
 - An ADR may carry a sign-off snapshot, as a requirement does.
 - Typo fixes: the path 0 typo claim stays.
+- #19: open, unchanged.
 - Work items out of the CI token's reach (#38, Q9, Q19): a setting names
   them, and `al` gives one info line for them, in place of a hint for each.
 - #30 (`al` proposes kinds and document links for the author to confirm):
   its idea is taken for file scopes (LD-26). Kinds need no suggestion after
   K1's six groups. Document links are not offered now: the adopter that
-  answered #38 said that writing markers and links is "not a pain" (Q12).
+  answered #38 said that writing the markers and links is "not a pain"
+  (Q12), and that judging hints and migrations cost more.
 - #45: each part was evaluated. Taken: only what is in force counts (as
   "in force", with no new word); retrieval only as a helper. Changed: the
   file scope is optional and only helps the list; below the size, every
@@ -434,4 +465,4 @@ new version, one at a time.
 <!-- LD-40 open -->
 
 Not decided here: command names, file formats, the release plan and the
-order of building.
+order of building. They follow the owner's agreement.
