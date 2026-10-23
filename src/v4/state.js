@@ -10,7 +10,7 @@ import { fileAt, filesAt, git } from './git.js';
 import { KINDS, groupOf, lf, parseMarkdown } from './markers.js';
 import { frameOf, requirements, signedText } from './request-md.js';
 import { SIGNED } from './snapshot.js';
-import { ADR_FILE, SPEC, docsInScope, parseScopes, symlinkOn } from './scope.js';
+import { ADR_FILE, SPEC, adrId, docsInScope, parseScopes, symlinkOn } from './scope.js';
 
 // The names in folder `dir` of the state: its folders, or its files.
 function names(top, rev, dir, folders) {
@@ -164,7 +164,7 @@ export function loadState(top, rev = null) {
       continue;
     }
     const paragraphs = parseMarkdown(text, file, { kinds }).paragraphs;
-    const id = `ADR-${Number(m[1])}`;
+    const id = adrId(m[1]);
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
     const head = paragraphs.find((p) => p.id === id) ?? null;
     // The status line that al knows: `Status: proposed`, `accepted` or
@@ -173,7 +173,7 @@ export function loadState(top, rev = null) {
     // `known` is whether it is the file's first line (#4). One parse gives
     // both, so superseded-status and adr-status agree.
     const s = /^(\s*)Status:[ \t]*(?:proposed|accepted|superseded[ \t]+by[ \t]+(ADR-\d+(?:(?:[ \t]*,[ \t]*(?:and[ \t]+)?|[ \t]+and[ \t]+)ADR-\d+)*))[ \t]*\r?(?:\n|$)/i.exec(text);
-    const by = [...new Set([...(s?.[2] ?? '').matchAll(/ADR-(\d+)/gi)].map((m) => `ADR-${Number(m[1])}`))];
+    const by = [...new Set([...(s?.[2] ?? '').matchAll(/ADR-(\d+)/gi)].map((m) => adrId(m[1])))];
     const known = Boolean(s) && !/[\r\n]/.test(s[1]);
     const marker = head && lf(text).split('\n')[head.line - 1];
     // The words after `Status:`, for a hint that names a changed status (#31).

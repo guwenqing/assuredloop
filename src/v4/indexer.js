@@ -8,7 +8,7 @@ import { isMap, parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
 import { git, mergeBase, fileAt, filesAt } from './git.js';
 import { loadConfig } from './config.js';
-import { ADR_FILE, SPEC, docsInScope, symlinkOn } from './scope.js';
+import { ADR_FILE, SPEC, adrId, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
 import { outputRepos } from './repos.js';
@@ -87,10 +87,14 @@ export function loadState(top, at, config, names) {
     }
     requests.set(n, { name: n, open, md, reqs: requirements(md), data: data && typeof data === 'object' ? data : null, paras: new Map((paras ?? []).map((p) => [p.id, p])) });
   }
-  // An ADR's ID names the first of its files in name order (DES-113).
-  const spec = new Map();
-  for (const d of docs.filter((x) => !x.request)) for (const p of d.paragraphs) if (!(d.adr && spec.has(p.id))) spec.set(p.id, p);
-  return { docs, requests, spec };
+  // An ADR number names the first of its files in name order (DES-113).
+  const firsts = new Set();
+  const first = (d) => {
+    if (!d.adr) return true;
+    const id = adrId(ADR_FILE.exec(posix.basename(d.file))[1]);
+    return !firsts.has(id) && Boolean(firsts.add(id));
+  };
+  return { docs, requests, spec: new Map(docs.filter((d) => !d.request && first(d)).flatMap((d) => d.paragraphs.map((p) => [p.id, p]))) };
 }
 
 // A link target as written, made exact: `name:ID` is another repo's;
