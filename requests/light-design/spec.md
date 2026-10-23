@@ -393,10 +393,9 @@ base.
 
 <!-- LD-35 plan -->
 
-When the owner agrees with the direction of this design, each item below
-goes to the owner as its own new version, one at a time. Nothing is built
-or removed until the tests give their results and the owner signs these
-new versions.
+When the tests give their results, each item below goes to the owner as
+its own new version, one at a time. Nothing is built or removed until the
+tests give their results and the owner signs these new versions.
 
 | Requirement | The new version says, in short |
 |---|---|
