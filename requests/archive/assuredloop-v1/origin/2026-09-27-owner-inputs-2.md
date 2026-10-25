@@ -1,4 +1,4 @@
-Source: mybots repo, bots/assuredloop/research/owner-inputs.md @ e4854f1043ed28428d25152fd37161ef75f95a71
+Source: the architect's record of the owner's inputs
 Fetched: 2026-09-27T16:46Z
 Target updated: 2026-09-27T12:17:20-04:00
 SHA-256: bef92873ebde35ec25f2b073c6257884ac0c75d3514aaa80688f7e0e65bcbeb9   (of the text below)

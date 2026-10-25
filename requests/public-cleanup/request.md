@@ -7,4 +7,4 @@ Tier: 1d · Status: open
 
 ## Source note
 
-The v4 validation, cost and scale reports leave the repo. Test results leave the archived change specs and decisions. DES-2 and DES-79 lose their pointers to the validation report.
+The v4 validation, cost and scale reports leave the repo. Test results leave the archived change specs and decisions. DES-2 and DES-79 lose their pointers to the validation report. Private paths and a session ID leave the archived files and the snapshot headers; the hashed text below each header stays as it is.

@@ -213,8 +213,7 @@ Notes:
 
 The acceptance checks C9-C11 (design §11), run in part 10 (#66), 2026-09-28.
 The working material (the C10 fixture script, inputs, answers, ground truths
-and judge reports; the C11 scripts and data) is in the bots repository, under
-bots/assuredloop/design/case-tests/part10-proofs/.
+and judge reports; the C11 scripts and data) is in the architect's working notes, outside this repository.
 
 - **C9, cost.** No runtime dependencies (`test/deps.test.js`). The CLI source,
   every line of the `.js` files in `src/` and `bin/`, is 3,056 lines, under

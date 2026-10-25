@@ -23,8 +23,8 @@ changes only its status.
 **Where the cited material lives.**
 - The design as agreed: `requests/archive/assuredloop-v1/design.md`.
 - Earlier drafts, the adversary's challenges, the case tests, and the
-  research notes cited as [A]-[L] and [G]: the bots repository, under
-  `bots/assuredloop/design/` and `bots/assuredloop/research/`.
+  research notes cited as [A]-[L] and [G]: the architect's working notes, outside this
+  repository.
 - "input N": the owner's inputs, snapshotted twice in
   `requests/archive/assuredloop-v1/origin/`: `2026-09-27-owner-inputs.md`
   holds inputs 1-48, and the later `2026-09-27-owner-inputs-2.md` holds 1-53,

@@ -28,8 +28,7 @@ Decided by: the owner (inputs 35 and 38). Consulted: the architect.
 - Issues, PRs and the build tag stay in the repository.
 
 Done on 2026-09-27:
-- the mirror is at `bots/assuredloop/work/architect/legacy/`: 26 branches, 1
-  tag, 25 PR refs, `fsck` clean;
+- a local mirror holds 26 branches, 1 tag and 25 PR refs, `fsck` clean;
 - `legacy` is at `baa2ba0`;
 - `main` restarted at `08a6d9f`, a README only, pushed with a lease pinned to
   `baa2ba0`;
