@@ -443,8 +443,9 @@ reliance, which is what held then (LD-11). An archived request is not
 checked. Without `--issues`, no line is about items (DES-92). The hint
 clears by a recorded judgement that the change was read (LD-12):
 `al record <name> judgement --hint issue-changed --on <item> --reason <why>
---issues <folder>` keeps the item's text with the judgement, and the hint
-comes back when that text changes again. Only `issue-changed` takes a
+--issues <folder>` keeps the item's text with the judgement, and the moment
+of reliance that held then. The hint comes back when that text changes
+again, or when a later sign-off becomes the moment of reliance. Only `issue-changed` takes a
 judgement until the general judgement of LD-12 is built.
 
 <!-- LD-23 note -->

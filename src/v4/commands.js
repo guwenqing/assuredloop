@@ -9,7 +9,7 @@ import { addDecision, decisionNumbers, requirements, setSignedOff, signedText } 
 import { YAML_OPTIONS, addVersions, append, highest, latest, openRecord, recordText } from './records.js';
 import { loadConfig } from './config.js';
 import { itemFinder, loadItems } from './issues.js';
-import { CHANGED, textSha } from './kept-items.js';
+import { CHANGED, reliance, textSha } from './kept-items.js';
 
 const TIERS = ['1', '1d', '2', '3', 'S'];
 
@@ -175,7 +175,8 @@ function recordDecision({ top, args, opts }) {
 
 // al record <name> judgement --hint issue-changed --on <item> --reason <why> --issues <folder> [--yes]:
 // the change of a work item was read (LD-12). It records the item's text
-// now, so the hint comes back when the text changes again. Only
+// now and the moment of reliance that it covers, so the hint comes back
+// when the text changes again or a later sign-off becomes that moment. Only
 // issue-changed takes a judgement for now.
 function recordJudgement({ top, cwd, args, opts }) {
   const [name] = args;
@@ -193,7 +194,7 @@ function recordJudgement({ top, cwd, args, opts }) {
   if (!its.length) throw new Fail(`--on ${opts.on}: no task of ${name} names an item in ${opts.issues} that ${opts.on} names`, usage);
   const n = highest(rec, 'judgements', 'J');
   const recorded = stamp(now());
-  const entries = its.map((it, i) => ({ id: `J${n + i + 1}`, hint: CHANGED, on: it.key, reason: opts.reason, sha256: textSha(it), recorded }));
+  const entries = its.map((it, i) => ({ id: `J${n + i + 1}`, hint: CHANGED, on: it.key, at: reliance(rec.data, it.key).at, reason: opts.reason, sha256: textSha(it), recorded }));
   const lines = entries.map((e) => `${e.id} ${e.hint} ${e.on}: ${e.reason}`);
   if (!opts.yes) return { body: [`Would add to ${rec.path}:`, ...lines], next: 'run the same command with --yes to write it' };
   guard(top, [rec.path]);

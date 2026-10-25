@@ -88,25 +88,34 @@ export function keepItems(top, recs, named, finder) {
   return body;
 }
 
+// The moment of reliance of item `key` in a request's record data: { at }
+// ("named" or a sign-off's ID), with `base` (the text kept at it) and
+// `label`, or with `why` al has no text for it. With no text kept at all,
+// the naming or any sign-off after it can be the moment, so it is the
+// latest sign-off. A judgement covers the moment that held when it was
+// recorded, and only that one.
+export function reliance(data, key) {
+  const kept = keptFor(data, key);
+  const signoffs = list(data?.signoff).filter((s) => isMap(s) && SIGNOFF.test(String(s.id)));
+  const atSignoff = kept.find((e) => SIGNOFF.test(String(e.at)));
+  if (atSignoff) return { at: String(atSignoff.at), base: atSignoff, label: `the sign-off ${atSignoff.at}` };
+  const naming = kept.find((e) => e.at === 'named');
+  const after = naming && signoffs.find((s) => String(s.signed) >= naming.kept);
+  if (after) return { at: String(after.id), why: `al kept no text at the sign-off ${after.id}, the first after the request named it` };
+  if (naming) return { at: 'named', base: naming, label: 'the request named it' };
+  return { at: signoffs.length ? String(signoffs.at(-1).id) : 'named', why: 'al kept no text when the request named it or at its sign-off' };
+}
+
 // al check --issues: issue-changed for each item that a task of an open
 // request names, and "not known" for each that it cannot read.
 export function changedHints(named, missing, folder, add) {
   for (const { r, task, it } of firstNamed(named)) {
     const id = `${r.name}/${task}`;
-    const kept = keptFor(r.data, it.key);
-    let base = kept.find((e) => SIGNOFF.test(String(e.at)));
-    let label = base && `the sign-off ${base.at}`;
-    let why = null;
-    if (!base) {
-      const naming = kept.find((e) => e.at === 'named');
-      const after = naming && list(r.data?.signoff).find((s) => isMap(s) && String(s.signed) >= naming.kept);
-      if (naming && after) why = `al kept no text at the sign-off ${after.id}, the first after the request named it`;
-      else if (naming) [base, label] = [naming, 'the request named it'];
-      else why = 'al kept no text when the request named it or at its sign-off';
-    }
-    // A judgement that the change was read holds until the text changes again (LD-12).
-    const judged = judgedFor(r.data, it.key).at(-1);
-    if (judged && (!base || String(judged.recorded ?? '') >= base.kept)) [base, label, why] = [judged, `the judgement ${judged.id}`, null];
+    let { at, base, label, why } = reliance(r.data, it.key);
+    // A judgement that the change was read holds until the text changes
+    // again, or another moment of reliance comes (LD-12).
+    const judged = judgedFor(r.data, it.key).filter((j) => String(j.at) === at).at(-1);
+    if (judged) [base, label, why] = [judged, `the judgement ${judged.id}`, null];
     const next = `read the item, then al record ${r.name} judgement --hint ${CHANGED} --on ${it.key} --reason <why> --issues ${folder} --yes`;
     if (why) add('hint', CHANGED, it.key, id, `not known whether it changed since the change relied on it: ${why}; ${next}`);
     else if (base.sha256 !== textSha(it)) add('hint', CHANGED, it.key, id, `changed since ${label} (${base.kept ?? base.recorded}); ${next}`);
