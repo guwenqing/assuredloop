@@ -7,11 +7,14 @@
 This change serves R1, R2 and R3 in `request.md`. It makes `al` lighter for
 the user and the AI, and adds the code side: the requirements and decisions
 in force for a change, the review's judgements, and a check of their
-evidence. The tests gave their results on 2026-10-25 (section 7), and
-sections 4, 4a and 5 carry the tuning that followed. Seven signed
-requirements get new versions, which the owner signs one at a time
-(section 6). Nothing is built or removed until the owner signs them. Until
-then, those parts stay plans.
+evidence (section 4a). It also changes how a change is written and
+consolidated. The change spec is one readable design of the change, and the
+AI brings it into the consolidated spec by its own judgement, which the
+review checks (section 3). Five signed requirements get new versions, which
+the owner signs one at a time (section 6). A part that depends on a new
+version is built only after the owner signs it. The code side builds the
+signed R1, R2 and R3, and can start when this change spec is reviewed and
+merged.
 
 <!-- LD-3 note -->
 
@@ -30,14 +33,18 @@ on how a user works.
 
 <!-- LD-5 rationale -->
 
-From the same owner's words: audit questions run once in a while, not on
-every change. The knowledge base is the user's own when there is one, else
-a local one with a suggestion from the user's machine, else none. A skill
-helps a project adopt `al` from scratch, or move from an older version.
-`al` knows when a source changed after a change relied on it. Each change
+From the same owner's words: the chain runs from the requirement, through
+the spec and the design, to the work: code, tests and documents. Most of
+the spec is derived design, and it can run to hundreds of pages. Each change
 keeps its own documents, its design above all, beside the consolidated
-spec. Code, tests and docs in up to 20 repos link to one spec repo. A check
-takes 10 s at 1,000 requests; a search takes 2 s across 20 repos.
+spec, and its design honors the consolidated design. Consolidation is a
+judgement, not a mechanical merge. The skill guides the AI's judgements; the
+program keeps only a few facts. Audit questions run once in a while, not on
+every change. Search is the team's own knowledge base, a local one, or none,
+as the user chooses. A skill helps a project adopt `al` from scratch, or
+move from an older version. `al` knows when a source changed after a change
+relied on it. Code, tests and docs in up to 20 repos link to one spec repo.
+A check takes 10 s at 1,000 requests; a search takes 2 s across 20 repos.
 
 <!-- LD-6 note -->
 
@@ -58,14 +65,28 @@ reads them, and as long as they never give a finding that cannot be
 cleared. What a person or an AI must write or read is cut to what a check
 needs.
 
+<!-- LD-53 rationale -->
+
+Skill first. The skill guides the judgements: how to write a change's
+design, how to consolidate it, and how to review it. The program keeps only
+the facts that an AI forgets or invents: the signed text and its changes,
+the items in force for a change, the spec paragraphs that a change named
+and the ones it changed, the quotes of a review judgement, and a work item
+that changed. `al` calls no model.
+
 <!-- LD-9 rationale -->
 
 A cut must not force a rewrite, and must not lose a fact. `al` maps old
-kinds to the new words. Tasks, declared outputs, decisions and sign-offs in
-today's records stay readable. The migration skill shows the answers of
-`al check` and `al status` before and after, so an old project cannot turn
-clean by losing facts. Old command names stay for one release. (The adopter
-that answered #38 spent about 1 in 6 merged PRs on adoption and upgrades.)
+kinds to the new words. Tasks, declared outputs, decisions, dispositions and
+sign-offs in today's records stay readable. An old change spec that holds
+replacement text stays valid: its `changes` links read as references. The
+migration skill shows the answers of `al check` and `al context` before and
+after, so an old project cannot turn clean by losing facts. A command that
+goes (`al index --align`) still answers for one release, and says what
+replaces it. A project adopts `al` from the day of adoption: its existing
+spec paragraphs are the adopted baseline (DES-38, DES-39), and no history is
+replayed. Adopters named adoption and upgrades as a real cost, so each must
+take little work.
 
 <!-- LD-10 rationale -->
 
@@ -87,7 +108,9 @@ judgement never clears a `not ok` rule (an unsigned requirement, changed
 record evidence, an unreadable record, a citation of a replaced decision
 under `--strict`) or a refusal of `al conclude`. Those clear only by their
 own fix: a valid sign-off, or repaired evidence. A judgement on them is
-shown, and changes neither `--strict` nor `conclude`.
+shown, and changes neither `--strict` nor `conclude`. An edit that changes
+only an ID, or moves a paragraph, gives no hint. An edit of an accepted or
+replaced ADR's marker line keeps the hint of adr-edits/R1.
 
 <!-- LD-13 rationale -->
 
@@ -101,17 +124,142 @@ evidence that the AI quotes (section 4a). `al` calls no model.
 
 <!-- LD-14 note -->
 
-## 3. The cuts (plans; each waits for its test and, where it changes a signed requirement, for the owner's signature)
+## 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature)
+
+<!-- LD-54 plan -->
+
+The change spec. It is the design of one change, for that change only,
+written as one readable document: what the change does and why, its
+promises, its design and its plan (v4/R1). Each paragraph keeps an ID and a
+kind (v4/R2). A promise or design paragraph says which requirement it
+serves, and names by ID the spec paragraphs that it builds on
+(`builds-on`) or changes (`changes`). It holds no copy of a spec paragraph
+and no replacement text. It says in its own words what the change does to
+that part of the system, and it is not written as "change X from A to B".
+One change paragraph may name several spec paragraphs, and several change
+paragraphs may name one. So the change spec follows the change's own line
+of thought, not the order of the spec. For example, a flow paragraph that
+serves R1 and changes INV-41 and INV-42 may say: "A shared export link
+lives for 24 hours from its creation; the email carries only the link." A
+change may also name a project document as its design (LD-48). Deleting a
+paragraph of an open change spec is ordinary editing
+(delete-in-change-spec/R1).
 
 <!-- LD-15 plan -->
 
-| Cut | Today | After | Signed requirements touched |
-|---|---|---|---|
-| K1 kinds | 18 kinds in each marker | six groups, each read exactly as today's checks read it: `promise` (purpose, scope, rule, limit, definition), `design` (component, interface, data, flow, choice), `approach`, `explain` (rationale, example, open), `plan` (plan, step, migration), `note`. Old kinds are read as their group; no file changes | none: a paragraph still has a kind (v4/R2); the list is shorter |
-| K4 dispositions | written by hand for each change paragraph with a lasting effect | `al` derives a disposition where it can prove it: the text is in `specs/` word for word (incorporated), or a `removes:` names it and it is gone (removed), or a later signed change replaced its target. Only what `al` cannot prove is asked for, in one line. The guard cases of today (a lost edit, a wrong consolidation, a revert, two parallel changes) stay tests | v4/R5 |
-| K5 test outcomes | result files, which the surveyed adopters never wrote | `al` also reads the project's CI test reports, with the commit of the run. A report from another commit is shown as "last reported at <commit>", never as a result for the selected commit. Result files stay for checks that are not code tests | v4/R8 |
-| K7 context and search | `al context`, `al export`, search levels 1 and 2 over marked paragraphs only | the questions of section 4, the code side of section 4a, and the knowledge base setting of section 5. `al context` and `al export` stay as names for one release, then go with the migration skill | v4/R10, level2-peer/R1, context-all/R1, design-links/R1; v4/R9 holds as written: it names no command |
-| K8 hints that cannot be cleared | a hint comes back on every run until the text changes | the recorded judgement of LD-12, for hints only; the time rule of LD-11; an ID-only edit or a move of a paragraph does not flag; an edit of an accepted or replaced ADR's marker line keeps the hint of adr-edits/R1 | hints-and-blocks/R1, which names `al index --align`; every `not ok` rule stays as signed |
+Kinds: six groups, each read exactly as today's checks read it: `promise`
+(purpose, scope, rule, limit, definition), `design` (component, interface,
+data, flow, choice), `approach`, `explain` (rationale, example, open),
+`plan` (plan, step, migration) and `note`. Old kinds are read as their
+group, so no file changes. A paragraph still has a kind (v4/R2); the list
+is shorter.
+
+<!-- LD-55 plan -->
+
+Consolidation. The AI brings the change into `specs/` by its own judgement,
+when a piece is ready: in the PR with its code, or in a later PR, part by
+part for an epic, before the change closes. It writes `specs/` as the
+current system. It may rewrite, split or join paragraphs so that the spec
+reads well, and it writes no Was/Now text. Promise, design and explain
+paragraphs go into `specs/`; plan, `approach` and `note` paragraphs stay
+with the change as its history. No command writes the spec. An ID that
+leaves `specs/` is named in the change spec with `removes:`, as today, and
+a loss that nobody declared stays a hint. A promise paragraph that is
+consolidated before its requirement is signed is `not ok`, as today. An ID
+is never used again.
+
+<!-- LD-56 plan -->
+
+The map. On a branch with an open change (path 2 or 3), `al check` shows
+the change against its base, from facts only:
+
+- each spec paragraph that the branch added, changed or removed, with the
+  change paragraphs that name it;
+- each change paragraph that names a spec paragraph by `changes` or
+  `removes`, with that paragraph's state: consolidated, removed, or not
+  consolidated yet.
+
+<!-- LD-61 plan -->
+
+"Not consolidated yet" means that the named paragraph still has the version
+that it had when the change linked it, or when a recorded judgement last
+accepted it (LD-12). So a lost edit and a revert show as not consolidated.
+When the change's own branch changes a named paragraph, `al` keeps that
+version in its own records; no person and no AI writes or reads it. A later
+edit of that paragraph by other work gives the parallel-work hint of v4/R6,
+as today; the change's own consolidation does not. `al` compares no text
+with text. The map also shows, for each change paragraph that goes into
+`specs/`, its consolidation judgement (LD-59): current, stale or none. The
+review reads the map beside the change spec and the spec's diff, and judges
+the consolidation (LD-20, step 4.5).
+
+<!-- LD-59 plan -->
+
+The consolidation judgement. The review writes it as an ordinary judgement
+of LD-27, in the same note, one for each piece that it consolidates. Its
+item is the change paragraph or paragraphs of that piece. It names the spec
+paragraphs that hold them now, says complies, violates or unclear with the
+reason, and quotes the change paragraph and the spec text. It may name
+several change paragraphs and several spec paragraphs, so a split or a join
+needs one judgement. C8 checks its quotes. `al` keeps, by itself, the
+version of each paragraph that the judgement names. The judgement goes
+stale when any of them changes. So a later rewrite that loses an effect of
+a consolidated piece, by this change or by other work, makes the judgement
+stale and shows it again. Nothing is dropped in silence, and no record is
+written for each paragraph.
+
+<!-- LD-60 plan -->
+
+The hints of the map: a spec paragraph that the branch changed and that no
+change paragraph names; and a change paragraph that goes into `specs/` with
+no current consolidation judgement. Each clears by a fix: a link, or a new
+judgement. `al conclude` shows them again before it closes, and they never
+refuse (R2).
+
+<!-- LD-57 plan -->
+
+The close rule, by path. A spike closes as today (DES-44): its current
+question is signed, its answer names the question version, and its change
+spec needs no consolidation; an unsigned spike that the owner drops may be
+abandoned unsigned. Paths 0, 1 and 1d close as today. On paths 2 and 3,
+`al conclude` refuses while:
+
+1. a promise change is not signed (as today);
+2. a signed requirement in the request's current version has no declared
+   link: a `serves` link from a paragraph in `specs/`, or a `decides` link
+   from an accepted ADR. A requirement that the owner dropped is not in the
+   current signed version, so it is not asked for. `al` says "no declared
+   paragraph link", never "not built". During work the same fact is a hint
+   (LD-49); only `al conclude` refuses on it;
+3. a change paragraph names a spec paragraph by `changes`, and that
+   paragraph is not consolidated yet (LD-56); or it names one by `removes`,
+   and that paragraph is still in `specs/`.
+
+<!-- LD-62 plan -->
+
+A close line clears items 2 and 3: one sentence in the request's record. For
+item 3, it names the change paragraph as not delivered, with the reason. For
+item 2, it names where the requirement is met when no lasting paragraph
+links to it: an existing design reused, or a one-time task such as a
+migration. A close line is the request's own record of what was not done or
+how it was met; it is not a judgement of LD-12, and the review reads it.
+Nothing else refuses: a missing or stale consolidation judgement is shown
+(LD-60), and a judgement never clears or causes a refusal (R2).
+`al conclude` compares no text with text, and asks for no record for each
+change paragraph. It runs on the closing PR's state, and an archived
+request is never checked again against today's spec (as today). Items 2 and
+3 and the consolidation judgements keep the two promises of v4/R5: every
+signed requirement is served, and nothing applied is dropped in silence.
+
+<!-- LD-58 plan -->
+
+This change removes from today's design (`specs/design.md`, section 5): the
+dispositions and their table, the exact-text rule, the wording decisions,
+and the close rule that asks for a disposition for each change paragraph.
+In section 4, `changes <ID>` becomes a reference with no replacement text,
+and `al index --align` gives way to the recorded judgement of LD-12. Typo
+claims stay, on path 0. Old records that hold dispositions or wording
+decisions stay readable, and `al` no longer checks them (LD-9).
 
 <!-- LD-16 plan -->
 
@@ -129,7 +277,7 @@ Also kept:
 
 - The paths and the `Tier:` claim line, and the skill asks the review agent
   to judge whether a "fix" changes behaviour that a requirement covers.
-- `al conclude` and the close rule, with K4's lighter dispositions.
+- `al conclude`, with the close rule of LD-57.
 - Spikes and their signed question.
 - C1 as `not ok` under `--strict` (signed hints-and-blocks/R2, R5).
 - Every signed hint (own-item, adr-edits, issue-hints with phrases,
@@ -137,82 +285,104 @@ Also kept:
   delete-in-change-spec). A hint goes only with usage evidence and the
   owner's signature.
 - The rule that an ID is never used again.
-- `--at <commit>` on every question.
+- Result files, as today.
+- `--at <commit>` on `al check` and `al context`.
 
 <!-- LD-17 note -->
 
-## 4. The questions (plans: skill, command, MCP)
+## 4. Commands, answers and the skill (plans)
 
 <!-- LD-18 plan -->
 
-Small questions, the same as commands and MCP tools. Each answer is a few
+Three commands for the AI, the same as MCP tools. Each answer is a few
 lines, groups repeated lines but never leaves one out (context-all/R1), and
-says which question to ask next. `--full` shows everything; `--at <commit>` answers as
-of a past commit.
+says what to ask next only where that helps. `--full` shows everything;
+`--at <commit>` answers as of a past commit.
 
-- `al about <file or ID> ...`: the requirements and decisions in force that
-  name these files or IDs, or that they name. Several files or IDs in one
-  call give the same lines as separate calls, with repeats grouped and each
-  input that `al` cannot resolve named.
-- `al status <ID or request>`: for an ID, its text in one line, its status,
-  what replaced what, and its last signed version. For a request, where it
-  stands and what to do next.
-- `al cites <ID>`: every place that names the ID, in the spec repo and the
-  output repos, marked current or historical.
-- `al tests <ID>`: the tests that name the ID, their last outcome where the
-  CI keeps one, and "not checked: whether they test it".
-- `al history <ID>`: each change from git, with the commit message and the
-  sign-off words.
-- `al check`: every check of today's `al`, plus C4, C7 and C8, on the
-  change's affected IDs; `--all` for an audit. On a change it also shows the
-  list of section 4a.
-- `al ask <text>`: the configured knowledge base; results marked as
-  suggestions.
+- `al check`: every check of today's `al`, plus C7 and C8. On a change, it
+  also shows the list of section 4a and the map of LD-56. `--all` is an
+  audit.
+- `al context [<request> | <ID>]`: with no argument, where the project
+  stands. For a request, where it stands and what to do next, and with
+  `--audit` its whole trace (v4/R9). The ID may name a paragraph, a
+  requirement or an ADR (`ADR-2`). For an ID, its text in one line, its
+  file and line, its status, what replaced what, its last signed version,
+  the paragraphs that build on, explain or illustrate it, the open changes
+  that name it, and the places that cite it, marked current or historical.
+- `al search <words>`: the configured search (section 5); its results are
+  marked as suggestions.
+
+<!-- LD-63 plan -->
+
+The record commands stay: `al new`, `al record`, `al spec` and
+`al conclude`. `al export` stays, to feed a team's own knowledge base.
+`al check` runs `al index`. Today's review view
+(`al context --diff <range> --for review`) becomes the list and the map of
+`al check`.
 
 <!-- LD-19 plan -->
 
 The default scope of a review is the change's affected IDs: the IDs that
 the diff touches, plus open text that cites an ID whose text or status the
-change alters, plus a requirement whose last naming test the change
-removes, plus what the list of section 4a shows by citation or by file
-scope. An answer is reused while its inputs stay the same: the base, the
-changed content, the source versions, the saved work items, the repository
-states and the options. A refreshed work item ends the reuse. `al cites` gives counts by
-place and the first lines, and "N more: al cites <ID> --full".
+change alters, plus what the list of section 4a shows by citation or by
+file scope. An answer is reused while its inputs stay the same: the base,
+the changed content, the source versions, the saved work items, the
+repository states and the options. A refreshed work item ends the reuse.
+`al context <ID>` gives the citing places as counts by place with their
+first lines, and "N more: al context <ID> --full".
 
 <!-- LD-20 plan -->
 
-The skill leads the review agent from the change's behaviour, not only
-from the IDs written:
+The skill guides the judgements. It stays short, because the AI reads it
+on every task. Its steps:
 
-1. Read the diff and the task. Ask `al about` for what it touches, and read
-   the list of section 4a for the change.
-2. Ask one search question about the changed behaviour, even when IDs are
-   written: "which requirement or decision governs <behaviour>?". Written
-   IDs can be incomplete or wrong. Where the list names items in force
-   without their text, this question covers them. When search is off, use
-   grep. An empty result never means that every governing item was found.
-2a. Write a judgement for each item that applies to the change, conflicts
-   with it, or that you are not sure of, however you found it, with its
-   evidence (LD-27). Write no routine judgement for an item that does not
-   apply.
-3. For a decision it names, `al status`. For a changed requirement,
-   `al history`.
-4. For a design in the change, compare it with the request's organized
-   requirement: does it answer that problem, and does any part serve none?
-5. For the changed behaviour, find the test assertions that check it, by
-   search or grep, whether or not a test names an ID and whether or not the
-   test changed. Read each assertion: a name is not a check. When none is found, or none was read, say so as
-   unknown. A code quote never stands for a test.
-5a. For the changed behaviour, find the user documents that describe it,
-   changed or not, and compare them with what was decided. A document that
-   you did not read stays unknown.
-6. Judge a "fix" claim: does the change alter behaviour that a requirement
-   covers?
-7. Run `al check` once. Stop when the search question and the lookups find
-   nothing that applies. An empty lookup alone does not mean that nothing
-   applies.
-8. Write the answer so that a reader can check it (LD-47).
+1. At the start of a task: run `al check` for the list of what is in force
+   (section 4a). Read the requirement, the change spec and the listed
+   items. Ask `al context <ID>` for an item whose status or history
+   matters.
+2. Writing a change spec: write the change's design as one readable
+   document. Name the requirement that each part serves, and the spec
+   paragraphs that it builds on or changes. Copy no spec text, and write no
+   "from A to B".
+3. Consolidating: when a piece is ready, write `specs/` as the current
+   system, and honor what is in force. Rewrite, split or join paragraphs
+   where that reads better. Write no Was/Now text. Then run `al check` and
+   read the map (LD-56).
+4. Reviewing: start from the change's behaviour, not only from the IDs
+   written.
+   1. Read the diff, the task, the list and the map.
+   2. Ask one search question about the changed behaviour: "which
+      requirement or decision governs <behaviour>?". Written IDs can be
+      incomplete or wrong. When search is off, use grep. An empty result
+      never means that every governing item was found.
+   3. Write a judgement for each item that applies to the change, conflicts
+      with it, or that you are not sure of, however you found it, with its
+      evidence (LD-27). Write no routine judgement for an item that does
+      not apply.
+   4. For a design in the change: does it answer the request's organized
+      requirement, and does any part serve none?
+   5. For the consolidation: does `specs/` now say what the change decided,
+      with nothing lost and nothing added that the change did not decide?
+      Write one consolidation judgement for each piece (LD-59).
+   6. For the changed behaviour, find the test assertions that check it, by
+      search or grep, whether or not a test names an ID and whether or not
+      the test changed. Read each assertion: a name is not a check. When
+      none is found, or none was read, say so as unknown. A code quote
+      never stands for a test.
+   7. For the changed behaviour, find the user documents that describe it,
+      changed or not, and compare them with what was decided. A document
+      that you did not read stays unknown.
+   8. Judge a "fix" claim: does the change alter behaviour that a
+      requirement covers?
+   9. Run `al check` once more. Stop when the search question and the
+      lookups find nothing more that applies. An empty lookup alone does
+      not mean that nothing applies.
+5. When the spec is large, or the task's words are not the spec's words:
+   search first (section 5), with the team's knowledge base when there is
+   one, then read the files that it names.
+6. In every answer: write so that a reader can check it (LD-47).
+7. An audit, only on request: `al check --all`, and a judgement for every
+   item in force, "not applicable" included.
 
 <!-- LD-47 plan -->
 
@@ -234,28 +404,12 @@ or cannot be read is reported as a limit. The skill tells the AI:
   it as a fact;
 - "`al` found no hint" does not mean "the change has no misalignment".
 
-<!-- LD-51 rationale -->
-
-Why LD-47: in the answer test, answers made with `al` held 2 to 8 times the
-false share of answers made without it, in unsupported claims. About 4 in
-10 of those claims cited `al`'s own IDs or records at all, some of them
-beside a project source (section 7). That citation form is a measured
-contributor; it does not explain the whole gap. Code tests prove `al`'s output; they cannot prove that an AI
-makes fewer unsupported claims.
-
 <!-- LD-41 plan -->
 
-On an ordinary change `al` gives no hint; it shows only the list of section
-4a. The coding agent asks `al about` on the task's files and IDs at the
-start, and one search question for what is new and has no ID.
-
-<!-- LD-21 plan -->
-
-C4: a requirement in force that no test names (a hint). Off by default; on
-only in a project that names IDs in its tests. Where tests name no IDs, C4
-would flag almost every requirement, a hint that nobody can clear (#38,
-Q11, Q14, Q16). Skill step 5 finds the assertions for the changed
-behaviour without IDs.
+On an ordinary change `al` gives no hint; `al check` shows only the list of
+section 4a and the map. The coding agent reads the list at the start
+(skill step 1), and asks one search question for what is new and has no
+ID.
 
 <!-- LD-22 flow serves:R3 -->
 
@@ -305,14 +459,18 @@ is, the document's state as `al` reads it (an ADR's status; for another
 document, its marked state or "state unknown"), and "proposed design of
 this change". It never shows that document as in force. A design line
 whose document is missing or cannot be read gives a hint that names it; a
-removed design line removes the document from the list. When the proposed
+removed design line removes the document from the list. A named document
+with paragraph markers is read as design paragraphs of the change, with the
+same rules as its change spec. A document with no markers is supporting
+evidence: the list shows it, and the change spec holds the trace (the
+`serves`, `builds-on`, `changes` and `removes` links). When the proposed
 design conflicts with an item in force, both are shown, and the item in
 force stays in force. The fixtures, with no model: a design line for one
 document and a plain mention of another; a design line removed; a design
 line whose file is missing; a document whose state `al` cannot read; and a
-proposed design that conflicts with an accepted ADR. Why: in the real
-test, 459 of the review's judgements were on the tasks' own draft RFCs,
-which the list did not hold.
+proposed design that conflicts with an accepted ADR. Why: a change's design
+often lives in a project document, such as a draft RFC, and the review must
+read it as the change's proposal, not as a decision in force.
 
 <!-- LD-42 data serves:R1 -->
 
@@ -334,18 +492,18 @@ without search.
 - Every other item in force, named by its ID and grouped, with exact
   counts: "N further items in force: U with no known scope: <IDs>; K with a
   scope that does not match this change: <IDs>". Their text is not shown;
-  the full form of the question shows it. No item is left out
-  (context-all/R1). The search question of skill step 2 covers both groups.
-  A scope that does not match is not proof that the item cannot apply: new
-  behaviour can make an old scope incomplete.
+  `al check --full` shows it. No item is left out (context-all/R1). The
+  search question of skill step 4.2 covers both groups. A scope that does
+  not match is not proof that the item cannot apply: new behaviour can make
+  an old scope incomplete.
 
 <!-- LD-52 rationale -->
 
 The items above the grouped line show their ID and their text in one line.
-Measured in the real test: about 33 tokens for such a line. Why the rest
-is named and not shown: a full list of the set in force cost the real
-test's full-mode review about 250k characters of `al check` output, often
-the same list 3 or 4 times, and that mode cost 2.4 times a plain review.
+Why the rest is named and not shown: the full text of every item in force,
+on every check, repeats long text, costs tokens and hides the items that
+matter for the change. The names keep every item in view
+(context-all/R1), and `--full` shows the text.
 
 <!-- LD-43 flow serves:R1 -->
 
@@ -415,21 +573,11 @@ needs its own requirement and the owner's signature.
 
 <!-- LD-29 choice serves:R1 -->
 
-Search only adds. The search question of skill step 2 adds candidates for
+Search only adds. The search question of skill step 4.2 adds candidates for
 the review to read. It never adds to or removes from `al`'s list, which
 stays the same with or without search (LD-25), and it never changes the
-result of a check.
-
-<!-- LD-30 rationale -->
-
-Why advisory: in a real test on an open-source project, two GPT judges
-with a fixed general rubric missed a change's violation of its RFC about 1
-time in 5, and a majority of three did not fix it. A separate prompt with a
-fixed procedure for that one question then gave the key's label in every
-run, also on controls that comply or do not address the item (60 of 60
-labels). So a judgement was reliable with a procedure fitted to the
-question. Nothing yet shows that a general review is. The quote check
-catches an invented quote, not a wrong reading.
+result of a check. The quote check catches an invented quote, not a wrong
+reading; the meaning stays the review's judgement.
 
 <!-- LD-49 plan -->
 
@@ -439,44 +587,49 @@ check, proven by a planted fixture and a code test that uses no model, or a
 question for the AI's review (LD-20). Exact today: `signoff-coverage` and
 `superseded-cited` (`not ok`); `design-link`, `stale-base`,
 `holder-changed`, `target-removed`, `overlap`, `no-claim`, the ADR-change
-hints and the test-result source rules (hints). New, a hint: a signed
-requirement of an open change with no declared link to a promise or design
-paragraph. It says "no declared paragraph link", never "not served" or "not
-built"; it shows the known direct links to code, tests and documents, with
-their limits; it never fails a check. Its fixtures: direct output links
-only, an existing design reused, an ADR only, partial links, and no link.
-Whether the code does what the requirement says, and whether a user
-document still says what was decided, stay review questions (LD-20, steps
-4, 5 and 5a); the code tests do not prove them.
+hints and the test-result source rules (hints). New: the map of LD-56 and
+its hints (LD-60), and a signed requirement of an open change with no
+declared link to a promise or design paragraph. During work that is a hint; at close it is item 2 of
+LD-57. It says "no declared paragraph link", never "not served" or "not
+built", and it shows the known direct links to code, tests and documents,
+with their limits. Its fixtures: direct output links only, an existing
+design reused, an ADR only, partial links, and no link. Whether the code
+does what the requirement says, and whether a user document still says what
+was decided, stay review questions (LD-20, steps 4.4, 4.6 and 4.7); the
+code tests do not prove them.
 
 <!-- LD-31 note -->
 
-## 5. The knowledge base (plan)
+## 5. Search and the knowledge base (plan)
 
 <!-- LD-32 plan -->
 
-One setting, `search`:
+One setting, `search`, which the user chooses:
 
-1. `own`: the user's knowledge base, named as an MCP server or a skill.
-2. `local`: full text alone, or full text with one embedding
-   model and an optional reranker, from the measured list. `al` suggests a
-   model from the free memory and disk and the measured figures, with the
-   published benchmarks beside them; the user chooses; `al` downloads it on
-   first use, showing its size. Without the model library, `al ask` answers
-   with full text and says how to add a model.
-3. `none`: the skill tells the AI to grep.
+1. `own`: the team's knowledge base, named as an MCP server or a skill.
+   `al export` gives it `al`'s rows: each paragraph version with its role,
+   version, commit and links.
+2. `local`: word search alone, or word search with one embedding model that
+   the user picks. `al` shows a short list of models, each with its size
+   and its published benchmark figures, and downloads the chosen one on
+   first use, showing its size. Without the model library, `al search`
+   answers with word search and says how to add a model.
+3. `none`: no search; the skill tells the AI to grep.
+
+<!-- LD-64 plan -->
+
+No setting is a default by itself. The checks never use search.
 
 <!-- LD-45 plan -->
 
-The setup skill asks first whether the user has a knowledge base, and sets
+The setup skill asks first whether the team has a knowledge base, and sets
 `own` when there is one. When there is none, it offers `local` or `none`,
-and recommends one from the user's computer and the measured results, with
-the limits of those results. No setting is a default by itself. Today's
-recommendation is `none`: in the answer test, `local` with code syntax
-units was level with `none`, and `local` without code text found fewer
-known items than the AI alone (section 7). That is one project, with a
-judge under its bar on "right", so it is a provisional recommendation. The
-signed default of v4/R10 goes with its new version (section 6).
+with what each costs on the user's computer (disk, memory and the first
+index), and the user chooses. Until a choice is set, `al search` says so
+and how to set it, and the checks run as usual. The skill asks for one
+search question in each review (LD-20, step 4.2), with the chosen search or
+with grep. It asks for more searches when the spec is large, or when the
+task's words are not the spec's words.
 
 <!-- LD-33 plan -->
 
@@ -487,11 +640,7 @@ snapshots, the decisions in the records, the result files, the output lines
 that cite an ID, and their history from git. It adds one rough line for
 each file of the spec repo and the output repos that says what the file is
 (code, test, doc, config). Code is not indexed by syntax unit: agents grep
-code, and code navigation belongs to code tools. In the answer test, this
-index without code text found fewer known items than the AI alone, and a
-form with code syntax units was level with `none` (section 7). When setup
-offers `local`, it states these results (LD-45). The checks never use the
-knowledge base.
+code, and code navigation belongs to code tools.
 
 <!-- LD-34 note -->
 
@@ -499,76 +648,41 @@ knowledge base.
 
 <!-- LD-35 plan -->
 
-When the tests give their results, each item below goes to the owner as
-its own new version, one at a time. Nothing is built or removed until the
-tests give their results and the owner signs these new versions.
+Each item below goes to the owner as its own new version, one at a time.
+A part that depends on one is built only after the owner signs it. R1, R2
+and R3 of this request are signed, and the code side (section 4a) needs no
+new version. level2-peer/R1 stays as signed: its level 1 is `local` word
+search, and its level 2 is `local` with a model. v4/R1, R2, R6, R8, R9 and
+R12 stay as signed.
 
 | Requirement | The new version says, in short |
 |---|---|
-| v4/R5 | At close, `al` derives a disposition where it can prove it; a person writes one line only where `al` cannot. |
-| v4/R8 | Test outcomes also come from the project's CI reports, with the commit of the run. |
-| v4/R10 | Search is the user's own knowledge base, a local one, or none. Setup asks for the user's own one first. With none, setup offers a local one or no search, and recommends one from the user's computer and the measured results, with their limits. The signed default, local full text with an embedding model, goes. A model stays optional, and the user chooses it. |
-| hints-and-blocks/R1 | A changed ADR text is a hint until the change is judged in one recorded line, in place of `--align`. |
-| level2-peer/R1 | Search with a model needs no second AssuredLoop package; the user installs model support separately; without it, search answers with full text and says how to add it. |
-| context-all/R1 | The questions group repeated output but never leave a line out, and show everything on request. A reader can find the evidence of each reported fact, and an answer keeps apart project evidence, facts held only in `al`'s records, inferences and unknowns. |
-| design-links/R1 | Asked about an ID, `al` lists the paragraphs that build on, explain or illustrate it, with no `al context`. `al` also points out a signed requirement of an open change with no declared link to a promise or design paragraph, as a hint that never claims that the requirement has no code or test. |
+| v4/R5 | The agent brings each piece of a change into the consolidated spec by its own judgement, with no tool command, part by part for an epic, before the change closes, as long as it does not deviate. The review checks it. Concluding needs every promise change signed, every signed requirement served in the consolidated spec, and every spec part that the change set out to change or remove either changed or named as not delivered, with a reason. Nothing applied may be dropped silently. |
+| v4/R10 | Search is the team's own knowledge base, a local one, or none, as the user chooses; no level is a default. Setup asks for the team's own one first. A local model stays optional, and the user picks it. Every level works, and the checks never use search. The rest of R10 stays. |
+| hints-and-blocks/R1 | A changed ADR text is a hint until the change is judged in one recorded line, in place of `al index --align`. |
+| context-all/R1 | Answers group repeated output but never leave a line out, and show everything on request. A reader can find the evidence of each reported fact, and an answer keeps apart project evidence, facts held only in `al`'s records, inferences and unknowns. |
+| design-links/R1 | Asked about an ID, `al` lists the paragraphs that build on, explain or illustrate it. `al` also points out a signed requirement of an open change with no declared link to a promise or design paragraph, as a hint that never claims that the requirement has no code or test. |
 
 <!-- LD-36 note -->
 
-## 7. What the tests decide (plan)
-
-<!-- LD-50 note -->
-
-The results (2026-10-24 and 25). The full reports are kept apart from this
-repo.
-
-- The real test (one open-source project, one builder model, three tasks,
-  six build arms, up to three repeats): no arm built clearly better than
-  the AI alone. Every review mode found every planted defect. One real
-  break of an ADR was found by the `al` review mode in 3 of 3 reviews, and
-  by the plain and full modes in none; the part of `al`'s view in that is
-  an inference. Builds with `al` cost from 13% less to 55% more than the AI
-  alone, by task and arm. Reviews against plain: the `al` mode 1.2 times,
-  full 2.4 times, grouped 1.9 times. The builders that were offered a
-  knowledge base in one optional line used it twice in 16 builds.
-- The answer test (the same project, 21 cases, the answering model the
-  same for every method; one GPT judge scored every claim, with a Claude
-  reference as a second labeller): no clear difference in recall between
-  the AI alone, plain search, `al` 3.2.0 and the prototype with code syntax
-  units. The prototype's local index without code text found fewer known
-  items than the AI alone. Answers with `al` held 2 to 8 times the false
-  share of answers without it, in unsupported claims; about 4 in 10 of
-  those cited `al`'s own IDs or records at all, some of them beside a
-  project source. With every claim that cites only `al`'s records taken
-  out, the gap stays (0.184 against 0.069 under the judge).
-  The judge passed its bar on "unsupported" (94.6%) and missed it on
-  "right" (83.0%) and "wrong" (78.3%). A direction was reported only where
-  the difference was at least 0.05 under both labellers, a rule set after
-  the scores were seen.
-- Not run, by the owner's decision of 2026-10-25 (no new model-based
-  test): the size calibration (no longer needed: LD-25 names every item),
-  the list's token measure in the answer test, and a larger answer test.
-  The build's own tests, the scale test and the case walk-through use no
-  model and stay.
+## 7. How it is proven (plan)
 
 <!-- LD-37 plan -->
 
-| Question | Test | Status, 2026-10-25 |
-|---|---|---|
-| Do the questions and the knowledge base give more right answers than the AI alone, or as many for fewer tokens? | an answer test on `al`'s own questions | Done: no clear difference in recall; more unsupported claims with `al` (LD-50). The upper bar was not scored. |
-| Does the local knowledge base add right answers, or only cost? | the answer test, the light prototype with `local` and with `none` | Done: no gain; the owner decides with the new v4/R10 (section 6). |
-| Which model, fusion and reranker | a local model bench (#28), the Agent Retrieval Bench reproduction, and the answer test's tuning | Partly: the answer test chose plain search's candidate A. A further bench needs the owner's yes. |
-| Do agents write IDs when the skill asks? | the real test's arm with commit-message IDs and a rough map | Done: every commit of that arm named IDs of the task's sources (a mechanical check of the ID only). |
-| Does it change the result of building and reviewing real changes, small to large? | a real test on an open-source project | Done (LD-50). |
-| Do the list and the judgements of section 4a catch the violations in real changes, against a plain review? How many false alarms, and how many tokens? (#45, #29) | the real test's review modes with a prototype of section 4a | Done (LD-50); the list now names every item (LD-25). |
-| At which size does the grouped line become the better form? | a size calibration | Dropped: LD-25 names every item at any size. |
-| The list's tokens on an ordinary one-file change | the answer test's ordinary changes | Not run: it needs model runs, which need the owner's yes. |
-| Do code syntax units add right answers? | the light prototype with and without syntax units | Done: level with `none`; without code text, below the AI alone. |
-| Do the paths still work: a fix, an amendment, an epic in parts, two epics at once, a spike, a bug? | a case walk-through in the build's own tests | Open; no model. |
-| A long ADR; a judgement renewed after a small amendment (current, stale) | the build's own tests, with cases made for them | Open; no model. |
-| A fresh setup with the user's own knowledge base, with `local` and with `none`; an upgrade that keeps every task, declared output, decision and sign-off readable | the build's own tests | Open; no model. |
-| Speed at 1,000 requests and 20 repos | a scale test before release | Open; no model. |
-| The cost, in tokens and owner round trips | the answer test, the real test, and the adopters after release (#26) | Done for the tests (LD-50); the adopters after release. |
+Every check is proven by a planted fixture and a code test that uses no
+model. What an AI judges stays a review question, and code tests do not
+prove it.
+
+| What | How |
+|---|---|
+| The map and the close rule: a change paragraph consolidated, not consolidated, lost, reverted, removed, and named as not delivered; a spec paragraph changed with no change paragraph that names it; two open changes on one paragraph; a later edit by other work; a requirement with no declared link, one met by an ADR, and one with a close line; a spike, signed and unsigned | planted fixtures in the build's own tests |
+| The consolidation judgement: one piece split into two spec paragraphs, two pieces joined into one; current, then stale after a later rewrite by the same change and by other work; missing at close | planted fixtures in the build's own tests |
+| A design line to a document with markers, and to one with none | planted fixtures in the build's own tests |
+| The paths: a fix, an amendment, an epic in parts, two epics at once, a spike, a bug | a case walk-through in the build's own tests |
+| A long ADR; a judgement renewed after a small amendment (current, stale) | the build's own tests, with cases made for them |
+| A fresh setup with `own`, `local` and `none`; an upgrade that keeps every task, declared output, decision and sign-off readable, and gives the same facts in `al check` before and after | the build's own tests |
+| Speed at 1,000 requests and 20 repos | a scale test before release |
+| The cost in tokens and owner round trips | real use after release |
 
 <!-- LD-38 note -->
 
@@ -578,31 +692,25 @@ repo.
 
 - Non-code projects: `al` reads Markdown and git; any text works.
 - Saved work items may be YAML or JSON.
-- Schema extension by users: not offered (the architect's proposal; the
-  owner may keep it).
-- The AI-filled hint index: not built; the commit message lines and the
-  knowledge base serve its purpose (the architect's proposal).
+- Schema extension by users: not offered.
+- The AI-filled hint index: not built; the commit message lines and search
+  serve its purpose.
 - An ADR may carry a sign-off snapshot, as a requirement does.
 - Typo fixes: the path 0 typo claim stays.
-- #19: open, unchanged.
 - Work items out of the CI token's reach (#38, Q9, Q19): a setting names
   them, and `al` gives one info line for them, in place of a hint for each.
-- #30 (`al` proposes kinds and document links for the author to confirm):
-  its idea is taken for file scopes (LD-26). Kinds need no suggestion after
-  K1's six groups. Document links are not offered now: the adopter that
-  answered #38 said that writing the markers and links is "not a pain"
+- Suggestions: `al` suggests file scopes (LD-26). Kinds need no suggestion
+  after the six groups. Document links are not suggested now: the adopter
+  that answered #38 said that writing the markers and links is "not a pain"
   (Q12), and that judging hints and migrations cost more.
-- #45: each part was evaluated. Taken: only what is in force counts (as
-  "in force", with no new word); retrieval only as a helper. Changed: the
-  file scope is optional and only helps the list; every other item named
-  by its ID, grouped, not its whole text (LD-25); judgements only for the
-  items that apply, conflict or are uncertain, with the evidence of LD-27
-  and LD-28;
-  the measure of injected violations becomes an arm of the real test.
-  #28's search over the binding set only: changed, the list uses only what
-  is in force, and `al ask` keeps all marked text.
+- Test outcomes from the project's CI reports: not planned now. Result files
+  stay as today.
+- Only what is in force counts, as "in force", with no new word. Retrieval
+  is only a helper: the list uses only what is in force, and `al search`
+  keeps all marked text.
 
 <!-- LD-40 open -->
 
-Not decided here: command names, file formats, the release plan and the
-order of building. They follow the owner's agreement.
+Not decided here: file formats, the release plan and the order of building.
+Two points wait for the owner: whether item 2 of the close rule (LD-57)
+refuses or only hints, and whether item 3 stays.
