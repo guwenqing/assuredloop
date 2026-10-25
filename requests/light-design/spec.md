@@ -397,7 +397,8 @@ on every task. Its steps:
 
 Answers that a reader can check. Beside each ID that it shows, `al` gives
 the project file and line of the item's text at the selected repository
-and revision. Where a fact is held only in `al`'s records (a sign-off, a
+and revision. The grouped line of the list (LD-25) names its IDs only;
+`al check --full` gives their file, line and text. Where a fact is held only in `al`'s records (a sign-off, a
 tier, a request's state), `al` names that record as the source and says
 that only its records hold the fact. It never makes up a project line, and
 it never shows its paragraph markers as a source. Evidence that is missing
@@ -463,12 +464,15 @@ lines, supersede links and `specs/`. No new record.
   lasting design. An archived request's text is history; its result is in
   `specs/`.
 - The ADRs whose status is accepted and that no ADR replaced, each with its
-  `decides` links. An ADR's text also names the alternatives that were
+  `decides` links. An ADR is replaced when an accepted ADR names it by
+  `supersedes:`. An ADR's text also names the alternatives that were
   considered (SCH-22), so the review reads which part is the decision; `al`
   marks no part as binding.
 - The selected change's own signed requirements and its proposed design
   (LD-48), shown as "proposed by this change", apart from what already
-  holds.
+  holds. The change's own request is an open request whose folder or
+  record the change touches, or whose name a commit message of the branch
+  names. An unsigned requirement of it is not listed; the limits name it.
 
 <!-- LD-48 data serves:R1 -->
 
@@ -478,8 +482,13 @@ name a project document as its design, by a design line. In the request's
 that starts with `Design:` and holds one path from the repo's root, for
 example `Design: docs/rfc/0018-streaming-http-api.md`. In a saved work item
 in YAML or JSON, it is the field `design`, with one path or a list of
-paths. Each path names one document of the spec repo or of an output repo
-in the configuration. A plain mention, or a link for comparison or for
+paths. Each path names one document of the spec repo, or, written
+`<repo>:<path>`, of an output repo in the configuration, read at its
+selected commit. A saved work item gives a design only when a task of the
+change's own request names it. Its design is its `design` field, or a line
+in its body that starts with `Design:`, because the body is Markdown text.
+`al` reads saved items only from JSON files today; items in YAML or
+Markdown files are a later change. A plain mention, or a link for comparison or for
 history, does not make a document the change's design. `al` reads the
 named document at the selected revision and shows where the design line
 is, the document's state as `al` reads it (an ADR's status; for another
@@ -509,9 +518,20 @@ list marks it "text changed, review open".
 <!-- LD-25 flow serves:R1 -->
 
 The list for a change, in plain code, with no model. It is the same with or
-without search.
+without search. The change is what `al check` selects: its base to the
+working tree, with the untracked files, and with `.assuredloop/` left out.
+With no base, or an empty change, the list says "no change selected".
+In an output repo, the items in force are the central repo's at its
+selected commit: the list shows the ones that the change cites as
+`central:<ID>` and the ones whose scope is all files, and names the rest
+in the grouped line. File scopes name files of the central repo, so they
+are not matched there, and the limits say so. When the central repo cannot
+be read, the limits give the reason, and the list does not say that no
+item is in force.
 
-- The items in force that the change cites.
+- The items in force that the change edits, and the ones that it cites: a
+  line that it adds or removes names the ID as a whole word. A paragraph's
+  own ID in its marker line is no citation.
 - The items whose confirmed file scope (LD-26) matches a changed, renamed
   or deleted file, in the repo that holds it.
 - The items whose scope is all files.
@@ -542,10 +562,19 @@ apply.
 <!-- LD-26 data serves:R1 -->
 
 File scope, optional. An item in force may say which files it concerns, or
-all files, in one plain line. `al` may suggest the line from git history
-(the files changed in the commits that cite the item); the author confirms
-it. A scope helps the list; it never proves that other files cannot affect
-the item. A scope that matches no file at the selected commit gets a hint.
+all files, in its marker line: `files:` and one or more globs from the
+repo's root, joined by commas, for example `files:src/export/**,test/**`.
+`**` matches any number of folders, `*` matches within one folder name, and
+`?` matches one character. A space or a comma in a path is written as `?`.
+All files is `files:**`. The author writes the token, and a written token
+is the confirmed scope. `al` may later suggest it from git history (the
+files changed in the commits that cite the item). The token is not part of
+the item's text and is no link: adding, changing or removing it changes no
+hash and gives no marker hint. When the change adds, changes or removes an
+item's token, the list shows that item, so that a narrower scope cannot
+move an item out of view. A scope helps the list; it never proves that
+other files cannot affect the item. A scope that matches no file at the
+selected commit gets a hint.
 
 <!-- LD-27 data serves:R2 -->
 

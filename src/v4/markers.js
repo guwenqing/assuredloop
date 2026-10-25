@@ -23,6 +23,25 @@ export const LINK_WORDS = {
   'governed-by': 'governedBy', decides: 'decides', for: 'for', supersedes: 'supersedes', source: 'source',
 };
 
+// A file scope in a marker, `files:<glob>,<glob>` (LD-26): not a link and not
+// part of the text, so a marker hint never names it.
+const SCOPE = /[ \t]+files:\S*/g;
+const isScope = (token) => token.startsWith('files:');
+// `text` with the file scope taken out of each marker line; a line in fenced
+// code is text, and keeps it.
+export function withoutScope(text) {
+  let fence = null;
+  return text.split('\n').map((l) => {
+    const f = FENCE.exec(l);
+    if (fence) {
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.trim() === f[1]) fence = null;
+      return l;
+    }
+    if (f) { fence = f[1]; return l; }
+    return MARKER.test(l) ? l.replace(SCOPE, '') : l;
+  }).join('\n');
+}
+
 export const groupOf = (kind, kinds = KINDS) => Object.keys(kinds).find((g) => kinds[g].includes(kind)) ?? null;
 
 // An ID is PREFIX-n; an ADR's paragraphs below its heading take ADR-n-k (D4).
@@ -179,7 +198,7 @@ export function markerExtras(line, kinds = KINDS) {
     else if (c < 0) {
       if (kind || !known.has(token)) extras.push(token);
       kind = true;
-    } else if (!Object.hasOwn(LINK_WORDS, token.slice(0, c)) || token.slice(c + 1).split(',').includes('')) extras.push(token);
+    } else if ((!Object.hasOwn(LINK_WORDS, token.slice(0, c)) && !isScope(token)) || token.slice(c + 1).split(',').includes('')) extras.push(token);
   }
   return extras;
 }
@@ -209,6 +228,8 @@ export function markerLines(text, kinds = KINDS) {
 // out, and each token left with no item, `now` is `was` exactly. A marker
 // with extras never qualifies, so an added item cannot hide text.
 export function onlyLinksAdded(was, now, kinds = KINDS) {
+  was = withoutScope(was);
+  now = withoutScope(now);
   const w = MARKER.exec(was);
   const n = MARKER.exec(now);
   if (!w || !n || markerExtras(now, kinds).length) return false;
@@ -273,7 +294,9 @@ export function parseMarkdown(text, file, options = {}) {
 
     let kind = null;
     const links = emptyLinks();
+    const files = [];
     for (const token of b.marker[2].trim().split(/[ \t]+/).filter(Boolean)) {
+      if (isScope(token)) { files.push(...token.slice('files:'.length).split(',').filter(Boolean)); continue; }
       const c = token.indexOf(':');
       if (c < 0) {
         if (kind !== null) lint('unknown-kind', 'not ok', id, n, `${id} has a second kind "${token}"; a paragraph has one kind`);
@@ -296,7 +319,7 @@ export function parseMarkdown(text, file, options = {}) {
     const ptext = body.map((l) => l.text).join('\n');
     const h = body.length ? HEADING.exec(body[0].text) : null;
     paragraphs.push({
-      id, kind, links, text: ptext, sha256: sha256(ptext), line: n,
+      id, kind, links, files, text: ptext, sha256: sha256(ptext), line: n,
       level: h ? h[1].length : 0, heading: h ? headingText(h[2]) : null, file,
     });
   }

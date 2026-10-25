@@ -132,6 +132,24 @@ function named(stdout, repos, extra = {}) {
 }
 const linesOf = (text) => text.replace(/\n$/, '').split('\n');
 
+// #58: al check prints the list of what is in force, which main did not
+// print: one block of lines after the findings, right before the Read line.
+const LIST_LINE = /^(list: |list basis: |list limits: |in force |proposed |\d+ further items in force: )/;
+// The lines without the list block. al check must have the block (with its
+// grouped line or its "no change selected" line), as one run of lines right
+// before the Read line; another command must have none.
+function withoutList(lines, r) {
+  const at = lines.flatMap((l, i) => (LIST_LINE.test(l) ? [i] : []));
+  if (r.args[0] !== 'check') {
+    assert.deepEqual(at, [], `no list outside al check:\n${show(r)}`);
+    return lines;
+  }
+  assert.ok(at.some((i) => /^(list: no change selected: |\d+ further items in force: )/.test(lines[i])), `the list of #58:\n${show(r)}`);
+  assert.equal(at.at(-1) - at[0] + 1, at.length, `the list is one block:\n${show(r)}`);
+  assert.match(lines[at.at(-1) + 1] ?? '', /^Read /, `the list comes right before the Read line:\n${show(r)}`);
+  return lines.filter((_, i) => !at.includes(i));
+}
+
 // The cross-repo world, with four more results of test/zip-export.test.js in
 // invoicer-worker, at K5, selected at K6 (the commit that adds them):
 //   s-clean     input src/zip-export.js with its sha256 at K5 (unchanged)
@@ -247,7 +265,7 @@ describe('a result in an output repo whose declared input holds a NUL', () => {
     test(`${label} control: the clean results and every other line as on main`, (t) => {
       const { w, repos, extra } = nulWorld(t);
       const r = al(w.central, args);
-      const got = linesOf(named(r.stdout, repos, extra)).filter((l) => !isNulLine(l));
+      const got = withoutList(linesOf(named(r.stdout, repos, extra)), r).filter((l) => !isNulLine(l));
       assert.deepEqual({ code: r.code, lines: got }, PINNED[label], show(r));
     });
   }
@@ -268,6 +286,6 @@ test("the central repo's own result with a NUL in an input: applicability unknow
   writeYaml(dir, '.assuredloop/results/nul.yaml', result('test/invoices.test.js\0'));
   commitAll(dir, 'Record two results\n\nTier: 0 — results');
   const r = al(dir, ['check']);
-  const got = linesOf(named(r.stdout, { central: dir }, { [dir]: '<dir>' }));
+  const got = withoutList(linesOf(named(r.stdout, { central: dir }, { [dir]: '<dir>' })), r);
   assert.deepEqual({ code: r.code, lines: got }, PINNED.central, show(r));
 });

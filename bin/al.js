@@ -30,7 +30,7 @@ const COMMANDS = {
   },
   index: { run: index, positionals: 0, options: { align: { type: 'string' }, issues: { type: 'string' } } },
   spec: { run: spec, positionals: (o) => (o['add-ids'] === undefined ? Infinity : 0), options: { 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } } },
-  check: { run: check, positionals: 0, options: { strict: { type: 'boolean' }, issues: { type: 'string' } } },
+  check: { run: check, positionals: 0, options: { strict: { type: 'boolean' }, issues: { type: 'string' }, full: { type: 'boolean' } } },
   export: { run: exportCommand, positionals: 0, options: { at: { type: 'string' }, out: { type: 'string' }, yes: { type: 'boolean' } } },
   search: {
     run: search,
