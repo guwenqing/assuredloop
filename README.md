@@ -280,9 +280,12 @@ of each task item's text in the request's record, by itself; no person and
 no AI writes or reads it. The text is the body and each comment that is not
 hidden; the state is not text. It keeps the text at the moment of reliance:
 when the request names the item, and again at the first sign-off after
-that. So run it before you commit a new task `ref`, and after a sign-off.
-It never keeps a text for a moment that is past: for an item named in an
-earlier commit, it keeps nothing. Save the items again before each check.
+that. So run it in the commit that names an item, and after
+`al record <name> signoff --yes`, before the commit that records the
+sign-off. It never keeps a text for a moment that is past: for an item
+named in an earlier commit, it keeps nothing. `al` cannot tell when the
+caller saved the items, and the `Not known` line of each
+`al check --issues` says so: save them again before a check.
 `al check --issues <folder>` then gives `issue-changed`:
 
 - "changed since …" when the item's text now differs from the kept text;
