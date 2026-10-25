@@ -1,5 +1,5 @@
 // Regression test for the finding of the review of d715a16 (#179,
-// reviewer-179): a config-only commit brought policies/tax.md, already marked,
+// its reviewer): a config-only commit brought policies/tax.md, already marked,
 // into spec scope, so no marker diff shows when INV-99 became a spec limit.
 // With its control, through the commands. Cases scope-pre and remove-scoped.
 import { test } from 'node:test';

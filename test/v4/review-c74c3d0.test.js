@@ -1,5 +1,5 @@
 // Regression tests for the two findings of the review of c74c3d0 (#179,
-// reviewer-179): how the close rule learns a removed paragraph's kind from
+// its reviewer): how the close rule learns a removed paragraph's kind from
 // history. Each with its control, through the commands. Cases root-moved-*,
 // kind-pre and remove-kind of the invoicer world.
 import { test } from 'node:test';

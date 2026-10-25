@@ -1,4 +1,4 @@
-Source: /private/tmp/claude-501/-Volumes-DevData-projects-ai-mybots-bots-assuredloop/b524dbbf-4d3a-4428-b2b3-33540a1c8f9f/scratchpad/spec-clarity/owner-words.txt
+Source: the architect's record of the owner's words
 Fetched: 2026-10-03T02:47Z
 SHA-256: ef463943c07b897dc20f86fc7d3470920a403ae0a6bfe81d14b9c6d90f3c9ed6
 ---
