@@ -166,7 +166,7 @@ lines. The check flags a marker with no blank line after it.
   OpenSpec keeps its `design.md` with the change. It links like the other
   design kinds, and it stays with its change. Lasting design (component,
   interface, data, flow, choice) is consolidated. Why: the OpenSpec replay
-  found delivered design that belongs to its change only (validation.md B8).
+  found delivered design that belongs to its change only.
 
 <!-- SP-14 definition serves:R2,R8 -->
 
@@ -226,7 +226,7 @@ semantic coverage as "not checked".
   exact `cites` and from git. A project declares an output only where it
   helps a reviewer. A test can cite INV-41 and check another condition, so a
   `verifies` claim is shown as a claim. Why: in validation, one review
-  question depended on declared outputs (validation.md section 9).
+  question depended on declared outputs.
 - Rough links from git history and from files that change together stay
   beside the declared links. The graph is not limited to the links that the
   author chose. Studies of trace links find that declared links are often
@@ -244,8 +244,7 @@ semantic coverage as "not checked".
   change aligns.
 - Two headings with the same text under the same parent (the same heading
   path): a hint. The same text under different parents is valid. Why: the
-  OpenSpec CLI caught duplicate requirement names that the v4 model missed
-  (validation.md B6).
+  OpenSpec CLI caught duplicate requirement names that the v4 model missed.
 - Per PR, the ID lint: IDs lost since the base, IDs used twice, and IDs used
   again after removal. Agents can remove comments near the lines they edit
   (claude-code issue #22530), so a lost ID must be caught. A lost ID is at the
@@ -401,7 +400,7 @@ paragraph, a removal is allowed only where a signed requirement covers it. An
 informative paragraph needs only the declaration and its `removed`
 disposition, with no sign-off. A loss
 that nobody declared stays a lost-ID lint. Why: a whole-block replace in real
-OpenSpec history dropped scenarios with no notice (validation.md B6).
+OpenSpec history dropped scenarios with no notice.
 
 <!-- SP-32 rule serves:R5 -->
 
@@ -424,7 +423,7 @@ version and the accepted target version:
 An unexplained revert does not pass: the spec text must equal the bound
 version, a valid successor's version, or a decided final text. Why no more
 normalization: over 2,866 real OpenSpec paragraphs, none differed in
-whitespace only, and 6 differed in markup only (validation.md B4); those few
+whitespace only, and 6 differed in markup only; those few
 take a wording decision or a typo claim.
 
 <!-- SP-34 rule serves:R4,R5 -->
@@ -628,7 +627,7 @@ on every old rule would only make noise.
 - Each `rule` stays visible on its own: `al context` lists its checks, or
   "none". One checked rule never hides an unchecked one.
 - There is no "rule with no check" hint. In validation it caught no defect
-  and fired as noise on new rules (validation.md section 9).
+  and fired as noise on new rules.
 - `al context` shows a summary per section, as information: rules, checks,
   uncovered rules, and a percentage. The summary groups the per-rule list; it
   does not replace it.
@@ -687,8 +686,7 @@ moved the main tag on close to half of the notes in one study (arXiv
   them (input 98). The script writes the derived facts.
 - AI hints and declared outputs are optional. A PR never needs them. A
   project fills AI hints only where it uses search level 2 or higher. Why: in
-  validation, no AI hint changed a verdict; their own cost was not measured
-  (validation.md section 9).
+  validation, no AI hint changed a verdict; their own cost was not measured.
 - **AI hints** (summaries, tags, quotes):
   - Each hint records the paragraph hash it was made from. A hint is stale
     when the paragraph's hash differs, even if its quote still matches: a
@@ -844,11 +842,6 @@ closed spike, or a replaced requirement version).
   small fixed test embedder for exact results, plus one smoke test with a real
   model. Validation compares level 1 with level 2 on the golden questions, so
   the default is checked, not assumed.
-- The first check (T14): on 8 held-out questions over the small invoicer
-  fixture, level 2 equalled level 1, with recall of 29% in the top 5 and 58%
-  in the top 10. So level 2 showed no measured gain at that size. It stays
-  the default (input 130), and it is measured again on a larger real corpus
-  before the release.
 
 <!-- SP-57 rule serves:R13 -->
 
@@ -940,7 +933,7 @@ an output is any file that a record declares or that names an ID; a result
 is any named check with its outcome. So a project of documents or research
 keeps the same requests, change specs, records and paths, and its documents
 are its outputs. Validation case DC08, a report project on path 2, kept
-these records (validation.md).
+these records.
 
 <!-- SP-61 note -->
 
@@ -991,8 +984,7 @@ Why: "no need to take care of nbackward copatibility" (input 98).
 
 <!-- SP-66 note -->
 
-Validation ran in October 2026: parts A and B of `validation.md` in this
-folder. Its results shaped the rules above; decision D2 in `request.md`
+Validation ran in October 2026. Its results shaped the rules above; decision D2 in `request.md`
 records what stayed, changed and went.
 
 <!-- SP-67 plan -->
@@ -1089,14 +1081,7 @@ the owner signs again.
 
 <!-- SP-74 note -->
 
-**Cost.** The records cost 1.3 to 1.6 times the tokens of the work on small
-and big changes in validation (records-agent tokens divided by work-agent
-tokens; some record reading is inside the work denominator, and later
-corrections and repeated review were not measured), and converting one real
-change cost 166k to 294k tokens. The signed R12 asks for about a fifth, as a flexible target. So
-the target is not met, and 0.1.0 did not meet it either. The owner chose to
-build and measure again: "The cost is fine we can always try" (input 149).
-These steps aim to lower the cost; their savings are hypotheses, not
+**Cost.** These steps aim to lower the cost of the records; their savings are hypotheses, not
 measurements:
 - AI hints and declared outputs are optional, and the noisy rule-check hint
   is gone.

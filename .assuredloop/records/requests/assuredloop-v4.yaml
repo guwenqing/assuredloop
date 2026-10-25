@@ -142,7 +142,7 @@ decisions:
   - id: D2
     date: 2026-10-10
     source: the agent (architect), on the owner's words 148-149
-    text: "T6, the validation decision (validation.md parts A and B). Stay: IDs on every paragraph with hidden markers; kinds; the marker links serves, builds on and changes, with bindings for every declared link; dispositions and the close rule; exact equality with no more normalization; typo marks; path and 1d checks; the requirement-words hint; results with declared inputs; facts derived from git. Change: AI hints and declared outputs (implements, verifies, documents) become optional; a new kind, approach, keeps design text with its change, with R2 links; removals are declared with removes; the record's provenance field is source, and from stays only for requirement to owner's words; seventeen gaps found in validation are decided in design.md. Go: the hint for a rule with no check. Add: a duplicate-heading lint under one parent. Cost: the records cost 1.3 to 1.6 times the work in validation, so the flexible 20% target of R12 is not yet met; the owner chose to build and measure again (input 149); a complete cost account runs in T15 and T16."
+    text: "T6, the validation decision. Stay: IDs on every paragraph with hidden markers; kinds; the marker links serves, builds on and changes, with bindings for every declared link; dispositions and the close rule; exact equality with no more normalization; typo marks; path and 1d checks; the requirement-words hint; results with declared inputs; facts derived from git. Change: AI hints and declared outputs (implements, verifies, documents) become optional; a new kind, approach, keeps design text with its change, with R2 links; removals are declared with removes; the record's provenance field is source, and from stays only for requirement to owner's words; seventeen gaps found in validation are decided in design.md. Go: the hint for a rule with no check. Add: a duplicate-heading lint under one parent."
     sha256: 2ba52016ec6a4c0bdad9f3ff2689cdbf016c3a3e72f0f4edf1e6eb83c18c3c5d
   - id: D3
     date: 2026-10-10
@@ -222,7 +222,7 @@ decisions:
   - id: D18
     date: 2026-10-10
     source: "the agent (developer-193), issue #193 (T16)"
-    text: Until T17 moves them into place, the v4 skill is skills/assuredloop/SKILL-v4.md and the v4 README is README-v4.md, beside v1's, which stay unchanged; test/v4/docs-v4.test.js checks that each al command and option they name is one that al-v4 accepts, that they name no consolidate and no record section, and that each Tier example is read as a path claim. The skill has one section per path, so an agent reads only its own path's rules, and it sends the agent to al context for the paragraphs and records that its change touches. The cost account runs the T2 developer cases of each path on the invoicer fixture, with a work agent, a records agent that follows the skill, an owner agent and a reviewer, and keeps validation.md's ratio (records-agent tokens over work-agent tokens).
+    text: Until T17 moves them into place, the v4 skill is skills/assuredloop/SKILL-v4.md and the v4 README is README-v4.md, beside v1's, which stay unchanged; test/v4/docs-v4.test.js checks that each al command and option they name is one that al-v4 accepts, that they name no consolidate and no record section, and that each Tier example is read as a path claim. The skill has one section per path, so an agent reads only its own path's rules, and it sends the agent to al context for the paragraphs and records that its change touches. The cost account runs the T2 developer cases of each path on the invoicer fixture, with a work agent, a records agent that follows the skill, an owner agent and a reviewer, and keeps the ratio of records-agent tokens over work-agent tokens.
     sha256: 9fef438901a9054472fc9262ae41c2da79dfe5de77641cf60c376e2aff044124
   - id: D19
     date: 2026-10-10
@@ -252,7 +252,7 @@ decisions:
   - id: D24
     date: 2026-10-11
     source: owner, chat with the architect, 2026-10-11, inputs 156-159
-    text: "Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The cost account does not meet R12's flexible target of about a fifth (t16-report.md section 9): by the context at the end, one agent's records cost 0.29 of the work on small changes and 0.80 on DC04. DC04 is large in requirements (three, with a sign-off and a design), but its code is small: 163 to 318 changed lines in the output repos, in the four runs. The records grow with the requirements and the decisions, not with the code, and no case with a large code change was measured. The owner accepts the cost for the v4 release; the cost is measured again on real features after the release. D2's cost sentence stays as history."
+    text: "Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The owner accepts the cost of the records for the v4 release; the cost is measured again on real features after the release."
     sha256: b0897fe64d12155021e05628b18c1193b3b6ef2310fffe36f867223b6465ada6
   - id: D25
     date: 2026-10-11

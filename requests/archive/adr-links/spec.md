@@ -84,8 +84,7 @@ source:`. The lines of `al check` do not change.
   change aligns.
 - Two headings with the same text under the same parent (the same heading
   path): a hint. The same text under different parents is valid. Why: the
-  OpenSpec CLI caught duplicate requirement names that the v4 model missed
-  (validation.md B6).
+  OpenSpec CLI caught duplicate requirement names that the v4 model missed.
 - Per PR, the ID lint: IDs lost since the base, IDs used twice, and IDs used
   again after removal. Agents can remove comments near the lines they edit
   (claude-code issue #22530), so a lost ID must be caught. A lost ID is at the

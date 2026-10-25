@@ -19,8 +19,7 @@ Each promise keeps its meaning. The list of splits is on issue #214.
   change aligns.
 - Two headings with the same text under the same parent (the same heading
   path): a hint. The same text under different parents is valid. Why: the
-  OpenSpec CLI caught duplicate requirement names that the v4 model missed
-  (validation.md B6).
+  OpenSpec CLI caught duplicate requirement names that the v4 model missed.
 - Per PR, the ID lint: IDs lost since the base, IDs used twice, and IDs used
   again after removal. Agents can remove comments near the lines they edit
   (claude-code issue #22530), so a lost ID must be caught. A lost ID is at the
@@ -70,8 +69,7 @@ constant.
   them (input 98). The script writes the derived facts.
 - AI hints and declared outputs are optional. A PR never needs them. A
   project fills AI hints only where it uses search level 2 or higher. Why: in
-  validation, no AI hint changed a verdict; their own cost was not measured
-  (validation.md section 9).
+  validation, no AI hint changed a verdict; their own cost was not measured.
 - **AI hints** (summaries, tags, quotes):
   - Each hint records the paragraph hash it was made from. A hint is stale
     when the paragraph's hash differs, even if its quote still matches: a
@@ -156,11 +154,6 @@ least important goal (input 99).
 - Level 3 is future work.
 - All levels read the same export and rebuild the same way, so a user moves
   between levels with no change to the records.
-- The first check (T14): on 8 held-out questions over the small invoicer
-  fixture, level 2 equalled level 1, with recall of 29% in the top 5 and 58%
-  in the top 10. So level 2 showed no measured gain at that size. It stays
-  the default (input 130), and it is measured again on a larger real corpus
-  before the release.
 
 <!-- SP-11 component serves:R1,assuredloop-v4/R10 builds-on:SP-10 -->
 

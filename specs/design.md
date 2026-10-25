@@ -9,7 +9,7 @@ design. Its paragraphs come from the change spec of the request
 `assuredloop-v4`, which also keeps how that change was built. `schema.md` in
 this folder holds the model and a worked example. "R<n>" is a requirement of
 that request, and "Input N" means owner input N, whose words are in the
-request's `origin/` folder; `validation.md` is in the request's folder too.
+request's `origin/` folder.
 Where this design and an older text differ, this design holds.
 
 <!-- DES-3 note -->
@@ -1399,8 +1399,7 @@ declared one shows `how: declared`. One cite finder serves every repo.
 an output is any file that a record declares or that names an ID; a result
 is any named check with its outcome. So a project of documents or research
 keeps the same requests, change specs, records and paths, and its documents
-are its outputs. Validation case DC08, a report project on path 2, kept
-these records (validation.md).
+are its outputs.
 
 <!-- DES-71 note -->
 
