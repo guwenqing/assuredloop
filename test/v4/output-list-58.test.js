@@ -22,7 +22,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ADR3, appendSection, commitAll, doc, git, newRequest, ok, organized, req, write, writeConfig } from './helpers/project.js';
+import { ADR3, al, appendSection, commitAll, doc, editFile, git, newRequest, ok, organized, req, write, writeConfig } from './helpers/project.js';
 import { check, grouped, inForce, notInForce, oneLine, out, show, shown } from './helpers/list-58.js';
 
 const T12 = 'An invoice has a number, a customer, lines, a total and a paid date.';
@@ -131,6 +131,25 @@ test('#58 round 5: in an output repo the limits line says "al context <ID> --at 
   assert.ok(limits.includes(`the items' files are in the central repo at ${c}`), limits);
   assert.ok(limits.includes(`al context <ID> --at ${c} in the central repo shows one item`), limits);
   assert.ok(!limits.includes('al context <ID> one item'), limits);
+});
+
+test('#58 round 6: the output repo pins an older central commit A that has INV-41; HEAD B removes it: the list shows INV-41 from A, the limits name A, and al context INV-41 --at <A7> finds it in the central clone', (t) => {
+  const { dir, web, centralHead: a } = outputWorld(t);
+  const a7 = a.slice(0, 7);
+  editFile(dir, 'specs/invoices.md', `<!-- INV-41 rule -->\n\n${T41}\n\n`, '');
+  commitAll(dir, 'INV-41 goes');
+  assert.notEqual(git(dir, 'rev-parse', 'HEAD'), a, 'fixture: the central HEAD is a later commit B');
+  write(web, '.assuredloop/config.yaml', `repo: invoicer-web\ncentral: {path: ../invoicer, commit: ${a}}\n`);
+  const r = check(web);
+  assert.equal(inForce(r, 'INV-41'), `in force INV-41 cited (src/links.js:1) · specs/invoices.md:15 · rule: ${T41}`, show(r));
+  const limits = oneLine(r, 'list limits: ');
+  assert.ok(limits.includes(`the items' files are in the central repo at ${a7}`), limits);
+  assert.ok(limits.includes(`al context <ID> --at ${a7} in the central repo shows one item`), limits);
+  const atA = al(dir, ['context', 'INV-41', '--at', a7]);
+  assert.equal(atA.code, 0, show(atA));
+  assert.ok(atA.stdout.includes(T41), `the text of INV-41 at A:\n${show(atA)}`);
+  const atB = al(dir, ['context', 'INV-41']);
+  assert.equal(atB.code, 2, `INV-41 is not there at HEAD B:\n${show(atB)}`);
 });
 
 test('#58 output repo: no change selected (on main, clean): "list: no change selected: <reason>"', (t) => {
