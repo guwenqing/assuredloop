@@ -7,10 +7,11 @@
 This change serves R1, R2 and R3 in `request.md`. It makes `al` lighter for
 the user and the AI, and adds the code side: the requirements and decisions
 in force for a change, the review's judgements, and a check of their
-evidence. Nothing is built or removed until the tests below give their
-results. Seven signed requirements get new versions, which the owner signs
-one at a time after the tests (section 6). Until then, those parts stay
-plans.
+evidence. The tests gave their results on 2026-10-25 (section 7), and
+sections 4, 4a and 5 carry the tuning that followed. Seven signed
+requirements get new versions, which the owner signs one at a time
+(section 6). Nothing is built or removed until the owner signs them. Until
+then, those parts stay plans.
 
 <!-- LD-3 note -->
 
@@ -149,8 +150,10 @@ lines, groups repeated lines but never leaves one out (context-all/R1), and
 says which question to ask next. `--full` shows everything; `--at <commit>` answers as
 of a past commit.
 
-- `al about <file or ID>`: the requirements and decisions in force that name
-  this file or ID, or that it names.
+- `al about <file or ID> ...`: the requirements and decisions in force that
+  name these files or IDs, or that they name. Several files or IDs in one
+  call give the same lines as separate calls, with repeats grouped and each
+  input that `al` cannot resolve named.
 - `al status <ID or request>`: for an ID, its text in one line, its status,
   what replaced what, and its last signed version. For a request, where it
   stands and what to do next.
@@ -172,7 +175,9 @@ The default scope of a review is the change's affected IDs: the IDs that
 the diff touches, plus open text that cites an ID whose text or status the
 change alters, plus a requirement whose last naming test the change
 removes, plus what the list of section 4a shows by citation or by file
-scope. Answers are reused within one review. `al cites` gives counts by
+scope. An answer is reused while its inputs stay the same: the base, the
+changed content, the source versions, the saved work items, the repository
+states and the options. A refreshed work item ends the reuse. `al cites` gives counts by
 place and the first lines, and "N more: al cites <ID> --full".
 
 <!-- LD-20 plan -->
@@ -184,11 +189,13 @@ from the IDs written:
    the list of section 4a for the change.
 2. Ask one search question about the changed behaviour, even when IDs are
    written: "which requirement or decision governs <behaviour>?". Written
-   IDs can be incomplete or wrong. Where the list says that some items in
-   force were not listed, this question covers them.
-2a. Write a judgement for each item that applies to the change, or that you
-   are not sure of, with its evidence (LD-27). Write none for an item that
-   does not apply.
+   IDs can be incomplete or wrong. Where the list names items in force
+   without their text, this question covers them. When search is off, use
+   grep. An empty result never means that every governing item was found.
+2a. Write a judgement for each item that applies to the change, conflicts
+   with it, or that you are not sure of, however you found it, with its
+   evidence (LD-27). Write no routine judgement for an item that does not
+   apply.
 3. For a decision it names, `al status`. For a changed requirement,
    `al history`.
 4. For a design in the change, compare it with the request's organized
@@ -197,11 +204,41 @@ from the IDs written:
    search or grep, whether or not a test names an ID and whether or not the
    test changed. Read each assertion: a name is not a check. When none is found, or none was read, say so as
    unknown. A code quote never stands for a test.
+5a. For the changed behaviour, find the user documents that describe it,
+   changed or not, and compare them with what was decided. A document that
+   you did not read stays unknown.
 6. Judge a "fix" claim: does the change alter behaviour that a requirement
    covers?
 7. Run `al check` once. Stop when the search question and the lookups find
    nothing that applies. An empty lookup alone does not mean that nothing
    applies.
+8. Write the answer so that a reader can check it (LD-47).
+
+<!-- LD-47 plan -->
+
+Answers that a reader can check. Beside each ID that it shows, `al` gives
+the project file and line of the item's text at the selected repository
+and revision. Where a fact is held only in `al`'s records (a sign-off, a
+tier, a request's state), `al` names that record as the source and says
+that only its records hold the fact. It never makes up a project line, and
+it never shows its paragraph markers as a source. Evidence that is missing
+or cannot be read is reported as a limit. The skill tells the AI:
+
+- support each material claim, with its meaning, its state and its
+  version, from the project's own text, and cite the file and line, with an
+  `al` ID beside it only as a label;
+- keep apart project evidence, declared links, inferences, facts held only
+  in `al`'s records, and what is unknown;
+- report `al`'s own output (a hint, a `Tier:` line, a "not checked" line)
+  as `al`'s output, and check a hint in the project's files before stating
+  it as a fact;
+- "`al` found no hint" does not mean "the change has no misalignment".
+
+Why: in the answer test, answers made with `al` held 2 to 8 times the
+unsupported claims of answers made without it. About 4 in 10 of those
+claims cited `al`'s own IDs and records in place of the project's text
+(section 7). Code tests prove `al`'s output; they cannot prove that an AI
+makes fewer unsupported claims.
 
 <!-- LD-41 plan -->
 
@@ -245,8 +282,25 @@ lines, supersede links and `specs/`. No new record.
   `decides` links. An ADR's text also names the alternatives that were
   considered (SCH-22), so the review reads which part is the decision; `al`
   marks no part as binding.
-- The selected change's own signed requirements and its proposed design,
-  shown as "proposed by this change", apart from what already holds.
+- The selected change's own signed requirements and its proposed design
+  (LD-48), shown as "proposed by this change", apart from what already
+  holds.
+
+<!-- LD-48 data serves:R1 -->
+
+The change's proposed design. Besides its own change spec, a change may
+name a project document as its design, by a design line in its request or
+in its saved work item. A plain mention, or a link for comparison or for
+history, does not make a document the change's design. `al` reads the
+named document at the selected revision and shows where the design line
+is, the document's state as `al` reads it (an ADR's status; for another
+document, its marked state or "state unknown"), and "proposed design of
+this change". It never shows that document as in force. A design line
+whose document is missing or cannot be read gives a hint that names it; a
+removed design line removes the document from the list. When the proposed
+design conflicts with an item in force, both are shown, and the item in
+force stays in force. Why: in the real test, 459 of the review's
+judgements were on the tasks' own draft RFCs, which the list did not hold.
 
 <!-- LD-42 data serves:R1 -->
 
@@ -264,20 +318,27 @@ without search.
 - The items whose confirmed file scope (LD-26) matches a changed, renamed
   or deleted file, in the repo that holds it.
 - The items whose scope is all files.
-- When the set in force is small (300 items, provisional; a size
-  calibration sets it): every other item in force, one line each, with its
-  ID and its text in one line. About 85 items cost about 1,300 tokens
-  (inferred: about 15 tokens a line; not measured).
-- When the set is larger: one grouped line with exact counts, "N further
-  items in force: U with no known scope, K with a scope that does not match
-  this change". The search question of skill step 2 covers both groups. A
-  scope that does not match is not proof that the item cannot apply: new
+- The change's proposed design (LD-48).
+- Every other item in force, named by its ID and grouped, with exact
+  counts: "N further items in force: U with no known scope: <IDs>; K with a
+  scope that does not match this change: <IDs>". Their text is not shown;
+  the full form of the question shows it. No item is left out
+  (context-all/R1). The search question of skill step 2 covers both groups.
+  A scope that does not match is not proof that the item cannot apply: new
   behaviour can make an old scope incomplete.
+
+The items above the grouped line show their ID and their text in one line.
+Measured in the real test: about 33 tokens for such a line. Why the rest
+is named and not shown: a full list of the set in force cost the real
+test's full-mode review about 250k characters of `al check` output, often
+the same list 3 or 4 times, and that mode cost 2.4 times a plain review.
 
 <!-- LD-43 flow serves:R1 -->
 
-The list says its basis (cited, by scope, or listed because the set is
-small) and its limits. It never says that an item not listed cannot apply.
+The list says its basis (cited, by scope, the change's proposed design, or
+named in the grouped line), the way to the text that it does not show, and
+its limits. It never says that an item it does not show in full cannot
+apply.
 
 <!-- LD-26 data serves:R1 -->
 
@@ -289,13 +350,15 @@ the item. A scope that matches no file at the selected commit gets a hint.
 
 <!-- LD-27 data serves:R2 -->
 
-The judgements. The review AI judges only the items that apply to the
-change, or that it is not sure of. It writes them in a short readable note
-beside the change's design. Each judgement holds:
+The judgements. The review AI judges the items that apply to the change,
+conflict with it, or that it is not sure of, however it found them. It
+writes no routine "not applicable" judgement; earlier judgements stay. It
+writes them in a short readable note beside the change's design. Each
+judgement holds:
 
 - the item's ID; `al` adds the item's version;
-- complies, violates, not applicable, or unclear, with the reason in one
-  sentence;
+- complies, violates or unclear (and, in an audit, not applicable), with
+  the reason in one sentence;
 - a quote of the item's text, and a quote of the code or test with its repo
   and file, from the head of the change, or from its base when the change
   removed the text (a removed guard is quoted from the base);
@@ -313,7 +376,9 @@ step), never on an ordinary change.
 
 C8, the evidence check, with no model. For each judgement, `al` checks that
 the item's quote is in that item's text at the selected commit, word for
-word, and that the code or test quote is in the file at the head or the
+word, wherever `al` can find the item: in force, proposed (LD-48), draft or
+replaced. It shows the item's state beside the result, for example "quote
+found; item not in force". It also checks that the code or test quote is in the file at the head or the
 base that it names. `al` also keeps, by itself, the identity of the
 reviewed change for each judgement: in each repo that it considered, the
 base commit and a hash of the change's diff from that base, with the
@@ -327,7 +392,8 @@ renewed review, even when every quote is still there. The sequence: the
 review judges head A and writes its note; commit B saves the note and the
 records, and the judgement stays current; commit C changes a source file,
 and the judgement is stale; the renewed review judges C, and commit D saves
-it. A quote that is not there gives "evidence not found". `al` shows a quote that it found as
+it. A quote that is not there gives "quote not found"; an item that `al`
+cannot find gives "item not found". `al` shows a quote that it found as
 "quote found", never as "complies": the meaning is the AI's judgement. C8
 gives hints only. A judgement never clears or hides a `not ok` or a refusal
 of `al conclude` (LD-12), and it never blocks. To make a judgement block
@@ -351,6 +417,24 @@ labels). So a judgement was reliable with a procedure fitted to the
 question. Nothing yet shows that a general review is. The quote check
 catches an invented quote, not a wrong reading.
 
+<!-- LD-49 plan -->
+
+The whole chain, from the requirement through the design and the spec to
+the code, the tests and the user documents. Each link is either an exact
+check, proven by a planted fixture and a code test that uses no model, or a
+question for the AI's review (LD-20). Exact today: `signoff-coverage` and
+`superseded-cited` (`not ok`); `design-link`, `stale-base`,
+`holder-changed`, `target-removed`, `overlap`, `no-claim`, the ADR-change
+hints and the test-result source rules (hints). New, a hint: a signed
+requirement of an open change with no declared link to a promise or design
+paragraph. It says "no declared paragraph link", never "not served" or "not
+built"; it shows the known direct links to code, tests and documents, with
+their limits; it never fails a check. Its fixtures: direct output links
+only, an existing design reused, an ADR only, partial links, and no link.
+Whether the code does what the requirement says, and whether a user
+document still says what was decided, stay review questions (LD-20, steps
+4, 5 and 5a); the code tests do not prove them.
+
 <!-- LD-31 note -->
 
 ## 5. The knowledge base (plan)
@@ -360,7 +444,7 @@ catches an invented quote, not a wrong reading.
 One setting, `search`:
 
 1. `own`: the user's knowledge base, named as an MCP server or a skill.
-2. `local` (the default): full text alone, or full text with one embedding
+2. `local`: full text alone, or full text with one embedding
    model and an optional reranker, from the measured list. `al` suggests a
    model from the free memory and disk and the measured figures, with the
    published benchmarks beside them; the user chooses; `al` downloads it on
@@ -371,8 +455,14 @@ One setting, `search`:
 <!-- LD-45 plan -->
 
 The setup skill asks first whether the user has a knowledge base, and sets
-`own` when there is one. When there is none, it offers `local` with its
-suggestion, or `none`.
+`own` when there is one. When there is none, it offers `local` or `none`,
+and recommends one from the user's computer and the measured results, with
+the limits of those results. No setting is a default by itself. Today's
+recommendation is `none`: in the answer test, `local` with code syntax
+units was level with `none`, and `local` without code text found fewer
+known items than the AI alone (section 7). That is one project, with a
+judge under its bar on "right", so it is a provisional recommendation. The
+signed default of v4/R10 goes with its new version (section 6).
 
 <!-- LD-33 plan -->
 
@@ -382,10 +472,9 @@ requirements, the ADRs with their sources and alternatives, the source
 snapshots, the decisions in the records, the result files, the output lines
 that cite an ID, and their history from git. It adds one rough line for
 each file of the spec repo and the output repos that says what the file is
-(code, test, doc, config). Code is not indexed by syntax unit: agents grep
-code, and code navigation belongs to code tools. Whether syntax units add
-right answers is measured (section 7). The checks never use the knowledge
-base.
+(code, test, doc, config). It adds code syntax units: in the answer test,
+the local index without code text found fewer known items than the AI
+alone (section 7). The checks never use the knowledge base.
 
 <!-- LD-34 note -->
 
@@ -401,15 +490,47 @@ tests give their results and the owner signs these new versions.
 |---|---|
 | v4/R5 | At close, `al` derives a disposition where it can prove it; a person writes one line only where `al` cannot. |
 | v4/R8 | Test outcomes also come from the project's CI reports, with the commit of the run. |
-| v4/R10 | Search is the user's own knowledge base, `al`'s local one over today's searchable text and a rough line for each file (full text, or with a model), or none. Setup asks for the user's own one first. |
+| v4/R10 | Search is the user's own knowledge base, a local one, or none. Setup asks for the user's own one first. With none, setup offers a local one or no search, and recommends one from the user's computer and the measured results, with their limits. The signed default, local full text with an embedding model, goes. A model stays optional, and the user chooses it. |
 | hints-and-blocks/R1 | A changed ADR text is a hint until the change is judged in one recorded line, in place of `--align`. |
-| level2-peer/R1 | `al ask` answers with full text without the model library, and says how to add one. |
-| context-all/R1 | The questions never leave a line out; `--full` shows everything. |
-| design-links/R1 | Asked about an ID, `al` lists the paragraphs that build on, explain or illustrate it, with no `al context`. |
+| level2-peer/R1 | Search with a model needs no second AssuredLoop package; the user installs model support separately; without it, search answers with full text and says how to add it. |
+| context-all/R1 | The questions group repeated output but never leave a line out, and show everything on request. A reader can find the evidence of each reported fact, and an answer keeps apart project evidence, facts held only in `al`'s records, inferences and unknowns. |
+| design-links/R1 | Asked about an ID, `al` lists the paragraphs that build on, explain or illustrate it, with no `al context`. `al` also points out a signed requirement of an open change with no declared link to a promise or design paragraph, as a hint that never claims that the requirement has no code or test. |
 
 <!-- LD-36 note -->
 
 ## 7. What the tests decide (plan)
+
+<!-- LD-50 note -->
+
+The results (2026-10-24 and 25). The full reports are kept apart from this
+repo.
+
+- The real test (one open-source project, one builder model, three tasks,
+  six build arms, up to three repeats): no arm built clearly better than
+  the AI alone. Every review mode found every planted defect. One real
+  break of an ADR was found by the `al` review mode in 3 of 3 reviews, and
+  by the plain and full modes in none; the part of `al`'s view in that is
+  an inference. Builds with `al` cost from 13% less to 55% more than the AI
+  alone, by task and arm. Reviews against plain: the `al` mode 1.2 times,
+  full 2.4 times, grouped 1.9 times. The builders that were offered a
+  knowledge base in one optional line used it twice in 16 builds.
+- The answer test (the same project, 21 cases, the answering model the
+  same for every method; one GPT judge scored every claim, with a Claude
+  reference as a second labeller): no clear difference in recall between
+  the AI alone, plain search, `al` 3.2.0 and the prototype with code syntax
+  units. The prototype's local index without code text found fewer known
+  items than the AI alone. Answers with `al` held 2 to 8 times the false
+  share of answers without it, in unsupported claims; about 4 in 10 of
+  those cited `al`'s own IDs and records in place of the project's text.
+  The judge passed its bar on "unsupported" (94.6%) and missed it on
+  "right" (83.0%) and "wrong" (78.3%). A direction was reported only where
+  the difference was at least 0.05 under both labellers, a rule set after
+  the scores were seen.
+- Not run, by the owner's decision of 2026-10-25 (no new model-based
+  test): the size calibration (no longer needed: LD-25 names every item),
+  the list's token measure in the answer test, and a larger answer test.
+  The build's own tests, the scale test and the case walk-through use no
+  model and stay.
 
 <!-- LD-37 plan -->
 
@@ -454,9 +575,10 @@ tests give their results and the owner signs these new versions.
   (Q12), and that judging hints and migrations cost more.
 - #45: each part was evaluated. Taken: only what is in force counts (as
   "in force", with no new word); retrieval only as a helper. Changed: the
-  file scope is optional and only helps the list; below the size, every
-  other item as one line, not its whole text; judgements only for the
-  items that apply or are uncertain, with the evidence of LD-27 and LD-28;
+  file scope is optional and only helps the list; every other item named
+  by its ID, grouped, not its whole text (LD-25); judgements only for the
+  items that apply, conflict or are uncertain, with the evidence of LD-27
+  and LD-28;
   the measure of injected violations becomes an arm of the real test.
   #28's search over the binding set only: changed, the list uses only what
   is in force, and `al ask` keeps all marked text.
