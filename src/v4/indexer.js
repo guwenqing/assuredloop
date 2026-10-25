@@ -2,6 +2,8 @@
 // with the agents' hints kept), appends requirement versions, freezes the
 // bindings of new links and fills the hashes of new dispositions. Ordinary
 // indexing never advances a binding; only --align does (design.md 4, 10).
+// With --issues <folder>, it keeps the text of the tasks' work items at the
+// moment of reliance (light-design LD-22, kept-items.js).
 import { accessSync, constants, lstatSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { isMap, parse, stringify } from 'yaml';
@@ -12,6 +14,8 @@ import { ADR_FILE, SPEC, adrId, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
 import { outputRepos } from './repos.js';
+import { itemFinder, loadItems, taskItems } from './issues.js';
+import { keepItems } from './kept-items.js';
 import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
 // The marker links that get a binding, by the parser's key; `for` (a task) has no text to bind.
@@ -265,9 +269,11 @@ function notRead(top, root, config) {
   return out;
 }
 
-export function index({ top, opts }) {
+export function index({ top, cwd, opts }) {
   let loaded;
   try { loaded = loadConfig(top); } catch (e) { throw new Fail(e.message, 'fix .assuredloop/config.yaml'); }
+  // The work items that the caller saved; a folder that is not there is a refusal.
+  const issues = opts.issues === undefined ? null : loadItems(cwd ?? top, opts.issues);
   const body = [];
   const notes = [];
   // The spec root as a repo path, once (`./specs/` is `specs`), for the tree and for past commits alike.
@@ -308,6 +314,13 @@ export function index({ top, opts }) {
 
   const now = loadState(top, null, config, names);
   for (const [n, rec] of recs) now.requests.get(n).data = rec.data;
+  if (issues) {
+    const finder = itemFinder(top, loaded, issues.items);
+    const { named, missing } = taskItems(now, finder);
+    body.push(...keepItems(top, recs, named, finder));
+    for (const m of missing) notes.push(`not kept: ${m.r.name}/${m.task} ${m.written}: ${m.key ? `no item in ${issues.folder} is ${m.key}` : m.unknown ?? 'it names no item'}`);
+    for (const u of issues.unread) notes.push(`item file not read: ${u.file}: ${u.why}`);
+  }
   const repos = new Map(outputRepos(top, loaded).filter((r) => r.name).map((r) => [r.name, r]));
   const links = linksOf(top, now, config, true, repos);
   const atBase = new Set(base ? linksOf(top, loadState(top, base, config, names), config, false).map(tripleKey) : []);
