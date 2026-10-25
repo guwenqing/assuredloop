@@ -479,6 +479,30 @@ function runBin(bin, dir, args) {
   return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 }
 
+// #58: al check prints the list of what is in force, which main did not
+// print: one block of lines after the findings, right before the Read line.
+const LIST_LINE = /^(list: |list basis: |list limits: |in force |proposed |\d+ further items in force: )/;
+// The output without the list block, and the block. When there is a block,
+// it must be one run of lines right before the Read line.
+function withoutList(stdout) {
+  const ls = stdout.split('\n');
+  const at = ls.flatMap((l, i) => (LIST_LINE.test(l) ? [i] : []));
+  if (at.length === 0) return { rest: stdout, list: [] };
+  assert.equal(at.at(-1) - at[0] + 1, at.length, `the list is one block:\n${stdout}`);
+  assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the list comes right before the Read line:\n${stdout}`);
+  return { rest: ls.filter((_, i) => !at.includes(i)).join('\n'), list: at.map((i) => ls[i]) };
+}
+// Every line that main printed, in the same order, and the same exit code;
+// the list of #58 is there (its grouped line or its "no change selected"
+// line), and, once main prints a list too, it is the same list.
+function sameAsMainOutput(here, main, args) {
+  const h = withoutList(here.stdout);
+  const m = withoutList(main.stdout);
+  assert.equal(h.rest, m.rest, `al ${args.join(' ')}: the same output as on main, but the list of #58`);
+  assert.ok(h.list.some((l) => /^(list: no change selected: |\d+ further items in force: )/.test(l)), `al ${args.join(' ')}: the list of #58:\n${here.stdout}`);
+  if (m.list.length > 0) assert.deepEqual(h.list, m.list, `al ${args.join(' ')}: the same list as on main`);
+  assert.equal(here.code, main.code, `al ${args.join(' ')}: the same exit code as on main`);
+}
 describe('#3 (SP-5): without --issues, al check gives the output of main, with a file of own items anywhere', () => {
   test('files of own items in the folder of items, in the repo root and in the request\'s folder, and a free-text source url: al check and al check --strict give the output and the exit code of main', (t) => {
     const w = world(t, { origins: ['a work session for acme/invoicer#46'] });
@@ -490,8 +514,7 @@ describe('#3 (SP-5): without --issues, al check gives the output of main, with a
     for (const args of [['check'], ['check', '--strict']]) {
       const here = runBin(BIN, w.dir, args);
       const main = runBin(mainAl(), w.dir, args);
-      assert.equal(here.stdout, main.stdout, `al ${args.join(' ')}: the same output as on main`);
-      assert.equal(here.code, main.code, `al ${args.join(' ')}: the same exit code as on main`);
+      sameAsMainOutput(here, main, args);
       assert.doesNotMatch(here.stdout, /issue-|info issues/, here.stdout);
     }
   });
