@@ -176,19 +176,24 @@ the change against its base, from facts only:
 - each spec paragraph that the branch added, changed or removed, with the
   change paragraphs that name it;
 - each change paragraph that names a spec paragraph by `changes` or
-  `removes`, with that paragraph's state: consolidated, removed, or not
-  consolidated yet.
+  `removes`, with that paragraph's state: unchanged since the link, changed
+  since the link, or removed.
 
 <!-- LD-61 plan -->
 
-"Not consolidated yet" means that the named paragraph still has the version
-that it had when the change linked it, or when a recorded judgement last
-accepted it (LD-12). So a lost edit and a revert show as not consolidated.
-When the change's own branch changes a named paragraph, `al` keeps that
-version in its own records; no person and no AI writes or reads it. A later
-edit of that paragraph by other work gives the parallel-work hint of v4/R6,
-as today; the change's own consolidation does not. `al` compares no text
-with text. The map also shows, for each change paragraph that goes into
+The states are facts. "Unchanged since the link" means that the named
+paragraph still has the version that it had when the change first linked
+it. No judgement moves that version. "Changed since the link" and "removed"
+say only that the text changed or left `specs/`. Whether the change's
+effect is in it is the review's judgement (LD-59). So a lost edit, and a
+revert to the linked text, show as unchanged; a revert in other words shows
+through a stale consolidation judgement. When the change's own branch
+changes a named paragraph, `al` keeps that version in its own records; no
+person and no AI writes or reads it. A later edit of that paragraph by
+other work gives the parallel-work hint of v4/R6, as today; the change's
+own consolidation does not. A recorded judgement clears that hint and
+changes no state of the map. `al` compares no text with text. The map also
+shows, for each change paragraph that goes into
 `specs/`, its consolidation judgement (LD-59): current, stale or none. The
 review reads the map beside the change spec and the spec's diff, and judges
 the consolidation (LD-20, step 4.5).
@@ -232,18 +237,22 @@ abandoned unsigned. Paths 0, 1 and 1d close as today. On paths 2 and 3,
    paragraph link", never "not built". During work the same fact is a hint
    (LD-49); only `al conclude` refuses on it;
 3. a change paragraph names a spec paragraph by `changes`, and that
-   paragraph is not consolidated yet (LD-56); or it names one by `removes`,
-   and that paragraph is still in `specs/`.
+   paragraph is unchanged since the link (LD-61); or it names one by
+   `removes`, and that paragraph is still in `specs/`.
 
 <!-- LD-62 plan -->
 
-A close line clears items 2 and 3: one sentence in the request's record. For
-item 3, it names the change paragraph as not delivered, with the reason. For
-item 2, it names where the requirement is met when no lasting paragraph
-links to it: an existing design reused, or a one-time task such as a
-migration. A close line is the request's own record of what was not done or
-how it was met; it is not a judgement of LD-12, and the review reads it.
-Nothing else refuses: a missing or stale consolidation judgement is shown
+A close line clears items 2 and 3: one sentence that the author records
+with `al record`. For item 3, it names the change paragraph as not
+delivered, with the reason. For item 2, it names where the requirement is
+met when no lasting paragraph links to it: an existing design reused, or a
+one-time task such as a migration. `al` keeps, by itself, the versions of
+what the line names: the change paragraph or the requirement, and the spec
+paragraphs that its reason names. The line clears only while they keep
+those versions. When one of them changes, `al conclude` names the line as
+stale, and it clears nothing until the author records it again. A close
+line is the author's declaration, shown with its basis. It is not a
+judgement of LD-12, and the review reads it. Nothing else refuses: a missing or stale consolidation judgement is shown
 (LD-60), and a judgement never clears or causes a refusal (R2).
 `al conclude` compares no text with text, and asks for no record for each
 change paragraph. It runs on the closing PR's state, and an archived
@@ -675,7 +684,7 @@ prove it.
 
 | What | How |
 |---|---|
-| The map and the close rule: a change paragraph consolidated, not consolidated, lost, reverted, removed, and named as not delivered; a spec paragraph changed with no change paragraph that names it; two open changes on one paragraph; a later edit by other work; a requirement with no declared link, one met by an ADR, and one with a close line; a spike, signed and unsigned | planted fixtures in the build's own tests |
+| The map and the close rule: a named spec paragraph unchanged, changed, lost, reverted to the linked text, and removed; a change paragraph named as not delivered; a spec paragraph changed with no change paragraph that names it; two open changes on one paragraph; a later edit by other work, then a recorded judgement on it, with no change to the map's state; a requirement with no declared link, one met by an ADR, and one with a close line; a close line that goes stale when its change paragraph, its requirement or a spec paragraph that it names changes; a spike, signed and unsigned | planted fixtures in the build's own tests |
 | The consolidation judgement: one piece split into two spec paragraphs, two pieces joined into one; current, then stale after a later rewrite by the same change and by other work; missing at close | planted fixtures in the build's own tests |
 | A design line to a document with markers, and to one with none | planted fixtures in the build's own tests |
 | The paths: a fix, an amendment, an epic in parts, two epics at once, a spike, a bug | a case walk-through in the build's own tests |
