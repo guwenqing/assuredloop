@@ -15,7 +15,7 @@ paragraphs:
     display: DES-3 (1, 1. Intent)
   - id: DES-4
     kind: rationale
-    text_sha256: be3c2ffacaaf0bfb964705cf4ec9b3d4825d00b9d8c10966481c3408238991b4
+    text_sha256: 1ca1d304f694c7c0ef9dc9b7a86e3f26ee1160f85c84f2abe6364b1a400d08ba
     display: DES-4 (1:1, in 1. Intent)
   - id: DES-5
     kind: limit
