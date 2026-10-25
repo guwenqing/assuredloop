@@ -357,6 +357,24 @@ describe('R3: when al cannot tell, it says so, and never reports the item as unc
     save(w, { 'invoicer-5.json': '{"number": 5, "body": \n' });
     assertNotKnown(checked(w, ...ISSUES), 5);
   });
+
+  // al cannot tell when the caller saved the items: every check with --issues says so.
+  const savedClause = (r) => notKnown(r).split(';').filter((c) => c.includes(FOLDER) && /saved/i.test(c));
+  test('with --issues, the Not known line has a clause that names the folder and "saved": also with no item changed, and with no task; without --issues, none', (t) => {
+    const w = world(t);
+    namedAndKept(w);
+    let r = checked(w, ...ISSUES);
+    assertNone(r, 5);
+    assert.equal(savedClause(r).length, 1, `one clause with ${FOLDER} and "saved":\n${show(r)}`);
+    assert.deepEqual(notKnown(checked(w)).split(';').filter((c) => /saved/i.test(c)), [], 'without --issues, no such clause');
+
+    const empty = world(t);
+    name(empty, []);
+    commitAll(empty.dir, 'a request with no task');
+    r = checked(empty, ...ISSUES);
+    assert.deepEqual(changedLines(r).map((f) => f.line), [], show(r));
+    assert.equal(savedClause(r).length, 1, `one clause with ${FOLDER} and "saved", with no task:\n${show(r)}`);
+  });
 });
 
 describe('LD-12: a recorded judgement confirms that the change was read', () => {
