@@ -70,7 +70,7 @@ function itemOf(x, file) {
   const key = repository && number !== null ? `${repository}#${number}` : ref;
   if (!key) return null;
   // `state` is OPEN or CLOSED, as gh prints it; any other value is ignored, so the item counts as open (closed-items D1).
-  return { key, ref, url: typeof x.url === 'string' ? x.url : null, repository, number, closed: x.state === 'CLOSED', body: x.body, comments: x.comments, parent: x.parent, file };
+  return { key, ref, url: typeof x.url === 'string' ? x.url : null, repository, number, closed: x.state === 'CLOSED', body: x.body, comments: x.comments, parent: x.parent, design: x.design, file };
 }
 
 // The own items that assuredloop-requests.json names (own-item SP-8, SP-9):

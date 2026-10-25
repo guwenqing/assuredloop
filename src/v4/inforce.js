@@ -1,0 +1,283 @@
+// What is in force for the selected change (light-design R1; LD-24, LD-25,
+// LD-42, LD-43, LD-47, LD-48, LD-52): one section of al check. The change is
+// what al check selects, the base to the working tree and the untracked
+// files, with .assuredloop/ left out. In force: the promise and design
+// paragraphs of the spec docs (approach aside) and each accepted ADR that no
+// accepted ADR replaces. Shown with their text: the items that the change
+// edits or cites, and the change's own signed requirements and proposed
+// design. Every other item in force is named in the grouped line. No model,
+// no network, and the same output for the same state and options.
+import { lstatSync, readFileSync } from 'node:fs';
+import { join, posix } from 'node:path';
+import { recordPath } from './base.js';
+import { git } from './git.js';
+import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown } from './markers.js';
+import { namedIds } from './repos.js';
+import { ADR_FILE, SPEC, symlinkOn } from './scope.js';
+import { signedBy } from './state.js';
+
+const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
+const inForceKind = (state, kind) => !!kind && kind !== 'approach' && ['promise', 'design'].includes(groupOf(kind, state.kinds));
+const designKind = (state, kind) => !!kind && ['promise', 'design'].includes(groupOf(kind, state.kinds));
+const adrNumber = (id) => Number(id.slice('ADR-'.length));
+const word = (name) => new RegExp(`(?<![\\w-])${name.replace(/[-]/g, '\\-')}(?![\\w-])`);
+const unref = (ref) => String(ref).replace(/^central:/, '');
+
+// The line of a paragraph's first line of text in `text`, never its marker line (LD-47).
+function textLine(text, p) {
+  const lines = lf(text).split('\n');
+  let i = p.line;
+  while (i < lines.length && !lines[i].trim()) i++;
+  return i < lines.length ? i + 1 : p.line;
+}
+
+// A path that git writes in a diff header: C-quoted when it holds a quote,
+// a backslash or a control character (core.quotePath is off).
+function unquote(s) {
+  if (!s.startsWith('"')) return s;
+  const bytes = [];
+  const esc = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
+  for (let i = 1; i < s.length - 1; i++) {
+    if (s[i] !== '\\') { bytes.push(...Buffer.from(s[i])); continue; }
+    const o = /^[0-7]{3}/.exec(s.slice(i + 1));
+    if (o) { bytes.push(parseInt(o[0], 8)); i += 3; } else { bytes.push(esc[s[i + 1]] ?? s.charCodeAt(i + 1)); i += 1; }
+  }
+  return Buffer.from(bytes).toString('utf8');
+}
+const headerPath = (rest) => {
+  const p = unquote(rest.replace(/\t$/, ''));
+  return p === '/dev/null' ? null : p.slice(2);
+};
+
+// The selected change: the paths it touches (all of them, .assuredloop/
+// included, for the own requests), and each line it adds or removes outside
+// .assuredloop/, as { file, line, text, removed }.
+function changeOf(top, base) {
+  const run = (args) => git(top, ['-c', 'core.quotePath=false', ...args], { allowFail: true }) ?? '';
+  const paths = new Set(run(['diff', '--name-only', '-z', '--no-relative', base, '--']).split('\0').filter(Boolean));
+  const untracked = run(['ls-files', '-z', '--others', '--exclude-standard', '--', '.']).split('\0').filter(Boolean);
+  for (const f of untracked) paths.add(f);
+  const lines = [];
+  const diff = run(['diff', '-U0', '-M', '--no-color', '--no-ext-diff', '--no-textconv', '--no-relative', '--src-prefix=a/', '--dst-prefix=b/',
+    base, '--', '.', ':(exclude).assuredloop']);
+  let from = null;
+  let to = null;
+  let hunk = false;
+  let o = 0;
+  let n = 0;
+  for (const l of diff.split('\n')) {
+    if (l.startsWith('diff --git ')) { hunk = false; from = null; to = null; continue; }
+    if (!hunk) {
+      if (l.startsWith('--- ')) from = headerPath(l.slice(4));
+      else if (l.startsWith('+++ ')) to = headerPath(l.slice(4));
+      else if (l.startsWith('@@ ')) hunk = true;
+      if (!hunk) continue;
+    }
+    const h = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(l);
+    if (h) { o = Number(h[1]); n = Number(h[2]); continue; }
+    if (l.startsWith('-')) lines.push({ file: from, line: o++, text: l.slice(1), removed: true });
+    else if (l.startsWith('+')) lines.push({ file: to, line: n++, text: l.slice(1), removed: false });
+  }
+  for (const file of untracked.filter((f) => !f.startsWith('.assuredloop/'))) {
+    let text;
+    try {
+      text = readFileSync(join(top, file), 'utf8');
+    } catch {
+      continue;
+    }
+    if (text.includes('\0')) continue;
+    lf(text).split('\n').forEach((t, i) => lines.push({ file, line: i + 1, text: t, removed: false }));
+  }
+  return { paths, lines, empty: ![...paths].some((p) => !p.startsWith('.assuredloop/')) };
+}
+
+// The items in force at `now`, in list order: the spec docs by path, each in
+// file order, then the ADRs by number (LD-24, LD-42).
+function itemsInForce(now) {
+  const textOf = new Map(now.docs.map((d) => [d.path, d.text]));
+  const items = (now.scopes.get(SPEC) ?? []).filter((p) => inForceKind(now, p.kind)).map((p) => ({
+    id: p.id, file: p.file, line: textLine(textOf.get(p.file) ?? '', p), what: p.kind, text: oneLine(p.text), p,
+  }));
+  const accepted = [...now.adrs.values()].filter((a) => a.status === 'accepted');
+  const replaced = new Set(accepted.flatMap((a) => (a.head?.links.supersedes ?? []).map((x) => /^(ADR-\d+)/.exec(unref(x))?.[1])));
+  for (const a of accepted.filter((x) => !replaced.has(x.id)).sort((x, y) => adrNumber(x.id) - adrNumber(y.id))) {
+    const decides = (a.head?.links.decides ?? []).map(unref);
+    items.push({
+      id: a.id, file: a.file, line: a.head ? textLine(a.text, a.head) : 1, adr: a,
+      what: `ADR accepted, decides ${decides.length ? decides.join(', ') : 'nothing'}`, text: oneLine(a.head?.text ?? ''),
+    });
+  }
+  return items;
+}
+
+// The open requests that are this change's own: the change touches their
+// folder or their record, or a commit message of base..HEAD names them.
+function ownRequests(top, now, base, paths) {
+  const messages = git(top, ['log', '--format=%B%x00', `${base}..HEAD`], { allowFail: true }) ?? '';
+  return [...now.requests.values()].filter((r) => r.open).filter((r) => [...paths].some((f) => f.startsWith(`${r.dir}/`) || f === recordPath(r.name))
+    || word(r.name).test(messages)).sort((a, b) => (a.name < b.name ? -1 : 1));
+}
+
+// The design lines of request.md (LD-48): `Design: <path>`, outside fenced code.
+function designLines(md) {
+  const out = [];
+  let fence = null;
+  lf(md).split('\n').forEach((l, i) => {
+    const f = FENCE.exec(l);
+    if (fence) {
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.trim() === f[1]) fence = null;
+      return;
+    }
+    if (f) { fence = f[1]; return; }
+    const m = /^Design:[ \t]*(.*?)\s*$/.exec(l);
+    if (m && m[1]) out.push({ path: m[1].replace(/^`(.*)`$/, '$1'), line: i + 1 });
+  });
+  return out;
+}
+
+// A design document: { lines } for the list, or { hint } when it is missing
+// or cannot be read, or { limit } when it is not read here.
+function designDoc(top, now, path, source) {
+  if (/\s/.test(path) || posix.isAbsolute(path) || path.split('/').includes('..')) return { hint: 'cannot be read' };
+  if (/^[A-Za-z0-9][\w.-]*:/.test(path)) return { limit: `${path} (${source}) is not read: a document of an output repo` };
+  const clean = posix.normalize(path).replace(/^\.\//, '');
+  let stat;
+  try {
+    stat = lstatSync(join(top, clean));
+  } catch {
+    return { hint: 'is missing' };
+  }
+  let text;
+  try {
+    if (symlinkOn(top, clean) || !stat.isFile()) throw new Error('not a file');
+    text = readFileSync(join(top, clean), 'utf8');
+  } catch {
+    return { hint: 'cannot be read' };
+  }
+  const head = `proposed ${path} design document · ${source}`;
+  const adr = ADR_FILE.test(posix.basename(clean)) && posix.dirname(clean) === `${now.root}/adr` ? now.adrList.find((a) => a.file === clean) : null;
+  if (adr) return { lines: [`${head} · ${adr.id} ${adr.status ?? 'with no known status'} · an ADR`] };
+  const status = /^Status:[ \t]*(.*?)\s*$/m.exec(lf(text).split('\n')[0] ?? '')?.[1];
+  const state = status ? `Status: ${status}` : 'state unknown';
+  const paras = parseMarkdown(text, clean, { kinds: now.kinds }).paragraphs;
+  if (!paras.length) return { lines: [`${head} · ${state} · no markers: supporting evidence`] };
+  const design = paras.filter((p) => designKind(now, p.kind));
+  return {
+    lines: [`${head} · ${state} · ${design.length} design paragraphs`,
+      ...design.map((p) => `proposed ${p.id} design paragraph · ${clean}:${textLine(text, p)} · ${p.kind}: ${oneLine(p.text)}`)],
+  };
+}
+
+// The list. Returns { body, findings }: the lines, and the design-doc hints.
+export function changeInForce(top, { now, was, base, issues = null, full = false }) {
+  if (!base) return { body: ['list: no change selected: no base (no main branch, or no commit)'], findings: [] };
+  const change = changeOf(top, base);
+  if (change.empty) return { body: [`list: no change selected: nothing changed against the base ${base.slice(0, 7)}`], findings: [] };
+  const findings = [];
+  const limits = [];
+  const items = itemsInForce(now);
+
+  // Cited: a line that the change added or removed names the ID as a whole
+  // word; a paragraph's own ID in its marker line is no citation.
+  const known = new Map();
+  for (const it of items) {
+    known.set(it.id, it.id);
+    for (const p of it.adr?.paragraphs ?? []) known.set(p.id, it.id);
+  }
+  const cites = new Map();
+  for (const l of change.lines) {
+    const text = l.text.replace(/^(\s*<!--[ \t]+)(ADR-\d+-\d+|[A-Z][A-Z0-9]*-\d+)/, '$1');
+    for (const written of namedIds(text, { qualified: false, known: new Set(known.keys()) })) {
+      const id = known.get(unref(written));
+      if (!cites.has(id)) cites.set(id, new Map());
+      const files = cites.get(id);
+      if (!files.has(l.file)) files.set(l.file, `${l.file}:${l.line}${l.removed ? ' removed' : ''}`);
+    }
+  }
+
+  // Changed by this change: its text, or its ADR file, differs from the base.
+  const changed = (it) => {
+    if (it.adr) return was?.adrs.get(it.id)?.text !== it.adr.text;
+    const b = was?.spec.get(it.id);
+    return !b || b.sha256 !== it.p.sha256 || b.kind !== it.p.kind;
+  };
+  // An accepted ADR whose text changed, as the adr-changed hint reads it.
+  const textChanged = (a) => {
+    const b = was?.adrs.get(a.id);
+    if (!b || !['accepted', 'superseded'].includes(b.status) || b.body === a.body) return false;
+    return !(b.status === 'accepted' && b.head && a.head && b.rest === a.rest && onlyLinksAdded(b.marker, a.marker, now.kinds));
+  };
+
+  const own = ownRequests(top, now, base, change.paths);
+  const ownNames = new Set(own.map((r) => r.name));
+  const proposals = new Map();
+  for (const r of [...now.requests.values()].filter((x) => x.open && !ownNames.has(x.name))) {
+    for (const p of r.paras.values()) {
+      for (const [key, verb] of [['changes', 'changes it'], ['removes', 'removes it']]) {
+        for (const ref of p.links[key]) {
+          const id = unref(ref);
+          if (!proposals.has(id)) proposals.set(id, []);
+          proposals.get(id).push(`open proposal: ${r.name}/${p.id} ${verb}`);
+        }
+      }
+    }
+  }
+
+  const body = [];
+  const grouped = [];
+  const show = (it, basis) => [`in force ${it.id} ${basis} · ${it.file}:${it.line} · ${it.what}`,
+    ...(it.adr && textChanged(it.adr) ? ['text changed, review open'] : []), ...(proposals.get(it.id) ?? [])].join(' · ') + `: ${it.text}`;
+  for (const it of items) {
+    const basis = [...(changed(it) ? ['changed by this change'] : []), ...(cites.has(it.id) ? [`cited (${[...cites.get(it.id).values()].join('; ')})`] : [])];
+    if (basis.length) body.push(show(it, basis.join(', ')));
+    else grouped.push(it);
+  }
+
+  // This change's own proposals: never in force (LD-24, LD-48).
+  for (const r of own) {
+    const lines = lf(r.md).split('\n');
+    for (const q of r.reqs) {
+      const s = signedBy(now, r.name, q.id);
+      if (!s) { limits.push(`${r.name}/${q.id} is not signed, so it is not listed`); continue; }
+      const at = lines.findIndex((l) => new RegExp(`^###\\s+${q.id}\\b`).test(l)) + 1;
+      body.push(`proposed ${r.name}/${q.id} signed requirement · ${r.dir}/request.md:${at} · signed in ${s.id}: ${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`);
+    }
+    const specText = now.docs.find((d) => d.path === r.specFile)?.text ?? '';
+    for (const p of r.paras.values()) {
+      if (designKind(now, p.kind)) body.push(`proposed ${r.name}/${p.id} change spec · ${r.specFile}:${textLine(specText, p)} · ${p.kind}: ${oneLine(p.text)}`);
+    }
+    for (const d of designLines(r.md)) {
+      const where = `${r.dir}/request.md:${d.line}`;
+      const got = designDoc(top, now, d.path, `design line ${where}`);
+      if (got.hint) findings.push({ severity: 'hint', code: 'design-doc', where, id: d.path, message: `the design line names ${d.path}, which ${got.hint}` });
+      else if (got.limit) limits.push(got.limit);
+      else body.push(...got.lines);
+    }
+  }
+  // With --issues: the field design of each saved work item (one path or a list).
+  for (const it of issues?.items ?? []) {
+    if (it.design === undefined) continue;
+    const paths = [].concat(it.design);
+    for (const path of paths) {
+      if (typeof path !== 'string' || !path) {
+        findings.push({ severity: 'hint', code: 'design-doc', where: it.file, id: '-', message: `the design field of ${it.key} is not a path or a list of paths, so it cannot be read` });
+        continue;
+      }
+      const got = designDoc(top, now, path, `design of work item ${it.key} (${it.file})`);
+      if (got.hint) findings.push({ severity: 'hint', code: 'design-doc', where: it.file, id: path, message: `the design line names ${path}, which ${got.hint}` });
+      else if (got.limit) limits.push(got.limit);
+      else body.push(...got.lines);
+    }
+  }
+  if (!own.length) limits.unshift('no open request is this change\'s own (none of its files changed, and no commit message names one)');
+  if (!issues) limits.push('the design field of work items is read only with --issues <folder>');
+
+  const ids = (xs) => (xs.length ? xs.map((x) => x.id).join(', ') : 'none');
+  body.push(`${grouped.length} further items in force: ${grouped.length} with no known scope: ${ids(grouped)}; 0 with a scope that does not match this change: none`);
+  if (full) for (const it of grouped) body.push(`in force ${it.id} grouped, no known scope · ${it.file}:${it.line} · ${it.what}: ${it.text}`);
+  body.push('list basis: changed by this change = the change edits the item; cited = a line that the change added or removed names the ID; '
+    + 'proposed = this change\'s own signed requirements and design, not in force; the grouped line names every other item in force');
+  body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
+    + `al check --full shows the text of every item, al context <ID> one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
+  return { body, findings };
+}
