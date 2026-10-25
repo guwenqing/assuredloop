@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# A new push to the same PR, or a new merge to main, stops the older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-24.04
