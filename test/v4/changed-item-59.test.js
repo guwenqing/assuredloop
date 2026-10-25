@@ -218,7 +218,7 @@ describe('R3: an item that did not change gives no hint', () => {
     assertNone(r, 5);
   });
 
-  test('without --issues: no issue-changed line, also for a changed item; the Not known line says that al cannot tell whether the work items changed', (t) => {
+  test('without --issues: no issue-changed line, also for a changed item; no clause of the Not known line is about items (DES-92)', (t) => {
     const w = world(t);
     saveItem(w, 5);
     name(w);
@@ -226,8 +226,9 @@ describe('R3: an item that did not change gives no hint', () => {
     saveItem(w, 5, { body: 'Build the export as JSON.\n' });
     const r = checked(w);
     assert.deepEqual(changedLines(r).map((f) => f.line), [], show(r));
-    // One clause of the Not known line names the items and "changed".
-    assert.ok(notKnown(r).split(';').some((c) => /item/i.test(c) && /changed/i.test(c)), show(r));
+    // DES-92 (issue-hints/R1): without --issues, no line about items, the Not known line included.
+    assert.ok(notKnown(r), `a Not known line:\n${show(r)}`);
+    assert.deepEqual(notKnown(r).split(';').filter((c) => /item/i.test(c)), [], show(r));
   });
 });
 
