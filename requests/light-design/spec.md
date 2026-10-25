@@ -435,8 +435,9 @@ naming. A moment that is past is not kept. So `al check --issues` gives
 the hint `issue-changed` with "not known", not "unchanged", for an item
 named in an earlier commit with no text kept, for a sign-off after the
 naming with no text kept at it, and for an item that is not in the folder
-or cannot be read. `al` cannot know when the caller saved a file, so the
-caller saves the items again before a check. A closed item gets the same
+or cannot be read. `al` cannot know when the caller saved a file, so each
+`al check --issues` says so in its Not known line, and the caller saves the
+items again before a check. A closed item gets the same
 hint (DES-91): C7 compares the item with its own text at the moment of
 reliance, which is what held then (LD-11). An archived request is not
 checked. Without `--issues`, no line is about items (DES-92). The hint

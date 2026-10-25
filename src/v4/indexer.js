@@ -14,7 +14,7 @@ import { ADR_FILE, SPEC, adrId, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
 import { outputRepos } from './repos.js';
-import { itemFinder, loadItems, taskItems } from './issues.js';
+import { loadItems, taskItems } from './issues.js';
 import { keepItems } from './kept-items.js';
 import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
@@ -315,8 +315,7 @@ export function index({ top, cwd, opts }) {
   const now = loadState(top, null, config, names);
   for (const [n, rec] of recs) now.requests.get(n).data = rec.data;
   if (issues) {
-    const finder = itemFinder(top, loaded, issues.items);
-    const { named, missing } = taskItems(now, finder);
+    const { named, missing, finder } = taskItems(top, { ...now, config: loaded }, issues.items);
     body.push(...keepItems(top, recs, named, finder));
     for (const m of missing) notes.push(`not kept: ${m.r.name}/${m.task} ${m.written}: ${m.key ? `no item in ${issues.folder} is ${m.key}` : m.unknown ?? 'it names no item'}`);
     for (const u of issues.unread) notes.push(`item file not read: ${u.file}: ${u.why}`);

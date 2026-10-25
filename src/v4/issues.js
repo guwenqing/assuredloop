@@ -198,10 +198,12 @@ export function itemFinder(top, config, items) {
   return { own, names, folders, find };
 }
 
-// The items that each task of each open request names, in order (SP-8,
-// SP-9): { named: [{ r, task, it }], missing: [{ r, task, written, key |
-// unknown | none }], tasked } (tasked: the open requests with a task that has a ref).
-export function taskItems(state, finder) {
+// The saved items that each task of each open request names, in order
+// (SP-8, SP-9): { named: [{ r, task, it }], missing: [{ r, task, written,
+// key | unknown | none }], tasked, finder } (tasked: the open requests with
+// a task that has a ref; finder: itemFinder's, for other refs).
+export function taskItems(top, state, items) {
+  const finder = itemFinder(top, state.config, items);
   const named = [];
   const missing = [];
   const tasked = [];
@@ -217,19 +219,20 @@ export function taskItems(state, finder) {
       for (const it of found) named.push({ r, task, it });
     }
   }
-  return { named, missing, tasked };
+  return { named, missing, tasked, finder };
 }
 
 export function issueHints(top, state, matchers, add, { folder, items, unread, owns }) {
   const notKnown = [];
   const cited = supersededIn(state);
-  const finder = itemFinder(top, state.config, items);
+  const { named, missing, tasked, finder } = taskItems(top, state, items);
   const { own, names, folders } = finder;
+  // al cannot tell when the caller saved the items (light-design LD-22).
+  notKnown.push(`when the items in ${folder} were saved: save them again before a check`);
 
   for (const u of unread) add('hint', 'issue-unread', u.file, '-', `not read: ${u.why}`);
   if (unread.length) notKnown.push(`the files in ${folder} that were not read: ${unread.map((u) => u.file).join(', ')}`);
 
-  const { named, missing, tasked } = taskItems(state, finder);
   for (const m of missing) {
     const id = `${m.r.name}/${m.task}`;
     if (m.none) add('hint', 'issue-missing', recordPath(m.r.name), id, `its ref names no item in ${folder}: ${JSON.stringify(m.written)}`);

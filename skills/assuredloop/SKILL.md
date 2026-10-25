@@ -222,9 +222,9 @@ gives hints on them: an item missing from the folder, a superseded ADR
 named without its successor, a bare `#n` in another repository's item, an
 item that is not a child of the request's own item, the phrases of
 `phrases:` in `.assuredloop/config.yaml`, and an item whose text changed
-since the change relied on it. When you add a task's `ref`, or after a
-sign-off, run `al index --issues <folder>` before you commit: then `al`
-keeps the item's text by itself. When `al check --issues` gives
+since the change relied on it. Run `al index --issues <folder>` in the
+commit that names an item, and after a sign-off, before the commit that
+records it: then `al` keeps the item's text by itself. When `al check --issues` gives
 `issue-changed`, read the item, and record that you read it:
 `al record <name> judgement --hint issue-changed --on <item> --reason <why> --issues <folder> --yes`.
 Run `al conclude <name> --yes` with the last part.
