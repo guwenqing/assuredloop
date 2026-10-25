@@ -36,7 +36,7 @@ signoff:
 decisions: []
 tasks: []
 bindings:
-  - { holder: light-design/LD-22, link: serves, target: light-design/R3, holder_sha256: 31f358e0c63b485af3cad4623e3bfdefaa00e775e7568d5cc7ace057671ebc08, target_sha256: 9f5dc55ba2f2312e15674d7926ccd30725030d3a240fa139ea2cbd33326239b4, target_version: 1 }
+  - { holder: light-design/LD-22, link: serves, target: light-design/R3, holder_sha256: d4c1e6191412234cfabdab556e87dc0192a853c522f64af8b8aa3f09a7e86fab, target_sha256: 9f5dc55ba2f2312e15674d7926ccd30725030d3a240fa139ea2cbd33326239b4, target_version: 1 }
   - { holder: light-design/LD-24, link: serves, target: light-design/R1, holder_sha256: 1ce8445ea694e1a8d24af47a83d7ea63b26df0bfb29be39896fe20273b638ef8, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
   - { holder: light-design/LD-25, link: serves, target: light-design/R1, holder_sha256: c5bd8be7639177814fe07e6217cd9db71587e529aa04a06d79d6f4e127d917af, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
   - { holder: light-design/LD-26, link: serves, target: light-design/R1, holder_sha256: 89e7c76a1cc86572bcbd6e4e0ffcaa0f72410c7d30d86dbd29fa4a0d74c44d34, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }

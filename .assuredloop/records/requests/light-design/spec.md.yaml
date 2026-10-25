@@ -139,7 +139,7 @@ paragraphs:
     display: LD-41 (4:6, in 4. Commands, answers and the skill (plans))
   - id: LD-22
     kind: flow
-    text_sha256: 31f358e0c63b485af3cad4623e3bfdefaa00e775e7568d5cc7ace057671ebc08
+    text_sha256: d4c1e6191412234cfabdab556e87dc0192a853c522f64af8b8aa3f09a7e86fab
     display: LD-22 (4:7, in 4. Commands, answers and the skill (plans))
   - id: LD-23
     kind: note

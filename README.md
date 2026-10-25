@@ -300,7 +300,9 @@ that you read it, with its reason:
       --reason "<why>" --issues <folder> --yes
 
 `<item>` takes the forms of a task's `ref`. The judgement records the item's
-text now. The hint comes back when the text changes again.
+text now, and the moment of reliance that it covers. The hint comes back
+when the text changes again, or when a later sign-off becomes the moment of
+reliance.
 
 The folder holds `*.json` files. Each file holds one item, or a list of
 items. An item is the JSON that the GitHub CLI prints with
