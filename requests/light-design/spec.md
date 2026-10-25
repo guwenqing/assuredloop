@@ -234,9 +234,11 @@ or cannot be read is reported as a limit. The skill tells the AI:
   it as a fact;
 - "`al` found no hint" does not mean "the change has no misalignment".
 
-Why: in the answer test, answers made with `al` held 2 to 8 times the
-unsupported claims of answers made without it. About 4 in 10 of those
-claims cited `al`'s own IDs and records in place of the project's text
+<!-- LD-51 rationale -->
+
+Why LD-47: in the answer test, answers made with `al` held 2 to 8 times the
+false share of answers made without it, in unsupported claims. About 4 in
+10 of those claims cited `al`'s own IDs and records in place of the project's text
 (section 7). Code tests prove `al`'s output; they cannot prove that an AI
 makes fewer unsupported claims.
 
@@ -326,6 +328,8 @@ without search.
   (context-all/R1). The search question of skill step 2 covers both groups.
   A scope that does not match is not proof that the item cannot apply: new
   behaviour can make an old scope incomplete.
+
+<!-- LD-52 rationale -->
 
 The items above the grouped line show their ID and their text in one line.
 Measured in the real test: about 33 tokens for such a line. Why the rest
