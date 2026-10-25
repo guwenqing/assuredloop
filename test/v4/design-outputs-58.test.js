@@ -208,3 +208,46 @@ test("#58 LD-48: an item named only by another open request's task gives no desi
   proposed(r, LOCAL);
   notProposed(r, BATCH);
 });
+
+// =====================================================================
+// Round 3: a Design: line in the body of a JSON work item
+
+const bodyItem = (ref, body) => `${JSON.stringify({ ref, repository: 'PROJ', body })}\n`;
+
+test("#58 round 3: a Design: line in the body of the item that the own request's task names: \"design line in work item PROJ-12 (<folder>/proj-12.json)\"", (t) => {
+  const { dir, items } = itemWorld(t, { pdfTask: false });
+  write(items, 'proj-12.json', bodyItem('PROJ-12', `Stream the export.\n\nDesign: ${LOCAL}\n`));
+  const r = check(dir, '--issues', items);
+  assert.equal(proposed(r, LOCAL),
+    `proposed ${LOCAL} design document · design line in work item PROJ-12 (${join(items, 'proj-12.json')}) · state unknown · no markers: supporting evidence`, show(r));
+});
+
+test('#58 round 3: a Design: line in an item body whose document is missing: "hint design-doc <item file> <path> the design line names <path>, which is missing"', (t) => {
+  const { dir, items } = itemWorld(t, { pdfTask: false });
+  const gone = 'docs/rfc/0099-gone.md';
+  write(items, 'proj-12.json', bodyItem('PROJ-12', `Stream the export.\n\nDesign: ${gone}\n`));
+  const r = check(dir, '--issues', items);
+  const want = `hint design-doc ${join(items, 'proj-12.json')} ${gone} the design line names ${gone}, which is missing`;
+  assert.ok(out(r).includes(want), `the line "${want}":\n${show(r)}`);
+  notProposed(r, gone);
+});
+
+test('#58 round 3: a Design: line inside fenced code in an item body does not count', (t) => {
+  const { dir, items } = itemWorld(t, { pdfTask: false });
+  write(items, 'proj-12.json', bodyItem('PROJ-12', `Stream the export.\n\n\`\`\`\nDesign: ${BATCH}\n\`\`\`\n\nDesign: ${LOCAL}\n`));
+  const r = check(dir, '--issues', items);
+  assert.ok(proposed(r, LOCAL).startsWith(`proposed ${LOCAL} design document · design line in work item PROJ-12 (`), `control: the line outside the fence counts:\n${show(r)}`);
+  notProposed(r, BATCH);
+  assert.deepEqual(out(r).filter((l) => l.startsWith('hint design-doc ')), [], show(r));
+});
+
+for (const pdfTask of [false, true]) {
+  test(`#58 round 3: a Design: line in the body of an item that no task of the own request names gives nothing${pdfTask ? ", also when another open request's task names it" : ''}`, (t) => {
+    const { dir, items } = itemWorld(t, { pdfTask });
+    write(items, 'proj-12.json', bodyItem('PROJ-12', `Stream the export.\n\nDesign: ${LOCAL}\n`));
+    write(items, 'proj-13.json', bodyItem('PROJ-13', `Batch the export.\n\nDesign: ${BATCH}\n`));
+    const r = check(dir, '--issues', items);
+    proposed(r, LOCAL);
+    notProposed(r, BATCH);
+  });
+}

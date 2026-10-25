@@ -10,7 +10,7 @@
 //   Cited     current: <file>:<line>, ...; historical: <file>:<line>, ... | nowhere
 //
 //   Requirement <name>/R1 version <v> · <signed in S1 | changed since S1 | not signed> · requests/<name>/request.md:<line>: <title>: <body>
-//   Signed    <last signed: version <v> in S<n> | never signed>
+//   Signed    <last signed: version <v> in S<n> (only al's record .assuredloop/records/requests/<name>.yaml holds this) | never signed>
 //   Served    <by <IDs> (declared serves links) | by no paragraph>
 //   Open      <...>
 //   Cited     <...>
@@ -93,12 +93,12 @@ function adrWorld(t) {
   return dir;
 }
 
-test('#58 al context ADR-2: the ADR line names its status, its file and the line of its heading text, and the heading text', (t) => {
+test('#58 al context ADR-2: the ADR line names its status, its file and the line of its heading text, and the whole text of the ADR (round 3)', (t) => {
   const dir = adrWorld(t);
   const r = context(dir, 'ADR-2');
   const line = labelled(r, 'ADR       ');
   assert.ok(line.startsWith(`ADR       ADR-2 · accepted · ${ADR2}:5: `), show(r));
-  assert.ok(line.endsWith('ADR-2: CSV files'), show(r));
+  assert.ok(line.endsWith(': # ADR-2: CSV files Context: every spreadsheet reads CSV.'), `the whole text of ADR-2:\n${show(r)}`);
 });
 
 test('#58 al context ADR-2: "Replaced  supersedes ADR-1 · not replaced" and "Decides   INV-12, INV-13"', (t) => {
@@ -172,12 +172,12 @@ function reqWorld(t) {
 const MD = 'requests/csv-export/request.md';
 const word = (id) => new RegExp(`(?<![\\w-])${id}(?![\\w-])`);
 
-test('#58 al context csv-export/R1: "Requirement csv-export/R1 version 1 · signed in S1 · <file>:<line>: <title>: <body>", and "Signed    last signed: version 1 in S1"', (t) => {
+test('#58 al context csv-export/R1: "Requirement csv-export/R1 version 1 · signed in S1 · <file>:<line>: <title>: <body>", and "Signed    last signed: version 1 in S1 (only al\'s record ... holds this)"', (t) => {
   const dir = reqWorld(t);
   const r = context(dir, 'csv-export/R1');
   assert.equal(labelled(r, 'Requirement '),
     `Requirement csv-export/R1 version 1 · signed in S1 · ${MD}:${lineOf(dir, MD, '### R1 Monthly CSV')}: Monthly CSV: A user MUST be able to download one month as one CSV file.`, show(r));
-  assert.equal(labelled(r, 'Signed    '), 'Signed    last signed: version 1 in S1', show(r));
+  assert.equal(labelled(r, 'Signed    '), "Signed    last signed: version 1 in S1 (only al's record .assuredloop/records/requests/csv-export.yaml holds this)", show(r));
 });
 
 test('#58 al context csv-export/R1: "Served    by" names SP-1, its declared serves link; Open and Cited lines; Cited has src/export.js:1 as current', (t) => {
@@ -200,13 +200,13 @@ test('#58 al context csv-export/R2, never signed and not served: "not signed", "
   assert.equal(labelled(r, 'Served    '), 'Served    by no paragraph', show(r));
 });
 
-test('#58 al context csv-export/R1 after its text changed: "version 2 · changed since S1", and "Signed    last signed: version 1 in S1"', (t) => {
+test('#58 al context csv-export/R1 after its text changed: "version 2 · changed since S1", and "Signed    last signed: version 1 in S1 (only al\'s record ... holds this)"', (t) => {
   const dir = reqWorld(t);
   editFile(dir, MD, 'one CSV file.', 'one CSV file per month.');
   ok(dir, ['index']);
   const r = context(dir, 'csv-export/R1');
   assert.ok(labelled(r, 'Requirement ').startsWith(`Requirement csv-export/R1 version 2 · changed since S1 · ${MD}:`), show(r));
-  assert.equal(labelled(r, 'Signed    '), 'Signed    last signed: version 1 in S1', show(r));
+  assert.equal(labelled(r, 'Signed    '), "Signed    last signed: version 1 in S1 (only al's record .assuredloop/records/requests/csv-export.yaml holds this)", show(r));
 });
 
 test('#58 al context csv-export/R9, an unknown requirement: exit 2 and "al: csv-export/R9: no such ID"', (t) => {
