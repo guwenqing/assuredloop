@@ -7,7 +7,7 @@ paragraphs:
     display: "DES-1 (0, AssuredLoop: the design)"
   - id: DES-2
     kind: note
-    text_sha256: eeb954670c056960be0c83a35f9f873a6f045a34e6ba3e62e56466f0a64a4611
+    text_sha256: 7a27a3ce0e17de78aaf3f456682d932a147c702e762cbe5bde2c7d3863b07128
     display: "DES-2 (0:1, in AssuredLoop: the design)"
   - id: DES-3
     kind: note
@@ -59,7 +59,7 @@ paragraphs:
     display: DES-14 (3:3, in 3. IDs, kinds and links)
   - id: DES-15
     kind: definition
-    text_sha256: 76988b79b9970b757bdacae7091a4b0ced5a2f398ece987eeeabbaa5de806db4
+    text_sha256: 45ded2add0cc4f2f67905a75b381fa0f80fbff9023bb767458431cbac6723046
     display: DES-15 (3:4, in 3. IDs, kinds and links)
   - id: DES-16
     kind: definition
@@ -83,11 +83,11 @@ paragraphs:
     display: DES-20 (3:9, in 3. IDs, kinds and links)
   - id: DES-21
     kind: rule
-    text_sha256: d650ffcf3b7f6a951f63cfc9076ad08c605ad590835847d2345bbeb8f211380f
+    text_sha256: 204ddfe1d54f59c9c391b1d6b0a594f195083d5d06647defcd37604766badd66
     display: DES-21 (3:10, in 3. IDs, kinds and links)
   - id: DES-22
     kind: rule
-    text_sha256: d6c28afd41fbde30dd90d15c1abdefc950e5c12c4f5ff874039466d11c23da78
+    text_sha256: 8b773ad38b76da4f9edfbc1d16fb0513d7761950fd68a0fcd0a623656be1df88
     display: DES-22 (3:11, in 3. IDs, kinds and links)
   - id: DES-81
     kind: choice
@@ -147,7 +147,7 @@ paragraphs:
     display: DES-33 (5:6, in 5. Consolidation and the close rule)
   - id: DES-34
     kind: rule
-    text_sha256: 7446fa85534ebd532af2061e47df539061f8d2ee99c73ec6151fea0963ed9fc7
+    text_sha256: 9b94acd795b6059dbee92ec693514387237b2458f3d0c33a9b791f8aaf7bfb04
     display: DES-34 (5:7, in 5. Consolidation and the close rule)
   - id: DES-35
     kind: rule
@@ -155,7 +155,7 @@ paragraphs:
     display: DES-35 (5:8, in 5. Consolidation and the close rule)
   - id: DES-36
     kind: rule
-    text_sha256: 43546d9d4d6a1712e67dc6cf505ebfd13138d0094e54f8214dfad22c2dfeddb2
+    text_sha256: 296114c9205080819290510b0d5ba3dda39928ac266d61f1b3a09de7a9dc9a63
     display: DES-36 (5:9, in 5. Consolidation and the close rule)
   - id: DES-37
     kind: rule
@@ -315,7 +315,7 @@ paragraphs:
     display: DES-54 (9:1, in 9. Checks of rules, and results)
   - id: DES-55
     kind: rule
-    text_sha256: f889bf14b2f2988eadfe408265fa0fbe8e7aac10c28af8f363439eb08539a2ce
+    text_sha256: 0a304dfb71a5f0983c4e2bca8e4b84dde7311635e0e4600adad83e6e96a7ace6
     display: DES-55 (9:2, in 9. Checks of rules, and results)
   - id: DES-56
     kind: note
@@ -327,7 +327,7 @@ paragraphs:
     display: DES-57 (10:1, in 10. Records)
   - id: DES-58
     kind: rule
-    text_sha256: 4565c5b664d35e808d9413b8391db00f7234f591c0eea57c3643173d9a4f5879
+    text_sha256: 2ebfae29407383815134908439ff404e2d33931da7e93d22b15a63b374d41112
     display: DES-58 (10:2, in 10. Records)
   - id: DES-90
     kind: rule
@@ -371,7 +371,7 @@ paragraphs:
     display: DES-87 (11:6, in 11. Search and the export)
   - id: DES-65
     kind: rule
-    text_sha256: d3352dfd8a0dfd3e122a5c6b3aa0ef70ddae342e65c147ab691eef2b120b082f
+    text_sha256: 9d79e13ff4eea13bd3396de170bb511186b3246b3f02cf7ca53e3a57531713ff
     display: DES-65 (11:7, in 11. Search and the export)
   - id: DES-88
     kind: component
@@ -407,7 +407,7 @@ paragraphs:
     display: DES-70 (12:4, in 12. One central spec repo, and output repos)
   - id: DES-79
     kind: choice
-    text_sha256: e1be60c27fc5e714e2a30dcb206f60b5443f0d2a8cdc8534654ab51508552bbf
+    text_sha256: b92aac2e94753f50f1a3f7d235567800a85004d5356cafa04ee3cdf03d5469a9
     display: DES-79 (12:5, in 12. One central spec repo, and output repos)
   - id: DES-71
     kind: note
