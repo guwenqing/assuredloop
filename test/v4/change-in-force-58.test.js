@@ -355,7 +355,7 @@ test('#58 an accepted ADR is in force with its decides links: "ADR accepted, dec
   assert.ok(a4.endsWith('ADR-4: Plain CSV'), show(r));
   const a3 = inForce(r, 'ADR-3');
   assert.ok(a3.startsWith(`in force ADR-3 cited (src/csv.js:1) · ${ADR3_FILE}:5 · ADR accepted, decides nothing: `), show(r));
-  assert.ok(a3.endsWith('ADR-3: Signed links'), show(r));
+  assert.ok(a3.endsWith(': # ADR-3: Signed links Context: a link must not be guessed.'), `the whole text of ADR-3:\n${show(r)}`);
 });
 
 test('#58 an accepted ADR whose text changed on the branch: changed by this change, flag "text changed, review open"; the adr-changed hint stays', (t) => {
@@ -453,7 +453,7 @@ test('#58 al check --full: each grouped item gets its own "in force <ID> grouped
   assert.ok(full.includes(`in force INV-13 grouped, no known scope · specs/invoices.md:11 · rule: ${T13}`), show(r));
   const a3 = full.find((l) => l.startsWith('in force ADR-3 '));
   assert.ok(a3.startsWith(`in force ADR-3 grouped, no known scope · ${ADR3_FILE}:5 · ADR accepted, decides nothing: `), show(r));
-  assert.ok(a3.endsWith('ADR-3: Signed links'), show(r));
+  assert.ok(a3.endsWith(': # ADR-3: Signed links Context: a link must not be guessed.'), `the whole text of ADR-3:\n${show(r)}`);
   assert.equal(inForce(r, 'INV-41'), inForce(plain, 'INV-41'), 'the shown line is the same with --full');
   assert.equal(grouped(r).line, grouped(plain).line, 'the grouped line is the same with --full');
 });
@@ -476,7 +476,7 @@ test("#58 the change's own request: its signed requirement and its change spec p
   const r = check(dir);
   const md = 'requests/csv-export/request.md';
   assert.equal(proposed(r, 'csv-export/R1'),
-    `proposed csv-export/R1 signed requirement · ${md}:${lineOf(dir, md, '### R1 Monthly CSV')} · signed in S1: Monthly CSV: A user MUST be able to download one month as one CSV file.`, show(r));
+    `proposed csv-export/R1 signed requirement · ${md}:${lineOf(dir, md, '### R1 Monthly CSV')} · signed in S1 (only al's record .assuredloop/records/requests/csv-export.yaml holds this): Monthly CSV: A user MUST be able to download one month as one CSV file.`, show(r));
   notProposed(r, 'csv-export/R2');
   assert.ok(oneLine(r, 'list limits: ').includes('csv-export/R2 is not signed, so it is not listed'), show(r));
   const cs = 'requests/csv-export/spec.md';
@@ -509,7 +509,7 @@ test("#58 an open request is the change's own when a commit message of base..HEA
   write(dir, 'src/writer.js', 'export const writer = 1;\n');
   commitAll(dir, 'csv-export: the CSV writer');
   const r = check(dir);
-  assert.match(proposed(r, 'csv-export/R1'), /^proposed csv-export\/R1 signed requirement · requests\/csv-export\/request\.md:\d+ · signed in S1: Monthly CSV: /, show(r));
+  assert.match(proposed(r, 'csv-export/R1'), /^proposed csv-export\/R1 signed requirement · requests\/csv-export\/request\.md:\d+ · signed in S1 \(only al's record \.assuredloop\/records\/requests\/csv-export\.yaml holds this\): Monthly CSV: /, show(r));
   assert.match(proposed(r, 'csv-export/SP-1'), /^proposed csv-export\/SP-1 change spec · requests\/csv-export\/spec\.md:3 · rule: /, show(r));
   notProposed(r, 'pdf/R2');
   notProposed(r, 'pdf/SP-1');
@@ -606,15 +606,22 @@ test('#58 LD-48: a document whose first line is "Status: draft" shows that state
 test('#58 LD-48: a proposed design (a proposed ADR) that conflicts with the accepted ADR-3: both are shown; ADR-3 stays in force; the proposed ADR is never in force', (t) => {
   const dir = world(t);
   const file = 'specs/adr/0005-plain-links.md';
-  write(dir, file, adr('proposed', 'ADR-5 choice supersedes:ADR-3 decides:INV-41', '# ADR-5: Plain links', [['ADR-5-1 rationale', 'Links need no signature.']]));
+  write(dir, file, adr('proposed', 'ADR-5 choice supersedes:ADR-3 decides:INV-41', '# ADR-5: Plain links', [
+    ['ADR-5-1 rationale', 'Links need no signature.'],
+    ['ADR-5-2 choice', 'A link carries no token.'],
+  ]));
   const md = designRequest(dir, [`Design: ${file}`]);
   write(dir, 'src/links.js', '// ADR-3: signed links, for now\n');
   commitAll(dir, 'plain links');
   const r = check(dir);
-  assert.equal(proposed(r, file), `proposed ${file} design document · design line ${md}:${lineOf(dir, md, `Design: ${file}`)} · ADR-5 proposed · an ADR`, show(r));
+  assert.equal(proposed(r, file), `proposed ${file} design document · design line ${md}:${lineOf(dir, md, `Design: ${file}`)} · ADR-5 proposed · an ADR; 2 design paragraphs`, show(r));
+  // Round 3: the ADR's promise and design paragraphs, its heading (a choice) included.
+  assert.equal(proposed(r, 'ADR-5'), `proposed ADR-5 design paragraph · ${file}:5 · choice: # ADR-5: Plain links`, show(r));
+  assert.equal(proposed(r, 'ADR-5-2'), `proposed ADR-5-2 design paragraph · ${file}:13 · choice: A link carries no token.`, show(r));
+  notProposed(r, 'ADR-5-1');
   const a3 = inForce(r, 'ADR-3');
   assert.match(a3, /^in force ADR-3 cited \([^)]*src\/links\.js:1[^)]*\) · specs\/adr\/0003-signed-links\.md:5 · ADR accepted, /, show(r));
-  listNamesNot(r, ['ADR-5', 'ADR-5-1']);
+  listNamesNot(r, ['ADR-5', 'ADR-5-1', 'ADR-5-2']);
   namesEachOnce(r, BASE_IN_FORCE);
 });
 
@@ -754,3 +761,41 @@ test('#58 LD-29: a search index built before (al search --level 1) does not chan
   const after = check(dir);
   assert.deepEqual(listLines(after), listLines(before), `the list changed after al search:\n${show(before)}\n${show(after)}`);
 });
+
+// =====================================================================
+// Round 3: fixes from the review
+
+test("#58 round 3: an ADR's text is its whole text (the heading and every paragraph below it, no status line, no marker): in the in force line, with --full, and in al context", (t) => {
+  const file = 'specs/adr/0004-plain-csv.md';
+  const whole = '# ADR-4: Plain CSV We write CSV with a header row. Spreadsheets read CSV without a plugin.';
+  const dir = world(t, (d) => write(d, file, adr('accepted', 'ADR-4 choice decides:INV-13', '# ADR-4: Plain CSV', [
+    ['ADR-4-1 choice', 'We write CSV\nwith a header row.'],
+    ['ADR-4-2 rationale', 'Spreadsheets read CSV without a plugin.'],
+  ])));
+  write(dir, 'src/csv.js', '// ADR-4\n');
+  commitAll(dir, 'csv');
+  const r = check(dir);
+  assert.equal(inForce(r, 'ADR-4'), `in force ADR-4 cited (src/csv.js:1) · ${file}:5 · ADR accepted, decides INV-13: ${whole}`, show(r));
+  const full = check(dir, '--full');
+  const a3 = out(full).find((l) => l.startsWith('in force ADR-3 grouped, '));
+  assert.ok(a3?.endsWith(': # ADR-3: Signed links Context: a link must not be guessed.'), `the whole text of a grouped ADR with --full:\n${show(full)}`);
+  const c = ok(dir, ['context', 'ADR-4']);
+  const adrLine = c.stdout.split('\n').find((l) => l.startsWith('ADR       '));
+  assert.equal(adrLine, `ADR       ADR-4 · accepted · ${file}:5: ${whole}`, show(c));
+});
+
+for (const [what, fenced] of [['a plain token line', 'files:src/**'], ['a marker-like line', '<!-- INV-9 rule files:src/** -->']]) {
+  test(`#58 round 3: files: inside fenced code in an accepted ADR is text (${what}): changing it gives adr-changed, "changed by this change" and "text changed, review open"`, (t) => {
+    const dir = world(t, (d) => write(d, ADR3_FILE, adr('accepted', 'ADR-3 choice', '# ADR-3: Signed links', [
+      ['ADR-3-1 rationale', 'Context: a link must not be guessed.'],
+      ['ADR-3-2 example', `A scope is written like this:\n\`\`\`\n${fenced}\n\`\`\``],
+    ])));
+    editFile(dir, ADR3_FILE, fenced, fenced.replace('files:src/**', 'files:lib/**'));
+    commitAll(dir, 'the example');
+    const r = check(dir);
+    assert.ok(hintCodes(r).includes('adr-changed'), `the adr-changed hint:\n${show(r)}`);
+    const line = inForce(r, 'ADR-3');
+    assert.ok(line.startsWith(`in force ADR-3 changed by this change · ${ADR3_FILE}:5 · ADR accepted, decides nothing · text changed, review open: `), show(r));
+    assert.ok(line.includes('files:lib/**'), `the fenced token is in the text:\n${show(r)}`);
+  });
+}

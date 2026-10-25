@@ -154,7 +154,7 @@ test('#58 LD-26: the heading marker of an ADR holds files:; a change under test/
   const r = check(dir);
   const line = inForce(r, 'ADR-3');
   assert.ok(line.startsWith(`in force ADR-3 by scope · ${ADR3_FILE}:5 · ADR accepted, decides INV-13: `), show(r));
-  assert.ok(line.endsWith('ADR-3: Signed links'), show(r));
+  assert.ok(line.endsWith(': # ADR-3: Signed links Context: a link must not be guessed.'), `the whole text of ADR-3:\n${show(r)}`);
 });
 
 test('#58 al check --full: each grouped item with a scope that does not match gets "in force <ID> grouped, scope does not match · <file>:<line> · <what>: <text>"', (t) => {
@@ -303,6 +303,20 @@ test('#58 LD-26: a scope that matches only an ignored file still gets scope-no-f
   write(dir, 'src/billing/bill.js', 'export const bill = 1;\n');
   const r = check(dir);
   assert.deepEqual(hintLines(r, 'scope-no-file'), [], show(r));
+});
+
+test('#58 round 3: scope-no-file also fires when the only file that the scope matches was deleted in the working tree, the deletion not staged', (t) => {
+  const dir = world(t, (d) => {
+    editFile(d, SPEC, 'INV-13 rule files:src/export/**', 'INV-13 rule files:src/billing/**');
+    write(d, 'src/billing/bill.js', 'export const bill = 1;\n');
+  });
+  change(dir, 'README.md', 'More.\n');
+  commitAll(dir, 'readme');
+  const before = check(dir);
+  assert.deepEqual(hintLines(before, 'scope-no-file'), [], `control: the file is there:\n${show(before)}`);
+  rmSync(join(dir, 'src/billing/bill.js'));
+  const r = check(dir);
+  assert.deepEqual(hintLines(r, 'scope-no-file'), ['hint scope-no-file specs/invoices.md:9 INV-13 its file scope src/billing/** matches no file'], show(r));
 });
 
 test('#58 LD-26: with no change selected (on main, clean), a scope that matches no file gives no scope-no-file hint', (t) => {
