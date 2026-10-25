@@ -10,9 +10,9 @@
 import { lstatSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { recordPath } from './base.js';
-import { git } from './git.js';
-import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown } from './markers.js';
-import { namedIds } from './repos.js';
+import { fileAt, git } from './git.js';
+import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from './markers.js';
+import { namedIds, outputRepos } from './repos.js';
 import { ADR_FILE, SPEC, symlinkOn } from './scope.js';
 import { signedBy } from './state.js';
 
@@ -22,6 +22,23 @@ const designKind = (state, kind) => !!kind && ['promise', 'design'].includes(gro
 const adrNumber = (id) => Number(id.slice('ADR-'.length));
 const word = (name) => new RegExp(`(?<![\\w-])${name.replace(/[-]/g, '\\-')}(?![\\w-])`);
 const unref = (ref) => String(ref).replace(/^central:/, '');
+
+// A glob of a file scope (LD-26) as a regex: `**` any number of folders,
+// `*` within one folder name, `?` one character.
+function globRe(glob) {
+  let re = '';
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === '*' && glob[i + 1] === '*') {
+      i++;
+      if (glob[i + 1] === '/') { re += '(?:.*/)?'; i++; } else re += '.*';
+    } else if (c === '*') re += '[^/]*';
+    else if (c === '?') re += '[^/]';
+    else re += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`^${re}$`);
+}
+const matches = (globs, files) => globs.some((g) => { const re = globRe(g); return files.some((f) => re.test(f)); });
 
 // The line of a paragraph's first line of text in `text`, never its marker line (LD-47).
 function textLine(text, p) {
@@ -54,7 +71,7 @@ const headerPath = (rest) => {
 // .assuredloop/, as { file, line, text, removed }.
 function changeOf(top, base) {
   const run = (args) => git(top, ['-c', 'core.quotePath=false', ...args], { allowFail: true }) ?? '';
-  const paths = new Set(run(['diff', '--name-only', '-z', '--no-relative', base, '--']).split('\0').filter(Boolean));
+  const paths = new Set(run(['diff', '--name-only', '-z', '--no-renames', '--no-relative', base, '--']).split('\0').filter(Boolean));
   const untracked = run(['ls-files', '-z', '--others', '--exclude-standard', '--', '.']).split('\0').filter(Boolean);
   for (const f of untracked) paths.add(f);
   const lines = [];
@@ -96,14 +113,14 @@ function changeOf(top, base) {
 function itemsInForce(now) {
   const textOf = new Map(now.docs.map((d) => [d.path, d.text]));
   const items = (now.scopes.get(SPEC) ?? []).filter((p) => inForceKind(now, p.kind)).map((p) => ({
-    id: p.id, file: p.file, line: textLine(textOf.get(p.file) ?? '', p), what: p.kind, text: oneLine(p.text), p,
+    id: p.id, file: p.file, line: textLine(textOf.get(p.file) ?? '', p), marker: p.line, what: p.kind, text: oneLine(p.text), p, files: p.files,
   }));
   const accepted = [...now.adrs.values()].filter((a) => a.status === 'accepted');
   const replaced = new Set(accepted.flatMap((a) => (a.head?.links.supersedes ?? []).map((x) => /^(ADR-\d+)/.exec(unref(x))?.[1])));
   for (const a of accepted.filter((x) => !replaced.has(x.id)).sort((x, y) => adrNumber(x.id) - adrNumber(y.id))) {
     const decides = (a.head?.links.decides ?? []).map(unref);
     items.push({
-      id: a.id, file: a.file, line: a.head ? textLine(a.text, a.head) : 1, adr: a,
+      id: a.id, file: a.file, line: a.head ? textLine(a.text, a.head) : 1, marker: a.head?.line ?? 1, adr: a, files: a.head?.files ?? [],
       what: `ADR accepted, decides ${decides.length ? decides.join(', ') : 'nothing'}`, text: oneLine(a.head?.text ?? ''),
     });
   }
@@ -135,27 +152,38 @@ function designLines(md) {
   return out;
 }
 
-// A design document: { lines } for the list, or { hint } when it is missing
-// or cannot be read, or { limit } when it is not read here.
-function designDoc(top, now, path, source) {
-  if (/\s/.test(path) || posix.isAbsolute(path) || path.split('/').includes('..')) return { hint: 'cannot be read' };
-  if (/^[A-Za-z0-9][\w.-]*:/.test(path)) return { limit: `${path} (${source}) is not read: a document of an output repo` };
-  const clean = posix.normalize(path).replace(/^\.\//, '');
-  let stat;
-  try {
-    stat = lstatSync(join(top, clean));
-  } catch {
-    return { hint: 'is missing' };
-  }
+// A design document of this repo, or `<repo>:<path>` of an output repo at its
+// selected commit (git only): { lines } for the list, { hint } when it is
+// missing or cannot be read, or { info } when the output repo is unknown.
+function designDoc(top, now, path, source, repos) {
+  const m = /^([A-Za-z0-9][\w.-]*):(.*)$/.exec(path);
+  const rel = m ? m[2] : path;
+  if (!rel || /\s/.test(rel) || posix.isAbsolute(rel) || rel.split('/').includes('..')) return { hint: 'cannot be read' };
+  const clean = posix.normalize(rel).replace(/^\.\//, '');
   let text;
-  try {
-    if (symlinkOn(top, clean) || !stat.isFile()) throw new Error('not a file');
-    text = readFileSync(join(top, clean), 'utf8');
-  } catch {
-    return { hint: 'cannot be read' };
+  if (m) {
+    const repo = repos().find((r) => r.name === m[1]);
+    if (!repo) return { hint: `cannot be read: ${m[1]} is not an output repo in the config` };
+    if (repo.unknown) return { info: `unknown: ${repo.unknown}` };
+    text = fileAt(repo.dir, repo.sha, clean);
+    if (text == null) return { hint: 'is missing' };
+  } else {
+    let stat;
+    try {
+      stat = lstatSync(join(top, clean));
+    } catch {
+      return { hint: 'is missing' };
+    }
+    try {
+      if (symlinkOn(top, clean) || !stat.isFile()) throw new Error('not a file');
+      text = readFileSync(join(top, clean), 'utf8');
+    } catch {
+      return { hint: 'cannot be read' };
+    }
   }
+  const shown = m ? `${m[1]}:${clean}` : clean;
   const head = `proposed ${path} design document · ${source}`;
-  const adr = ADR_FILE.test(posix.basename(clean)) && posix.dirname(clean) === `${now.root}/adr` ? now.adrList.find((a) => a.file === clean) : null;
+  const adr = !m && ADR_FILE.test(posix.basename(clean)) && posix.dirname(clean) === `${now.root}/adr` ? now.adrList.find((a) => a.file === clean) : null;
   if (adr) return { lines: [`${head} · ${adr.id} ${adr.status ?? 'with no known status'} · an ADR`] };
   const status = /^Status:[ \t]*(.*?)\s*$/m.exec(lf(text).split('\n')[0] ?? '')?.[1];
   const state = status ? `Status: ${status}` : 'state unknown';
@@ -164,7 +192,7 @@ function designDoc(top, now, path, source) {
   const design = paras.filter((p) => designKind(now, p.kind));
   return {
     lines: [`${head} · ${state} · ${design.length} design paragraphs`,
-      ...design.map((p) => `proposed ${p.id} design paragraph · ${clean}:${textLine(text, p)} · ${p.kind}: ${oneLine(p.text)}`)],
+      ...design.map((p) => `proposed ${p.id} design paragraph · ${shown}:${textLine(text, p)} · ${p.kind}: ${oneLine(p.text)}`)],
   };
 }
 
@@ -197,7 +225,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
 
   // Changed by this change: its text, or its ADR file, differs from the base.
   const changed = (it) => {
-    if (it.adr) return was?.adrs.get(it.id)?.text !== it.adr.text;
+    if (it.adr) { const b = was?.adrs.get(it.id); return !b || withoutScope(lf(b.text)) !== withoutScope(lf(it.adr.text)); }
     const b = was?.spec.get(it.id);
     return !b || b.sha256 !== it.p.sha256 || b.kind !== it.p.kind;
   };
@@ -223,17 +251,41 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     }
   }
 
+  // The file scope (LD-26): the files that the change adds, changes, renames
+  // (both paths) or deletes, outside .assuredloop/; and whether the change
+  // edits an item's scope, so that a narrower one cannot hide it.
+  const touched = [...change.paths].filter((f) => !f.startsWith('.assuredloop/'));
+  const scopeChanged = (it) => {
+    const b = it.adr ? was?.adrs.get(it.id) : was?.spec.get(it.id);
+    return !!b && ((it.adr ? b.head?.files : b.files) ?? []).join(',') !== it.files.join(',');
+  };
+  let tree = null;
+  const treeFiles = () => (tree ??= (git(top, ['-c', 'core.quotePath=false', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], { allowFail: true }) ?? '').split('\0').filter(Boolean));
+  for (const it of items.filter((x) => x.files.length)) {
+    if (!matches(it.files, treeFiles())) findings.push({ severity: 'hint', code: 'scope-no-file', where: `${it.file}:${it.marker}`, id: it.id, message: `its file scope ${it.files.join(',')} matches no file` });
+  }
+
   const body = [];
   const grouped = [];
   const show = (it, basis) => [`in force ${it.id} ${basis} · ${it.file}:${it.line} · ${it.what}`,
     ...(it.adr && textChanged(it.adr) ? ['text changed, review open'] : []), ...(proposals.get(it.id) ?? [])].join(' · ') + `: ${it.text}`;
   for (const it of items) {
-    const basis = [...(changed(it) ? ['changed by this change'] : []), ...(cites.has(it.id) ? [`cited (${[...cites.get(it.id).values()].join('; ')})`] : [])];
+    const all = it.files.includes('**');
+    const basis = [...(changed(it) ? ['changed by this change'] : []), ...(cites.has(it.id) ? [`cited (${[...cites.get(it.id).values()].join('; ')})`] : []),
+      ...(scopeChanged(it) ? ['scope changed in this change'] : []), ...(!all && matches(it.files, touched) ? ['by scope'] : []), ...(all ? ['all files'] : [])];
     if (basis.length) body.push(show(it, basis.join(', ')));
     else grouped.push(it);
   }
 
   // This change's own proposals: never in force (LD-24, LD-48).
+  let outputs = null;
+  const repos = () => (outputs ??= outputRepos(top, now.config));
+  const designShown = (path, source, where) => {
+    const got = designDoc(top, now, path, source, repos);
+    if (got.hint) findings.push({ severity: 'hint', code: 'design-doc', where, id: path, message: `the design line names ${path}, which ${got.hint}` });
+    if (got.info) findings.push({ severity: 'info', code: 'output-repo', where, id: path, message: got.info });
+    return got.lines ?? [];
+  };
   for (const r of own) {
     const lines = lf(r.md).split('\n');
     for (const q of r.reqs) {
@@ -248,10 +300,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     }
     for (const d of designLines(r.md)) {
       const where = `${r.dir}/request.md:${d.line}`;
-      const got = designDoc(top, now, d.path, `design line ${where}`);
-      if (got.hint) findings.push({ severity: 'hint', code: 'design-doc', where, id: d.path, message: `the design line names ${d.path}, which ${got.hint}` });
-      else if (got.limit) limits.push(got.limit);
-      else body.push(...got.lines);
+      body.push(...designShown(d.path, `design line ${where}`, where));
     }
   }
   // With --issues: the field design of each saved work item (one path or a list).
@@ -263,19 +312,21 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
         findings.push({ severity: 'hint', code: 'design-doc', where: it.file, id: '-', message: `the design field of ${it.key} is not a path or a list of paths, so it cannot be read` });
         continue;
       }
-      const got = designDoc(top, now, path, `design of work item ${it.key} (${it.file})`);
-      if (got.hint) findings.push({ severity: 'hint', code: 'design-doc', where: it.file, id: path, message: `the design line names ${path}, which ${got.hint}` });
-      else if (got.limit) limits.push(got.limit);
-      else body.push(...got.lines);
+      body.push(...designShown(path, `design of work item ${it.key} (${it.file})`, it.file));
     }
   }
   if (!own.length) limits.unshift('no open request is this change\'s own (none of its files changed, and no commit message names one)');
   if (!issues) limits.push('the design field of work items is read only with --issues <folder>');
 
   const ids = (xs) => (xs.length ? xs.map((x) => x.id).join(', ') : 'none');
-  body.push(`${grouped.length} further items in force: ${grouped.length} with no known scope: ${ids(grouped)}; 0 with a scope that does not match this change: none`);
-  if (full) for (const it of grouped) body.push(`in force ${it.id} grouped, no known scope · ${it.file}:${it.line} · ${it.what}: ${it.text}`);
+  const unscoped = grouped.filter((it) => !it.files.length);
+  const unmatched = grouped.filter((it) => it.files.length);
+  body.push(`${grouped.length} further items in force: ${unscoped.length} with no known scope: ${ids(unscoped)}; ${unmatched.length} with a scope that does not match this change: ${ids(unmatched)}`);
+  if (full) {
+    for (const it of grouped) body.push(`in force ${it.id} grouped, ${it.files.length ? 'scope does not match' : 'no known scope'} · ${it.file}:${it.line} · ${it.what}: ${it.text}`);
+  }
   body.push('list basis: changed by this change = the change edits the item; cited = a line that the change added or removed names the ID; '
+    + 'scope changed in this change = the change edits its files: scope; by scope = its files: scope matches a file that the change touches; all files = its scope is files:**; '
     + 'proposed = this change\'s own signed requirements and design, not in force; the grouped line names every other item in force');
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
     + `al check --full shows the text of every item, al context <ID> one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
