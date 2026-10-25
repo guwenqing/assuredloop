@@ -14,8 +14,8 @@
 //   naming, in the working tree and not at HEAD). `al check --issues
 //   <folder>` gives `hint issue-changed <where> <request>/<task> <message>`:
 //   "changed", or "not known" when no text was kept at the moment of
-//   reliance or the item cannot be read. A CLOSED item gives it as `info`
-//   (LD-11). `al record <name> judgement --hint issue-changed --on <item>
+//   reliance or the item cannot be read. A CLOSED item gives the same hint
+//   (DES-91, closed-items/R1). `al record <name> judgement --hint issue-changed --on <item>
 //   --reason <line> --issues <folder> [--yes]` confirms that the change was
 //   read (LD-12); the hint comes back when the item changes again.
 //
@@ -442,18 +442,26 @@ describe('LD-12: a recorded judgement confirms that the change was read', () => 
 });
 
 describe('LD-11: a closed item and an archived request are judged by what held when written', () => {
-  test('a CLOSED item that changed: info issue-changed, not a hint', (t) => {
+  // DES-91 (closed-items/R1): only issue-superseded is info for a closed item;
+  // issue-changed is the same hint as for an open item.
+  test('a CLOSED item that changed: hint issue-changed, the same line as for the item when OPEN', (t) => {
     const w = world(t);
     namedAndKept(w, { state: 'CLOSED' });
     saveItem(w, 5, { body: 'Build the export as JSON.\n', state: 'CLOSED' });
-    assertChanged(checked(w, ...ISSUES), 5, 'info');
+    const closed = assertChanged(checked(w, ...ISSUES), 5);
+    saveItem(w, 5, { body: 'Build the export as JSON.\n' });
+    const open = assertChanged(checked(w, ...ISSUES), 5);
+    assert.equal(closed.line, open.line);
   });
 
-  test('an item kept while OPEN, then closed with a changed body: info issue-changed, not a hint', (t) => {
+  test('an item kept while OPEN, then closed with a changed body: hint issue-changed, the same line as while it is OPEN', (t) => {
     const w = world(t);
     namedAndKept(w);
+    saveItem(w, 5, { body: 'Build the export as JSON.\n' });
+    const open = assertChanged(checked(w, ...ISSUES), 5);
     saveItem(w, 5, { body: 'Build the export as JSON.\n', state: 'CLOSED' });
-    assertChanged(checked(w, ...ISSUES), 5, 'info');
+    const closed = assertChanged(checked(w, ...ISSUES), 5);
+    assert.equal(closed.line, open.line);
   });
 
   test('an archived request: its tasks are not checked, so its changed item gives no issue-changed line', (t) => {
