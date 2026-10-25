@@ -24,3 +24,9 @@ When a task's work item says something different from what it said when the chan
 
 Out: reading the item from a tracker; deciding whether the change matters, which the review decides.
 Signed off: 2026-10-23 owner, origin/2026-10-23-signoff.md
+
+## Decisions
+
+- D1, 2026-10-25. Source: the agent (architect). An item's file scope is a files: token in its marker line, with globs joined by commas, and files:** for all files; the token is not text and no link, and the list shows an item whose scope the change edits (LD-26).
+- D2, 2026-10-25. Source: the agent (architect). A design line may name <repo>:<path> of an output repo, read at its selected commit; a saved work item gives a design only when a task of the change's own request names it (LD-48).
+- D3, 2026-10-25. Source: the agent (architect). Refines D2: in an output repo the list reads the central repo's items in force at its selected commit, shows the ones cited as central:<ID> and the all-files ones, names the rest, and does not match file scopes there; a saved item's design may also be a Design: line in its body; items in YAML or Markdown files are a later change (LD-25, LD-48).

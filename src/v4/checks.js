@@ -500,7 +500,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   const adopted = new Set();
   for (const [id, hashes] of captured) if (!notAdopted.has(id) && now.spec.has(id) && hashes.has(now.spec.get(id).sha256)) adopted.add(id);
 
-  return { findings, notKnown, adopted };
+  return { findings, notKnown, adopted, now, was };
 }
 
 // Whether a result applies (design.md 9): never "applies", only what is known.

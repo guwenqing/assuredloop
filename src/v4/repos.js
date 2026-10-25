@@ -300,15 +300,22 @@ function changedFiles(top, base) {
   return [...new Set(files)].filter((f) => !f.startsWith('.assuredloop/')).sort();
 }
 
+// In an output repo, the central repo that config names, made readable:
+// { dir, sha } or { unknown }; null when config names no central repo.
+export function centralRepo(top, config = loadConfig(top)) {
+  const c = config.central;
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return null;
+  return open(top, { name: 'central', path: c.path ?? null, url: c.url ?? null, commit: c.commit == null ? 'HEAD' : String(c.commit) });
+}
+
 // al check in an output repo (design.md 12): each central ID that the branch's
 // changed files cite, looked up in the central repo at its selected commit.
 // Returns { body, notKnown }; both empty when config names no central repo.
 export function centralLookup(top) {
   const config = loadConfig(top);
   const c = config.central;
-  if (!c || typeof c !== 'object' || Array.isArray(c)) return { body: [], notKnown: [] };
-  const central = { name: 'central', path: c.path ?? null, url: c.url ?? null, commit: c.commit == null ? 'HEAD' : String(c.commit) };
-  const r = open(top, central);
+  const r = centralRepo(top, config);
+  if (!r) return { body: [], notKnown: [] };
   if (r.unknown) return { body: [`unknown: the central repo: ${r.unknown}`], notKnown: [`the central repo (${r.unknown}): no central ID was looked up`] };
   const base = mergeBase(top);
   const lines = [];

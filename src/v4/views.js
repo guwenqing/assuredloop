@@ -1,7 +1,7 @@
 // al context (T11; design.md 5, 8, 9 and 13, schema.md 5): where the project,
 // a request or a paragraph stands; the review view of a diff; the whole trace
 // with --audit; any of them as of a v4 commit with --at. Views never write.
-import { Fail } from './base.js';
+import { Fail, recordPath } from './base.js';
 import { applicability, checks } from './checks.js';
 import { judge, judgeRequest } from './dispositions.js';
 import { git, mergeBase, mergesOf } from './git.js';
@@ -10,6 +10,7 @@ import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
 import { latestVersion, loadState, named, qualify, requestOf, resolve, signedBy } from './state.js';
 import { isCentral } from './indexer.js';
+import { LINK_WORDS } from './markers.js';
 
 export const line = (label, text) => `${label.length < 10 ? label.padEnd(10) : `${label} `}${text}`;
 const list = (x) => (Array.isArray(x) ? x : []);
@@ -406,6 +407,96 @@ function idView(state, id) {
   return { body, next: t.req ? `al context ${t.req}` : 'al check' };
 }
 
+// For an ID, its text in one line (LD-18, LD-47): the file and the line of
+// its first line of text, never its marker line.
+const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
+function textLine(text, p) {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  let i = p.line;
+  while (i < lines.length && !lines[i].trim()) i++;
+  return i < lines.length ? i + 1 : p.line;
+}
+
+// The places that name `ids` as a whole word (the one cite finder), by file
+// with its first line, `.assuredloop/` and `skip` left out: historical under
+// requests/archive/, in an origin/ snapshot or in a superseded ADR; else current.
+function citedLine(state, ids, skip = new Set()) {
+  const old = new Set(state.adrList.filter((a) => a.status === 'superseded').map((a) => a.file));
+  const first = new Map();
+  for (const c of findCites(state.top, state.rev ?? null, { qualified: false, known: new Set(ids), exclude: ['.assuredloop', 'node_modules'] })) {
+    if (!skip.has(c.file) && !first.has(c.file)) first.set(c.file, c.line);
+  }
+  const places = { current: [], historical: [] };
+  for (const [file, n] of first) {
+    const past = file.startsWith('requests/archive/') || /^requests\/[^/]+\/origin\//.test(file) || old.has(file);
+    places[past ? 'historical' : 'current'].push(`${file}:${n}`);
+  }
+  const parts = Object.entries(places).filter(([, xs]) => xs.length).map(([k, xs]) => `${k}: ${xs.join(', ')}`);
+  return line('Cited', parts.length ? parts.join('; ') : 'nowhere');
+}
+
+// The paragraphs of the open requests whose links name `matches` (a key, as qualify gives it).
+function openNaming(state, matches) {
+  const words = Object.fromEntries(Object.entries(LINK_WORDS).map(([w, k]) => [k, w]));
+  const verbs = { changes: 'changes it', buildsOn: 'builds on it', removes: 'removes it' };
+  const out = [];
+  for (const r of [...state.requests.values()].filter((x) => x.open)) {
+    const own = new Set(r.paras.keys());
+    for (const p of r.paras.values()) {
+      for (const [key, refs] of Object.entries(p.links)) {
+        if (refs.some((ref) => matches(qualify(ref.replace(/^central:/, ''), r.name, own).key))) out.push(`${r.name}/${p.id} ${verbs[key] ?? `${words[key]} it`}`);
+      }
+    }
+  }
+  return line('Open', out.length ? out.join(' · ') : 'no open change names it');
+}
+
+// al context ADR-<n> (LD-18): the ADR's status and heading, what replaced
+// what, its decides links, what links to it, the open changes and the places
+// that name it.
+function adrView(state, id) {
+  const a = state.adrs.get(id);
+  if (!a) return null;
+  const head = a.head ? `${a.file}:${textLine(a.text, a.head)}: ${oneLine(a.paragraphs.map((p) => p.text).join('\n'))}` : `${a.file}:1`;
+  const supersedes = [...new Set((a.head?.links.supersedes ?? []).map((x) => /^(ADR-\d+)/.exec(x.replace(/^central:/, ''))?.[1]).filter(Boolean))];
+  const by = [...new Set([...a.by, ...[...state.adrs.values()].filter((x) => (x.head?.links.supersedes ?? [])
+    .some((s) => /^(ADR-\d+)/.exec(s.replace(/^central:/, ''))?.[1] === id)).map((x) => x.id)])];
+  const decides = (a.head?.links.decides ?? []).map((x) => x.replace(/^central:/, ''));
+  const body = [
+    line('ADR', `${id} · ${a.line || 'no status'} · ${head}`),
+    line('Replaced', `${supersedes.length ? `supersedes ${supersedes.join(', ')}` : 'replaces no ADR'} · ${by.length ? `superseded by ${by.join(', ')}` : 'not replaced'}`),
+    line('Decides', decides.length ? decides.join(', ') : 'nothing'),
+    line('Linked', linkedTo(state, id)),
+    openNaming(state, (k) => k === id || k.startsWith(`${id}-`)),
+    citedLine(state, [id, ...a.paragraphs.map((p) => p.id)], new Set(state.adrList.filter((x) => x.id === id).map((x) => x.file))),
+  ];
+  return { body, next: 'al check' };
+}
+
+// al context <name>/R<n> (LD-18): the requirement's text, version and
+// sign-off state, the paragraphs that serve it, the open changes and the
+// places that name it.
+function requirementView(state, t) {
+  const r = state.requests.get(t.req);
+  const q = r?.reqs.find((x) => x.id === t.id);
+  if (!q) return null;
+  const at = r.md.replace(/\r\n?/g, '\n').split('\n').findIndex((l) => new RegExp(`^###\\s+${q.id}\\b`).test(l)) + 1;
+  const last = list(r.data?.signoff).map((s) => [s, list(s?.covers).find((c) => c?.id === q.id)]).filter(([, c]) => c).at(-1);
+  const serves = (p, req) => p.links.serves.some((ref) => qualify(ref, req).key === t.key);
+  const served = [
+    ...[...state.spec.values()].filter((p) => serves(p, null)).map((p) => p.id),
+    ...[...state.requests.values()].flatMap((x) => [...x.paras.values()].filter((p) => serves(p, x.name)).map((p) => `${x.name}/${p.id}`)),
+  ];
+  const body = [
+    line('Requirement', `${t.key} ${versionOf(r, q)} · ${signState(state, r, q)} · ${r.dir}/request.md:${at}: ${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`),
+    line('Signed', last ? `last signed: version ${last[1].version} in ${last[0].id} (only al's record ${recordPath(r.name)} holds this)` : 'never signed'),
+    line('Served', served.length ? `by ${served.join(', ')} (declared serves links)` : 'by no paragraph'),
+    openNaming(state, (k) => k === t.key),
+    citedLine(state, [t.key]),
+  ];
+  return { body, next: `al context ${t.req}` };
+}
+
 // The review view of a diff (design.md 13): each changed paragraph's text
 // beside its kind, its requirement and the baseline paragraphs it touches.
 function diffView(top, range, review) {
@@ -490,6 +581,12 @@ export function context({ top, args, opts }) {
   if (what === undefined) {
     if (opts.audit) throw new Fail('--audit needs a request: al context <name> --audit', 'al context <name> --audit');
     out = projectView(state);
+  } else if (/^ADR-\d+$/.test(what)) {
+    out = adrView(state, what);
+    if (!out) throw new Fail(`${what}: no such ID${rev ? ` at ${rev.slice(0, 7)}` : ''}`, 'al spec lists the IDs');
+  } else if (/^[a-z0-9][a-z0-9-]*\/[RQ]\d+$/.test(what)) {
+    out = requirementView(state, qualify(what, null));
+    if (!out) throw new Fail(`${what}: no such ID${rev ? ` at ${rev.slice(0, 7)}` : ''}`, `al context ${what.split('/')[0]}`);
   } else if (/^[A-Z][A-Z0-9]*-\d+$/.test(what) || what.includes('/')) {
     out = idView(state, what);
     if (!out) throw new Fail(`${what}: no such paragraph ID${rev ? ` at ${rev.slice(0, 7)}` : ''}`, 'al spec lists the IDs');

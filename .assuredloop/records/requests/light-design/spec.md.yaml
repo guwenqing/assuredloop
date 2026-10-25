@@ -75,11 +75,11 @@ paragraphs:
     display: LD-55 (3:3, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-56
     kind: plan
-    text_sha256: a0dc2ff2715dfd1c8267d4cad32d022d1b5483ec1604fc30ee8fa78877dc27ff
+    text_sha256: a7c8a0b95af51a94b1a6780a5c30fdafaf411dda163cfa943fb8df3fd9823a0f
     display: LD-56 (3:4, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-61
     kind: plan
-    text_sha256: 7fb8801d00dc456db95cb11fd5745b8cb65683dfd851c36f377c6f1877c6ac3d
+    text_sha256: aa1dbacb654d7695b71eff4810e94459931b9e4bb705270cc818cd0d6182a4c9
     display: LD-61 (3:5, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-59
     kind: plan
@@ -91,11 +91,11 @@ paragraphs:
     display: LD-60 (3:7, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-57
     kind: plan
-    text_sha256: cd58947b2046c47dd6b91fc9e9b571010c58bdc1449fdf88d4f39957b3b072d0
+    text_sha256: e74b666013b491bbe904228f2b8ae290f9a70c5152a1acbc382f5e73aed12442
     display: LD-57 (3:8, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-62
     kind: plan
-    text_sha256: 87a13e6ca9d0ec4c2f1c035b575c74393f18897669268a79407fbd8739e324eb
+    text_sha256: 08d668c0a08b434c9c5237b3386db74a28cc1da023af17d9bf63cf7a3f692b9e
     display: LD-62 (3:9, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-58
     kind: plan
@@ -131,7 +131,7 @@ paragraphs:
     display: LD-20 (4:4, in 4. Commands, answers and the skill (plans))
   - id: LD-47
     kind: plan
-    text_sha256: 7e897a00ade9a5a92f0e703b8d0306cbd0b39fc9544b63624732b273368a4805
+    text_sha256: 8cf822e1406a459635d71887b76e613d907083ead89ca8a6341ca2e87a4c71bc
     display: LD-47 (4:5, in 4. Commands, answers and the skill (plans))
   - id: LD-41
     kind: plan
@@ -147,11 +147,11 @@ paragraphs:
     display: "LD-23 (5, 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-24
     kind: data
-    text_sha256: 1ce8445ea694e1a8d24af47a83d7ea63b26df0bfb29be39896fe20273b638ef8
+    text_sha256: 272d61d72e923c562f7e85cfde2137d979de976f7d162a000f221546c66aa7a4
     display: "LD-24 (5:1, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-48
     kind: data
-    text_sha256: e9bae1a4c7e939b4ca1ba98e3e398b77662a1523597263f06799fc84aac8979d
+    text_sha256: 39819e90c559ccd23647de74a0ab42b09a8f8b9ee66e56cf01de99eba7f2cbb0
     display: "LD-48 (5:2, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-42
     kind: data
@@ -159,7 +159,7 @@ paragraphs:
     display: "LD-42 (5:3, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-25
     kind: flow
-    text_sha256: c5bd8be7639177814fe07e6217cd9db71587e529aa04a06d79d6f4e127d917af
+    text_sha256: 2c6b063cee3feaedcb1f599f682169fd2f0a7187d6c071f78be580351888e9a0
     display: "LD-25 (5:4, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-52
     kind: rationale
@@ -171,7 +171,7 @@ paragraphs:
     display: "LD-43 (5:6, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-26
     kind: data
-    text_sha256: 89e7c76a1cc86572bcbd6e4e0ffcaa0f72410c7d30d86dbd29fa4a0d74c44d34
+    text_sha256: 9efe0bc6c50ed9761921b47248e5414d43ae135f4836ddc7721be2a3b3cd562d
     display: "LD-26 (5:7, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-27
     kind: data
@@ -227,7 +227,7 @@ paragraphs:
     display: LD-36 (8, 7. How it is proven (plan))
   - id: LD-37
     kind: plan
-    text_sha256: 5921054c554793cd048687b38b3aa38271c75c460525fe6a512b26250e7b0a91
+    text_sha256: 30f6b54b02357c174e997570c728ece4fe39dc7bd82298053e9a00b00ad943c0
     display: LD-37 (8:1, in 7. How it is proven (plan))
   - id: LD-38
     kind: note
