@@ -408,12 +408,14 @@ describe('LD-12: a recorded judgement confirms that the change was read', () => 
     });
   }
 
-  test('a judgement on one item does not clear the hint of another', (t) => {
+  test('a judgement on one item does not clear the hint of another, also when both changed to the same text', (t) => {
     const w = world(t);
-    saveItem(w, 6);
-    namedAndKept(w, {}, [{ id: 'T1', ref: '#5' }, { id: 'T2', ref: '#6' }]);
-    saveItem(w, 5, { body: 'Build the export as JSON.\n' });
-    saveItem(w, 6, { body: 'Send the reminder twice.\n' });
+    const before = { body: 'Build the export.\n', comments: [{ body: 'Agreed.\n' }] };
+    const after = { body: 'Build the export as JSON.\n', comments: [{ body: 'Agreed.\n' }, { body: 'Also a total line.\n' }] };
+    saveItem(w, 6, before);
+    namedAndKept(w, before, [{ id: 'T1', ref: '#5' }, { id: 'T2', ref: '#6' }]);
+    saveItem(w, 5, after);
+    saveItem(w, 6, after);
     judge(w, '#5');
     const r = checked(w, ...ISSUES);
     assertNone(r, 5);
