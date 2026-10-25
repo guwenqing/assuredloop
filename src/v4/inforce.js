@@ -56,7 +56,12 @@ function unquote(s) {
   const bytes = [];
   const esc = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
   for (let i = 1; i < s.length - 1; i++) {
-    if (s[i] !== '\\') { bytes.push(...Buffer.from(s[i])); continue; }
+    if (s[i] !== '\\') {
+      const ch = String.fromCodePoint(s.codePointAt(i));
+      bytes.push(...Buffer.from(ch));
+      i += ch.length - 1;
+      continue;
+    }
     const o = /^[0-7]{3}/.exec(s.slice(i + 1));
     if (o) { bytes.push(parseInt(o[0], 8)); i += 3; } else { bytes.push(esc[s[i + 1]] ?? s.charCodeAt(i + 1)); i += 1; }
   }
@@ -159,7 +164,7 @@ function designLines(md) {
 function designDoc(top, now, path, source, repos) {
   const m = /^([A-Za-z0-9][\w.-]*):(.*)$/.exec(path);
   const rel = m ? m[2] : path;
-  if (!rel || /\s/.test(rel) || posix.isAbsolute(rel) || rel.split('/').includes('..')) return { hint: 'cannot be read' };
+  if (!rel || posix.isAbsolute(rel) || rel.split('/').includes('..')) return { hint: 'cannot be read' };
   const clean = posix.normalize(rel).replace(/^\.\//, '');
   let text;
   if (m) {
@@ -359,6 +364,6 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     + 'scope changed in this change = the change edits its files: scope; by scope = its files: scope matches a file that the change touches; all files = its scope is files:**; '
     + 'proposed = this change\'s own signed requirements and design, not in force; the grouped line names every other item in force');
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
-    + `al check --full shows the text of every item, al context <ID> one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
+    + `al check --full shows the text of every item, al context <ID>${central ? ' in the central repo shows' : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
   return { body, findings };
 }
