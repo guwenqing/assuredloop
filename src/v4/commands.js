@@ -7,6 +7,9 @@ import { Fail, SCHEMA, STAMP, day, exists, freeName, guard, isName, now, read, r
 import { formatSnapshot, slug } from './snapshot.js';
 import { addDecision, decisionNumbers, requirements, setSignedOff, signedText } from './request-md.js';
 import { YAML_OPTIONS, addVersions, append, highest, latest, openRecord, recordText } from './records.js';
+import { loadConfig } from './config.js';
+import { itemFinder, loadItems } from './issues.js';
+import { CHANGED, reliance, textSha } from './kept-items.js';
 
 const TIERS = ['1', '1d', '2', '3', 'S'];
 
@@ -77,13 +80,14 @@ const oneLine = (opts, keys) => {
   if (bad) throw new Fail(`--${bad} holds a line break; it takes one line`);
 };
 
-// al record <name> origin|signoff|decision ...
+// al record <name> origin|signoff|decision|judgement ...
 export function record(ctx) {
   const [, kind] = ctx.args;
   if (kind === 'origin') return recordOrigin(ctx);
   if (kind === 'signoff') return recordSignoff(ctx);
   if (kind === 'decision') return recordDecision(ctx);
-  throw new Fail(`record ${kind ?? ''}: al record <name> origin|signoff|decision`);
+  if (kind === 'judgement') return recordJudgement(ctx);
+  throw new Fail(`record ${kind ?? ''}: al record <name> origin|signoff|decision|judgement`);
 }
 
 // al record <name> origin --url <source> --from <file|-> [--fetched <stamp>] [--yes]
@@ -167,4 +171,34 @@ function recordDecision({ top, args, opts }) {
   write(top, `${dir}/request.md`, addDecision(md, line));
   write(top, rec.path, recordText(rec));
   return { body: [`Added D${n} to ${dir}/request.md and ${rec.path}:`, line], next: 'al index' };
+}
+
+// al record <name> judgement --hint issue-changed --on <item> --reason <why> --issues <folder> [--yes]:
+// the change of a work item was read (LD-12). It records the item's text
+// now and the moment of reliance that it covers, so the hint comes back
+// when the text changes again or a later sign-off becomes that moment. Only
+// issue-changed takes a judgement for now.
+function recordJudgement({ top, cwd, args, opts }) {
+  const [name] = args;
+  const usage = `al record ${name} judgement --hint ${CHANGED} --on <item> --reason <why> --issues <folder>`;
+  oneLine(opts, ['hint', 'on', 'reason']);
+  if (opts.hint !== CHANGED) throw new Fail(opts.hint === undefined ? '--hint <code> is missing' : `--hint ${opts.hint}: only ${CHANGED} takes a judgement for now`, usage);
+  if (!opts.on) throw new Fail('--on <item> is missing', usage);
+  if (!opts.reason) throw new Fail('--reason <why> is missing: a judgement says in one line why the change was read and what it means', usage);
+  if (opts.issues === undefined) throw new Fail('--issues <folder> is missing: the judgement records the item\'s text now', usage);
+  const { rec } = openRequest(top, name);
+  const { items } = loadItems(cwd ?? top, opts.issues);
+  const finder = itemFinder(top, loadConfig(top), items);
+  const tasked = new Set((Array.isArray(rec.data.tasks) ? rec.data.tasks : []).filter((t) => t && t.ref != null).flatMap((t) => finder.find(t.ref).found));
+  const its = finder.find(opts.on).found.filter((it) => tasked.has(it));
+  if (!its.length) throw new Fail(`--on ${opts.on}: no task of ${name} names an item in ${opts.issues} that ${opts.on} names`, usage);
+  const n = highest(rec, 'judgements', 'J');
+  const recorded = stamp(now());
+  const entries = its.map((it, i) => ({ id: `J${n + i + 1}`, hint: CHANGED, on: it.key, at: reliance(rec.data, it.key).at, reason: opts.reason, sha256: textSha(it), recorded }));
+  const lines = entries.map((e) => `${e.id} ${e.hint} ${e.on}: ${e.reason}`);
+  if (!opts.yes) return { body: [`Would add to ${rec.path}:`, ...lines], next: 'run the same command with --yes to write it' };
+  guard(top, [rec.path]);
+  for (const e of entries) append(rec, 'judgements', e, true);
+  write(top, rec.path, recordText(rec));
+  return { body: [`Added to ${rec.path}:`, ...lines], next: `al check --issues ${opts.issues}` };
 }

@@ -144,6 +144,9 @@ with a baseline effect has no valid disposition for its current version.
   the owner signs; with `--yes`, record the sign-off on the owner's own yes.
 - `al record <name> decision --source <who> --text <decision>
   [--clarifies R<n>]`: add D1, D2…
+- `al record <name> judgement --hint issue-changed --on <item> --reason <why>
+  --issues <folder>`: record that the change of a work item was read; see
+  "Hints from the linked work items".
 - `al spec`: every doc's IDs, display numbers and kinds.
   `al spec --add-ids <file> [--prefix <P>]`: give each unmarked paragraph the
   next free ID.
@@ -151,6 +154,8 @@ with a baseline effect has no valid disposition for its current version.
   bindings of links that no marker declares, and list the AI hints to
   refresh. `al index --align <ID>` moves the bindings of one paragraph to its
   targets' current text and to its own, on purpose.
+  `al index --issues <folder>` also keeps the text of the tasks' work items
+  (see "Hints from the linked work items").
 - `al check [--strict] [--issues <folder>]`: the checks of this branch
   against its base. With `--issues <folder>`, it also checks the work items
   that the caller saved in the folder (see "Hints from the linked work
@@ -267,6 +272,37 @@ example `PROJ-12`. Each finding is a hint, except that a closed item gives
 - `phrase`: a phrase of `phrases:` matches;
 - `issue-unread`: a file in the folder is not valid JSON, or holds an entry
   that is not an item.
+- `issue-changed`: the item says something different from what it said
+  when the change relied on it, or `al` cannot tell (below).
+
+**A work item that changed.** `al index --issues <folder>` keeps the hash
+of each task item's text in the request's record, by itself; no person and
+no AI writes or reads it. The text is the body and each comment that is not
+hidden; the state is not text. It keeps the text at the moment of reliance:
+when the request names the item, and again at the first sign-off after
+that. So run it in the commit that names an item, and after
+`al record <name> signoff --yes`, before the commit that records the
+sign-off. It never keeps a text for a moment that is past: for an item
+named in an earlier commit, it keeps nothing. `al` cannot tell when the
+caller saved the items, and the `Not known` line of each
+`al check --issues` says so: save them again before a check.
+`al check --issues <folder>` then gives `issue-changed`:
+
+- "changed since …" when the item's text now differs from the kept text;
+- "not known whether it changed …" when no text was kept at that moment, or
+  the item is not in the folder or cannot be read. `al` never reports such
+  an item as unchanged.
+
+A closed item gets the same hint. To clear it, read the item, then record
+that you read it, with its reason:
+
+    al record <name> judgement --hint issue-changed --on <item> \
+      --reason "<why>" --issues <folder> --yes
+
+`<item>` takes the forms of a task's `ref`. The judgement records the item's
+text now, and the moment of reliance that it covers. The hint comes back
+when the text changes again, or when a later sign-off becomes the moment of
+reliance.
 
 The folder holds `*.json` files. Each file holds one item, or a list of
 items. An item is the JSON that the GitHub CLI prints with
