@@ -19,6 +19,7 @@ import { centralLookup } from './repos.js';
 import { checks } from './checks.js';
 import { loadPhrases } from './phrases.js';
 import { loadItems } from './issues.js';
+import { changeInForce } from './inforce.js';
 
 // A file or folder that al check cannot read, and that no check reports as
 // not ok, stops it with a refusal: never an internal error, never a pass (#238).
@@ -64,6 +65,9 @@ function checkAll({ top, cwd, opts }) {
   }
 
   const t10 = checks(top, { base, phrases, issues });
+  // What is in force for the change, and its design-doc hints (light-design R1).
+  const list = changeInForce(top, { now: t10.now, was: t10.was, base, issues, full: opts.full });
+  t10.findings.push(...list.findings);
   // An adopted paragraph needs no link while its text is the captured text (D16).
   const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/'))).map((l) => ({ ...l, severity: 'hint' }));
   lints.length = 0;
@@ -80,6 +84,7 @@ function checkAll({ top, cwd, opts }) {
   // In an output repo: the central IDs that the branch's changed files cite (T12).
   const central = centralLookup(top);
   body.push(...central.body);
+  body.push(...list.body);
   const notKnown = ['IDs used on branches that were never fetched here', ...t10.notKnown, ...central.notKnown,
     'whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)'];
   if (!base) notKnown.unshift('no base (no main branch, or no commit): lost and used-again IDs are not checked');
