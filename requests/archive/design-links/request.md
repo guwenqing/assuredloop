@@ -23,11 +23,11 @@ Signed off: 2026-10-16 owner, origin/2026-10-16-signoff.md
 
 ## Decisions
 
-- D1, 2026-10-16. Source: the agent (architect), session prompt of developer, 2026-10-16. `builds-on` may name a promise paragraph of the same change spec. DES-16 changes to say so.
-- D2, 2026-10-16. Source: the agent (architect), session prompt of developer, 2026-10-16. The design-link hint applies to the design kinds and `approach` in a change spec. It fires only where the requirement the paragraph serves has promise paragraphs in the same change spec. A `builds-on` or `changes` link to any one of them is enough.
-- D3, 2026-10-16. Source: the agent (architect), session prompt of developer, 2026-10-16. The `for:` hint fires when `for:<task>` names no task in the record's `tasks:`. A project with no `tasks:` at all gets no hint: tasks stay optional.
-- D4, 2026-10-16. Source: the agent (architect), session prompt of developer, 2026-10-16. `al context <ID>` adds the paragraphs that build on, explain or illustrate the ID, in the style of its other lines.
-- D5, 2026-10-16. Source: the agent (architect), session prompt of developer, 2026-10-16. In the PR body, say what each changed paragraph said before and after.
+- D1, 2026-10-16. Source: the agent (architect), the developer's task prompt, 2026-10-16. `builds-on` may name a promise paragraph of the same change spec. DES-16 changes to say so.
+- D2, 2026-10-16. Source: the agent (architect), the developer's task prompt, 2026-10-16. The design-link hint applies to the design kinds and `approach` in a change spec. It fires only where the requirement the paragraph serves has promise paragraphs in the same change spec. A `builds-on` or `changes` link to any one of them is enough.
+- D3, 2026-10-16. Source: the agent (architect), the developer's task prompt, 2026-10-16. The `for:` hint fires when `for:<task>` names no task in the record's `tasks:`. A project with no `tasks:` at all gets no hint: tasks stay optional.
+- D4, 2026-10-16. Source: the agent (architect), the developer's task prompt, 2026-10-16. `al context <ID>` adds the paragraphs that build on, explain or illustrate the ID, in the style of its other lines.
+- D5, 2026-10-16. Source: the agent (architect), the developer's task prompt, 2026-10-16. In the PR body, say what each changed paragraph said before and after.
 
 ## Outcome
 

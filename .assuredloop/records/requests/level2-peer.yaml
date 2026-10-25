@@ -31,7 +31,7 @@ decisions:
     sha256: aed774d864a1b48c4a35aa393b974a803a7941dbe24866b3e3c9f4cf883903f9
   - id: D2
     date: 2026-10-11
-    source: the agent (architect), message to developer, 2026-10-11
+    source: the agent (architect), message to the developer, 2026-10-11
     text: "The level 2 install and packaging text moves out of DES-65, a rule paragraph, into DES-80, a component paragraph that serves assuredloop-v4/R10 and level2-peer/R1. DES-65 keeps what search offers: the levels, the default and the fallback. So a later change to how level 2 is installed is design only and needs no sign-off. The other bullets of DES-65 stay as they are; issue #214 reviews the kinds across the spec."
     sha256: edd4c5ca34f3093ca604a68647807c798727bbc9b0089dac22c842b15f28609d
 tasks: []

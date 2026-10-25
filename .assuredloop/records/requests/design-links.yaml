@@ -26,35 +26,35 @@ signoff:
 decisions:
   - id: D1
     date: 2026-10-16
-    source: the agent (architect), session prompt of developer, 2026-10-16
+    source: the agent (architect), the developer's task prompt, 2026-10-16
     text: "`builds-on` may name a promise paragraph of the same change spec. DES-16 changes to say so."
     sha256: dd81fef0a39b62d20258c8b218f7d9933e555074e9292b8d5a533e0cf3e58371
     clarifies:
       - R1
   - id: D2
     date: 2026-10-16
-    source: the agent (architect), session prompt of developer, 2026-10-16
+    source: the agent (architect), the developer's task prompt, 2026-10-16
     text: The design-link hint applies to the design kinds and `approach` in a change spec. It fires only where the requirement the paragraph serves has promise paragraphs in the same change spec. A `builds-on` or `changes` link to any one of them is enough.
     sha256: be8134ee9a26df12b7b0a1426fc3fce396e7985088c16cfcb0d509589610e6c2
     clarifies:
       - R1
   - id: D3
     date: 2026-10-16
-    source: the agent (architect), session prompt of developer, 2026-10-16
+    source: the agent (architect), the developer's task prompt, 2026-10-16
     text: "The `for:` hint fires when `for:<task>` names no task in the record's `tasks:`. A project with no `tasks:` at all gets no hint: tasks stay optional."
     sha256: ac2ee19e345fa91468f35972db5268b80f8757130b6e12e938f743b3b9aa07b7
     clarifies:
       - R1
   - id: D4
     date: 2026-10-16
-    source: the agent (architect), session prompt of developer, 2026-10-16
+    source: the agent (architect), the developer's task prompt, 2026-10-16
     text: "`al context <ID>` adds the paragraphs that build on, explain or illustrate the ID, in the style of its other lines."
     sha256: 2d96b3ac7a85e153a6f68644639b707fd18d47874e0f74a885e3fd0225152767
     clarifies:
       - R1
   - id: D5
     date: 2026-10-16
-    source: the agent (architect), session prompt of developer, 2026-10-16
+    source: the agent (architect), the developer's task prompt, 2026-10-16
     text: In the PR body, say what each changed paragraph said before and after.
     sha256: dd7543f44e354f726e91bf981c623c6bb6279c7552c731544846f0d4700ace62
 tasks: []

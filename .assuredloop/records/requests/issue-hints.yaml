@@ -43,89 +43,89 @@ signoff:
 decisions:
   - id: D1
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: Read the issues with the GitHub CLI (`gh`), which the project already has for its own work. No new dependency and no token handling of our own. Tests use a fake `gh` on PATH, never the network.
     sha256: b0cbe7c8e4ba6a7e1b8486b829d2531cfb0f36cd051c22853fe2ee10fd1eaf61
     clarifies:
       - R1
   - id: D2
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: "Which issues: the issue references in each open request's `tasks:` entries (`ref`, and the forms `#n`, `owner/repo#n`, `<repo>#n` for a repo the config names, and issue URLs). Archived requests are history and are not read."
     sha256: 875cfe3f791f577eefbbd5646b22a78c182e09e90382341840b0bf51dfa5c3e9
     clarifies:
       - R1
   - id: D3
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: "\"The request's own issue\" is the issue its origin source came from (its `url`). When a request has none, or when GitHub gives no sub-issue data for that repository, the sub-issue hint is not given, and the \"Not known\" line says why."
     sha256: 26273cfda0b074f5e8cfd8cdd1b5895793b52c317bf3a6ca453eec4281b222e7
     clarifies:
       - R1
   - id: D4
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: '"Hidden" means a comment that GitHub shows as minimized.'
     sha256: af56e1c31cab4695a4812f63d8f82e5237deba1c1242fbb7df94ab31aeada758
     clarifies:
       - R1
   - id: D5
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: When `gh` is missing, not logged in, or fails for an issue, `al check --issues` gives one hint for each issue that it did not read, with the reason, and the "Not known" line names it. It is not a refusal, because R1 is hints only.
     sha256: 38ea5fbad37b2f60da5bacc5769c5b57b83814fda182c58fb936bf6f7f36ecef
     clarifies:
       - R1
   - id: D6
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: R2's configuration is a list in `.assuredloop/config.yaml`; plain phrases match ignoring case; a pattern is a regular expression. An invalid pattern is a refusal with exit 2 that names it.
     sha256: 17ff672fa0366ac0c39f14dcc176cc651e4d83fcc82710430dee3b29b0164f49
     clarifies:
       - R2
   - id: D7
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: Use hints-and-blocks R5's code for "names a superseded ADR without its successor", so that the two rules cannot drift.
     sha256: 9eec93e4391fa8c5f1cf8902c07a0233e7c4f65eca82a436934d2c4194af3944
     clarifies:
       - R1
   - id: D8
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: In the PR body, say what each changed spec paragraph said before and after.
     sha256: 7b033153776e2bb8e5996d157caa12ddfcb9ad30f4c56a862c95f88d7d258d82
   - id: D9
     date: 2026-10-17
-    source: the agent (architect), message to developer, 2026-10-17
+    source: the agent (architect), message to the developer, 2026-10-17
     text: Take out every gh call from al, and the fake-gh tests. Tests use folders of item files. No network in al. This replaces D1 and D5.
     sha256: 5e873d5b74dc70659fba37a61360b31296100c34a65f4a77825322b5dafb1c97
     clarifies:
       - R1
   - id: D10
     date: 2026-10-17
-    source: the agent (architect), message to developer, 2026-10-17
+    source: the agent (architect), message to the developer, 2026-10-17
     text: "The format is the smallest the hints need: reference, repository or project (optional), text, comments with a hidden flag, parent (optional). Where possible, make it exactly what the GitHub CLI prints, so a GitHub user saves gh's JSON with no conversion. Check gh's real field names with the gh on this machine; invent none. The README gives the commands for GitHub and for GitHub Enterprise (GH_HOST), and the format for any other tracker."
     sha256: 5fa939b16a41a9329a330d022da2eeb472876b75e43ba92b8f5f68b3a0da8287
     clarifies:
       - R1
   - id: D11
     date: 2026-10-17
-    source: the agent (architect), message to developer, 2026-10-17
+    source: the agent (architect), message to the developer, 2026-10-17
     text: Only the items that open requests' `tasks:` name are checked. Other files in the folder are ignored, and the "Not known" line counts them.
     sha256: 1bcaeb667fa9b4da9d9a915ca3f48baf0fcf74fefa54f384638356c028ae5ecc
     clarifies:
       - R1
   - id: D12
     date: 2026-10-17
-    source: the agent (architect), message to developer, 2026-10-17
+    source: the agent (architect), message to the developer, 2026-10-17
     text: The request's own repository comes from `git remote get-url origin`, any host. When it, an item's repository or a parent is unknown, that hint is not given, and the "Not known" line says why.
     sha256: 8a6cc42f4cc82892d4666265e77aed5022257c64b121db1ec245ab55309e3fa0
     clarifies:
       - R1
   - id: D13
     date: 2026-10-17
-    source: the agent (architect), message to developer, 2026-10-17
+    source: the agent (architect), message to the developer, 2026-10-17
     text: "Test: a project with no tracker gives, without --issues, exactly the same al check output as on main."
     sha256: b1dca8231ea51f1d8d2e75b37bd4bd5b7800952f5218c02a48cce6e8ee5c8849
     clarifies:

@@ -1,5 +1,5 @@
 // Regression tests for the four findings of the review of e89b991 (#179,
-// reviewer), each with its control, through the commands. Findings 1 and 2
+// its reviewer), each with its control, through the commands. Findings 1 and 2
 // use states of the invoicer world (cases spaced-pre, remove-spaced*,
 // abandon-decided-*); 3 and 4 use the cross-repo world of #185.
 import { test } from 'node:test';

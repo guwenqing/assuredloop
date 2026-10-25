@@ -36,35 +36,35 @@ signoff:
 decisions:
   - id: D1
     date: 2026-10-16
-    source: the agent (architect), message to developer, 2026-10-16
+    source: the agent (architect), message to the developer, 2026-10-16
     text: In the scope of an open request (its change spec), a lost ID is a hint, not a not ok, also under --strict. The hint names the deletion, and says that nothing more is needed when the deletion is on purpose.
     sha256: 9b679f4d5af5d359650e4e1e795b63a81a8e2d0566a815e6e91d807925751d24
     clarifies:
       - R1
   - id: D2
     date: 2026-10-16
-    source: the agent (architect), message to developer, 2026-10-16
+    source: the agent (architect), message to the developer, 2026-10-16
     text: "In specs/, nothing changes: a lost ID with no removes: stays not ok."
     sha256: dce17cd56f9e7b6311e9211bfc3c878638f48e086fd718b7efc97d93b6f20e60
     clarifies:
       - R1
   - id: D3
     date: 2026-10-16
-    source: the agent (architect), message to developer, 2026-10-16
+    source: the agent (architect), message to the developer, 2026-10-16
     text: "These stay not ok in every scope: an ID used again, a paragraph with no ID (this still catches a marker that an agent removed by accident while the text stayed), and a link to an ID that does not exist."
     sha256: de32020738631e482c7373518ab47cb2c60b80f7c5a9f2f338666799862b9614
     clarifies:
       - R1
   - id: D4
     date: 2026-10-16
-    source: the agent (architect), message to developer, 2026-10-16
+    source: the agent (architect), message to the developer, 2026-10-16
     text: No new hint for a record entry that names a deleted change-spec ID. When a disposition (incorporated, removed, superseded) or a wording decision of the request names the deleted ID, the same lost-ID hint says so in its text, for example '<name>/SP-3 is deleted; its disposition says incorporated as INV-2'. Bindings, and the audit's 'source not found', stay as they are.
     sha256: e2bf87ab124b60db077e1f6217887f5a0efb784069229403130c52401a2224d4
     clarifies:
       - R1
   - id: D5
     date: 2026-10-16
-    source: the agent (architect), message to developer, 2026-10-16
+    source: the agent (architect), message to the developer, 2026-10-16
     text: The skill and the README say that a paragraph of a change spec may be deleted, that its ID is retired and never used again, and that plan, step and migration paragraphs may live in the tracker issue named by the task's ref instead of in the change spec (#229, point 3).
     sha256: 2dc3dff8970fee3a8f6274f38b6d57e511d4e59325209afa1198cd276ea0596a
     clarifies:

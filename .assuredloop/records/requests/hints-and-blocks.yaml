@@ -46,47 +46,47 @@ signoff:
 decisions:
   - id: D1
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: "Exit codes stay as today: plain `al check` exits 0, and `--strict` exits 1 when a `not ok` prints. `--strict` raises nothing any more: no finding changes severity with the mode."
     sha256: f487c269963cbeacf19463a096009e1951af296b69a4101c38cb86d9c66a4fd2
   - id: D2
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: "What stays `not ok`: `signoff-coverage`, the new R3, R4 and R5 findings (name their codes), the root line, and a record that cannot be read. Every other finding is a hint in every mode: each `adr-changed` case (a deleted ADR file too, with its own message), `adr-links`, `path-claim`, `unresolved-link`, every marker lint, an invalid disposition and the lost-ID lint in specs/. In the PR body, list each finding code with its severity before and after."
     sha256: 04a04c014f33420419032a1783dcb7f086face2c90e5eb83a6ee0e9c549b738a
   - id: D3
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: R3 applies to every request that has `requirements:` in its record, open or archived. Run it against this repo's own records first. If one of our own records fails R3 or R4, stop and tell the architect before you change any record.
     sha256: 3849113d83c3bb8ba602bdcd50f9b08bdc4b2de81911388a08d513dccc09fa84
   - id: D4
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: "R4 compares each file the way `al record` hashed it (the text in the snapshot, not the whole file). A result file's inputs are not record evidence: a changed input stays the existing result hint."
     sha256: 1e1f6e1848cd5846ba287dc7eb797d5037ffeaf0e412a5272ab4f105c5780e79
   - id: D5
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: 'R5: a proposed ADR is a current place too. "Names" means an `ADR-n` link in a marker or an `ADR-n` word in the text. The successor is named in the same marker for a link, and in the same paragraph for text. Archived requests are exempt as dated records.'
     sha256: da6e7567fcab52fd86d7a25f20338124f235836617259b5f5ffadc5f82028f6e
   - id: D6
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: "The `--align` part of R1: today 0.2.2 leaves `stale-base` hints on bindings to a superseded record, and `--align` does not clear them. Check that on main first; fix it if it is still so."
     sha256: 657f54eee79bca5dda04f11089ea6f69b7fe84e41f29a122423cbaa6ffcce847
   - id: D7
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: "Docs: the schema, the README and the skill state R1 and R2, and say that `al check` gives the review hints while the review decides, except for R3 to R5. Take out each place that says an accepted ADR's text never changes."
     sha256: 4713328e22adab531cb834c755efbdcc4321b708465581a7e0b50959a6e7895c
   - id: D8
     date: 2026-10-17
-    source: the agent (architect), session prompt of developer, 2026-10-17
+    source: the agent (architect), the developer's task prompt, 2026-10-17
     text: In the PR body, say what each changed spec paragraph said before and after.
     sha256: 7b033153776e2bb8e5996d157caa12ddfcb9ad30f4c56a862c95f88d7d258d82
   - id: D9
     date: 2026-10-17
-    source: the agent (architect), message to developer, 2026-10-17
+    source: the agent (architect), message to the developer, 2026-10-17
     text: "R3 stays as signed: a request that has a requirement (R<n>) needs it signed, also when it changes no promise; the owner's B1 in #238 has no exception. So nothing contradicts it: DES-42 says that a request that changes no promise needs no sign-off only when it has no requirement, and the skill says to write a design-only request with no R<n> in its organized section. The PR body says the consequence."
     sha256: 35f8cea168ce01aaaac13e8aad9fb58fafe3d5e7024e37556c3793e3dd45837a
   - id: D10
