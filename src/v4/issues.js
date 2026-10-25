@@ -14,13 +14,16 @@
 //   assuredloop-requests.json of the folder names (own-item R1);
 // - phrase: a phrase of the config matches (R2, phrases.js);
 // - issue-unread: a file of the folder that is not valid JSON, or an entry
-//   that is not an item, or an assuredloop-requests.json that is not valid.
+//   that is not an item, or an assuredloop-requests.json that is not valid;
+// - issue-changed: the item's text changed since the change relied on it,
+//   or al cannot tell (light-design R3, kept-items.js).
 // An item's text is its body and its comments that are not minimized (D4).
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { recordPath } from './base.js';
 import { citedMessage, supersededIn } from './blocks.js';
 import { git } from './git.js';
+import { changedHints } from './kept-items.js';
 import { phraseHits, phraseMessage } from './phrases.js';
 import { outputRepos } from './repos.js';
 import { Fail } from './spec.js';
@@ -162,10 +165,12 @@ function written(ref, names, own, folders) {
   return out;
 }
 
-export function issueHints(top, state, matchers, add, { folder, items, unread, owns }) {
-  const notKnown = [];
-  const names = namedRepos(top, state.config);
-  const cited = supersededIn(state);
+// What reads the forms of SP-8 for the project at `top`, with the items of
+// the folder: `own` (the request's own repository), and `find(ref)`, the
+// items that a task's `ref` names and the references that name none:
+// { found: [it], missing: [{ written, key } | { written, unknown }], none }.
+export function itemFinder(top, config, items) {
+  const names = namedRepos(top, config);
   const own = remoteRepo(top);
   const remotes = new Map();
   const folders = (name) => {
@@ -178,30 +183,57 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
   const byKey = new Map();
   for (const it of items) if (!byKey.has(slug(it.key))) byKey.set(slug(it.key), it);
   const withRef = items.filter((it) => it.ref);
+  const find = (ref) => {
+    const found = [];
+    const missing = [];
+    const refs = written(ref, names, own, folders);
+    for (const w of refs) {
+      const it = w.key && byKey.get(slug(w.key));
+      if (it) found.push(it);
+      else missing.push(w);
+    }
+    for (const it of withRef) if (!found.includes(it) && holds(String(ref), it.ref)) found.push(it);
+    return { found, missing, none: !found.length && !refs.length };
+  };
+  return { own, names, folders, find };
+}
 
-  for (const u of unread) add('hint', 'issue-unread', u.file, '-', `not read: ${u.why}`);
-  if (unread.length) notKnown.push(`the files in ${folder} that were not read: ${unread.map((u) => u.file).join(', ')}`);
-
-  // The items that each task of each open request names, in order (SP-8, SP-9).
-  const named = []; // [{ r, task, it }]
-  const tasked = []; // the open requests with a task that has a ref
+// The items that each task of each open request names, in order (SP-8,
+// SP-9): { named: [{ r, task, it }], missing: [{ r, task, written, key |
+// unknown | none }], tasked } (tasked: the open requests with a task that has a ref).
+export function taskItems(state, finder) {
+  const named = [];
+  const missing = [];
+  const tasked = [];
   for (const r of state.requests.values()) {
     if (!r.open) continue;
     for (const t of Array.isArray(r.data?.tasks) ? r.data.tasks : []) {
       if (!isMap(t) || t.ref == null) continue;
       if (!tasked.includes(r)) tasked.push(r);
       const task = String(t.id ?? '-');
-      const id = `${r.name}/${task}`;
-      const found = [];
-      for (const w of written(t.ref, names, own, folders)) {
-        const it = w.key && byKey.get(slug(w.key));
-        if (it) found.push(it);
-        else add('hint', 'issue-missing', w.written, id, w.key ? `${w.written}: no item in ${folder} is ${w.key}` : `${w.written}: ${w.unknown}, so it names no item`);
-      }
-      for (const it of withRef) if (!found.includes(it) && holds(String(t.ref), it.ref)) found.push(it);
-      if (!found.length && !written(t.ref, names, own, folders).length) add('hint', 'issue-missing', recordPath(r.name), id, `its ref names no item in ${folder}: ${JSON.stringify(String(t.ref))}`);
+      const { found, missing: lost, none } = finder.find(t.ref);
+      for (const w of lost) missing.push({ r, task, ...w });
+      if (none) missing.push({ r, task, written: String(t.ref), none: true });
       for (const it of found) named.push({ r, task, it });
     }
+  }
+  return { named, missing, tasked };
+}
+
+export function issueHints(top, state, matchers, add, { folder, items, unread, owns }) {
+  const notKnown = [];
+  const cited = supersededIn(state);
+  const finder = itemFinder(top, state.config, items);
+  const { own, names, folders } = finder;
+
+  for (const u of unread) add('hint', 'issue-unread', u.file, '-', `not read: ${u.why}`);
+  if (unread.length) notKnown.push(`the files in ${folder} that were not read: ${unread.map((u) => u.file).join(', ')}`);
+
+  const { named, missing, tasked } = taskItems(state, finder);
+  for (const m of missing) {
+    const id = `${m.r.name}/${m.task}`;
+    if (m.none) add('hint', 'issue-missing', recordPath(m.r.name), id, `its ref names no item in ${folder}: ${JSON.stringify(m.written)}`);
+    else add('hint', 'issue-missing', m.written, id, m.key ? `${m.written}: no item in ${folder} is ${m.key}` : `${m.written}: ${m.unknown}, so it names no item`);
   }
 
   // Each item once, with the ID of the first task that names it.
@@ -291,6 +323,9 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
     const why = ownItem(r).unknown;
     if (why) notKnown.push(`whether the items of ${r.name} are children of its own item: ${why}`);
   }
+
+  // C7: an item whose text changed since the change relied on it (light-design R3).
+  changedHints(named, missing, folder, add);
 
   const others = items.filter((it) => !first.has(it)).length;
   if (others) notKnown.push(`${others} item${others === 1 ? '' : 's'} in ${folder} that no task names, not checked`);
