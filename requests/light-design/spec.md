@@ -423,12 +423,30 @@ ID.
 <!-- LD-22 flow serves:R3 -->
 
 C7: a saved work item whose text differs from the text that `al` kept when
-the change relied on it (at the sign-off, or when the request first named
-it). The caller refreshes the saved items before a check. An item saved
-before the last refresh, or with no text kept, is reported as "not known",
-not as clean. `al` keeps that text by itself; no person and no AI writes or
-reads it. The hint clears by a recorded judgement that the change was read
-(LD-12).
+the change relied on it. The text is the item's body and each comment that
+is not minimized, in order, with line ends made LF; its state is not text.
+`al index --issues <folder>` keeps the SHA-256 of a JSON list of these
+texts in the request's record, by itself; no person and no AI writes or
+reads it. It keeps it only at a moment that is now: when the record at HEAD
+has no task that names the item (the request names it in this edit), and at
+the first sign-off after the naming, while that sign-off is not at HEAD.
+The text at that sign-off is the one that counts, else the text at the
+naming. A moment that is past is not kept. So `al check --issues` gives
+the hint `issue-changed` with "not known", not "unchanged", for an item
+named in an earlier commit with no text kept, for a sign-off after the
+naming with no text kept at it, and for an item that is not in the folder
+or cannot be read. `al` cannot know when the caller saved a file, so each
+`al check --issues` says so in its Not known line, and the caller saves the
+items again before a check. A closed item gets the same
+hint (DES-91): C7 compares the item with its own text at the moment of
+reliance, which is what held then (LD-11). An archived request is not
+checked. Without `--issues`, no line is about items (DES-92). The hint
+clears by a recorded judgement that the change was read (LD-12):
+`al record <name> judgement --hint issue-changed --on <item> --reason <why>
+--issues <folder>` keeps the item's text with the judgement, and the moment
+of reliance that held then. The hint comes back when that text changes
+again, or when a later sign-off becomes the moment of reliance. Only `issue-changed` takes a
+judgement until the general judgement of LD-12 is built.
 
 <!-- LD-23 note -->
 
