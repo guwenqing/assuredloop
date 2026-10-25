@@ -238,8 +238,9 @@ or cannot be read is reported as a limit. The skill tells the AI:
 
 Why LD-47: in the answer test, answers made with `al` held 2 to 8 times the
 false share of answers made without it, in unsupported claims. About 4 in
-10 of those claims cited `al`'s own IDs and records in place of the project's text
-(section 7). Code tests prove `al`'s output; they cannot prove that an AI
+10 of those claims cited `al`'s own IDs or records at all, some of them
+beside a project source (section 7). That citation form is a measured
+contributor; it does not explain the whole gap. Code tests prove `al`'s output; they cannot prove that an AI
 makes fewer unsupported claims.
 
 <!-- LD-41 plan -->
@@ -291,8 +292,13 @@ lines, supersede links and `specs/`. No new record.
 <!-- LD-48 data serves:R1 -->
 
 The change's proposed design. Besides its own change spec, a change may
-name a project document as its design, by a design line in its request or
-in its saved work item. A plain mention, or a link for comparison or for
+name a project document as its design, by a design line. In the request's
+`request.md` or in a saved work item in Markdown, a design line is a line
+that starts with `Design:` and holds one path from the repo's root, for
+example `Design: docs/rfc/0018-streaming-http-api.md`. In a saved work item
+in YAML or JSON, it is the field `design`, with one path or a list of
+paths. Each path names one document of the spec repo or of an output repo
+in the configuration. A plain mention, or a link for comparison or for
 history, does not make a document the change's design. `al` reads the
 named document at the selected revision and shows where the design line
 is, the document's state as `al` reads it (an ADR's status; for another
@@ -301,8 +307,12 @@ this change". It never shows that document as in force. A design line
 whose document is missing or cannot be read gives a hint that names it; a
 removed design line removes the document from the list. When the proposed
 design conflicts with an item in force, both are shown, and the item in
-force stays in force. Why: in the real test, 459 of the review's
-judgements were on the tasks' own draft RFCs, which the list did not hold.
+force stays in force. The fixtures, with no model: a design line for one
+document and a plain mention of another; a design line removed; a design
+line whose file is missing; a document whose state `al` cannot read; and a
+proposed design that conflicts with an accepted ADR. Why: in the real
+test, 459 of the review's judgements were on the tasks' own draft RFCs,
+which the list did not hold.
 
 <!-- LD-42 data serves:R1 -->
 
@@ -476,9 +486,12 @@ requirements, the ADRs with their sources and alternatives, the source
 snapshots, the decisions in the records, the result files, the output lines
 that cite an ID, and their history from git. It adds one rough line for
 each file of the spec repo and the output repos that says what the file is
-(code, test, doc, config). It adds code syntax units: in the answer test,
-the local index without code text found fewer known items than the AI
-alone (section 7). The checks never use the knowledge base.
+(code, test, doc, config). Code is not indexed by syntax unit: agents grep
+code, and code navigation belongs to code tools. In the answer test, this
+index without code text found fewer known items than the AI alone, and a
+form with code syntax units was level with `none` (section 7). When setup
+offers `local`, it states these results (LD-45). The checks never use the
+knowledge base.
 
 <!-- LD-34 note -->
 
@@ -525,7 +538,9 @@ repo.
   units. The prototype's local index without code text found fewer known
   items than the AI alone. Answers with `al` held 2 to 8 times the false
   share of answers without it, in unsupported claims; about 4 in 10 of
-  those cited `al`'s own IDs and records in place of the project's text.
+  those cited `al`'s own IDs or records at all, some of them beside a
+  project source. With every claim that cites only `al`'s records taken
+  out, the gap stays (0.184 against 0.069 under the judge).
   The judge passed its bar on "unsupported" (94.6%) and missed it on
   "right" (83.0%) and "wrong" (78.3%). A direction was reported only where
   the difference was at least 0.05 under both labellers, a rule set after
@@ -538,22 +553,22 @@ repo.
 
 <!-- LD-37 plan -->
 
-| Question | Test |
-|---|---|
-| Do the questions and the knowledge base give more right answers than the AI alone, or as many for fewer tokens, and how close do they come to the best effort (the strongest model with a large budget)? | an answer test on `al`'s own questions, with an upper bar |
-| Does the local knowledge base add right answers, or only cost? The light prototype runs twice, with `local` and with `none`. If `local` shows no gain, the architect brings this to the owner, who chose `local` as the default | the answer test, the light prototype in two settings |
-| Which model, fusion and reranker | a local model bench (#28), the Agent Retrieval Bench reproduction, and the answer test's tuning |
-| Do agents write IDs when the skill asks? | the real test's arm with commit-message IDs and a rough map |
-| Does it change the result of building and reviewing real changes, small to large? | a real test on an open-source project |
-| Do the paths still work: a fix, an amendment, an epic in parts, two epics at once, a spike, a bug? | a case walk-through in the build's own tests |
-| Do the list and the judgements of section 4a catch the violations in real changes, against a plain review? How many false alarms, and how many tokens? Which form of the list works better at the tested set size? (#45, #29) | the real test, with one more build arm and review modes with a prototype of section 4a (no separate test); the real test already holds a real rule break, and its review comparison plants a decision violation. The review modes run the list in both forms (every item as one line, and the grouped line) on the project's own set in force; the conclusion holds for that size only |
-| At which size of the set in force does the grouped line become the better form? (the size of LD-25; 300 is provisional) | a size calibration before the release value is chosen: both list forms on sets of several sizes on both sides of 300, made as subsets of a real set in force that keep the decisions that the cases need and their known answers, with the rule for choosing the size fixed before the runs |
-| The same for an ordinary one-file change | the answer test's ordinary changes: the list's tokens counted in full; the list alone is not a claim of drift |
-| A long ADR; a judgement renewed after a small amendment (current, stale) | the build's own tests, with cases made for them; not answered by the real test |
-| A fresh setup with the user's own knowledge base, with `local` and with `none`; an upgrade that keeps every task, declared output, decision and sign-off readable | the build's own tests |
-| Do code syntax units add right answers? | the same light prototype with two index scopes (with and without syntax units) on the same questions: in the answer test if its frozen plan can take it, else a run after it |
-| Speed at 1,000 requests and 20 repos | a scale test before release |
-| The cost, in tokens and owner round trips | the answer test, the real test, and the adopters after release (#26) |
+| Question | Test | Status, 2026-10-25 |
+|---|---|---|
+| Do the questions and the knowledge base give more right answers than the AI alone, or as many for fewer tokens? | an answer test on `al`'s own questions | Done: no clear difference in recall; more unsupported claims with `al` (LD-50). The upper bar was not scored. |
+| Does the local knowledge base add right answers, or only cost? | the answer test, the light prototype with `local` and with `none` | Done: no gain; the owner decides with the new v4/R10 (section 6). |
+| Which model, fusion and reranker | a local model bench (#28), the Agent Retrieval Bench reproduction, and the answer test's tuning | Partly: the answer test chose plain search's candidate A. A further bench needs the owner's yes. |
+| Do agents write IDs when the skill asks? | the real test's arm with commit-message IDs and a rough map | Done: every commit of that arm named IDs of the task's sources (a mechanical check of the ID only). |
+| Does it change the result of building and reviewing real changes, small to large? | a real test on an open-source project | Done (LD-50). |
+| Do the list and the judgements of section 4a catch the violations in real changes, against a plain review? How many false alarms, and how many tokens? (#45, #29) | the real test's review modes with a prototype of section 4a | Done (LD-50); the list now names every item (LD-25). |
+| At which size does the grouped line become the better form? | a size calibration | Dropped: LD-25 names every item at any size. |
+| The list's tokens on an ordinary one-file change | the answer test's ordinary changes | Not run: it needs model runs, which need the owner's yes. |
+| Do code syntax units add right answers? | the light prototype with and without syntax units | Done: level with `none`; without code text, below the AI alone. |
+| Do the paths still work: a fix, an amendment, an epic in parts, two epics at once, a spike, a bug? | a case walk-through in the build's own tests | Open; no model. |
+| A long ADR; a judgement renewed after a small amendment (current, stale) | the build's own tests, with cases made for them | Open; no model. |
+| A fresh setup with the user's own knowledge base, with `local` and with `none`; an upgrade that keeps every task, declared output, decision and sign-off readable | the build's own tests | Open; no model. |
+| Speed at 1,000 requests and 20 repos | a scale test before release | Open; no model. |
+| The cost, in tokens and owner round trips | the answer test, the real test, and the adopters after release (#26) | Done for the tests (LD-50); the adopters after release. |
 
 <!-- LD-38 note -->
 

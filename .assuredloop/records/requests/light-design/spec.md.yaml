@@ -91,7 +91,7 @@ paragraphs:
     display: "LD-47 (4:4, in 4. The questions (plans: skill, command, MCP))"
   - id: LD-51
     kind: rationale
-    text_sha256: 54c6a66cb2d952f070e676a44afffbe56f57aee8ac2edc3ba85f577ac1049aab
+    text_sha256: a2c59406ca77240c6698a454efc7808c067733399ab6bebfd21ba31feb5f1696
     display: "LD-51 (4:5, in 4. The questions (plans: skill, command, MCP))"
   - id: LD-41
     kind: plan
@@ -115,7 +115,7 @@ paragraphs:
     display: "LD-24 (5:1, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-48
     kind: data
-    text_sha256: 01b75cefb6da10e897895b49491f8b64087e8a51b34c9dd73d49fc1ff07eed08
+    text_sha256: bed6909d2c2ddb08ba55456c0835a2330c2969298d54b87be9447ec84f7a6452
     display: "LD-48 (5:2, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-42
     kind: data
@@ -175,7 +175,7 @@ paragraphs:
     display: LD-45 (6:2, in 5. The knowledge base (plan))
   - id: LD-33
     kind: plan
-    text_sha256: c1ab47c5bde675a38eb49590a937339670b84b72fd5faab059c7a145e8181002
+    text_sha256: d3be304deff0a73078637e50bc9eb69f38eea7bd8d0302fee9f6a5d115c117b9
     display: LD-33 (6:3, in 5. The knowledge base (plan))
   - id: LD-34
     kind: note
@@ -191,11 +191,11 @@ paragraphs:
     display: LD-36 (8, 7. What the tests decide (plan))
   - id: LD-50
     kind: note
-    text_sha256: a5a36379b6a1e5daf9e6cc81aa1f33f0c5566988f298e91dab6efe06e502ee9c
+    text_sha256: e8b8b6479f752bdb028d9fe5835ab4dc86e3a3028dca023084f83d53f4e5a6fb
     display: LD-50 (8:1, in 7. What the tests decide (plan))
   - id: LD-37
     kind: plan
-    text_sha256: feed15ab39a8bd86e6248f0de9cb0f3424a63c841a801dbe3370aace26928df7
+    text_sha256: 033dd7de818ccc9ce79c70d0250b7577773c6c117eb3f3b4a6e8496f2d4c2424
     display: LD-37 (8:2, in 7. What the tests decide (plan))
   - id: LD-38
     kind: note
