@@ -1,7 +1,7 @@
 // al context (T11; design.md 5, 8, 9 and 13, schema.md 5): where the project,
 // a request or a paragraph stands; the review view of a diff; the whole trace
 // with --audit; any of them as of a v4 commit with --at. Views never write.
-import { Fail } from './base.js';
+import { Fail, recordPath } from './base.js';
 import { applicability, checks } from './checks.js';
 import { judge, judgeRequest } from './dispositions.js';
 import { git, mergeBase, mergesOf } from './git.js';
@@ -457,7 +457,7 @@ function openNaming(state, matches) {
 function adrView(state, id) {
   const a = state.adrs.get(id);
   if (!a) return null;
-  const head = a.head ? `${a.file}:${textLine(a.text, a.head)}: ${oneLine(a.head.text)}` : `${a.file}:1`;
+  const head = a.head ? `${a.file}:${textLine(a.text, a.head)}: ${oneLine(a.paragraphs.map((p) => p.text).join('\n'))}` : `${a.file}:1`;
   const supersedes = [...new Set((a.head?.links.supersedes ?? []).map((x) => /^(ADR-\d+)/.exec(x.replace(/^central:/, ''))?.[1]).filter(Boolean))];
   const by = [...new Set([...a.by, ...[...state.adrs.values()].filter((x) => (x.head?.links.supersedes ?? [])
     .some((s) => /^(ADR-\d+)/.exec(s.replace(/^central:/, ''))?.[1] === id)).map((x) => x.id)])];
@@ -489,7 +489,7 @@ function requirementView(state, t) {
   ];
   const body = [
     line('Requirement', `${t.key} ${versionOf(r, q)} · ${signState(state, r, q)} · ${r.dir}/request.md:${at}: ${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`),
-    line('Signed', last ? `last signed: version ${last[1].version} in ${last[0].id}` : 'never signed'),
+    line('Signed', last ? `last signed: version ${last[1].version} in ${last[0].id} (only al's record ${recordPath(r.name)} holds this)` : 'never signed'),
     line('Served', served.length ? `by ${served.join(', ')} (declared serves links)` : 'by no paragraph'),
     openNaming(state, (k) => k === t.key),
     citedLine(state, [t.key]),
