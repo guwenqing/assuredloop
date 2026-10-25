@@ -156,12 +156,14 @@ with a baseline effect has no valid disposition for its current version.
   targets' current text and to its own, on purpose.
   `al index --issues <folder>` also keeps the text of the tasks' work items
   (see "Hints from the linked work items").
-- `al check [--strict] [--issues <folder>]`: the checks of this branch
-  against its base. With `--issues <folder>`, it also checks the work items
-  that the caller saved in the folder (see "Hints from the linked work
-  items").
-- `al context [<name> | <ID>]`: where the project, a request or a paragraph
-  stands. `--diff <range> --for review` is the review view. `--audit` gives a
+- `al check [--strict] [--issues <folder>] [--full]`: the checks of this
+  branch against its base, and what is in force for the change (see "What
+  is in force for a change"). With `--issues <folder>`, it also checks the
+  work items that the caller saved in the folder (see "Hints from the
+  linked work items"). `--full` shows the text of every item in force.
+- `al context [<name> | <ID>]`: where the project, a request, a paragraph,
+  an ADR (`ADR-2`) or a requirement (`<name>/R1`) stands.
+  `--diff <range> --for review` is the review view. `--audit` gives a
   request's whole trace; `--at <commit>` any v4 state.
 - `al conclude <name>`: the close rule; with `--yes` it writes the Outcome
   and moves the request to `requests/archive/<name>/`.
@@ -176,6 +178,45 @@ Every command that changes files, except `new` and `index`, shows what it
 would write, and writes only with `--yes`. Each output ends with three lines:
 `Read` (what it read), `Next` (what to do next) and `Not known` (what the
 tool cannot know).
+
+## What is in force for a change
+
+On a branch, `al check` shows the requirements and decisions in force that
+may govern the change, also when no code or test names an ID. The change is
+the branch against its base, with the untracked files and without
+`.assuredloop/`. In force are the promise and design paragraphs of the spec
+(not `approach`), and each accepted ADR that no accepted ADR supersedes.
+
+- `in force <ID> <basis> · <file>:<line> · <kind>: <text>`: an item that the
+  change edits (`changed by this change`), names in a line that it adds or
+  removes (`cited (<file>:<line>)`), or reaches through the item's file scope
+  (`scope changed in this change`, `by scope`, `all files`). An accepted ADR
+  whose text changed is marked `text changed, review open`; an item that
+  another open request changes is marked `open proposal: <name>/SP-n changes it`.
+- `proposed ...`: the change's own signed requirements, its change spec
+  paragraphs and the documents of its design lines. They are not in force.
+  The change's own request is an open request whose folder or record the
+  change touches, or whose name a commit message of the branch names.
+- `<N> further items in force: ...`: every other item, by its ID, with exact
+  counts. `al check --full` shows their text.
+- `list basis:` and `list limits:` say what the list rests on and what it
+  cannot show. An item that is not shown in full may still apply.
+
+A file scope is a token in the item's marker, for example
+`<!-- INV-41 rule serves:R2 files:src/export/**,test/export/** -->`. `**`
+matches any number of folders, `*` matches within one folder name, and `?`
+one character; write `?` for a space or a comma in a path. `files:**` is
+all files. The token is not part of the text: changing it changes no hash
+and gives no marker hint. A scope that matches no file gets the hint
+`scope-no-file`.
+
+A design line names a document as the change's design: a line
+`Design: <path>` in the request's `request.md`, or the field `design` (a
+path or a list) of a saved JSON work item that a task of the request names.
+`<repo>:<path>` names a file of an output repo at its selected commit. A
+document with markers lists its design paragraphs; one without is
+supporting evidence. A design line whose document is missing or cannot be
+read gets the hint `design-doc`.
 
 ## Settings
 
