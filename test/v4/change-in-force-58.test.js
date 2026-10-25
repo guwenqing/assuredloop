@@ -799,3 +799,63 @@ for (const [what, fenced] of [['a plain token line', 'files:src/**'], ['a marker
     assert.ok(line.includes('files:lib/**'), `the fenced token is in the text:\n${show(r)}`);
   });
 }
+
+// =====================================================================
+// Round 4: a design path with a space, the context hint, a C-quoted path
+
+const SPACED = 'docs/My Design.md';
+for (const [what, line] of [['plain', `Design: ${SPACED}`], ['in backticks', `Design: \`${SPACED}\``]]) {
+  test(`#58 round 4: a design line whose path holds a space (${what}) names that document: "proposed docs/My Design.md design document · ..."; no design-doc hint`, (t) => {
+    const dir = world(t, (d) => write(d, SPACED, '# My design\n\nRows stream to the client.\n'));
+    const md = designRequest(dir, [line]);
+    commitAll(dir, 'streaming');
+    const r = check(dir);
+    assert.equal(proposed(r, SPACED), `proposed ${SPACED} design document · design line ${md}:${lineOf(dir, md, line)} · state unknown · no markers: supporting evidence`, show(r));
+    assert.ok(!hintCodes(r).includes('design-doc'), show(r));
+  });
+}
+
+test('#58 round 4: a design line whose rest names no file ("docs/a.md and docs/b.md"): "hint design-doc ... which is missing", and neither document is listed', (t) => {
+  const dir = world(t, (d) => {
+    write(d, 'docs/a.md', '# A\n');
+    write(d, 'docs/b.md', '# B\n');
+  });
+  const rest = 'docs/a.md and docs/b.md';
+  const md = designRequest(dir, [`Design: ${rest}`]);
+  commitAll(dir, 'streaming');
+  const r = check(dir);
+  const want = `hint design-doc ${md}:${lineOf(dir, md, `Design: ${rest}`)} ${rest} the design line names ${rest}, which is missing`;
+  assert.ok(out(r).includes(want), `the line "${want}":\n${show(r)}`);
+  notProposed(r, 'docs/a.md');
+  notProposed(r, 'docs/b.md');
+});
+
+test("#58 round 4: a work item's design field whose path holds a space names that document", (t) => {
+  const dir = world(t, (d) => write(d, SPACED, '# My design\n\nRows stream to the client.\n'));
+  newRequest(dir, 'streaming');
+  editRecord(dir, 'streaming', (rec) => { rec.tasks = [{ id: 'T1', ref: 'PROJ-12' }]; });
+  commitAll(dir, 'streaming');
+  const items = itemsFolder(t);
+  write(items, 'proj-12.json', `${JSON.stringify({ ref: 'PROJ-12', repository: 'PROJ', body: 'Stream the export.', design: SPACED })}\n`);
+  const r = check(dir, '--issues', items);
+  assert.ok(proposed(r, SPACED).startsWith(`proposed ${SPACED} design document · design of work item PROJ-12 (`), show(r));
+  assert.ok(!hintCodes(r).includes('design-doc'), show(r));
+});
+
+test('#58 round 4: in a spec repo the limits line keeps "al context <ID> one item"', (t) => {
+  const dir = world(t);
+  write(dir, 'src/export.js', '// INV-41\n');
+  commitAll(dir, 'export');
+  const limits = oneLine(check(dir), 'list limits: ');
+  assert.ok(limits.includes('al context <ID> one item'), limits);
+  assert.ok(!limits.includes('in the central repo shows one item'), limits);
+});
+
+test('#58 round 4: a cited place whose path git writes C-quoted (an emoji and a double quote) shows the real file name', (t) => {
+  const file = 'src/😀"quoted.js';
+  const dir = world(t, (d) => write(d, file, 'export const q = 1;\n'));
+  write(dir, file, 'export const q = 1;\n// INV-41: the link expires\n');
+  commitAll(dir, 'quoted');
+  const r = check(dir);
+  assert.equal(inForce(r, 'INV-41'), `in force INV-41 cited (${file}:2) · specs/invoices.md:15 · rule: ${T41}`, show(r));
+});

@@ -124,6 +124,13 @@ test("#58 output repo: the limits line says that file scopes are not matched her
   assert.deepEqual(out(r).filter((l) => l.startsWith('proposed ')), [], show(r));
 });
 
+test('#58 round 4: in an output repo the limits line says "al context <ID> in the central repo shows one item", not "al context <ID> one item"', (t) => {
+  const { web } = outputWorld(t);
+  const limits = oneLine(check(web), 'list limits: ');
+  assert.ok(limits.includes('al context <ID> in the central repo shows one item'), limits);
+  assert.ok(!limits.includes('al context <ID> one item'), limits);
+});
+
 test('#58 output repo: no change selected (on main, clean): "list: no change selected: <reason>"', (t) => {
   const { web } = outputWorld(t, { changed: false });
   const r = check(web);
