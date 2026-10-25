@@ -13,9 +13,9 @@ import { recordPath } from './base.js';
 import { fileAt, git } from './git.js';
 import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from './markers.js';
 import { taskItems } from './issues.js';
-import { namedIds, outputRepos } from './repos.js';
+import { centralRepo, namedIds, outputRepos } from './repos.js';
 import { ADR_FILE, SPEC, symlinkOn } from './scope.js';
-import { signedBy } from './state.js';
+import { loadState, signedBy } from './state.js';
 
 const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 const inForceKind = (state, kind) => !!kind && kind !== 'approach' && ['promise', 'design'].includes(groupOf(kind, state.kinds));
@@ -122,7 +122,7 @@ function itemsInForce(now) {
     const decides = (a.head?.links.decides ?? []).map(unref);
     items.push({
       id: a.id, file: a.file, line: a.head ? textLine(a.text, a.head) : 1, marker: a.head?.line ?? 1, adr: a, files: a.head?.files ?? [],
-      what: `ADR accepted, decides ${decides.length ? decides.join(', ') : 'nothing'}`, text: oneLine(a.head?.text ?? ''),
+      what: `ADR accepted, decides ${decides.length ? decides.join(', ') : 'nothing'}`, text: oneLine(a.paragraphs.map((p) => p.text).join('\n')),
     });
   }
   return items;
@@ -185,7 +185,13 @@ function designDoc(top, now, path, source, repos) {
   const shown = m ? `${m[1]}:${clean}` : clean;
   const head = `proposed ${path} design document · ${source}`;
   const adr = !m && ADR_FILE.test(posix.basename(clean)) && posix.dirname(clean) === `${now.root}/adr` ? now.adrList.find((a) => a.file === clean) : null;
-  if (adr) return { lines: [`${head} · ${adr.id} ${adr.status ?? 'with no known status'} · an ADR`] };
+  if (adr) {
+    const design = adr.paragraphs.filter((p) => designKind(now, p.kind));
+    return {
+      lines: [`${head} · ${adr.id} ${adr.status ?? 'with no known status'} · an ADR; ${design.length} design paragraphs`,
+        ...design.map((p) => `proposed ${p.id} design paragraph · ${clean}:${textLine(text, p)} · ${p.kind}: ${oneLine(p.text)}`)],
+    };
+  }
   const status = /^Status:[ \t]*(.*?)\s*$/m.exec(lf(text).split('\n')[0] ?? '')?.[1];
   const state = status ? `Status: ${status}` : 'state unknown';
   const paras = parseMarkdown(text, clean, { kinds: now.kinds }).paragraphs;
@@ -204,7 +210,18 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   if (change.empty) return { body: [`list: no change selected: nothing changed against the base ${base.slice(0, 7)}`], findings: [] };
   const findings = [];
   const limits = [];
-  const items = itemsInForce(now);
+  // In an output repo, the items in force are the central repo's at its
+  // selected commit; it is cited only as central:<ID>, its file scopes are not
+  // matched here, and the change's own request is not read (LD-25, D3).
+  const central = centralRepo(top, now.config);
+  if (central?.unknown) {
+    return { body: [`list limits: the central repo cannot be read: ${central.unknown}, so no item in force is listed; the change's own request is not read in an output repo`], findings };
+  }
+  const items = itemsInForce(central ? loadState(central.dir, central.sha) : now);
+  if (central) {
+    limits.push('file scopes name files of the central repo; they are not matched in an output repo',
+      `the items' files are in the central repo at ${central.sha.slice(0, 7)}`, 'the change\'s own request is not read in an output repo');
+  }
 
   // Cited: a line that the change added or removed names the ID as a whole
   // word; a paragraph's own ID in its marker line is no citation.
@@ -216,8 +233,9 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   const cites = new Map();
   for (const l of change.lines) {
     const text = l.text.replace(/^(\s*<!--[ \t]+)(ADR-\d+-\d+|[A-Z][A-Z0-9]*-\d+)/, '$1');
-    for (const written of namedIds(text, { qualified: false, known: new Set(known.keys()) })) {
+    for (const written of namedIds(text, { qualified: !!central, known: new Set(known.keys()) })) {
       const id = known.get(unref(written));
+      if (!id) continue;
       if (!cites.has(id)) cites.set(id, new Map());
       const files = cites.get(id);
       if (!files.has(l.file)) files.set(l.file, `${l.file}:${l.line}${l.removed ? ' removed' : ''}`);
@@ -226,6 +244,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
 
   // Changed by this change: its text, or its ADR file, differs from the base.
   const changed = (it) => {
+    if (central) return false;
     if (it.adr) { const b = was?.adrs.get(it.id); return !b || withoutScope(lf(b.text)) !== withoutScope(lf(it.adr.text)); }
     const b = was?.spec.get(it.id);
     return !b || b.sha256 !== it.p.sha256 || b.kind !== it.p.kind;
@@ -237,7 +256,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     return !(b.status === 'accepted' && b.head && a.head && b.rest === a.rest && onlyLinksAdded(b.marker, a.marker, now.kinds));
   };
 
-  const own = ownRequests(top, now, base, change.paths);
+  const own = central ? [] : ownRequests(top, now, base, change.paths);
   const ownNames = new Set(own.map((r) => r.name));
   const proposals = new Map();
   for (const r of [...now.requests.values()].filter((x) => x.open && !ownNames.has(x.name))) {
@@ -257,12 +276,19 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   // edits an item's scope, so that a narrower one cannot hide it.
   const touched = [...change.paths].filter((f) => !f.startsWith('.assuredloop/'));
   const scopeChanged = (it) => {
+    if (central) return false;
     const b = it.adr ? was?.adrs.get(it.id) : was?.spec.get(it.id);
     return !!b && ((it.adr ? b.head?.files : b.files) ?? []).join(',') !== it.files.join(',');
   };
   let tree = null;
-  const treeFiles = () => (tree ??= (git(top, ['-c', 'core.quotePath=false', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], { allowFail: true }) ?? '').split('\0').filter(Boolean));
-  for (const it of items.filter((x) => x.files.length)) {
+  const lsFiles = (args) => (git(top, ['-c', 'core.quotePath=false', 'ls-files', '-z', ...args], { allowFail: true }) ?? '').split('\0').filter(Boolean);
+  // The files of the working tree: tracked and not deleted, or untracked and not ignored.
+  const treeFiles = () => {
+    if (tree) return tree;
+    const gone = new Set(lsFiles(['--deleted']));
+    return (tree = lsFiles(['--cached', '--others', '--exclude-standard']).filter((f) => !gone.has(f)));
+  };
+  for (const it of central ? [] : items.filter((x) => x.files.length)) {
     if (!matches(it.files, treeFiles())) findings.push({ severity: 'hint', code: 'scope-no-file', where: `${it.file}:${it.marker}`, id: it.id, message: `its file scope ${it.files.join(',')} matches no file` });
   }
 
@@ -273,7 +299,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   for (const it of items) {
     const all = it.files.includes('**');
     const basis = [...(changed(it) ? ['changed by this change'] : []), ...(cites.has(it.id) ? [`cited (${[...cites.get(it.id).values()].join('; ')})`] : []),
-      ...(scopeChanged(it) ? ['scope changed in this change'] : []), ...(!all && matches(it.files, touched) ? ['by scope'] : []), ...(all ? ['all files'] : [])];
+      ...(scopeChanged(it) ? ['scope changed in this change'] : []), ...(!all && !central && matches(it.files, touched) ? ['by scope'] : []), ...(all ? ['all files'] : [])];
     if (basis.length) body.push(show(it, basis.join(', ')));
     else grouped.push(it);
   }
@@ -293,7 +319,8 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
       const s = signedBy(now, r.name, q.id);
       if (!s) { limits.push(`${r.name}/${q.id} is not signed, so it is not listed`); continue; }
       const at = lines.findIndex((l) => new RegExp(`^###\\s+${q.id}\\b`).test(l)) + 1;
-      body.push(`proposed ${r.name}/${q.id} signed requirement · ${r.dir}/request.md:${at} · signed in ${s.id}: ${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`);
+      body.push(`proposed ${r.name}/${q.id} signed requirement · ${r.dir}/request.md:${at} · signed in ${s.id} (only al's record ${recordPath(r.name)} holds this): `
+        + `${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`);
     }
     const specText = now.docs.find((d) => d.path === r.specFile)?.text ?? '';
     for (const p of r.paras.values()) {
@@ -306,10 +333,9 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   }
   // With --issues: the field design (one path or a list) of each saved work
   // item that a task of the change's own request names (LD-48, D2).
-  const named = issues ? taskItems(top, now, issues.items).named.filter((n) => ownNames.has(n.r.name)).map((n) => n.it) : [];
+  const named = issues && own.length ? taskItems(top, now, issues.items).named.filter((n) => ownNames.has(n.r.name)).map((n) => n.it) : [];
   for (const it of new Set(named)) {
-    if (it.design === undefined) continue;
-    const paths = [].concat(it.design);
+    const paths = it.design === undefined ? [] : [].concat(it.design);
     for (const path of paths) {
       if (typeof path !== 'string' || !path) {
         findings.push({ severity: 'hint', code: 'design-doc', where: it.file, id: '-', message: `the design field of ${it.key} is not a path or a list of paths, so it cannot be read` });
@@ -317,8 +343,9 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
       }
       body.push(...designShown(path, `design of work item ${it.key} (${it.file})`, it.file));
     }
+    for (const d of designLines(it.body)) body.push(...designShown(d.path, `design line in work item ${it.key} (${it.file})`, it.file));
   }
-  if (!own.length) limits.unshift('no open request is this change\'s own (none of its files changed, and no commit message names one)');
+  if (!own.length && !central) limits.unshift('no open request is this change\'s own (none of its files changed, and no commit message names one)');
   if (!issues) limits.push('the design field of work items is read only with --issues <folder>');
 
   const ids = (xs) => (xs.length ? xs.map((x) => x.id).join(', ') : 'none');

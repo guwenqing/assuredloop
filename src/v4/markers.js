@@ -27,8 +27,20 @@ export const LINK_WORDS = {
 // part of the text, so a marker hint never names it.
 const SCOPE = /[ \t]+files:\S*/g;
 const isScope = (token) => token.startsWith('files:');
-// `text` with the file scope taken out of each marker line.
-export const withoutScope = (text) => text.split('\n').map((l) => (MARKER.test(l) ? l.replace(SCOPE, '') : l)).join('\n');
+// `text` with the file scope taken out of each marker line; a line in fenced
+// code is text, and keeps it.
+export function withoutScope(text) {
+  let fence = null;
+  return text.split('\n').map((l) => {
+    const f = FENCE.exec(l);
+    if (fence) {
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.trim() === f[1]) fence = null;
+      return l;
+    }
+    if (f) { fence = f[1]; return l; }
+    return MARKER.test(l) ? l.replace(SCOPE, '') : l;
+  }).join('\n');
+}
 
 export const groupOf = (kind, kinds = KINDS) => Object.keys(kinds).find((g) => kinds[g].includes(kind)) ?? null;
 
