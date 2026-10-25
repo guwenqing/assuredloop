@@ -17,9 +17,8 @@ in `origin/`. Where this design and an older text differ, this design holds.
 
 What the owner wants, and why, in the owner's words:
 
-- The light v1 failed in real use: "the spec is USELESS, and strange when you
-  reference the wholeparagraph, and the most part in design is nothing
-  traced" (input 101).
+- Each paragraph of the spec and the design is traced, and a reference
+  points to the part that matters, not to a whole section (input 101).
 - Each change keeps its own documents, and one consolidated set stays
   current: "still have both one ti,e and the consolidated
   files/spec/design/adr" (input 92).

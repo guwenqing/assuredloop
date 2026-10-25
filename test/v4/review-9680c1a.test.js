@@ -1,5 +1,5 @@
 // Regression tests for the five findings of the review of 9680c1a (#179,
-// reviewer-179), each with its control, through the commands. States of the
+// its reviewer), each with its control, through the commands. States of the
 // invoicer world (test/v4/fixtures/invoicer/cases/remove-promise.yaml,
 // remove-merged-*.yaml, abandon-unsigned.yaml, code-cite.yaml).
 import { test } from 'node:test';
