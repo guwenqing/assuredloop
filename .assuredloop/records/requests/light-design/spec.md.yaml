@@ -7,7 +7,7 @@ paragraphs:
     display: "LD-1 (0, The light design: the change spec)"
   - id: LD-2
     kind: note
-    text_sha256: 42c148e72cbfa621c133e810b6ea7af2c3d016bdf538d10c9b8de7ed6673f38f
+    text_sha256: 9ee7d40906b1911984dea3de4d9aeeb53d02d34ef07e0bb8420eeabf0ebcde48
     display: "LD-2 (0:1, in The light design: the change spec)"
   - id: LD-3
     kind: note
@@ -19,7 +19,7 @@ paragraphs:
     display: LD-4 (1:1, in 1. What it must do)
   - id: LD-5
     kind: rationale
-    text_sha256: 74c4f51184384fe34c857c746fba088dad83910745b5e5548a22512ea7a752a7
+    text_sha256: dd6e798d1d177794b5a94b86ba68253c38982809a5085a98675c21ef6386529b
     display: LD-5 (1:2, in 1. What it must do)
   - id: LD-6
     kind: note
@@ -33,78 +33,114 @@ paragraphs:
     kind: rationale
     text_sha256: e79feab9887133cfdf0b31465fd4140f9a80e9dd47932406c95dc95972d27ac6
     display: LD-8 (2:2, in 2. The approach)
+  - id: LD-53
+    kind: rationale
+    text_sha256: 17b37ad72313325cffa9f77555a63aae96409dddf5fecdd1b7daaa077c598a23
+    display: LD-53 (2:3, in 2. The approach)
   - id: LD-9
     kind: rationale
-    text_sha256: 23ac9f7ef3e221c17c137b8bc57abf98c86eb192810a6b505215dcb3699f0c6e
-    display: LD-9 (2:3, in 2. The approach)
+    text_sha256: 8e8662007bef334051e7fb27126a1b8d212ad1fa4258c067e50790eef7b25a5e
+    display: LD-9 (2:4, in 2. The approach)
   - id: LD-10
     kind: rationale
     text_sha256: 1843046550417c5f0181f73352560253580c6aa167c087693e1107ca4009c884
-    display: LD-10 (2:4, in 2. The approach)
+    display: LD-10 (2:5, in 2. The approach)
   - id: LD-11
     kind: rationale
     text_sha256: 9e739f541933d4d1d8df00fdb03cd9367020a50a647274c788a6597712b088a7
-    display: LD-11 (2:5, in 2. The approach)
+    display: LD-11 (2:6, in 2. The approach)
   - id: LD-12
     kind: rationale
-    text_sha256: ad1b7c04c1fcfc741e9074d31f0ca633f99381fcbc74231707c737d7f8f70db2
-    display: LD-12 (2:6, in 2. The approach)
+    text_sha256: 7703bb437605eaf9a18a0622f49d8bd6ca374d1cdc1650f2fb0e32c607f40d72
+    display: LD-12 (2:7, in 2. The approach)
   - id: LD-13
     kind: rationale
     text_sha256: be09a77357eea3a5a5e730ef1855554921a27983de627665ad97882e28e9ef80
-    display: LD-13 (2:7, in 2. The approach)
+    display: LD-13 (2:8, in 2. The approach)
   - id: LD-14
     kind: note
-    text_sha256: 13abbc61583bba42ab2a9952404fd3e3dbfed7f4810e1241137d6a4f1dcf283c
-    display: LD-14 (3, 3. The cuts (plans; each waits for its test and, where it changes a signed requirement, for the owner's signature))
+    text_sha256: a25c956a4662a2683f50b35322af9e47c900682592044a0ce5c73a21f5b5d6ed
+    display: LD-14 (3, 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-54
+    kind: plan
+    text_sha256: 625bafbff29c24719cba598d86cf95164cb1de0f60b26fd14630d026a25fce6f
+    display: LD-54 (3:1, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-15
     kind: plan
-    text_sha256: 9159eb79fd26cce2e600cfc614c8d65bb10a40ff09e557aeab9fa52efacb1c80
-    display: LD-15 (3:1, in 3. The cuts (plans; each waits for its test and, where it changes a signed requirement, for the owner's signature))
+    text_sha256: 3b3d3e6751fc9a47a629374bf5e038e1e4b7bd9300ea6342af92fe2de4d52c1b
+    display: LD-15 (3:2, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-55
+    kind: plan
+    text_sha256: 4e28c631ea2ae82a45282399ec30b3baf8c7c09a38ddd11053bf357026157a23
+    display: LD-55 (3:3, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-56
+    kind: plan
+    text_sha256: a0dc2ff2715dfd1c8267d4cad32d022d1b5483ec1604fc30ee8fa78877dc27ff
+    display: LD-56 (3:4, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-61
+    kind: plan
+    text_sha256: 7fb8801d00dc456db95cb11fd5745b8cb65683dfd851c36f377c6f1877c6ac3d
+    display: LD-61 (3:5, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-59
+    kind: plan
+    text_sha256: faa82844ec03afe1d629012feff9e3c3bc554937b2522d146759919bebf785a3
+    display: LD-59 (3:6, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-60
+    kind: plan
+    text_sha256: ed263f8b9fde562e498d3698d99fc7d0f157e67041f24b815f7846a5a1ee7c1a
+    display: LD-60 (3:7, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-57
+    kind: plan
+    text_sha256: cd58947b2046c47dd6b91fc9e9b571010c58bdc1449fdf88d4f39957b3b072d0
+    display: LD-57 (3:8, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-62
+    kind: plan
+    text_sha256: 87a13e6ca9d0ec4c2f1c035b575c74393f18897669268a79407fbd8739e324eb
+    display: LD-62 (3:9, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
+  - id: LD-58
+    kind: plan
+    text_sha256: 450952d4024cb676dc395bade3aa88c98f6f8920f39314096dcee6ccb24f032f
+    display: LD-58 (3:10, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-16
     kind: plan
     text_sha256: c26d0145cfc61398f367cf264992d930d349fa95fb420d15e52db05ce22c1bdd
-    display: LD-16 (3:2, in 3. The cuts (plans; each waits for its test and, where it changes a signed requirement, for the owner's signature))
+    display: LD-16 (3:11, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-46
     kind: plan
-    text_sha256: d4c0339e3259338728355adac0b730761796c81f6e9d84d7f8ebb2cdbf163072
-    display: LD-46 (3:3, in 3. The cuts (plans; each waits for its test and, where it changes a signed requirement, for the owner's signature))
+    text_sha256: 1750d3aebb2be987ef90d8387e1653283bca922547b0fe53d694103bf8ec89a7
+    display: LD-46 (3:12, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-17
     kind: note
-    text_sha256: ca2a3e37ce812494951ccb34247ae11fd3f06f815e580fd569ac4746b5c7def1
-    display: "LD-17 (4, 4. The questions (plans: skill, command, MCP))"
+    text_sha256: 2f1a62d62f99ad48c43c83aab581417d0864aad108606333f786ae003ff2f415
+    display: LD-17 (4, 4. Commands, answers and the skill (plans))
   - id: LD-18
     kind: plan
-    text_sha256: 4cab2468502ddf4836e743fa2a10d52612f4dacedec1ed7b4a7b28bedd25d9d6
-    display: "LD-18 (4:1, in 4. The questions (plans: skill, command, MCP))"
+    text_sha256: d62c8a78bc1a66d81cb2f2e775eec9c557c86837506879b50d87ae4ae106a57e
+    display: LD-18 (4:1, in 4. Commands, answers and the skill (plans))
+  - id: LD-63
+    kind: plan
+    text_sha256: 7492b98ab54917496c5fa1d299bf461efff79669caf6e51081d69a72279f2ec0
+    display: LD-63 (4:2, in 4. Commands, answers and the skill (plans))
   - id: LD-19
     kind: plan
-    text_sha256: 4e12e25c9b694f2fc4cdf72bb6386c3c81cc1dd10bf38597b936a31c3274bcb1
-    display: "LD-19 (4:2, in 4. The questions (plans: skill, command, MCP))"
+    text_sha256: f74c67f148d1c7b3b5279aa1664d251f82c656b2746c7ad1d342a99056d0b8c1
+    display: LD-19 (4:3, in 4. Commands, answers and the skill (plans))
   - id: LD-20
     kind: plan
-    text_sha256: 56c03dcab30344db3b20d4e18e124a7fd0b290cba2cd9c7d5f406594e3656182
-    display: "LD-20 (4:3, in 4. The questions (plans: skill, command, MCP))"
+    text_sha256: ed4009202464a6f52ad571f1de6618b6cead87abb5f60f8579e6efcaa3a73df6
+    display: LD-20 (4:4, in 4. Commands, answers and the skill (plans))
   - id: LD-47
     kind: plan
     text_sha256: 7e897a00ade9a5a92f0e703b8d0306cbd0b39fc9544b63624732b273368a4805
-    display: "LD-47 (4:4, in 4. The questions (plans: skill, command, MCP))"
-  - id: LD-51
-    kind: rationale
-    text_sha256: a2c59406ca77240c6698a454efc7808c067733399ab6bebfd21ba31feb5f1696
-    display: "LD-51 (4:5, in 4. The questions (plans: skill, command, MCP))"
+    display: LD-47 (4:5, in 4. Commands, answers and the skill (plans))
   - id: LD-41
     kind: plan
-    text_sha256: 4152519e896b6a707eef9abbbefdfe39fd78dc3c29b5625bcff27ac553a4ea28
-    display: "LD-41 (4:6, in 4. The questions (plans: skill, command, MCP))"
-  - id: LD-21
-    kind: plan
-    text_sha256: d60a70633bf9160a919b2bcc05ad6e64dabeb419613c291c8d7b86a6259d4179
-    display: "LD-21 (4:7, in 4. The questions (plans: skill, command, MCP))"
+    text_sha256: 009036dc7567dcfa763dab99773482b5e50cd579722f59ff16a825d2f33d44de
+    display: LD-41 (4:6, in 4. Commands, answers and the skill (plans))
   - id: LD-22
     kind: flow
     text_sha256: 003e3b8ac274621c5884d6f30f8c39c049413ff6f72db4b7669325c33d4fae27
-    display: "LD-22 (4:8, in 4. The questions (plans: skill, command, MCP))"
+    display: LD-22 (4:7, in 4. Commands, answers and the skill (plans))
   - id: LD-23
     kind: note
     text_sha256: 78d73914e26a805866912233e8b44c39fb80a0d206cacfa02d60f7128ce86fc4
@@ -115,7 +151,7 @@ paragraphs:
     display: "LD-24 (5:1, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-48
     kind: data
-    text_sha256: bed6909d2c2ddb08ba55456c0835a2330c2969298d54b87be9447ec84f7a6452
+    text_sha256: e9bae1a4c7e939b4ca1ba98e3e398b77662a1523597263f06799fc84aac8979d
     display: "LD-48 (5:2, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-42
     kind: data
@@ -123,11 +159,11 @@ paragraphs:
     display: "LD-42 (5:3, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-25
     kind: flow
-    text_sha256: d6db76b2babd88374fe3917c6900f3019d20a7474e0efd7a88aff96a8271e2b8
+    text_sha256: c5bd8be7639177814fe07e6217cd9db71587e529aa04a06d79d6f4e127d917af
     display: "LD-25 (5:4, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-52
     kind: rationale
-    text_sha256: abc4daf961dd49d616d9f813de9f6de87647034c57ddc6c9c9bc61485969fa20
+    text_sha256: a5743d21257854e8dca93382185ac8a6e09e00e22c9e06a11e57fcf4eb8408f3
     display: "LD-52 (5:5, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-43
     kind: flow
@@ -151,61 +187,57 @@ paragraphs:
     display: "LD-28 (5:10, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-29
     kind: choice
-    text_sha256: d3cea60c461628013ae231ea9bbe30366c2a2bb9084ec615e5e7672a0a5ff262
+    text_sha256: ee711343775a54b6066791749708f64f4cba11827cf89481275c4b57e4c88f4e
     display: "LD-29 (5:11, in 4a. The code side: what is in force, the list, the judgements)"
-  - id: LD-30
-    kind: rationale
-    text_sha256: 1e5bd122cef5d80e5c240a89c2fd0de72eafbc3480b26e97549d9dd02e40d4c7
-    display: "LD-30 (5:12, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-49
     kind: plan
-    text_sha256: 483a8c4a4383b98b72e08a6f1b1267bccf40122ad87f87fe1efda0f6156bf169
-    display: "LD-49 (5:13, in 4a. The code side: what is in force, the list, the judgements)"
+    text_sha256: afd997cbbf2cee8e64eb7ef6e15c067baff448a12f53461e4cc89d727c5f4844
+    display: "LD-49 (5:12, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-31
     kind: note
-    text_sha256: 8470427a04924b3e15dd348a939d59bb92f90e549d62e4608b7a45456ee73e35
-    display: LD-31 (6, 5. The knowledge base (plan))
+    text_sha256: d2ca55c249ceb88d51c81f1a9080fa584e4efea0ff54a566a7c9a879c364dede
+    display: LD-31 (6, 5. Search and the knowledge base (plan))
   - id: LD-32
     kind: plan
-    text_sha256: 28687349b8884767254cf2025fd883c690f6598c557ada011eecfa68d364d8aa
-    display: LD-32 (6:1, in 5. The knowledge base (plan))
+    text_sha256: 44c5b5987cb86ac8a76e03c594ecd4f407564989d86af0aa61c9e90e413c4c50
+    display: LD-32 (6:1, in 5. Search and the knowledge base (plan))
+  - id: LD-64
+    kind: plan
+    text_sha256: 01c0c80244333ce5c58a4530c1164cf9f4c31f9a9eda09c5147a9a686b8d1f2e
+    display: LD-64 (6:2, in 5. Search and the knowledge base (plan))
   - id: LD-45
     kind: plan
-    text_sha256: 2363e3638f11efd067b58473a22320cc2a8cada5a63963013517c43823f2ffd2
-    display: LD-45 (6:2, in 5. The knowledge base (plan))
+    text_sha256: f4e10312fcbd2d6c240ddb689ad066fe25c4b6a5f73db0708aa929e54b928d36
+    display: LD-45 (6:3, in 5. Search and the knowledge base (plan))
   - id: LD-33
     kind: plan
-    text_sha256: d3be304deff0a73078637e50bc9eb69f38eea7bd8d0302fee9f6a5d115c117b9
-    display: LD-33 (6:3, in 5. The knowledge base (plan))
+    text_sha256: 0b7edef1a633541b26ed6cac74e798fdef45b27baa5bf248bffe36643da09e17
+    display: LD-33 (6:4, in 5. Search and the knowledge base (plan))
   - id: LD-34
     kind: note
     text_sha256: a2ba8bd9db887419c775548be5f70864059d80ca1cc664083303a5b23d5328b1
     display: LD-34 (7, 6. Signed requirements to sign again (plan))
   - id: LD-35
     kind: plan
-    text_sha256: 6edba797e6c38e0c1248059d5510429c4676c834301865c5f2f23e6271ed8931
+    text_sha256: 833891cf091f922d92ac571914119a053b3f09fea4e68c6301ff9b4f2c1df3fa
     display: LD-35 (7:1, in 6. Signed requirements to sign again (plan))
   - id: LD-36
     kind: note
-    text_sha256: 2570ed6efab487c71c988ed04587de552c2b62f18d0f4efa79a68f3495077a50
-    display: LD-36 (8, 7. What the tests decide (plan))
-  - id: LD-50
-    kind: note
-    text_sha256: e8b8b6479f752bdb028d9fe5835ab4dc86e3a3028dca023084f83d53f4e5a6fb
-    display: LD-50 (8:1, in 7. What the tests decide (plan))
+    text_sha256: 5e14bf71809df3a74adc38fceb214341bcf194cc952917ca1ddbc01ae236a63e
+    display: LD-36 (8, 7. How it is proven (plan))
   - id: LD-37
     kind: plan
-    text_sha256: 033dd7de818ccc9ce79c70d0250b7577773c6c117eb3f3b4a6e8496f2d4c2424
-    display: LD-37 (8:2, in 7. What the tests decide (plan))
+    text_sha256: 5921054c554793cd048687b38b3aa38271c75c460525fe6a512b26250e7b0a91
+    display: LD-37 (8:1, in 7. How it is proven (plan))
   - id: LD-38
     kind: note
     text_sha256: f584f99e2a22f660270c5baff47ff3266a52bcad1bfaab93ae271bca43efed1d
     display: LD-38 (9, 8. Smaller asks (plan))
   - id: LD-39
     kind: plan
-    text_sha256: 5b07a5f0716046b78ee3741072834a9b602439b13233035fe9dfe2f0f4495446
+    text_sha256: 29ba3093e9b33a7f46dbe61d84d5e10f5096dbf00ba63c621267094c75484376
     display: LD-39 (9:1, in 8. Smaller asks (plan))
   - id: LD-40
     kind: open
-    text_sha256: ecdf930c38c1b244fa7902f3dbd7043330a5cc33125447099ed447b0f13c3ebf
+    text_sha256: da9195a6a95f1abbae22a8a28366669ab4b37cb64fb61f23331cd1c9fcfdf33a
     display: LD-40 (9:2, in 8. Smaller asks (plan))
