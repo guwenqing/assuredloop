@@ -81,7 +81,7 @@ necessary for that, not proof of it: the tool does not check this task list.
   cases that needed a wording or typo claim, and the answers in all three
   arms.
 - **Read:** design.md 3, 5 (the equality rule), 15.
-- **Done:** #171, PR #173; the chosen changes are in validation.md B3.
+- **Done:** #171, PR #173.
 
 ### T5 Private adopter on a scratch copy
 - **Wanted:** the open request of a private adopter converted by hand on a

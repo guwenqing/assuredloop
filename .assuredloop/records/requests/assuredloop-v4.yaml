@@ -142,8 +142,8 @@ decisions:
   - id: D2
     date: 2026-10-10
     source: the agent (architect), on the owner's words 148-149
-    text: "T6, the validation decision (validation.md parts A and B). Stay: IDs on every paragraph with hidden markers; kinds; the marker links serves, builds on and changes, with bindings for every declared link; dispositions and the close rule; exact equality with no more normalization; typo marks; path and 1d checks; the requirement-words hint; results with declared inputs; facts derived from git. Change: AI hints and declared outputs (implements, verifies, documents) become optional; a new kind, approach, keeps design text with its change, with R2 links; removals are declared with removes; the record's provenance field is source, and from stays only for requirement to owner's words; seventeen gaps found in validation are decided in design.md. Go: the hint for a rule with no check. Add: a duplicate-heading lint under one parent. Cost: the records cost 1.3 to 1.6 times the work in validation, so the flexible 20% target of R12 is not yet met; the owner chose to build and measure again (input 149); a complete cost account runs in T15 and T16."
-    sha256: 2ba52016ec6a4c0bdad9f3ff2689cdbf016c3a3e72f0f4edf1e6eb83c18c3c5d
+    text: "T6, the validation decision. Stay: IDs on every paragraph with hidden markers; kinds; the marker links serves, builds on and changes, with bindings for every declared link; dispositions and the close rule; exact equality with no more normalization; typo marks; path and 1d checks; the requirement-words hint; results with declared inputs; facts derived from git. Change: AI hints and declared outputs (implements, verifies, documents) become optional; a new kind, approach, keeps design text with its change, with R2 links; removals are declared with removes; the record's provenance field is source, and from stays only for requirement to owner's words; seventeen gaps found in validation are decided in design.md. Go: the hint for a rule with no check. Add: a duplicate-heading lint under one parent."
+    sha256: 40f50d30f69e0760258b2574d48a159f83a2605b2aa140f8e11d30e26c2600dd
   - id: D3
     date: 2026-10-10
     source: "the agent (architect), by fleet mail to developer-175 for #175 (T9)"
@@ -192,8 +192,8 @@ decisions:
   - id: D12
     date: 2026-10-10
     source: the agent (architect), message to developer-181, 2026-10-10
-    text: "Level 2's fusion (T14, issue #181): reciprocal rank fusion over the rows that have vectors; a row with no vector keeps its level 1 place, because the vector list gives it no vote and must not push it down. The default query (baseline rows only) is the same under plain RRF. developer-181 chose this after seeing the visible T2 results. The held-out measure is the honest one: level 2 equals level 1 (recall 29.2% at the top 5, 58.3% at the top 10, 8 questions); plain RRF gave 41.7% and 47.9%. On 8 questions neither fusion is clearly better, and the fusion is not tuned further on these questions."
-    sha256: 124287763bc43cfee413312e8ba58228b21f92fe73d72110fe07f1d7a2b84b76
+    text: "Level 2's fusion (T14, issue #181): reciprocal rank fusion over the rows that have vectors; a row with no vector keeps its level 1 place, because the vector list gives it no vote and must not push it down. The default query (baseline rows only) is the same under plain RRF. The fusion is not tuned further."
+    sha256: 0c549a15b4545b97e7480c6bdbc42fe3003f37925b89d1747156cef4fd2d3a57
   - id: D13
     date: 2026-10-10
     source: "the agent (architect), message to developer-180 for #180 (T12)"
@@ -222,13 +222,13 @@ decisions:
   - id: D18
     date: 2026-10-10
     source: "the agent (developer-193), issue #193 (T16)"
-    text: Until T17 moves them into place, the v4 skill is skills/assuredloop/SKILL-v4.md and the v4 README is README-v4.md, beside v1's, which stay unchanged; test/v4/docs-v4.test.js checks that each al command and option they name is one that al-v4 accepts, that they name no consolidate and no record section, and that each Tier example is read as a path claim. The skill has one section per path, so an agent reads only its own path's rules, and it sends the agent to al context for the paragraphs and records that its change touches. The cost account runs the T2 developer cases of each path on the invoicer fixture, with a work agent, a records agent that follows the skill, an owner agent and a reviewer, and keeps validation.md's ratio (records-agent tokens over work-agent tokens).
-    sha256: 9fef438901a9054472fc9262ae41c2da79dfe5de77641cf60c376e2aff044124
+    text: Until T17 moves them into place, the v4 skill is skills/assuredloop/SKILL-v4.md and the v4 README is README-v4.md, beside v1's, which stay unchanged; test/v4/docs-v4.test.js checks that each al command and option they name is one that al-v4 accepts, that they name no consolidate and no record section, and that each Tier example is read as a path claim. The skill has one section per path, so an agent reads only its own path's rules, and it sends the agent to al context for the paragraphs and records that its change touches. The cost account runs the T2 developer cases of each path on the invoicer fixture, with a work agent, a records agent that follows the skill, an owner agent and a reviewer, and keeps the ratio of records-agent tokens over work-agent tokens.
+    sha256: a786bfcbca6bee9dd53fa4a7d05172b217594c0e7d83d70a9d5084040ad0dd42
   - id: D19
     date: 2026-10-10
     source: "the agent (developer-188), issue #188 (T15)"
-    text: "The scale run lives in scale/: generate.js writes the world and run.js times al on it; neither is published or changes al. The world: one central repo with 1,000 requests and 19 output repos. Each request is opened by one pull request, is implemented by one pull request in an output repo, and, except for the last 10, is consolidated and concluded by a later pull request. A change spec has from 50 to 150 paragraphs of about 60 words; about 30% of them change, add or remove a spec paragraph. The spec starts as 50 files of 37 paragraphs, and its adoption is recorded as the archived request adoption, in the form of D16. Each output repo starts with 100 code files that cite nothing. The generator writes the records in al's exact format: al index on the result changes no file. run.js times search at level 1 (--level 1), the level that al holds; a search that falls back to level 0 does not count; level 2 is not timed. The removal of rows is timed against the incremental criterion (2 minutes). The report is requests/assuredloop-v4/scale.md."
-    sha256: 7e1de9dd2e7386cdd1cd01acb440c9d5cfbec5e247c457e461f90944ad181bfb
+    text: "The scale run lives in scale/: generate.js writes the world and run.js times al on it; neither is published or changes al. The world: one central repo with 1,000 requests and 19 output repos. Each request is opened by one pull request, is implemented by one pull request in an output repo, and, except for the last 10, is consolidated and concluded by a later pull request. A change spec has from 50 to 150 paragraphs of about 60 words; about 30% of them change, add or remove a spec paragraph. The spec starts as 50 files of 37 paragraphs, and its adoption is recorded as the archived request adoption, in the form of D16. Each output repo starts with 100 code files that cite nothing. The generator writes the records in al's exact format: al index on the result changes no file. run.js times search at level 1 (--level 1), the level that al holds; a search that falls back to level 0 does not count; level 2 is not timed. The removal of rows is timed against the incremental criterion (2 minutes)."
+    sha256: f630f8281ae50f5eba29d53f31de8a6c996869baaa91aeee015cf96b6f170e44
   - id: D20
     date: 2026-10-10
     source: "the agent (architect), message to developer-188 for #199"
@@ -252,8 +252,8 @@ decisions:
   - id: D24
     date: 2026-10-11
     source: owner, chat with the architect, 2026-10-11, inputs 156-159
-    text: "Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The cost account does not meet R12's flexible target of about a fifth (t16-report.md section 9): by the context at the end, one agent's records cost 0.29 of the work on small changes and 0.80 on DC04. DC04 is large in requirements (three, with a sign-off and a design), but its code is small: 163 to 318 changed lines in the output repos, in the four runs. The records grow with the requirements and the decisions, not with the code, and no case with a large code change was measured. The owner accepts the cost for the v4 release; the cost is measured again on real features after the release. D2's cost sentence stays as history."
-    sha256: b0897fe64d12155021e05628b18c1193b3b6ef2310fffe36f867223b6465ada6
+    text: "Snapshot origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md. The owner accepts the cost of the records for the v4 release; the cost is measured again on real features after the release."
+    sha256: b25a8e34c67d0020d5487dd8f37a7415f2b9a9618ca145ae199cae4ef641658f
   - id: D25
     date: 2026-10-11
     source: owner, chat with the architect, 2026-10-11, input 160

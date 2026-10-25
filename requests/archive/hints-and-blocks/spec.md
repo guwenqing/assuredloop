@@ -26,9 +26,7 @@ promise paragraphs first, then the design that keeps them.
 - A link to an ID that does not exist: a hint. When another change removed
   the target, the hint is "target removed", and the open change aligns.
 - Two headings with the same text under the same parent (the same heading
-  path): a hint. The same text under different parents is valid. Why: the
-  OpenSpec CLI caught duplicate requirement names that the v4 model missed
-  (validation.md B6).
+  path): a hint. The same text under different parents is valid. Why: two headings with the same path make a reference ambiguous.
 - Per PR, the ID lint: IDs lost since the base, IDs used twice, and IDs used
   again after removal. Agents can remove comments near the lines they edit
   (claude-code issue #22530), so a lost ID must be caught. A lost ID is at the
@@ -155,9 +153,7 @@ has the same effect, and its PR gets the same information hint.
 - The developer's agent writes the markers in the PR, and the review reads
   them (input 98). The script writes the derived facts.
 - AI hints and declared outputs are optional. A PR never needs them. A
-  project fills AI hints only where it uses search level 2 or higher. Why: in
-  validation, no AI hint changed a verdict; their own cost was not measured
-  (validation.md section 9).
+  project fills AI hints only where it uses search level 2 or higher. Why: a PR must not depend on them, and keeping them costs tokens.
 - **AI hints** (summaries, tags, quotes):
   - Each hint records the paragraph hash it was made from. A hint is stale
     when the paragraph's hash differs, even if its quote still matches: a
