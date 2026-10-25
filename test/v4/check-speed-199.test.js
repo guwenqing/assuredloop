@@ -388,12 +388,34 @@ function named(stdout, repos, extra = {}) {
   return text;
 }
 
+// #58: al check prints the list of what is in force, which main did not
+// print: one block of lines after the findings, right before the Read line.
+const LIST_LINE = /^(list: |list basis: |list limits: |in force |proposed |\d+ further items in force: )/;
+// The text without the list block, and the block. When there is a block, it
+// must be one run of lines right before the Read line.
+function withoutList(text, r) {
+  const ls = text.split('\n');
+  const at = ls.flatMap((l, i) => (LIST_LINE.test(l) ? [i] : []));
+  if (at.length === 0) return { rest: text, list: [] };
+  assert.equal(at.at(-1) - at[0] + 1, at.length, `the list is one block:\n${show(r)}`);
+  assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the list comes right before the Read line:\n${show(r)}`);
+  return { rest: ls.filter((_, i) => !at.includes(i)).join('\n'), list: at.map((i) => ls[i]) };
+}
+
 // The run, compared with the expected exit code and text.
 // `added`: lines of findings that main did not print (#238 R3), matched by a
 // pattern; each matches one line, and the other lines are as main printed them.
+// The list of #58 is taken out first; an al check that is not refused must
+// have it, with its grouped line or its "no change selected" line.
 function sameAsMain(r, repos, expected, extra) {
   assert.equal(r.signal, null, show(r));
-  let out = named(r.stdout, repos, extra);
+  const { rest, list } = withoutList(named(r.stdout, repos, extra), r);
+  if (r.args[0] === 'check' && expected.code !== 2) {
+    assert.ok(list.some((l) => /^(list: no change selected: |\d+ further items in force: )/.test(l)), `the list of #58:\n${show(r)}`);
+  } else {
+    assert.deepEqual(list, [], `no list outside al check:\n${show(r)}`);
+  }
+  let out = rest;
   for (const re of expected.added ?? []) {
     const found = out.split('\n').filter((l) => re.test(l));
     assert.equal(found.length, 1, `one line ${re}:\n${show(r)}`);
