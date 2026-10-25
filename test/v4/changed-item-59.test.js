@@ -312,6 +312,51 @@ describe('R3: an item that changed after the sign-off (the moment of reliance is
     commitAll(w.dir, 'sign off');
     assertNotKnown(checked(w, ...ISSUES), 5);
   });
+
+  // A judgement covers the moment of reliance that held when it was recorded.
+  // A later sign-off is a new moment of reliance; an older judgement does not clear it.
+  const A = { body: 'Build the export.\n' };
+  const B = { body: 'Build the export as JSON.\n' };
+  const C = { body: 'Build the export as CSV, one file per month.\n' };
+
+  test('a judgement before the sign-off does not cover the text kept at the sign-off: judged at B, signed at C, back to B gives "changed"', (t) => {
+    const w = world(t);
+    saveItem(w, 5, A);
+    name(w, undefined, { section: true });
+    indexIssues(w);
+    commitAll(w.dir, 'name the item');
+    saveItem(w, 5, B);
+    judge(w, '#5');
+    assertNone(checked(w, ...ISSUES), 5);
+    saveItem(w, 5, C);
+    signoff(w);
+    indexIssues(w);
+    commitAll(w.dir, 'sign off');
+    assertNone(checked(w, ...ISSUES), 5);
+    saveItem(w, 5, B);
+    assertChanged(checked(w, ...ISSUES), 5);
+  });
+
+  test('a judgement before a sign-off with no text kept: "not known"; a new judgement clears it, and a later change brings the hint back', (t) => {
+    const w = world(t);
+    saveItem(w, 5, A);
+    name(w, undefined, { section: true });
+    indexIssues(w);
+    commitAll(w.dir, 'name the item');
+    saveItem(w, 5, B);
+    judge(w, '#5');
+    commitAll(w.dir, 'the change of #5 was read');
+    assertNone(checked(w, ...ISSUES), 5);
+    signoff(w);
+    commitAll(w.dir, 'sign off');
+    assertNotKnown(checked(w, ...ISSUES), 5);
+    judge(w, '#5');
+    assertNone(checked(w, ...ISSUES), 5);
+    commitAll(w.dir, 'the item was read after the sign-off');
+    assertNone(checked(w, ...ISSUES), 5);
+    saveItem(w, 5, C);
+    assertChanged(checked(w, ...ISSUES), 5);
+  });
 });
 
 describe('R3: when al cannot tell, it says so, and never reports the item as unchanged', () => {
