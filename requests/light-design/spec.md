@@ -485,7 +485,10 @@ in YAML or JSON, it is the field `design`, with one path or a list of
 paths. Each path names one document of the spec repo, or, written
 `<repo>:<path>`, of an output repo in the configuration, read at its
 selected commit. A saved work item gives a design only when a task of the
-change's own request names it. A plain mention, or a link for comparison or for
+change's own request names it. Its design is its `design` field, or a line
+in its body that starts with `Design:`, because the body is Markdown text.
+`al` reads saved items only from JSON files today; items in YAML or
+Markdown files are a later change. A plain mention, or a link for comparison or for
 history, does not make a document the change's design. `al` reads the
 named document at the selected revision and shows where the design line
 is, the document's state as `al` reads it (an ADR's status; for another
@@ -518,6 +521,13 @@ The list for a change, in plain code, with no model. It is the same with or
 without search. The change is what `al check` selects: its base to the
 working tree, with the untracked files, and with `.assuredloop/` left out.
 With no base, or an empty change, the list says "no change selected".
+In an output repo, the items in force are the central repo's at its
+selected commit: the list shows the ones that the change cites as
+`central:<ID>` and the ones whose scope is all files, and names the rest
+in the grouped line. File scopes name files of the central repo, so they
+are not matched there, and the limits say so. When the central repo cannot
+be read, the limits give the reason, and the list does not say that no
+item is in force.
 
 - The items in force that the change edits, and the ones that it cites: a
   line that it adds or removes names the ID as a whole word. A paragraph's
