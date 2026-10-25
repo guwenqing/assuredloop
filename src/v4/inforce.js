@@ -12,6 +12,7 @@ import { join, posix } from 'node:path';
 import { recordPath } from './base.js';
 import { fileAt, git } from './git.js';
 import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from './markers.js';
+import { taskItems } from './issues.js';
 import { namedIds, outputRepos } from './repos.js';
 import { ADR_FILE, SPEC, symlinkOn } from './scope.js';
 import { signedBy } from './state.js';
@@ -303,8 +304,10 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
       body.push(...designShown(d.path, `design line ${where}`, where));
     }
   }
-  // With --issues: the field design of each saved work item (one path or a list).
-  for (const it of issues?.items ?? []) {
+  // With --issues: the field design (one path or a list) of each saved work
+  // item that a task of the change's own request names (LD-48, D2).
+  const named = issues ? taskItems(top, now, issues.items).named.filter((n) => ownNames.has(n.r.name)).map((n) => n.it) : [];
+  for (const it of new Set(named)) {
     if (it.design === undefined) continue;
     const paths = [].concat(it.design);
     for (const path of paths) {
