@@ -1,0 +1,15 @@
+schema: assuredloop/1
+request: public-cleanup
+tier: 1d
+status: open
+sources:
+  - file: 2026-10-25-owner-words.md
+    kind: owner-words
+    sha256: 1792a50b44682e3061d2c9c10bc406f812be2cb928e15e1db15ad46062a7c63d
+    taken: 2026-10-25T20:39Z
+requirements: []
+signoff: []
+decisions: []
+tasks: []
+bindings: []
+dispositions: []

@@ -51,11 +51,6 @@ and names the embedding model's library as an optional peer dependency.
   small fixed test embedder for exact results, plus one smoke test with a real
   model. Validation compares level 1 with level 2 on the golden questions, so
   the default is checked, not assumed.
-- The first check (T14): on 8 held-out questions over the small invoicer
-  fixture, level 2 equalled level 1, with recall of 29% in the top 5 and 58%
-  in the top 10. So level 2 showed no measured gain at that size. It stays
-  the default (input 130), and it is measured again on a larger real corpus
-  before the release.
 
 <!-- SP-6 component serves:R1,assuredloop-v4/R10 builds-on:SP-3 -->
 
