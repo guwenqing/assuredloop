@@ -7,7 +7,7 @@ import { parse } from 'yaml';
 import { exists, read, recordPath, sha256 } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { fileAt, filesAt, git } from './git.js';
-import { KINDS, groupOf, lf, parseMarkdown } from './markers.js';
+import { KINDS, groupOf, lf, parseMarkdown, withoutScope } from './markers.js';
 import { frameOf, requirements, signedText } from './request-md.js';
 import { SIGNED } from './snapshot.js';
 import { ADR_FILE, SPEC, adrId, docsInScope, parseScopes, symlinkOn } from './scope.js';
@@ -29,7 +29,7 @@ function names(top, rev, dir, folders) {
 }
 
 // The text after an ADR's Status line: what must not change once it is accepted.
-const adrBody = (text) => text.replace(/\r\n?/g, '\n').replace(/^\s*Status:[^\n]*\n?/, '').replace(/^\n+/, '');
+const adrBody = (text) => withoutScope(text.replace(/\r\n?/g, '\n')).replace(/^\s*Status:[^\n]*\n?/, '').replace(/^\n+/, '');
 
 // The same with the line of the heading marker left out: what must not change
 // when links are added to that marker (schema.md 5).
