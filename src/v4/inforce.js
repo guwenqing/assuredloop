@@ -364,6 +364,6 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     + 'scope changed in this change = the change edits its files: scope; by scope = its files: scope matches a file that the change touches; all files = its scope is files:**; '
     + 'proposed = this change\'s own signed requirements and design, not in force; the grouped line names every other item in force');
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
-    + `al check --full shows the text of every item, al context <ID>${central ? ' in the central repo shows' : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
+    + `al check --full shows the text of every item, al context <ID>${central ? ` --at ${central.sha.slice(0, 7)} in the central repo shows` : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
   return { body, findings };
 }
