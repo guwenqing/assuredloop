@@ -43,12 +43,12 @@
 // No model and no network. Nothing here reads src/.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   al, appendSection, baseProject, commitAll, doc, editFile, git, hashOf, index, newRequest, ok, organized, read, req,
-  show, write, writeConfig, writesNothing, INVOICES, ADR3,
+  sha, show, write, writeConfig, writesNothing, INVOICES, ADR3,
 } from './helpers/project.js';
 import { conclude } from './helpers/views.js';
 import { grouped, inForce, lineOf, out } from './helpers/list-58.js';
@@ -471,7 +471,7 @@ function initRepo(dir) {
 // a line, and its working tree has one more line that is not committed.
 // <root>/invoicer: the central repo, with invoicer-web an output repo
 // selected at W1; the branch feature with the own request csv-export.
-function outputWorld(t) {
+function outputWorld(t, { webFiles = {} } = {}) {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'al-v4-64-outputs-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const web = join(root, WEB);
@@ -481,6 +481,7 @@ function outputWorld(t) {
   commitAll(web, 'stream');
   git(web, 'checkout', '-q', '-b', 'feature');
   write(web, 'src/stream.js', 'export const rows = 1;\nexport const total = true;\n');
+  for (const [path, text] of Object.entries(webFiles)) write(web, path, text);
   const w1 = commitAll(web, 'the total row');
   write(web, 'src/stream.js', 'export const rows = 1;\nexport const total = true;\nexport const draft = 1;\n');
 
@@ -727,4 +728,134 @@ test('#64 identity, control: a new file that .gitignore ignores keeps the judgem
   const r = check(dir);
   assert.equal(headerLine(r), header({ n: 1, c: 1 }), show(r));
   assert.ok(judgement(r, 'INV-41').endsWith(' · current'), show(r));
+});
+
+// =====================================================================
+// Five cases from the review of #64
+
+test('#64 review 1: the identity keeps the requirement version: R1 edited and restored to its exact old text (v3) makes the judgement stale', (t) => {
+  const dir = world(t);
+  sourceCommit(dir);
+  const first = 'R1 complies: one month is one file.';
+  note(dir, judged(first, 'Item: "download one month as one CSV file"', 'Test: tests not examined'));
+  index(dir);
+  const head = short(dir);
+  let r = check(dir);
+  assert.ok(judgement(r, 'R1').startsWith('judgement R1 version v1 complies · '), show(r));
+  assert.ok(judgement(r, 'R1').endsWith(' · current'), show(r));
+
+  const md = `requests/${NAME}/request.md`;
+  editFile(dir, md, 'as one CSV file.', 'as one CSV file per month.');
+  index(dir);
+  editFile(dir, md, 'as one CSV file per month.', 'as one CSV file.');
+  index(dir);
+  r = check(dir);
+  const l = judgement(r, 'R1');
+  assert.ok(l.startsWith('judgement R1 version v3 complies · '), `the version is v3:\n${show(r)}`);
+  assert.ok(l.endsWith(` · stale: judged at ${head}`), `the same text at another version is stale:\n${show(r)}`);
+});
+
+test('#64 review 2: an output repo that cannot be read: "not known: invoicer-web cannot be read (<reason>)", counted as not known when judged', (t) => {
+  const dir = world(t, (d) => writeConfig(d, [{ file: SPEC, prefix: 'INV' }], {
+    repo: 'invoicer', outputs: [{ name: WEB, path: '../al-v4-64-no-such-clone' }],
+  }));
+  sourceCommit(dir);
+  note(dir, judged(...J41_ITEMS));
+  index(dir);
+  const r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, k: 1 }), show(r));
+  const l = judgement(r, 'INV-41');
+  assert.doesNotMatch(l, / · current$/, show(r));
+  assert.match(l, / · not known: invoicer-web cannot be read \(.+\)$/, show(r));
+});
+
+const RFC_TEXT = 'The stream writer sends one row at a time.';
+
+test('#64 review 3: an item of a named design document (LD-48) is proposed by this change, with the hash of its text as version', (t) => {
+  const dir = world(t);
+  sourceCommit(dir);
+  write(dir, 'docs/rfc.md', doc([['RFC-1 component', RFC_TEXT]]));
+  const md = `requests/${NAME}/request.md`;
+  write(dir, md, `${read(dir, md).replace(/\n*$/, '\n')}\n## Design\n\nDesign: docs/rfc.md\n`);
+  commitAll(dir, `${NAME}: the design`);
+  const first = 'RFC-1 complies: the writer sends rows one by one.';
+  note(dir, judged(first, 'Item: "sends one row at a time"', 'Test: tests not examined'));
+  const r = check(dir);
+  assert.equal(judgement(r, 'RFC-1'), line({
+    id: 'RFC-1', v: sha(RFC_TEXT).slice(0, 12), verdict: 'complies', at: at(dir, first),
+    results: ['item quote found; item proposed by this change', 'tests not examined'], identity: 'identity not kept: run al index',
+  }), show(r));
+});
+
+test('#64 review 3: an item of a design document in an output repo, read at its selected commit, is proposed by this change', (t) => {
+  const { dir } = outputWorld(t, { webFiles: { 'docs/rfc.md': doc([['WEB-1 component', RFC_TEXT]]) } });
+  const md = `requests/${NAME}/request.md`;
+  write(dir, md, `${read(dir, md).replace(/\n*$/, '\n')}\n## Design\n\nDesign: ${WEB}:docs/rfc.md\n`);
+  commitAll(dir, `${NAME}: the design`);
+  const first = 'WEB-1 complies: the writer sends rows one by one.';
+  note(dir, judged(first, 'Item: "sends one row at a time"', 'Test: tests not examined'));
+  const r = check(dir);
+  assert.equal(judgement(r, 'WEB-1'), line({
+    id: 'WEB-1', v: sha(RFC_TEXT).slice(0, 12), verdict: 'complies', at: at(dir, first),
+    results: ['item quote found; item proposed by this change', 'tests not examined'], identity: 'identity not kept: run al index',
+  }), show(r));
+});
+
+test('#64 review 4: an ordered item and an indented top-level item are judgements; "1) a loose remark" is not read; the usual sub-items stay sub-items', (t) => {
+  const dir = world(t);
+  sourceCommit(dir);
+  const indented = '  - INV-13 violates: no code checks the line count.';
+  const ordered = '1. INV-41 complies: the link expires 30 minutes after the email.';
+  const loose = '1) a loose remark';
+  write(dir, NOTE, [
+    '# Review', '', 'Free text.', '',
+    indented, '    - Item: "at least one line"', '    - Test: no test found', '',
+    ordered, '   - Item: "MUST expire 30 minutes after the email is sent"', '   - Test: tests not examined', '',
+    loose, '',
+  ].join('\n'));
+  let r = check(dir);
+  assert.equal(headerLine(r), header({ n: 2, u: 2, r: 1 }), show(r));
+  const u = 'identity not kept: run al index';
+  const ls = judgementLines(r);
+  assert.equal(ls.length, 3, show(r));
+  assert.equal(ls[0], line({ id: 'INV-13', v: v12(dir, SPEC, 'INV-13'), verdict: 'violates', at: lineOf(dir, NOTE, indented),
+    results: ['item quote found; item in force', 'no test found'], identity: u }), show(r));
+  assert.equal(ls[1], line({ id: 'INV-41', v: v12(dir, SPEC, 'INV-41'), verdict: 'complies', at: lineOf(dir, NOTE, ordered),
+    results: ['item quote found; item in force', 'tests not examined'], identity: u }), show(r));
+  assert.match(ls[2], new RegExp(`^judgement not read · ${NOTE}:${lineOf(dir, NOTE, loose)}: (1\\) )?a loose`), show(r));
+
+  // Control: "- X" with "  - Item:" reads Item as a sub-item of X.
+  note(dir, judged(...J41_ITEMS));
+  r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, u: 1 }), show(r));
+  assert.ok(judgement(r, 'INV-41').includes(' · item quote found; item in force · '), show(r));
+});
+
+test('#64 review 5a: a symlink committed with the note before any al index: al index then gives current', (t) => {
+  const dir = world(t);
+  write(dir, 'src/export.js', EXPORT_JS);
+  symlinkSync('export.js', join(dir, 'src/link.js'));
+  note(dir, judged(...J41_ITEMS));
+  commitAll(dir, `${NAME}: the export, a link and the review`);
+  index(dir);
+  const r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, c: 1 }), show(r));
+  assert.ok(judgement(r, 'INV-41').endsWith(' · current'), show(r));
+});
+
+test('#64 review 5b: chmod +x of a file that the change changed, with no content change, makes the judgement stale', (t) => {
+  const dir = world(t);
+  if (git(dir, 'config', '--bool', 'core.fileMode') === 'false') {
+    t.skip('core.fileMode is false in this repo');
+    return;
+  }
+  sourceCommit(dir);
+  note(dir, judged(...J41_ITEMS));
+  index(dir);
+  const head = short(dir);
+  assert.ok(judgement(check(dir), 'INV-41').endsWith(' · current'), 'current after al index');
+  chmodSync(join(dir, 'src/export.js'), 0o755);
+  const r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, s: 1 }), show(r));
+  assert.ok(judgement(r, 'INV-41').endsWith(` · stale: judged at ${head}`), show(r));
 });
