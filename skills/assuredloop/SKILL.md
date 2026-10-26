@@ -26,11 +26,11 @@ builds on, changes or removes. Copy no spec text, and write no "from A to B".
 Each paragraph has a hidden marker line before it, with a blank line on each
 side: `<!-- SP-4 rule serves:R2 builds-on:INV-12 -->`. Kinds: promise
 (purpose, scope, rule, limit, definition), design (component, interface, data,
-flow, choice, approach), informative (rationale, example, open), note,
-change-only (plan, step, migration). Links: serves, builds-on, changes,
+flow, choice), approach (how this change is built), informative (rationale,
+example, open), note, change-only (plan, step, migration). Links: serves, builds-on, changes,
 removes, explains, illustrates, resolved-by, governed-by, for; an ADR's heading
 takes decides, source and supersedes. `files:<glob>,<glob>` sets a file scope.
-A promise or design paragraph needs a link. In `specs/`, write
+A promise, design or approach paragraph needs a link. In `specs/`, write
 `serves:<name>/R<n>`. Write a new paragraph with no marker, run
 `al spec --add-ids <file> --yes`, then write its kind and links. Keep a marker
 with its paragraph. Never renumber an ID, and never use one again.
@@ -79,11 +79,11 @@ A judgement, then a consolidation judgement, which names the spec paragraphs
 that hold the piece now:
 
 ```markdown
-- INV-41 complies: the link expires 30 minutes after the email.
-  - Item: "MUST expire 30 minutes after the email is sent"
-  - Code (src/export.js): "export const ttl = 30;"
-  - Test (test/export.test.js): "assert.equal(ttl, 30)"
-- SP-3 complies: a link that lives 24 hours, now in INV-41.
+- INV-41 complies: the link expires 24 hours after it is created.
+  - Item: "MUST expire 24 hours after it is created"
+  - Code (src/export.js): "export const ttlHours = 24;"
+  - Test (test/export.test.js): "assert.equal(ttlHours, 24)"
+- SP-3 complies: the 24-hour link is now in INV-41.
   - Item (SP-3): "A shared export link lives for 24 hours"
   - Spec (INV-41): "The export link MUST expire 24 hours after it is created."
 ```
