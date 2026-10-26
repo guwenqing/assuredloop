@@ -215,20 +215,29 @@ const findingLine = (f, places = '') => `${f.severity} ${f.code} ${f.where} ${f.
 // (LD-47): each ID in the message that al knows in `now`, or else at the
 // base in `was`, and the finding's own ID when `where` is not its place.
 // A word that names nothing al knows (SHA-256) is not listed, and neither is
-// a bare R, Q, D, S or T number or another repo's ID.
+// a bare R, Q, D, S or T number or another repo's ID. A bare ID that is no
+// spec ID may be a paragraph of the finding's own open request (named by its
+// ID or its place), and is shown with that request's name.
 export function placesOf(now, was, base, f) {
   const parts = [];
+  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(f.id)?.[1] ?? /^requests\/(?!archive\/)([^/]+)\//.exec(f.where)?.[1] ?? null;
   for (const written of namedIds(`${f.id} ${f.message}`, { qualified: false })) {
     if (written.startsWith('central:') || /^[RQDST]\d+$/.test(written)) continue;
-    const t = qualify(written, null);
-    const here = placeOfTarget(now, t);
-    const there = !here && was ? placeOfTarget(was, t) : null;
+    let name = written;
+    const find = (state) => (state ? placeOfTarget(state, qualify(name, null)) : null);
+    let here = find(now);
+    let there = here ? null : find(was);
+    if (!here && !there && request && !written.includes('/')) {
+      name = `${request}/${written}`;
+      here = find(now);
+      there = here ? null : find(was);
+    }
     if (!here && !there) continue;
-    if (written === f.id && f.where === (here ?? `${there} at the base ${base.slice(0, 7)}`)) continue;
+    if ((written === f.id || name === f.id) && f.where === (here ?? `${there} at the base ${base.slice(0, 7)}`)) continue;
     if (f.message.includes(`${written} (${here ?? there}`)) continue;
-    parts.push(here ? `${written} ${here}` : `${written} at the base ${base.slice(0, 7)} ${there}`);
+    parts.push(here ? `${name} ${here}` : `${name} at the base ${base.slice(0, 7)} ${there}`);
   }
-  return parts.length ? ` · places: ${parts.join(', ')}` : '';
+  return parts.length ? ` · places: ${[...new Set(parts)].join(', ')}` : '';
 }
 
 // The findings of al check on the working tree, and each one's line with
@@ -300,9 +309,12 @@ function requestView(state, r, audit) {
 // the tier when request.md has no Tier: line that says it.
 function recordsLine(r) {
   const tier = /^Tier:\s*(\S+)/m.exec(r.md)?.[1];
-  const facts = `${tier && tier === r.tier ? '' : 'the tier, '}the sign-offs, the requirement versions, the tasks and the close lines`;
-  if (r.recordError || !r.data) return line('Records', `al's record ${recordPath(r.name)} cannot be read (${r.recordError ?? 'it is not there'}), so ${facts} are not known`);
-  return line('Records', `only al's record ${recordPath(r.name)} holds ${facts} below`);
+  if (r.recordError || !r.data) return line('Records', `al's record ${recordPath(r.name)} cannot be read (${r.recordError ?? 'it is not there'}), so its sign-offs, versions, tasks and close lines are not known`);
+  const has = (key) => list(r.data[key]).length > 0;
+  const facts = [...(tier && tier === r.tier ? [] : ['the tier']), ...(has('signoff') ? ['the sign-offs'] : []), ...(has('requirements') ? ['the requirement versions'] : []),
+    ...(has('tasks') ? ['the tasks'] : []), ...(has('closes') ? ['the close lines'] : [])];
+  if (!facts.length) return line('Records', `al's record ${recordPath(r.name)} holds no sign-off, task or close line`);
+  return line('Records', `only al's record ${recordPath(r.name)} holds ${facts.length > 1 ? `${facts.slice(0, -1).join(', ')} and ${facts.at(-1)}` : facts[0]} below`);
 }
 
 // --audit: the whole trace of request `r`.
@@ -438,11 +450,13 @@ function idView(state, id, full) {
   }
   body.push(openChanges(state, who));
   // Cited: its own marker line is no citation; a change spec's paragraph is
-  // also cited by its bare ID inside its request's folder.
+  // also cited by its bare ID inside its request's folder; `central:<ID>`
+  // names this repo's item only in the central repo.
+  const central = isCentral(state.config);
   body.push(...citedLines(state, t.req ? [who, p.id] : [p.id], {
     full,
     counts: (c) => !(c.file === p.file && c.line === p.line)
-      && (!t.req || c.ids.includes(who) || c.ids.includes(`central:${who}`) || (c.file.startsWith(`${r.dir}/`) && c.ids.includes(p.id))),
+      && (c.ids.includes(who) || (central && c.ids.includes(`central:${who}`)) || (!!t.req && c.file.startsWith(`${r.dir}/`) && c.ids.includes(p.id))),
   }));
   body.push(...checkLines(state, t.req ? who : p.id, !t.req));
   const hints = hintsNow(state);
