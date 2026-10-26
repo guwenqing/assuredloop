@@ -55,6 +55,11 @@ decisions:
     sha256: 6905fb38d613641a0947e182ae57162b4f174210fe20790888276318a62609b4
     clarifies:
       - R1
+  - id: D4
+    date: 2026-10-26
+    source: the agent (architect)
+    text: "A saved work item may be YAML with the fields of a JSON item, or Markdown: a header of Key: value lines (URL, Number, Repository, Ref, State, Parent), the body, then a section for each comment that starts with ## Comment <k>, with (minimized) for a hidden comment; every .md file of the folder is read as an item; the list items-out-of-reach: in the committed config names the items that the CI token cannot read, and al gives one info line for those that are not in the folder (LD-39, LD-48)."
+    sha256: 3f456faab897d000eaec8a85620d11e24cdfd5de316b77deb626a176db49c06e
 tasks: []
 bindings:
   - { holder: light-design/LD-22, link: serves, target: light-design/R3, holder_sha256: d4c1e6191412234cfabdab556e87dc0192a853c522f64af8b8aa3f09a7e86fab, target_sha256: 9f5dc55ba2f2312e15674d7926ccd30725030d3a240fa139ea2cbd33326239b4, target_version: 1 }
@@ -70,7 +75,7 @@ bindings:
   - { holder: light-design/LD-42, link: serves, target: light-design/R1, holder_sha256: afd2eeb7bbf4ba841a4b301e5dbc93f4a12b2f8dc41c700b69b66b613dc28a50, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
   - { holder: light-design/LD-43, link: serves, target: light-design/R1, holder_sha256: b6d936d5598fedffc6a7fabdf64be91ef67d32213a4e9deef7bb68017cc1ea62, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
   - { holder: light-design/LD-44, link: serves, target: light-design/R2, holder_sha256: 9f49953cd260d43f0dc3bad643fa1cfa97eb13df326bad630f5a9a14a1c5ce4e, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
-  - { holder: light-design/LD-48, link: serves, target: light-design/R1, holder_sha256: 39819e90c559ccd23647de74a0ab42b09a8f8b9ee66e56cf01de99eba7f2cbb0, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: light-design/LD-48, link: serves, target: light-design/R1, holder_sha256: 17d96eb5368c44afa75687e4f11dca2850ea2e040feb01189639b905eb367481, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
   - { holder: light-design/LD-65, link: serves, target: light-design/R2, holder_sha256: 9d027bc8ccc9beb6dd68b2d9ee1a363d6e48737d0fecfd61a148ced41fdb91b5, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
   - { holder: light-design/LD-65, link: builds-on, target: light-design/LD-27, holder_sha256: 9d027bc8ccc9beb6dd68b2d9ee1a363d6e48737d0fecfd61a148ced41fdb91b5, target_sha256: 8c782536b1c43f695db72e149597b7398fca53d5be81e9a23d0e5bd4c688518a }
   - { holder: light-design/LD-66, link: serves, target: light-design/R2, holder_sha256: 419162bee2b5e154f48d692c7d2e8e10cfb8e83d94e2f71aea803353dc252316, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
@@ -92,6 +97,15 @@ bindings:
   - { holder: light-design/LD-58, link: changes, target: SCH-28, holder_sha256: 30304e20e34ede0adf6aacd8440bb44e2910929925de18633c9f2ce2ecfb599f, target_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197 }
   - { holder: light-design/LD-58, link: changes, target: SCH-32, holder_sha256: 30304e20e34ede0adf6aacd8440bb44e2910929925de18633c9f2ce2ecfb599f, target_sha256: 6ab63f0323fb6f27cedd312e47a22c369878293ed81f4b3667f89b92eb617f46 }
   - { holder: light-design/LD-58, link: changes, target: SCH-35, holder_sha256: 30304e20e34ede0adf6aacd8440bb44e2910929925de18633c9f2ce2ecfb599f, target_sha256: 59f5b645dc51eb06e44695da266f438c77a79af9be9433e0f6cae6c8068c2d93 }
+  - { holder: light-design/LD-39, link: changes, target: DES-94, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: 6073604ae935e59a9d4c2566ce3de0a91e17ef7f5b19b9e8a373d4ea5635fbb3 }
+  - { holder: light-design/LD-39, link: changes, target: DES-96, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: c52e17a2941652184269710826dbbc5fc54f3d7f7c3ed5c91870a1f131b86995 }
+  - { holder: light-design/LD-39, link: changes, target: DES-97, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: f69326e8cc8f2c0ee78725d318e78e4619816ff423a89227c92ccb53e29d54d5 }
+  - { holder: light-design/LD-39, link: changes, target: DES-114, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: 59bebe8d33b8f80b1da384dfddd7e928f6b04218786511c3e3e9bc16da63ca58 }
+  - { holder: light-design/LD-39, link: changes, target: DES-115, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: 58b257fe51da470e24bdcca29252f2abf88316f28aa0a5e29f1b825a3d989352 }
+  - { holder: light-design/LD-39, link: changes, target: DES-116, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: 2b99d5de201e1a0dce28172e234a826e4d94d3a628a47cde52d1d3957a0f7227 }
+  - { holder: light-design/LD-39, link: changes, target: DES-117, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: cae58012a3e57909d596515f77e848cd910834790fc0f1b97f74195b8cdb7cf0 }
+  - { holder: light-design/LD-39, link: changes, target: DES-118, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: f87e7d74abbcdf7aa69c0b4048e044275777e9fc158fe4f168b8d9728f1071d8 }
+  - { holder: light-design/LD-39, link: changes, target: SCH-40, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: 53563512fe2c39d87ef964bd5c1a562777fc4e384590b9343e4e249834bf07e4 }
 dispositions: []
 own_edits:
   - { paragraph: DES-29, sha256: 1b8cff7c180353c52362e9279f244f65c276f7feca15716b30b5ad276274aea8, kept: 2026-10-26T06:48Z }
@@ -112,3 +126,12 @@ own_edits:
   - { paragraph: SCH-35, sha256: 3456c733ab694ac20883186bc4f259f84ee5e5cd95516753eac619812b3ae9c2, kept: 2026-10-26T06:48Z }
   - { paragraph: DES-37, sha256: de1a2f1d284dd0b00af5997ab0c0bc72a57be3f586fed0a6e99c9f0aa69adf2a, kept: 2026-10-26T06:49Z }
   - { paragraph: DES-37, sha256: fd89c30065f90ca17a2b4e104534b07b9ecac856ced9eb491a8c69c2351d033c, kept: 2026-10-26T08:14Z }
+  - { paragraph: DES-94, sha256: d231b2e1083f54a48a4fde18a017f4eeba2f134a50cb10e07d1fcb0f245179e5, kept: 2026-10-26T09:00Z }
+  - { paragraph: DES-96, sha256: 6fb7af616fabb929cf104934eecac9db67baf21f15799c13a2629f27d09f9611, kept: 2026-10-26T09:00Z }
+  - { paragraph: DES-97, sha256: e5631f06f1b115bfb2a563b8b4b8cc5aaa082f00de6cf7e5fc7381741cbabb64, kept: 2026-10-26T09:00Z }
+  - { paragraph: DES-114, sha256: 59bebe8d33b8f80b1da384dfddd7e928f6b04218786511c3e3e9bc16da63ca58, kept: 2026-10-26T09:00Z }
+  - { paragraph: DES-115, sha256: 58b257fe51da470e24bdcca29252f2abf88316f28aa0a5e29f1b825a3d989352, kept: 2026-10-26T09:00Z }
+  - { paragraph: DES-116, sha256: 2b99d5de201e1a0dce28172e234a826e4d94d3a628a47cde52d1d3957a0f7227, kept: 2026-10-26T09:00Z }
+  - { paragraph: DES-117, sha256: cae58012a3e57909d596515f77e848cd910834790fc0f1b97f74195b8cdb7cf0, kept: 2026-10-26T09:00Z }
+  - { paragraph: DES-118, sha256: f87e7d74abbcdf7aa69c0b4048e044275777e9fc158fe4f168b8d9728f1071d8, kept: 2026-10-26T09:00Z }
+  - { paragraph: SCH-40, sha256: 53563512fe2c39d87ef964bd5c1a562777fc4e384590b9343e4e249834bf07e4, kept: 2026-10-26T09:00Z }
