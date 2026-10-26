@@ -51,7 +51,7 @@ import {
   show, write, writeConfig, writesNothing, INVOICES, ADR3,
 } from './helpers/project.js';
 import { conclude } from './helpers/views.js';
-import { lineOf, out } from './helpers/list-58.js';
+import { grouped, inForce, lineOf, out } from './helpers/list-58.js';
 
 const SPEC = 'specs/invoices.md';
 const NAME = 'csv-export';
@@ -640,4 +640,31 @@ test('#64 the same output twice for the same state', (t) => {
   const two = check(dir);
   assert.equal(two.stdout, one.stdout, show(two));
   assert.equal(headerLine(one), header({ n: 2, c: 2, r: 1 }), show(one));
+});
+
+// =====================================================================
+// A review note is no citation in the in-force list (the architect's
+// decision on #64): an ID that only requests/*/review.md names is not
+// shown as "cited (requests/<name>/review.md:...)"; it stays named in the
+// grouped line, or on another basis that it has.
+
+test('#64 the in-force list: an ID named only in review.md is not cited and stays in the grouped line; the same ID cited in a source file is cited from that file only', (t) => {
+  const dir = world(t);
+  sourceCommit(dir);
+  note(dir,
+    judged('INV-13 violates: no code checks the line count.', 'Item: "at least one line"', 'Test: no test found'),
+    judged('ADR-3 unclear: the link is not signed here.', 'Item: "a link must not be guessed"', 'Test: tests not examined'));
+  let r = check(dir);
+  assert.deepEqual(out(r).filter((l) => l.startsWith('in force ') && l.includes('review.md')), [], `no in force line cites review.md:\n${show(r)}`);
+  let g = grouped(r);
+  for (const id of ['INV-13', 'ADR-3']) assert.ok(g.unknown.includes(id) || g.mismatch.includes(id), `${id} stays in the grouped line:\n${show(r)}`);
+
+  // Control: INV-13 cited in a source file as well.
+  write(dir, 'src/lines.js', '// INV-13: at least one line\n');
+  commitAll(dir, `${NAME}: the line rule`);
+  r = check(dir);
+  assert.ok(inForce(r, 'INV-13').startsWith('in force INV-13 cited (src/lines.js:1) · '), `cited from src/lines.js only:\n${show(r)}`);
+  assert.deepEqual(out(r).filter((l) => l.startsWith('in force ') && l.includes('review.md')), [], `no in force line cites review.md:\n${show(r)}`);
+  g = grouped(r);
+  assert.ok(g.unknown.includes('ADR-3') || g.mismatch.includes('ADR-3'), `ADR-3 stays in the grouped line:\n${show(r)}`);
 });
