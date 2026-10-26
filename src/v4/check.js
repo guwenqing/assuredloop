@@ -19,7 +19,7 @@ import { centralLookup } from './repos.js';
 import { checks } from './checks.js';
 import { loadPhrases } from './phrases.js';
 import { loadItems, outOfReach } from './issues.js';
-import { changeInForce } from './inforce.js';
+import { changeInForce, changePaths } from './inforce.js';
 import { reviewSection } from './evidence.js';
 import { mapSection } from './map.js';
 import { index, isCentral } from './indexer.js';
@@ -34,9 +34,14 @@ export function check(args) {
     if (args.opts.at !== undefined) return atCommit(args);
     // A refusal writes nothing: the settings are read before al index runs.
     settings(args);
+    // A run never changes which requests are the change's own (LD-24,
+    // LD-63): they are read from the working tree before al index writes.
+    const base = baseOf(args.top)?.commit ?? null;
+    const ownPaths = base ? changePaths(args.top, base) : null;
     const indexed = runIndex(args);
-    const out = checkAll(args);
-    return { ...out, body: [...indexed.body, ...out.body], notKnown: [...indexed.notKnown, ...out.notKnown] };
+    const out = checkAll({ ...args, opts: { ...args.opts, ownPaths } });
+    const records = recordLines(indexed.written, out.own);
+    return { ...out, body: [...records, ...indexed.body, ...out.body], notKnown: [...indexed.notKnown, ...out.notKnown] };
   } catch (e) {
     if (e instanceof Fail || !UNREADABLE.has(e.code) || !e.path) throw e;
     throw new Fail(`${relative(args.top, e.path)} cannot be read`, 'make it readable, then run al check again');
@@ -56,7 +61,7 @@ function runIndex({ top, cwd, opts }) {
     // A path that cannot be read stops al index; the checks then report it.
     const why = e instanceof Fail ? e.message : UNREADABLE.has(e.code) && e.path ? `${relative(top, e.path)} cannot be read (${e.code})` : null;
     if (!why) throw e;
-    return { body: [`index not run: ${why}`], notKnown: ['what al index would write: it did not run'] };
+    return { written: [], body: [`index not run: ${why}`], notKnown: ['what al index would write: it did not run'] };
   }
   const kinds = new Map();
   const add = (kind, entry) => kinds.set(kind, [...(kinds.get(kind) ?? []), entry]);
@@ -66,13 +71,21 @@ function runIndex({ top, cwd, opts }) {
     if (m) add(m[1], m[2]);
     else add('note', l);
   }
-  return {
-    body: [
-      ...(out.written.length ? [`records: al check wrote ${out.written.join(', ')}; commit them with this change`] : []),
-      ...[...kinds].map(([kind, entries]) => `index ${kind}: ${entries.join('; ')}`),
-    ],
-    notKnown: [],
-  };
+  return { written: out.written, body: [...kinds].map(([kind, entries]) => `index ${kind}: ${entries.join('; ')}`), notKnown: [] };
+}
+
+// The records line, in two groups (LD-63): the files to commit with the
+// change, and the records of requests that are not the change's own, which
+// al check wrote because they were not up to date. `own`: the names of the
+// own requests, or null when they are not known (no base).
+const REQUEST_RECORD = /^\.assuredloop\/records\/requests\/(?:archive\/)?([^/]+?)(?:\.yaml$|\/)/;
+function recordLines(written, own) {
+  const other = own ? written.filter((f) => { const m = REQUEST_RECORD.exec(f); return m && !own.includes(m[1]); }) : [];
+  const mine = written.filter((f) => !other.includes(f));
+  return [
+    ...(mine.length ? [`records: al check wrote ${mine.join(', ')}; commit them with this change`] : []),
+    ...(other.length ? [`records: al check also wrote ${other.join(', ')} of requests that are not this change's own: their records were not up to date`] : []),
+  ];
 }
 
 // al check --at <commit>: the answer as of that commit, read from git. Its
@@ -144,7 +157,7 @@ function checkAll(args) {
   // The ADRs' paragraphs that the branch changed, for the map too.
   if (base) changes.push(...changedParagraphs(t10.was?.adrList ?? [], t10.now.adrList, base));
   // What is in force for the change, and its design-doc hints (light-design R1).
-  const list = changeInForce(top, { now: t10.now, was: t10.was, base, issues, full: opts.full, all: opts.all });
+  const list = changeInForce(top, { now: t10.now, was: t10.was, base, issues, full: opts.full, all: opts.all, ownPaths: opts.ownPaths });
   t10.findings.push(...list.findings);
   // The map of the change and its two hints (light-design LD-56, LD-60).
   const map = mapSection(top, {
@@ -191,6 +204,7 @@ function checkAll(args) {
   else if (isShallow(top)) notKnown.unshift('IDs used before the shallow history begins');
   return {
     body,
+    own: base ? (list.own ?? []).map((r) => r.name) : null,
     read: base ? `working tree · base ${base.slice(0, 7)} (merge-base with ${found.ref})` : 'working tree · no base',
     next: nextStep([...(rootLine ? ['not ok'] : []), ...lints.map((l) => l.severity), ...t10.findings.map((f) => f.severity),
       ...central.body.map((l) => (/^not ok /.test(l) ? 'not ok' : /^hint /.test(l) ? 'hint' : 'info'))], lints.some((l) => l.code === 'no-id'),

@@ -85,6 +85,10 @@ function pathsOf(top, base) {
   return { paths, untracked };
 }
 
+// The paths of the change, for its own requests (LD-24). al check reads them
+// before its index step writes, so that a run never changes them (LD-63).
+export const changePaths = (top, base) => pathsOf(top, base).paths;
+
 // The selected change: its paths (pathsOf), and each line it adds or removes
 // outside .assuredloop/ and the review notes, as { file, line, text, removed }.
 // A review note is the review's output, not part of the change, so an ID in
@@ -263,7 +267,7 @@ const inForceLine = (it, basis) => `in force ${it.id} ${basis} · ${it.file}:${i
 // The list. Returns { body, findings, own, none }: the lines, the design-doc
 // hints, the change's own requests (none with no base, an empty change, or in
 // an output repo), and why no change is selected.
-export function changeInForce(top, { now, was, base, issues = null, full = false, all: auditAll = false }) {
+export function changeInForce(top, { now, was, base, issues = null, full = false, all: auditAll = false, ownPaths = null }) {
   // --all, the audit (LD-18, LD-44): every item in force on its own line,
   // also with no change selected. al gives no judgement; the review does.
   const audit = (none) => {
@@ -325,7 +329,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     return !(b.status === 'accepted' && b.head && a.head && b.rest === a.rest && onlyLinksAdded(b.marker, a.marker, now.kinds));
   };
 
-  const own = central ? [] : ownRequests(top, now, base, change.paths);
+  const own = central ? [] : ownRequests(top, now, base, ownPaths ?? change.paths);
   const ownNames = new Set(own.map((r) => r.name));
   const proposals = new Map();
   for (const r of [...now.requests.values()].filter((x) => x.open && !ownNames.has(x.name))) {
