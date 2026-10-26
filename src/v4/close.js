@@ -6,9 +6,12 @@
 // names and of each spec paragraph that its reason names; no person and no
 // AI writes or reads them. It clears items 2 and 3 only while they keep
 // those versions. It is not a judgement of LD-12, and it never clears item 1.
+import { git } from './git.js';
 import { isCentral } from './indexer.js';
 import { linkStates, mapped } from './map.js';
-import { qualify, signed } from './state.js';
+import { parseMarkdown } from './markers.js';
+import { SPEC, docsInScope } from './scope.js';
+import { isPromise, qualify, servesSigned, settingsAt, signed } from './state.js';
 
 const list = (x) => (Array.isArray(x) ? x : []);
 const ID_WORD = /(?<![\w-])(central:)?(ADR-[0-9]+-[0-9]+|[A-Z][A-Z0-9]*-[0-9]+)(?![\w-])/g;
@@ -89,4 +92,51 @@ export function closeRefusals(state, was, r, lines = closeLines(state, r)) {
     else if (l.fact.startsWith('not known: the link has no binding')) out.push(`${who} changes ${l.id}, and the link has no binding, so whether ${l.id} changed is not known: run al index, ${fix}`);
   }
   return out;
+}
+
+// Item 1 for a removal: each promise paragraph that a change paragraph of
+// request `r` removes by `removes`, and that is gone from specs/, when the
+// remover serves no signed requirement. This holds also for a removal that
+// an earlier PR of the same change merged, which the branch does not show.
+// Returns ["<ID> (removed by <name>/<ID>)"].
+export function unsignedRemovals(state, was, r) {
+  const central = isCentral(state.config);
+  const out = [];
+  for (const p of r.paras.values()) {
+    for (const ref of p.links.removes) {
+      const id = central && ref.startsWith('central:') ? ref.slice('central:'.length) : ref;
+      if (id.includes(':') || id.includes('/') || state.spec.has(id) || servesSigned(state, p, r.name)) continue;
+      const kind = was?.spec.get(id)?.kind ?? pastKind(state, id);
+      if (isPromise(state, p.kind) || isPromise(state, kind)) out.push({ id, line: `${id} (removed by ${r.name}/${p.id})` });
+    }
+  }
+  return out;
+}
+
+// The kind that spec paragraph `id` had in the newest commit that held it,
+// from git history, or null. First the selected commit itself; then, newest
+// first, each commit whose diff adds or removes the marker (in any spacing
+// the parser allows, in any path) or changes .assuredloop/config.yaml (which
+// can bring a marked file into scope or take it out). Each commit, then its
+// parent, is read with that commit's own config and schema.
+function pastKind(state, id) {
+  const top = state.top;
+  const rev = state.rev ?? 'HEAD';
+  const marker = `<!--[[:space:]][[:space:]]*${id}[[:space:]]`;
+  const list = (args) => (git(top, ['log', '--format=%H', ...args], { allowFail: true }) ?? '').split('\n').filter(Boolean);
+  const candidates = new Set([...list(['-G', marker, rev]), ...list([rev, '--', '.assuredloop/config.yaml'])]);
+  const ordered = (git(top, ['rev-list', rev], { allowFail: true }) ?? '').split('\n').filter((sha) => candidates.has(sha));
+  const kindAt = (at) => {
+    const { config, kinds } = settingsAt(top, at);
+    for (const d of docsInScope(top, config, at).filter((x) => x.scope === SPEC)) {
+      const p = parseMarkdown(d.text, d.path, { kinds }).paragraphs.find((x) => x.id === id);
+      if (p) return p.kind;
+    }
+    return undefined;
+  };
+  for (const at of [rev, ...ordered.flatMap((sha) => [sha, `${sha}^`])]) {
+    const kind = kindAt(at);
+    if (kind !== undefined) return kind;
+  }
+  return null;
 }
