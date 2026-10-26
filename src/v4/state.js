@@ -235,6 +235,52 @@ export function adrParagraph(state, id) {
   return m ? state.adrs.get(m[1])?.paragraphs.find((p) => p.id === id) ?? null : null;
 }
 
+// The place of a paragraph's text (LD-47): the file and the line of its
+// first line of text, never its marker line; a paragraph with no text line
+// says so.
+export const placeOf = (p) => (p.textAt ? `${p.file}:${p.textAt}` : `${p.file}: no text line`);
+
+// The line of requirement (or question) `id` of request `r`: its `### R<n>`
+// heading; 0 when request.md has none.
+export const reqLine = (r, id) => lf(r.md).split('\n').findIndex((l) => new RegExp(`^###\\s+${id}\\b`).test(l)) + 1;
+
+// The line of decision `id` of request `r`: its entry under `## Decisions`
+// in request.md; 0 when it has none there.
+export function decisionLine(r, id) {
+  const lines = lf(r.md).split('\n');
+  const at = lines.findIndex((l) => /^##\s+Decisions\s*$/.test(l));
+  if (at < 0) return 0;
+  for (let i = at + 1; i < lines.length && !/^#{1,2}\s/.test(lines[i]); i++) if (new RegExp(`^- ${id}\\b`).test(lines[i])) return i + 1;
+  return 0;
+}
+
+// The place of an ADR: the first line of text after its own marker, else
+// its first line.
+export const adrPlace = (a) => (a.head ? placeOf(a.head) : `${a.file}:1`);
+
+// The place of the item that the qualified target `t` names in `state`: a
+// spec, change spec or ADR paragraph, an ADR, a requirement or a decision.
+// Null when al cannot find it there; a decision with no line in request.md
+// says so.
+export function placeOfTarget(state, t) {
+  if (t.cross) return null;
+  if (!t.req) {
+    if (/^ADR-\d+$/.test(t.id)) { const a = state.adrs.get(t.id); return a ? adrPlace(a) : null; }
+    const p = state.spec.get(t.id) ?? adrParagraph(state, t.id);
+    return p ? placeOf(p) : null;
+  }
+  const r = state.requests.get(t.req);
+  if (!r) return null;
+  if (/^[RQ]\d+$/.test(t.id)) { const n = reqLine(r, t.id); return n ? `${r.dir}/request.md:${n}` : null; }
+  if (/^D\d+$/.test(t.id)) {
+    const n = decisionLine(r, t.id);
+    if (n) return `${r.dir}/request.md:${n}`;
+    return (Array.isArray(r.data?.decisions) ? r.data.decisions : []).some((d) => d?.id === t.id) ? `no line in ${r.dir}/request.md` : null;
+  }
+  const p = r.paras.get(t.id);
+  return p ? placeOf(p) : null;
+}
+
 export const latestVersion = (data, id) => (Array.isArray(data?.requirements) ? data.requirements : []).filter((v) => v?.id === id)
   .reduce((a, v) => (Number(v.version) > Number(a?.version ?? 0) ? v : a), null);
 

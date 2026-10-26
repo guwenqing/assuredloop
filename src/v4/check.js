@@ -21,6 +21,8 @@ import { changeInForce } from './inforce.js';
 import { reviewSection } from './evidence.js';
 import { mapSection } from './map.js';
 import { isCentral } from './indexer.js';
+import { placeOf } from './state.js';
+import { placesOf } from './views.js';
 
 // A file or folder that al check cannot read, and that no check reports as
 // not ok, stops it with a refusal: never an internal error, never a pass (#238).
@@ -66,7 +68,12 @@ function checkAll({ top, cwd, opts }) {
       continue;
     }
     lints.push(...idLints(before, head, { everUsed: used.get(scope) ?? [], removes: scope === SPEC ? removes : [] }).map(deleted));
-    changes.push(...diffParagraphs(before, head).filter((c) => c.changes.length));
+    // Each change line names the place of the paragraph's text, at the base
+    // for a removed one (LD-47).
+    const h = new Map(head.map((p) => [p.id, p]));
+    const b = new Map(before.map((p) => [p.id, p]));
+    changes.push(...diffParagraphs(before, head).filter((c) => c.changes.length)
+      .map((c) => ({ ...c, at: h.has(c.id) ? placeOf(h.get(c.id)) : `${placeOf(b.get(c.id))} at the base ${base.slice(0, 7)}` })));
   }
 
   const t10 = checks(top, { base, phrases, issues });
@@ -84,10 +91,16 @@ function checkAll({ top, cwd, opts }) {
   // A root that config sets but that is not read is a not ok, as in al index (#218).
   const rootLine = rootNotOk(top, config);
   if (rootLine) body.push(rootLine);
-  body.push(...lints.map((l) => `${l.severity} ${l.code} ${l.file}:${l.line} ${l.id ?? '-'} ${l.message}`));
-  if (base) body.push(...changes.map((c) => `${c.file} ${c.id} ${c.changes.join('+')}`));
+  // After each message, the place of each other ID that it shows (LD-47).
+  // A lint about a marker names the marker line, the place of the problem.
+  const places = (f) => placesOf(t10.now, t10.was, base, f);
+  body.push(...lints.map((l) => {
+    const f = { id: l.id ?? '-', where: `${l.file}:${l.line}`, message: l.message };
+    return `${l.severity} ${l.code} ${f.where} ${f.id} ${l.message}${places(f)}`;
+  }));
+  if (base) body.push(...changes.map((c) => `${c.at} ${c.id} ${c.changes.join('+')}`));
   if (!lints.length) body.push('ok: no marker lint');
-  body.push(...t10.findings.map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}`));
+  body.push(...t10.findings.map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}${places(f)}`));
   const notOk = Boolean(rootLine) || lints.some((l) => l.severity === 'not ok') || t10.findings.some((f) => f.severity === 'not ok');
   // In an output repo: the central IDs that the branch's changed files cite (T12).
   const central = centralLookup(top);

@@ -12,7 +12,7 @@ import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  adrParagraph, hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned, servesUnknown,
+  adrParagraph, hasBaselineEffect, isPromise, loadState, named, placeOf, qualify, requestOf, resolve, servesSigned, servesUnknown,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { LINK_WORDS, groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
@@ -139,7 +139,10 @@ export function checks(top, { base, phrases = [], issues = null }) {
   const was = base ? loadState(top, base) : null;
   const findings = [];
   const notKnown = [];
-  const at = (p) => (p ? `${p.file}:${p.line}` : '-');
+  // A finding about a paragraph names the place of its text (LD-47); a
+  // paragraph that is only at the base says so.
+  const here = new Set([...now.scopes.values()].flat().concat(now.adrList.flatMap((a) => a.paragraphs)));
+  const at = (p) => (!p ? '-' : here.has(p) ? placeOf(p) : `${placeOf(p)} at the base ${base.slice(0, 7)}`);
   const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
   const promise = (k) => isPromise(now, k);
   const open = [...now.requests.values()].filter((r) => r.open);
