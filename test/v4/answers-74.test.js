@@ -968,3 +968,45 @@ test('#74 al context pdf/R1: the marker <!-- INV-13 rule serves:pdf/R1 --> cites
   const r = context(dir, 'pdf/R1');
   assert.ok(allLabelled(r, 'Cited     ').includes(citedLine('current', SPEC, [lineOf(dir, SPEC, '<!-- INV-13 rule serves:pdf/R1 -->')])), show(r));
 });
+
+// --- only a real marker declares
+//
+// The rule "a marker's own ID is no citation" holds only for a line that al
+// reads as the marker of a paragraph: in a spec doc, a change spec or an ADR,
+// outside fenced code. Any other line that starts like a marker cites the ID.
+
+function lookalikeWorld(t) {
+  const dir = baseProject(t);
+  write(dir, 'src/view.html', '<!-- INV-12 -->\n<p>Invoices</p>\n');
+  write(dir, 'README.md', '# Notes\n\n```markdown\n<!-- INV-12 rule -->\nA paragraph.\n```\n');
+  write(dir, SPEC, `${read(dir, SPEC)}\nAn example of a marker:\n\n\`\`\`\n<!-- INV-12 data -->\n\`\`\`\n`);
+  ok(dir, ['index']);
+  return dir;
+}
+const citedIn = (r, file) => allLabelled(r, 'Cited     ').filter((l) => l.startsWith(`Cited     current ${file}: `));
+
+test('#74 al context INV-12: <!-- INV-12 --> on line 1 of src/view.html is a citing place', (t) => {
+  const dir = lookalikeWorld(t);
+  assert.equal(read(dir, 'src/view.html').split('\n')[0], '<!-- INV-12 -->', 'the fixture');
+  const r = context(dir, 'INV-12');
+  assert.deepEqual(citedIn(r, 'src/view.html'), ['Cited     current src/view.html: 1 line: 1'], show(r));
+});
+
+test('#74 al context INV-12: a fenced <!-- INV-12 rule --> on line 4 of README.md is a citing place', (t) => {
+  const dir = lookalikeWorld(t);
+  assert.equal(read(dir, 'README.md').split('\n')[3], '<!-- INV-12 rule -->', 'the fixture');
+  const r = context(dir, 'INV-12');
+  assert.deepEqual(citedIn(r, 'README.md'), ['Cited     current README.md: 1 line: 4'], show(r));
+});
+
+test('#74 al context INV-12: in specs/invoices.md a fenced <!-- INV-12 data --> cites INV-12; its real marker does not', (t) => {
+  const dir = lookalikeWorld(t);
+  const ls = read(dir, SPEC).split('\n');
+  const real = ls.indexOf('<!-- INV-12 data -->') + 1;
+  const fenced = ls.lastIndexOf('<!-- INV-12 data -->') + 1;
+  assert.ok(real > 0 && fenced > real && ls[fenced - 2] === '```' && ls[fenced] === '```', 'the fixture: the real marker first, the fenced example last');
+  const ns = citing(dir, SPEC, 'INV-12', [real]);
+  assert.ok(ns.includes(fenced), 'the fixture');
+  const r = context(dir, 'INV-12');
+  assert.deepEqual(citedIn(r, SPEC), [citedLine('current', SPEC, ns)], show(r));
+});
