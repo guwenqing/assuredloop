@@ -12,22 +12,37 @@
 //   list does not match file scopes and does not read the change's own
 //   request: scope-no-file, and design-doc without --issues; with a central
 //   repo that cannot be read, neither of the two.
+// - a check that a Not known line or a finding says did not run on all that
+//   it covers: unresolved-central with no central clone; issue-not-sub with
+//   no assuredloop-requests.json, or an item with no parent field;
+//   issue-bare-ref when the own repository is not known; unsigned-requirement
+//   and record-evidence when an original file is kept outside and not
+//   checked here, or when a record has no request.md; used-again in a
+//   shallow clone.
 //
 // Written from the requirement and the public interface only. Nothing here
 // reads src/. No model and no network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, renameSync } from 'node:fs';
+import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { cloneOf, isShallow, mergeRef, tempRoot } from './helpers/check-78.js';
 import { world as crossWorld } from './helpers/cross-repo.js';
-import { al, commitAll, git, INVOICES, project, read, show, write, writeConfig } from './helpers/project.js';
+import {
+  al, appendSection, baseProject, commitAll, editRecord, git, index, INVOICES, newRequest, organized, project, read, req, show,
+  WORDS_FILE, write, writeConfig,
+} from './helpers/project.js';
 import { world } from './helpers/map-68.js';
 
 const lines = (r) => r.stdout.split('\n');
 const OK = /^ok: nothing found by ([a-z0-9-]+(?:, [a-z0-9-]+)*)$/;
 
 function check(dir, ...args) {
-  const r = al(dir, ['check', ...args]);
+  return checkIn(dir, {}, ...args);
+}
+// al check with more environment (a worker's config folder).
+function checkIn(dir, env, ...args) {
+  const r = al(dir, ['check', ...args], { env });
   assert.equal(r.code, 0, show(r));
   return r;
 }
@@ -167,4 +182,174 @@ test('#78 control: the central repo, with an item whose files: scope matches no 
   commitAll(w.central, 'a file scope, and a source change');
   const r = check(w.central);
   assert.ok(lines(r).some((l) => l.startsWith('hint scope-no-file ') && l.includes('INV-13')), `a hint scope-no-file line for INV-13:\n${show(r)}`);
+});
+
+// =====================================================================
+// LD-41: a check that a Not known line or a finding says did not run on all
+// that it covers is not in the ok line.
+
+const notKnownOf = (r) => {
+  const found = lines(r).filter((l) => l.startsWith('Not known'));
+  assert.equal(found.length, 1, `one Not known line:\n${show(r)}`);
+  return found[0];
+};
+const says = (r, text) => assert.ok(notKnownOf(r).includes(text), `the Not known line says "${text}":\n${show(r)}`);
+
+// 11. An output repo whose changed source file cites a central ID.
+function citingBranch(t) {
+  const w = crossWorld(t);
+  git(w.web, 'checkout', '-q', '-b', 'feature');
+  write(w.web, 'src/link.js', '// The link follows central:EXP-4.\nexport const hours = 24;\n');
+  commitAll(w.web, 'a source change');
+  return w;
+}
+
+test('#78 an output repo citing central:EXP-4, the central clone absent: the ok line does not name unresolved-central, and Not known says no central ID was looked up', (t) => {
+  const w = citingBranch(t);
+  renameSync(w.central, join(w.root, 'moved-away'));
+  const r = check(w.web);
+  says(r, 'no central ID was looked up');
+  namesNone(r, ['unresolved-central']);
+});
+
+test('#78 control: an output repo citing central:EXP-4, the central clone present and the ID resolves: the ok line names unresolved-central', (t) => {
+  const r = check(citingBranch(t).web);
+  assert.ok(lines(r).some((l) => l.startsWith('info cites src/link.js:1 central:EXP-4 ')), `the ID resolves:\n${show(r)}`);
+  namesAll(r, ['unresolved-central']);
+});
+
+// 12 to 14. Work items in a folder (--issues): <root>/invoicer, with the
+// open request inv whose task T1 names an item, and <root>/items.
+const OWN_ITEM = 'https://github.com/acme/invoicer/issues/7';
+const OWN_PARENT = { number: 7, repository: { nameWithOwner: 'acme/invoicer' }, url: OWN_ITEM };
+
+function itemsWorld(t, { remote = 'git@github.com:acme/invoicer.git', ref = '#31', ownItems = true } = {}) {
+  const root = tempRoot(t, 'al-v4-78-ok-');
+  const dir = join(root, 'invoicer');
+  const items = join(root, 'items');
+  mkdirSync(dir);
+  mkdirSync(items);
+  git(dir, 'init', '-q', '-b', 'main');
+  git(dir, 'config', 'user.name', 'Fixture Author');
+  git(dir, 'config', 'user.email', 'author@example.invalid');
+  git(dir, 'config', 'commit.gpgsign', 'false');
+  if (remote) git(dir, 'remote', 'add', 'origin', remote);
+  writeConfig(dir);
+  write(dir, 'specs/invoices.md', INVOICES);
+  newRequest(dir, 'inv');
+  commitAll(dir, 'base');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  editRecord(dir, 'inv', (rec) => { rec.tasks = [{ id: 'T1', ref }]; });
+  commitAll(dir, 'inv: a task\n\nTier: 1 — inv');
+  if (ownItems) {
+    write(items, 'assuredloop-requests.json', `${JSON.stringify({ format: 'assuredloop-items/1', requests: { inv: OWN_ITEM } }, null, 2)}\n`);
+  }
+  return { dir, items };
+}
+
+// An item file in gh's shape; parent 'absent' leaves the parent field out.
+function saveItem(w, repo, n, { parent = OWN_PARENT, body = 'Nothing to hint.\n' } = {}) {
+  const item = { body, comments: [], number: n, url: `https://github.com/${repo}/issues/${n}` };
+  if (parent !== 'absent') item.parent = parent;
+  write(w.items, `${n}.json`, `${JSON.stringify(item, null, 2)}\n`);
+}
+
+const ISSUES = ['--issues', '../items'];
+
+test('#78 --issues with no assuredloop-requests.json: the ok line does not name issue-not-sub, and Not known says why', (t) => {
+  const w = itemsWorld(t, { ownItems: false });
+  saveItem(w, 'acme/invoicer', 31);
+  const r = check(w.dir, ...ISSUES);
+  says(r, 'whether the items of inv are children of its own item');
+  namesNone(r, ['issue-not-sub']);
+});
+
+test('#78 control: assuredloop-requests.json names the own item, and the named item is its child: the ok line names issue-not-sub', (t) => {
+  const w = itemsWorld(t);
+  saveItem(w, 'acme/invoicer', 31);
+  const r = check(w.dir, ...ISSUES);
+  namesAll(r, ['issue-not-sub']);
+});
+
+test('#78 --issues, the named item has no parent field: the ok line does not name issue-not-sub, and Not known says why', (t) => {
+  const w = itemsWorld(t);
+  saveItem(w, 'acme/invoicer', 31, { parent: 'absent' });
+  const r = check(w.dir, ...ISSUES);
+  says(r, 'the item has no parent field');
+  namesNone(r, ['issue-not-sub']);
+});
+
+test('#78 --issues, the request\'s own repository is not known (no remote): the ok line does not name issue-bare-ref, and Not known says why; control: with the remote, it does', (t) => {
+  const control = itemsWorld(t, { ref: 'acme/web#5' });
+  saveItem(control, 'acme/web', 5);
+  namesAll(check(control.dir, ...ISSUES), ['issue-bare-ref']);
+  const w = itemsWorld(t, { ref: 'acme/web#5', remote: null });
+  saveItem(w, 'acme/web', 5);
+  const r = check(w.dir, ...ISSUES);
+  says(r, 'issue-bare-ref check');
+  namesNone(r, ['issue-bare-ref']);
+});
+
+// 15. The original files are kept outside the repo (#66), and this machine
+// has no place for them. A worker is a config folder (XDG_CONFIG_HOME, HOME).
+test('#78 a sign-off whose original file is kept outside and not checked here: the ok line names neither unsigned-requirement nor record-evidence, and Not known says why; control: with the place set, it names both', (t) => {
+  const root = tempRoot(t, 'al-v4-78-ok-');
+  const place = join(root, 'place');
+  mkdirSync(place);
+  const worker = (name, places) => {
+    const xdg = join(root, name);
+    mkdirSync(join(xdg, 'assuredloop'), { recursive: true });
+    if (places) writeFileSync(join(xdg, 'assuredloop', 'places.yaml'), places);
+    return { XDG_CONFIG_HOME: xdg, HOME: xdg };
+  };
+  const withPlace = worker('with-place', `assuredloop: ${JSON.stringify(place)}\n`);
+  const noPlace = worker('no-place');
+  const dir = project(t);
+  writeConfig(dir, [{ file: 'specs/invoices.md', prefix: 'INV' }], { originals: { outside: 'assuredloop' } });
+  write(dir, 'specs/invoices.md', INVOICES);
+  commitAll(dir, 'base');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  const run = (args, input = '') => {
+    const r = al(dir, args, { env: withPlace, input });
+    assert.equal(r.code, 0, show(r));
+  };
+  run(['new', 'inv', '--from', '-'], 'I want to download my invoices as CSV.\n');
+  appendSection(dir, 'inv', organized([req('R1', 'Monthly CSV', 'A user MUST be able to download one month as one CSV file.', [WORDS_FILE])]));
+  run(['record', 'inv', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  commitAll(dir, 'inv: the request\n\nTier: 2 — inv');
+  namesAll(checkIn(dir, withPlace), ['unsigned-requirement', 'record-evidence']);
+  const r = checkIn(dir, noPlace);
+  says(r, 'whether inv/R1 is signed: the original file of its sign-off is not checked');
+  namesNone(r, ['unsigned-requirement', 'record-evidence']);
+});
+
+// 16. A request record with no request.md.
+test('#78 a request record with no request.md: not ok record-unreadable, and the ok line names neither record-evidence nor unsigned-requirement', (t) => {
+  const dir = baseProject(t);
+  newRequest(dir, 'inv');
+  appendSection(dir, 'inv', organized([req('R1', 'Monthly CSV', 'A user MUST be able to download one month as one CSV file.')]));
+  index(dir);
+  rmSync(join(dir, 'requests/inv/request.md'));
+  commitAll(dir, 'inv: the record\n\nTier: 1 — inv');
+  const r = check(dir);
+  assert.ok(lines(r).some((l) => l.startsWith('not ok record-unreadable ') && l.includes('has no request.md')), `not ok record-unreadable, no request.md:\n${show(r)}`);
+  namesNone(r, ['record-evidence', 'unsigned-requirement']);
+});
+
+// 17. A shallow clone of a merge commit: the base is known, and the branch's
+// earlier commits are cut off.
+test('#78 a shallow clone with its base known: the ok line does not name used-again, and Not known says IDs used before the shallow history begins; control: the full repo names it', (t) => {
+  const dir = baseProject(t);
+  write(dir, 'src/share.js', 'export const hours = 1;\n');
+  commitAll(dir, 'one\n\nTier: 0 — restores INV-41');
+  write(dir, 'src/share.js', 'export const hours = 24;\n');
+  commitAll(dir, 'two');
+  namesAll(check(dir), ['used-again']);
+  const { mainTip } = mergeRef(dir);
+  const c = cloneOf(t, dir, { branch: 'pr-merge', depth: 2, main: mainTip });
+  assert.ok(isShallow(c), 'the fixture: a shallow clone');
+  assert.equal(git(c, 'merge-base', 'main', 'HEAD'), mainTip, 'the fixture: the base is main\'s tip');
+  const r = check(c);
+  says(r, 'IDs used before the shallow history begins');
+  namesNone(r, ['used-again']);
 });
