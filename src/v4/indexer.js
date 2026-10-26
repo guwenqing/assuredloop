@@ -7,7 +7,7 @@ import { accessSync, constants, lstatSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
-import { git, mergeBase, fileAt, filesAt } from './git.js';
+import { baseOf, git, mergeBase, fileAt, filesAt, blobAt, shallowCommits } from './git.js';
 import { loadConfig } from './config.js';
 import { ADR_FILE, SPEC, adrId, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
@@ -197,6 +197,8 @@ export function targetOf(t, state) {
   return p ? { sha: p.sha256 } : null;
 }
 
+// The lists of a request record that al index adds to.
+const LISTS = ['requirements', 'bindings', 'reviewed', 'items'];
 const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
 const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
@@ -309,6 +311,10 @@ export function index({ top, cwd, opts }) {
     let rec = null;
     try { rec = openRecord(top, n); } catch (e) { if (!e.invalid) throw e; notes.push(`not read: ${e.message}`); continue; }
     if (!rec) { notes.push(`no record: requests/${n} has no ${recordPath(n)}`); continue; }
+    // A list that al index adds to and that is not a list: the record is
+    // not read, and al check reports it (#78: al check runs al index).
+    const bad = LISTS.find((k) => rec.data[k] != null && !Array.isArray(rec.data[k]));
+    if (bad) { notes.push(`not read: ${rec.path} is not a valid record: its ${bad} is not a list`); continue; }
     rec.changed = addVersions(rec, requirements(read(top, `requests/${n}/request.md`) ?? '')).length > 0;
     recs.set(n, rec);
   }
@@ -358,7 +364,59 @@ export function index({ top, cwd, opts }) {
     }
   }
 
-  let bound = 0;
+  // al keeps a binding "at a moment that is now" only for a link that the
+  // working tree adds. A link that HEAD already declares, with no binding,
+  // was made at a past moment, so its binding comes from the branch history:
+  // the earliest commit of base..HEAD that declares it (LD-61). When the
+  // history cannot tell (a shallow clone), the link stays not bound.
+  let atHead = null;
+  const committed = (l) => (atHead ??= new Set(head ? linksOf(top, loadState(top, head, config, requestNames(top, head)), config, false).map(tripleKey) : [])).has(tripleKey(l));
+  const states = new Map();
+  const stateAt = (c) => {
+    if (!states.has(c)) {
+      const st = loadState(top, c, config, requestNames(top, c));
+      states.set(c, { st, links: new Map(linksOf(top, st, config, false).map((x) => [tripleKey(x), x])) });
+    }
+    return states.get(c);
+  };
+  let history = null;
+  let shallow = null;
+  const madeAt = (l) => {
+    history ??= (git(top, ['rev-list', '--reverse', '--topo-order', `${main}..HEAD`, '--', root, 'requests', '.assuredloop/records/requests',
+      ...config.docs.map((d) => posix.normalize(String(d.file)))], { allowFail: true }) ?? '').split('\n').filter(Boolean);
+    shallow ??= shallowCommits(top);
+    const c = history.find((x) => stateAt(x).links.has(tripleKey(l)));
+    if (!c || shallow.has(c)) return { unknown: 'HEAD declares it with no binding, and the history of this clone cannot tell when the link was made' };
+    const { st, links } = stateAt(c);
+    // The holder's text at that commit; an output file in this repo, its bytes there.
+    let holderSha = links.get(tripleKey(l)).holderSha;
+    if (l.output) {
+      const bytes = l.holder.includes('/') && l.commit ? null : blobAt(top, c, l.holder);
+      holderSha = l.commit ? l.holderSha : bytes === null ? null : sha256(bytes);
+    }
+    // The target's text at that commit; a requirement's version is the one
+    // whose text it had there. A decision, a sign-off or a snapshot keeps its
+    // text, so its record entry now holds it. A changes or removes link of a
+    // change spec binds the target's text at the base of that commit.
+    let target;
+    if (l.t.req && /^[RQ]\d+$/.test(l.t.id)) {
+      const q = st.requests.get(l.t.req)?.reqs.find((x) => x.id === l.t.id);
+      const v = q && (now.requests.get(l.t.req)?.data?.requirements ?? []).filter((x) => x?.id === l.t.id && x.sha256 === q.sha256).at(-1);
+      target = v ? { sha: v.sha256, version: v.version } : null;
+    } else if (l.t.req && /^([DS]\d+|.*\.md)$/.test(l.t.id)) {
+      target = targetOf(l.t, now);
+    } else {
+      target = targetOf(l.t, st);
+    }
+    let before = null;
+    if (!l.t.req && ['changes', 'removes'].includes(l.link) && l.holder.includes('/')) {
+      const b = baseOf(top, c)?.commit;
+      before = b ? stateAt(b).st.spec.get(l.t.id) ?? null : null;
+    }
+    return { holderSha, target, before };
+  };
+
+  const bound = [];
   const seen = new Set();
   const once = (line) => { if (!seen.has(line)) { seen.add(line); body.push(line); } };
   for (const l of links) {
@@ -377,14 +435,17 @@ export function index({ top, cwd, opts }) {
       // Held in another record, open or archived, the binding is not gone (DES-26).
       if (at < 0 && !aligning && atBase.has(tripleKey(l))) { if (!isHeld) once(`binding unknown: ${name}`); continue; }
       if (l.unknown) { once(`unknown: ${name}: ${l.unknown}`); continue; }
-      const target = targetOf(l.t, now);
+      const past = main && at < 0 && !aligning && committed(l) ? madeAt(l) : null;
+      if (past?.unknown) { once(`not bound: ${name}: ${past.unknown}`); continue; }
+      const target = past ? past.target : targetOf(l.t, now);
       if (!target) { once(`not bound: ${name}: target not found`); continue; }
-      if (l.holderSha === null) { once(`not bound: ${name}: output file not found`); continue; }
-      const entry = { holder: l.holder, link: l.link, target: l.target, holder_sha256: l.holderSha, target_sha256: target.sha };
+      const holderSha = past ? past.holderSha : l.holderSha;
+      if (holderSha === null) { once(`not bound: ${name}: output file not found`); continue; }
+      const entry = { holder: l.holder, link: l.link, target: l.target, holder_sha256: holderSha, target_sha256: target.sha };
       // A new changes or removes link of a change spec whose target the
       // branch already changed binds the target's text at the base: the
       // version that it had when the change linked it (LD-61).
-      const before = main && at < 0 && !aligning && !l.t.req && ['changes', 'removes'].includes(l.link) && l.holder.includes('/') ? then.spec.get(l.t.id) : null;
+      const before = past ? past.before : main && at < 0 && !aligning && !l.t.req && ['changes', 'removes'].includes(l.link) && l.holder.includes('/') ? then.spec.get(l.t.id) : null;
       if (before) entry.target_sha256 = before.sha256;
       if (target.version !== undefined) entry.target_version = target.version;
       if (l.commit) entry.commit = l.commit;
@@ -397,7 +458,7 @@ export function index({ top, cwd, opts }) {
       } else {
         append(rec, 'bindings', entry, true);
         if (aligning) body.push(`aligned: ${name}: unknown -> ${short(entry.holder_sha256)}, ${short(entry.target_sha256)}`);
-        else bound += 1;
+        else bound.push(name);
       }
       rec.changed = true;
     }
@@ -454,7 +515,10 @@ export function index({ top, cwd, opts }) {
   const written = outputs.filter(([path, text]) => write(top, path, text)).map(([path]) => path);
 
   return {
-    body: [`Indexed ${now.docs.length} docs and ${recs.size + archived.size} request records (${recs.size} open and ${archived.size} archived); bound ${bound} new links`, ...(written.length ? [`Wrote ${written.join(', ')}`] : ['No record changed']), ...notes, ...body],
+    body: [`Indexed ${now.docs.length} docs and ${recs.size + archived.size} request records (${recs.size} open and ${archived.size} archived); bound ${bound.length} new links`, ...(written.length ? [`Wrote ${written.join(', ')}`] : ['No record changed']), ...notes, ...body],
+    // For al check, which runs al index first (LD-63): the files written,
+    // each link bound, and the other lines, each "<kind>: <entry>".
+    written, bound, lines: [...notes, ...body],
     next: body.some((l) => l.startsWith('refresh hint:')) ? 'refresh the hints listed, then al index'
       : body.some((l) => l.startsWith('binding unknown:')) ? 'a binding unknown was in the marker at the base and its record is gone: check the link, then al index --align <its holder ID>' : 'al check',
   };

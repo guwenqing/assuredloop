@@ -13,6 +13,9 @@ import { now, stamp } from './base.js';
 import { consolidations, notePath } from './evidence.js';
 import { ownRequests, textLine } from './inforce.js';
 import { append } from './records.js';
+import { fileAt, git, shallowCommits } from './git.js';
+import { parseMarkdown } from './markers.js';
+import { paragraphDetails } from './views.js';
 import { hasBaselineEffect, loadState, qualify } from './state.js';
 
 const list = (x) => (Array.isArray(x) ? x : []);
@@ -60,10 +63,11 @@ export function linkStates(state, was, r) {
 
 // The map. `changes` are the branch's paragraph changes (branchOf); `none`
 // the reason that no change is selected, or null. Returns { body, findings }.
-export function mapSection(top, { now: state, was, base, own, changes, config, issues = null, none = null }) {
-  if (none) return { body: [`map: no change selected: ${none}`], findings: [] };
+export function mapSection(top, { now: state, was, base, own, changes, config, issues = null, none = null, paragraphs = [], full = false }) {
+  const paras = paragraphLines(state, was, paragraphs, full);
+  if (none) return { body: [`map: no change selected: ${none}`, ...paras], findings: [] };
   const rs = mapped(own);
-  if (!rs.length) return { body: ['map: no open change of path 2 or 3 is this change\'s own'], findings: [] };
+  if (!rs.length) return { body: ['map: no open change of path 2 or 3 is this change\'s own', ...paras], findings: [] };
   const findings = [];
   const names = new Set(rs.map((r) => r.name));
   const judged = new Map(rs.map((r) => [r.name, consolidations(top, state, r, { config, issues })]));
@@ -128,7 +132,20 @@ export function mapSection(top, { now: state, was, base, own, changes, config, i
   }
 
   const base7 = base.slice(0, 7);
-  return { body: [`map: the change against its base ${base7} (own changes: ${rs.map((r) => r.name).join(', ')}), from facts only`, ...grouped(entries)], findings };
+  return { body: [`map: the change against its base ${base7} (own changes: ${rs.map((r) => r.name).join(', ')}), from facts only`, ...paras, ...grouped(entries)], findings };
+}
+
+// The paragraphs that the branch changed, in the spec, the open change
+// specs and the ADRs, each with its place, kind and change (LD-63): one
+// line each, and one line for two or more of the same change. With --full,
+// each has its own line, and under it what the review view showed.
+function paragraphLines(state, was, paragraphs, full) {
+  const one = (c) => `map paragraph ${c.id} · ${c.at} · ${c.kind} · ${c.change}`;
+  if (full) return paragraphs.flatMap((c) => [one(c), ...paragraphDetails(state, was, c.request, c.p)]);
+  const by = new Map();
+  for (const c of paragraphs) by.set(c.change, [...(by.get(c.change) ?? []), c]);
+  return [...by].map(([change, cs]) => (cs.length < 2 ? one(cs[0])
+    : `map paragraph · ${cs.length} paragraphs · ${change}: ${cs.map((c) => `${c.id} ${c.kind} (${c.at})`).join(', ')}`));
 }
 
 // One line for each entry; two or more entries of one kind with the same
@@ -154,12 +171,19 @@ function grouped(entries) {
 // paragraph that an own change paragraph names by `changes` or `removes`
 // (LD-61): the paragraph differs from the base, and its latest kept version
 // is another. A later edit by other work then gives the parallel-work hint
-// (stale-base); the change's own consolidation does not. Returns the lines
-// for the output.
+// (stale-base); the change's own consolidation does not. The version is the
+// paragraph's text in the working tree when the tree changes it against
+// HEAD; else its text at the latest commit of base..HEAD that is not a merge
+// and that changed it. A merge commit, which may hold other work's edit,
+// gives none, and so does a commit where a shallow clone's history is cut.
+// Returns the lines for the output.
 export function keepOwnEdits(top, recs, base) {
   if (!base) return [];
   const state = loadState(top);
   const was = loadState(top, base);
+  const head = git(top, ['rev-parse', '--verify', '--quiet', 'HEAD'], { allowFail: true });
+  const atHead = head ? loadState(top, head) : null;
+  let shallow = null;
   const body = [];
   const kept = stamp(now());
   for (const r of ownRequests(top, state, base)) {
@@ -169,11 +193,33 @@ export function keepOwnEdits(top, recs, base) {
     for (const id of ids) {
       const cur = state.spec.get(id);
       if (!cur || was.spec.get(id)?.sha256 === cur.sha256) continue;
-      if (list(rec.data.own_edits).filter((e) => e?.paragraph === id).at(-1)?.sha256 === cur.sha256) continue;
-      append(rec, 'own_edits', { paragraph: id, sha256: cur.sha256, kept }, true);
+      let sha = cur.sha256;
+      if (atHead?.spec.get(id)?.sha256 === cur.sha256) {
+        shallow ??= shallowCommits(top);
+        sha = branchEdit(top, base, cur.file, id, shallow);
+        if (!sha) continue;
+      }
+      if (list(rec.data.own_edits).filter((e) => e?.paragraph === id).at(-1)?.sha256 === sha) continue;
+      append(rec, 'own_edits', { paragraph: id, sha256: sha, kept }, true);
       rec.changed = true;
       body.push(`kept: the version of ${id} that this change's branch gave it (${r.name})`);
     }
   }
   return body;
+}
+
+// The text hash of paragraph `id` of `file` at the latest commit of
+// base..HEAD that is not a merge and that changed it, or null.
+function branchEdit(top, base, file, id, shallow) {
+  const commits = (git(top, ['rev-list', '--no-merges', `${base}..HEAD`, '--', file], { allowFail: true }) ?? '').split('\n').filter(Boolean);
+  const textOf = (c) => {
+    const text = fileAt(top, c, file);
+    return text === null ? null : parseMarkdown(text, file).paragraphs.find((p) => p.id === id)?.sha256 ?? null;
+  };
+  for (const c of commits) {
+    if (shallow.has(c)) return null;
+    const now = textOf(c);
+    if (now !== textOf(`${c}^`)) return now;
+  }
+  return null;
 }
