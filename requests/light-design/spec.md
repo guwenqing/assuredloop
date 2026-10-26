@@ -50,7 +50,7 @@ A check takes 10 s at 1,000 requests; a search takes 2 s across 20 repos.
 
 ## 2. The approach
 
-<!-- LD-7 rationale -->
+<!-- LD-7 approach serves:R1 -->
 
 Today's `al` stays the base: requests with the owner's words, the organized
 requirement and the change's own spec and design; the consolidated spec;
@@ -88,7 +88,7 @@ spec paragraphs are the adopted baseline (DES-38, DES-39), and no history is
 replayed. Adopters named adoption and upgrades as a real cost, so each must
 take little work.
 
-<!-- LD-10 rationale -->
+<!-- LD-10 approach serves:R1 -->
 
 A cut that changes a signed requirement waits for the owner's new
 signature (section 6).
@@ -524,7 +524,7 @@ reliance, which is what held then (LD-11). An archived request is not
 checked. Without `--issues`, no line is about items (DES-92). The hint
 clears by a recorded judgement that the change was read (LD-12):
 `al record <name> judgement --hint issue-changed --on <item> --reason <why>
---issues <folder>` keeps the item's text with the judgement, and the moment
+--issues <folder>` keeps the hash of the item's text with the judgement, and the moment
 of reliance that held then. The hint comes back when that text changes
 again, or when a later sign-off becomes the moment of reliance. Only `issue-changed` takes a
 judgement until the general judgement of LD-12 is built.
@@ -559,7 +559,7 @@ lines, supersede links and `specs/`. No new record.
   a request the change's own. An unsigned requirement of it is not listed;
   the limits name it.
 
-<!-- LD-48 data serves:R1 -->
+<!-- LD-48 data serves:R1 builds-on:DES-10 -->
 
 The change's proposed design. Besides its own change spec, a change may
 name a project document as its design, by a design line. In the request's
@@ -580,8 +580,9 @@ document, its marked state or "state unknown"), and "proposed design of
 this change". It never shows that document as in force. A design line
 whose document is missing or cannot be read gives a hint that names it; a
 removed design line removes the document from the list. A named document
-with paragraph markers is read as design paragraphs of the change, with the
-same rules as its change spec. A document with no markers is supporting
+with paragraph markers is read as design paragraphs of the change: the list
+shows its promise and design paragraphs, and the evidence check finds them
+(LD-66). A document with no markers is supporting
 evidence: the list shows it, and the change spec holds the trace (the
 `serves`, `builds-on`, `changes` and `removes` links). When the proposed
 design conflicts with an item in force, both are shown, and the item in

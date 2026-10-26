@@ -200,8 +200,8 @@ it"; it is only a hint.
 - A proposed or accepted ADR with no `source` or no `decides` link gets a
   hint, in every mode. A superseded ADR gets none: it is history.
 - A PR that changes a paragraph that an ADR governs gets a hint: "check that
-  ADR-3 still holds". The review view marks each ADR that it names that has
-  no `source` link.
+  ADR-3 still holds". `al check --full` marks each ADR that it names that
+  has no `source` link.
 - An ADR's ID is its number. It is in the file name, for example
   `specs/adr/0003-export-links-expire.md`, and on the markers of its
   paragraphs. Its status is a line at the top of the file.
@@ -298,7 +298,7 @@ A link to another repo uses a qualified ID: `central:INV-41`,
 
 ## 7. Where the model lives
 
-<!-- SCH-28 data serves:assuredloop-v4/R3,assuredloop-v4/R10 -->
+<!-- SCH-28 data serves:assuredloop-v4/R3,assuredloop-v4/R10 builds-on:DES-26 -->
 
 - The docs hold the text and the markers.
 - `.assuredloop/` holds `config.yaml` (the settings and, in the central repo,
@@ -308,6 +308,12 @@ A link to another repo uses a qualified ID: `central:INV-41`,
   chain of that change, from the owner's words to the outputs, with its
   link-time bindings and its close lines. Each PR of the change writes
   mostly this one file.
+- In the same record, `al index` keeps by itself what no person and no AI
+  writes or reads: the requirement versions, the hash of each work item's
+  text at the moment of reliance (design.md 8), the identity of each review
+  judgement, and the version that the change's own branch gave each spec
+  paragraph that it names (design.md 15). A judgement that the change of a
+  work item was read is written by `al record <name> judgement`.
 - One record per doc, mirroring the docs, for example
   `.assuredloop/records/specs/invoices.md.yaml`: only fields that the script
   can regenerate (hash list, display numbers, derived change kinds) and, where
