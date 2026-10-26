@@ -45,7 +45,7 @@ function globRe(glob) {
 const matches = (globs, files) => globs.some((g) => { const re = globRe(g); return files.some((f) => re.test(f)); });
 
 // The line of a paragraph's first line of text in `text`, never its marker line (LD-47).
-function textLine(text, p) {
+export function textLine(text, p) {
   const lines = lf(text).split('\n');
   let i = p.line;
   while (i < lines.length && !lines[i].trim()) i++;
@@ -257,13 +257,14 @@ export function designPaths(top, now, own, issues) {
   return out;
 }
 
-// The list. Returns { body, findings, own }: the lines, the design-doc hints,
-// and the change's own requests (none with no base, an empty change, or in an
-// output repo).
+// The list. Returns { body, findings, own, none }: the lines, the design-doc
+// hints, the change's own requests (none with no base, an empty change, or in
+// an output repo), and why no change is selected.
 export function changeInForce(top, { now, was, base, issues = null, full = false }) {
-  if (!base) return { body: ['list: no change selected: no base (no main branch, or no commit)'], findings: [] };
+  if (!base) return { body: ['list: no change selected: no base (no main branch, or no commit)'], findings: [], none: 'no base (no main branch, or no commit)' };
   const change = changeOf(top, base);
-  if (change.empty) return { body: [`list: no change selected: nothing changed against the base ${base.slice(0, 7)}`], findings: [] };
+  const empty = `nothing changed against the base ${base.slice(0, 7)}`;
+  if (change.empty) return { body: [`list: no change selected: ${empty}`], findings: [], none: empty };
   const findings = [];
   const limits = [];
   // In an output repo, the items in force are the central repo's at its
