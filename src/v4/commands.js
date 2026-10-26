@@ -32,9 +32,18 @@ function originalsStore(top, name, rec) {
   const place = placeOf(loadConfig(top));
   const list = (x) => (Array.isArray(x) ? x : []);
   const named = new Set([...list(rec?.data.sources), ...list(rec?.data.signoff)].map((e) => String(e?.file ?? '').replace(/^origin\//, '')));
-  const there = (path) => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
+  // Whether `file` is in the place's folder of the request; a folder that
+  // cannot be read is a refusal that names the file by its logical name only.
+  const there = (file) => {
+    try {
+      return Boolean(lstatSync(join(place.folder, name, file)));
+    } catch (e) {
+      if (e.code === 'ENOENT') return false;
+      throw new Fail(`cannot read ${logical(name, file)} (${e.code ?? e.message}); nothing was written`, `make the folder of "${place.name}" readable, then run it again`);
+    }
+  };
   // Outside, a name is free in neither place and when the record does not name it.
-  const taken = (f) => exists(top, `${dir}/${f}`) || (place && (named.has(f) || there(join(place.folder, name, f))));
+  const taken = (f) => exists(top, `${dir}/${f}`) || (place && (named.has(f) || there(f)));
   const free = (base, tried = new Set()) => {
     let f = `${base}.md`;
     for (let n = 2; taken(f) || tried.has(f); n++) f = `${base}-${n}.md`;
@@ -59,14 +68,15 @@ function originalsStore(top, name, rec) {
       }
       const tried = new Set();
       for (let f = first; ; f = free(base, tried)) {
-        if (lstatSync(join(place.folder, name), { throwIfNoEntry: false })?.isSymbolicLink()) {
-          throw new Fail(`${logical(name, '')} is a symlink in the folder of "${place.name}", and al does not write through a symlink; nothing was written`, 'make it a real folder, then run it again');
-        }
         try {
+          if (lstatSync(join(place.folder, name), { throwIfNoEntry: false })?.isSymbolicLink()) {
+            throw new Fail(`originals:${name}/ is a symlink in the folder of "${place.name}", and al does not write through a symlink; nothing was written`, 'make it a real folder, then run it again');
+          }
           mkdirSync(join(place.folder, name), { recursive: true });
           writeFileSync(join(place.folder, name, f), bytes, { flag: 'wx' });
           return f;
         } catch (e) {
+          if (e instanceof Fail) throw e;
           if (e.code !== 'EEXIST') throw new Fail(`cannot write ${logical(name, f)} (${e.code ?? e.message}); nothing was written`, `make the folder of "${place.name}" writable, then run it again`);
           tried.add(f);
         }
