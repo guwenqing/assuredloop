@@ -8,7 +8,7 @@ import { git, mergeBase, mergesOf } from './git.js';
 import { crossRepo, findCites } from './repos.js';
 import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
-import { latestVersion, loadState, named, qualify, requestOf, resolve, signedBy } from './state.js';
+import { latestVersion, loadState, named, qualify, requestOf, resolve, signedBy, unknownBy } from './state.js';
 import { isCentral } from './indexer.js';
 import { LINK_WORDS } from './markers.js';
 
@@ -25,6 +25,8 @@ export const NOT_CHECKED = 'whether each kind is right; whether a requirement is
 export function signState(state, r, q) {
   const s = signedBy(state, r.name, q.id);
   if (s) return `signed in ${s.id}`;
+  const u = unknownBy(state, r.name, q.id);
+  if (u) return `not known: ${u.id} covers it, but its original file is not checked`;
   const before = list(r.data?.signoff).filter((x) => list(x?.covers).some((c) => c?.id === q.id)).at(-1);
   return before ? `changed since ${before.id}` : 'not signed';
 }

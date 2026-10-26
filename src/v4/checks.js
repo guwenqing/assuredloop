@@ -13,7 +13,7 @@ import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  adrParagraph, hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned,
+  adrParagraph, hasBaselineEffect, isPromise, loadState, named, qualify, requestOf, resolve, servesSigned, servesUnknown,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { LINK_WORDS, groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
@@ -108,6 +108,9 @@ export function branchOf(top, now, was, base) {
 
   // Sign-off coverage: a promise change with no signed requirement that covers it.
   const uncovered = [];
+  // A promise change whose requirement's sign-off cannot be checked here
+  // (its file is kept outside, no place set): no not ok, and not known.
+  const unknown = [];
   for (const c of changes.filter(isPromiseChange)) {
     if (typo.has(c.name)) continue;
     const r = c.request && c.head ? now.requests.get(c.request) : null;
@@ -117,13 +120,17 @@ export function branchOf(top, now, was, base) {
       if (c.request) continue; // a change spec paragraph taken out is no promise change
       const removers = open.flatMap((r) => [...r.paras.values()].filter((p) => p.links.removes.includes(c.id)).map((p) => [r, p]));
       covered = removers.some(([r, p]) => servesSigned(now, p, r.name));
+      if (!covered) c.unknown = removers.flatMap(([r, p]) => servesUnknown(now, p, r.name));
     } else {
       covered = servesSigned(now, c.head, c.request);
+      if (!covered) c.unknown = servesUnknown(now, c.head, c.request);
     }
-    if (!covered) uncovered.push(c);
+    if (covered) continue;
+    if (c.unknown.length) unknown.push(c);
+    else uncovered.push(c);
   }
 
-  return { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered };
+  return { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered, unknown };
 }
 
 export function checks(top, { base, phrases = [], issues = null }) {
@@ -135,10 +142,11 @@ export function checks(top, { base, phrases = [], issues = null }) {
   const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
   const promise = (k) => isPromise(now, k);
   const open = [...now.requests.values()].filter((r) => r.open);
-  const { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered } = branchOf(top, now, was, base);
+  const { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered, unknown } = branchOf(top, now, was, base);
 
   // Sign-off coverage (design.md 6): a promise change with no signed requirement that covers it.
   for (const c of uncovered) add('not ok', 'signoff-coverage', c.head ?? c.base, c.name, `a ${(c.head ?? c.base).kind} paragraph is ${changeWord(c)} with no signed requirement that covers it`);
+  for (const c of unknown) notKnown.push(`whether ${c.name} is covered by a signed requirement: the sign-off of ${[...new Set(c.unknown)].join(', ')} is not checked`);
 
   // The path claim (design.md 7), and the typo claim's words (design.md 6).
   if (!base) notKnown.push('no base, so the path claim was not read');
@@ -461,7 +469,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
 
   // The rules that block (#238): unsigned requirements, record evidence,
   // unreadable records and citations of superseded ADRs.
-  recordBlocks(top, now, add);
+  notKnown.push(...recordBlocks(top, now, add));
   supersededBlocks(top, now, add);
 
   // Phrases for the review (issue-hints R2), and with --issues <folder> the

@@ -9,7 +9,7 @@ import { loadConfig, loadSchema } from './config.js';
 import { fileAt, filesAt, git } from './git.js';
 import { KINDS, groupOf, lf, parseMarkdown, withoutScope } from './markers.js';
 import { frameOf, requirements, signedText } from './request-md.js';
-import { SIGNED } from './snapshot.js';
+import { originals } from './originals.js';
 import { ADR_FILE, SPEC, adrId, docsInScope, parseScopes, symlinkOn } from './scope.js';
 
 // The names in folder `dir` of the state: its folders, or its files.
@@ -68,6 +68,8 @@ export function loadState(top, rev = null) {
   const docs = docsInScope(top, config, rev);
   const { scopes, lints } = parseScopes(docs, kinds);
   const spec = new Map((scopes.get(SPEC) ?? []).map((p) => [p.id, p]));
+  // The one reader of original files, in the repo or at the place (origin-elsewhere/R1).
+  const origin = originals(top, rev, get, config);
 
   const requests = new Map();
   const add = (name, open) => {
@@ -107,27 +109,17 @@ export function loadState(top, rev = null) {
     const paras = (scopes.get(`request:${name}`) ?? []).filter((p) => p.file === specFile);
     const tierOf = () => String(dataOf()?.tier ?? /^Tier:\s*(\S+)/m.exec(md)?.[1] ?? '');
     // Whether sign-off `s` signed the intro, Out: and Assumed: text that the
-    // section has now (#216): its signed text is the section's, or its
-    // snapshot in origin/, checked against its hash, has the same frame.
+    // section has now (#216): its snapshot, checked against its hash, has the
+    // section's signed text or the same frame. True, false, or null (not
+    // known) when its file is kept outside and no place is set: a sign-off
+    // whose file is not checked is never counted as signed.
     const current = signedText(md);
-    const framed = new Map();
     const framedBy = (s) => {
-      if (current === null) return false;
-      if (s.sha256 === sha256(current)) return true;
-      const file = typeof s.file === 'string' ? `${dir}/origin/${s.file.replace(/^origin\//, '')}` : null;
-      if (!file) return false;
-      if (!framed.has(file)) {
-        let snap = null;
-        try {
-          snap = get(file);
-        } catch {
-          snap = null;
-        }
-        const at = typeof snap === 'string' ? snap.indexOf(`\n${SIGNED}\n`) : -1;
-        const signed = at < 0 ? null : snap.slice(at + SIGNED.length + 2);
-        framed.set(file, signed !== null && sha256(signed) === s.sha256 ? frameOf(signed) : null);
-      }
-      return framed.get(file) === frameOf(current);
+      if (current === null || typeof s?.file !== 'string' || typeof s.sha256 !== 'string') return false;
+      const got = origin.check(requests.get(name), s.file, s.sha256, true);
+      if (got.status === 'not checked') return null;
+      if (got.status !== 'verified') return false;
+      return s.sha256 === sha256(current) || frameOf(got.text.toString('utf8')) === frameOf(current);
     };
     requests.set(name, {
       name, open, dir, md, specFile,
@@ -184,7 +176,7 @@ export function loadState(top, rev = null) {
   }
   // Markdown files in the ADR folder, none of them named as an ADR (adr-none).
   const noAdrs = adrFiles.some((f) => f.endsWith('.md')) && !adrFiles.some((f) => ADR_FILE.test(f));
-  return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, adrList, noAdrs, unreadableAdrs };
+  return { top, rev, config, kinds, root, get, docs, scopes, lints, spec, requests, adrs, adrList, noAdrs, unreadableAdrs, originals: origin };
 }
 
 // The kind groups a check asks about.
@@ -246,30 +238,43 @@ export function adrParagraph(state, id) {
 export const latestVersion = (data, id) => (Array.isArray(data?.requirements) ? data.requirements : []).filter((v) => v?.id === id)
   .reduce((a, v) => (Number(v.version) > Number(a?.version ?? 0) ? v : a), null);
 
-// The latest sign-off that signs requirement (or question) `id` of request
-// `name` at its current text: it covers that id with the current text's hash,
-// and it signed the section's current intro, Out: and Assumed: text. Null
-// when there is none.
-export function signedBy(state, name, id) {
+// The sign-offs of request `name` that cover requirement (or question) `id`
+// at its current text, each with framedBy's answer.
+function covering(state, name, id) {
   const r = state.requests.get(name);
   const q = r?.reqs.find((x) => x.id === id);
-  if (!q) return null;
+  if (!q) return [];
   return (Array.isArray(r.data?.signoff) ? r.data.signoff : [])
-    .filter((s) => (Array.isArray(s?.covers) ? s.covers : []).some((c) => c?.id === id && c.sha256 === q.sha256) && r.framedBy(s))
-    .at(-1) ?? null;
+    .filter((s) => (Array.isArray(s?.covers) ? s.covers : []).some((c) => c?.id === id && c.sha256 === q.sha256))
+    .map((s) => [s, r.framedBy(s)]);
 }
+
+// The latest sign-off that signs requirement (or question) `id` of request
+// `name` at its current text: it covers that id with the current text's hash,
+// its snapshot is verified, and it signed the section's current intro, Out:
+// and Assumed: text. Null when there is none.
+export const signedBy = (state, name, id) => covering(state, name, id).filter(([, f]) => f === true).map(([s]) => s).at(-1) ?? null;
+
+// The latest sign-off that would sign `id` but whose file is not checked
+// (kept outside, no place set), when none signs it; else null.
+export const unknownBy = (state, name, id) => (signedBy(state, name, id) ? null
+  : covering(state, name, id).filter(([, f]) => f === null).map(([s]) => s).at(-1) ?? null);
 
 // Whether requirement (or question) `id` of request `name` is signed at its current text.
 export const signed = (state, name, id) => !!signedBy(state, name, id);
 
-// Whether paragraph `p` (of request `request`, or of specs/ when null) serves a
-// requirement that is signed at its current text.
-export function servesSigned(state, p, request) {
-  return (p.links?.serves ?? []).some((ref) => {
-    const t = qualify(ref, request);
-    return !t.cross && t.req && /^[RQ]\d+$/.test(t.id) && signed(state, t.req, t.id);
-  });
-}
+// The requirements that paragraph `p` (of request `request`, or of specs/ when
+// null) serves, as <request>/<id>.
+const served = (p, request) => (p.links?.serves ?? []).map((ref) => qualify(ref, request))
+  .filter((t) => !t.cross && t.req && /^[RQ]\d+$/.test(t.id));
+
+// Whether paragraph `p` serves a requirement that is signed at its current text.
+export const servesSigned = (state, p, request) => served(p, request).some((t) => signed(state, t.req, t.id));
+
+// The requirements that `p` serves whose sign-off cannot be checked here, when
+// it serves none that is signed: [<request>/<id>].
+export const servesUnknown = (state, p, request) => (servesSigned(state, p, request) ? []
+  : served(p, request).filter((t) => unknownBy(state, t.req, t.id)).map((t) => `${t.req}/${t.id}`));
 
 // The request a scope belongs to, or null for specs/.
 export const requestOf = (scope) => (scope.startsWith('request:') ? scope.slice('request:'.length) : null);

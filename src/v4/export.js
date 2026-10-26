@@ -428,7 +428,26 @@ export function exportRows(top, commit, h = newHistory(), hs = new Map()) {
     const theirs = new Set([...cited, ...own(r.name).filter((p) => !skip.some((e) => p === e || p.startsWith(`${e}/`)))]);
     rows.push(...order(outputRows(r.dir, r.sha, hs, r.name, { repo: r.name, files: theirs, results, cite: { qualified: true }, declared, chain: firstParents(r.dir, r.sha) })));
   }
-  return { rows, config, records, outputs, chain, repos };
+  return { rows, config, records, outputs, chain, repos, tree };
+}
+
+// The original files that the commit's records name and that the commit does
+// not hold, in a project that keeps them outside (origin-elsewhere/R1): they
+// get no row, and the export never reads the place. Each is named with its
+// committed identity: originals:<request>/<file> and the recorded sha256.
+function outsideOriginals(config, tree, records) {
+  if (!config.originals?.outside) return [];
+  const list = (x) => (Array.isArray(x) ? x : []);
+  const out = [];
+  for (const [name, rec] of [...records].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    for (const e of [...list(rec.sources), ...list(rec.signoff)]) {
+      if (typeof e?.file !== 'string' || typeof e.sha256 !== 'string') continue;
+      const file = e.file.replace(/^origin\//, '');
+      if (tree.has(`requests/${name}/origin/${file}`) || tree.has(`requests/archive/${name}/origin/${file}`)) continue;
+      out.push(`not exported, kept outside the repo: originals:${name}/${file} sha256 ${e.sha256}`);
+    }
+  }
+  return out;
 }
 
 // The parent section of paragraph `id` in `file` as it was at `commit`: the
@@ -453,13 +472,15 @@ export const exported = ({ title, ...row }) => row;
 // would write, and writes only with --yes (#219).
 export function exportCommand({ top, opts }) {
   const commit = resolveCommit(top, opts.at);
-  const { rows, repos } = exportRows(top, commit);
+  const { rows, repos, config, tree, records } = exportRows(top, commit);
+  const outside = outsideOriginals(config, tree, records);
   const text = rows.map((r) => JSON.stringify(exported(r))).join('\n') + (rows.length ? '\n' : '');
-  if (opts.out === undefined) return { raw: text };
+  // The JSONL stream stays rows only: the files outside are named on stderr.
+  if (opts.out === undefined) return { raw: text, stderr: outside.map((l) => `al export: ${l}`) };
   guard(top, [opts.out]);
   if (!opts.yes) {
     const replaces = exists(top, opts.out) ? 'replacing the existing file' : 'a new file';
-    return { body: [`Would write ${rows.length} rows to ${opts.out}, ${replaces}, at ${commit.slice(0, 12)}`], next: 'run the same command with --yes to write it' };
+    return { body: [`Would write ${rows.length} rows to ${opts.out}, ${replaces}, at ${commit.slice(0, 12)}`, ...outside.map((l) => `  ${l}`)], next: 'run the same command with --yes to write it' };
   }
   write(top, opts.out, text);
   const roles = {};
@@ -467,7 +488,8 @@ export function exportCommand({ top, opts }) {
   const count = (name) => rows.filter((r) => r.repo === name).length;
   return {
     body: [`Wrote ${rows.length} rows to ${opts.out}, at ${commit.slice(0, 12)}: ${Object.entries(roles).sort().map(([k, n]) => `${n} ${k}`).join(', ') || 'none'}`,
-      ...(repos.length > 1 ? repos.map((r) => (r.commit ? `  ${r.name}@${r.commit.slice(0, 12)}: ${count(r.name)} rows` : `  ${r.name} unknown: no rows`)) : [])],
+      ...(repos.length > 1 ? repos.map((r) => (r.commit ? `  ${r.name}@${r.commit.slice(0, 12)}: ${count(r.name)} rows` : `  ${r.name} unknown: no rows`)) : []),
+      ...outside.map((l) => `  ${l}`)],
     next: 'al search <words>',
     notKnown: repos.filter((r) => r.unknown).map((r) => `the output repo ${r.name}: ${r.unknown}; none of its rows is exported`),
   };

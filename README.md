@@ -78,7 +78,8 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
   (headings and connecting text), and the change-only kinds (plan, step,
   migration).
 - **A request** is the folder `requests/<name>/`: `origin/` (the owner's words
-  and the sign-offs, as snapshots with SHA-256), `request.md` (the dialog, the
+  and the sign-offs, as snapshots with SHA-256; a project may keep them
+  outside the repo, see "Original files outside the repo"), `request.md` (the dialog, the
   organized requirement R1…, the decisions D1…) and, from path 2, `spec.md`,
   the change spec, with IDs SP-1, SP-2… The order of its paragraphs is
   free. The recommended order is one section per topic. Each section has
@@ -131,8 +132,9 @@ a hint, for example "path 0, but a rule paragraph is changed with no typo
 claim". It checks the labels, not their meaning.
 
 **The close rule.** `al conclude <name>` refuses while a promise change has
-no sign-off, a spike's current question is not signed, or a change paragraph
-with a baseline effect has no valid disposition for its current version.
+no sign-off, a spike's current question is not signed, a change paragraph
+with a baseline effect has no valid disposition for its current version, or
+an original file of the request is not checked or does not match its record.
 
 ## The commands
 
@@ -328,6 +330,56 @@ ADRs that supersede it: `superseded by ADR-11, ADR-12` or
 - A superseded ADR's status line names the ADR that supersedes it, and that
   ADR's marker has `supersedes:` for it. Else `al check` gives
   `not ok superseded-status`.
+
+## Original files outside the repo
+
+A project may keep the original files of its requests outside the repo: the
+owner's words, the sign-off snapshots and the other source snapshots. The
+repo then keeps only the name and the SHA-256 of each file, in the records.
+The committed config names the place by a name, never by a path:
+
+```yaml
+originals:
+  outside: assuredloop     # the name that each worker maps to a folder
+```
+
+With no `originals` key, the files are in `requests/<name>/origin/`, as
+before, and `al` reads no other setting.
+
+Each worker maps the name to a folder in `assuredloop/places.yaml` in the
+user's config folder (`$XDG_CONFIG_HOME`, else `~/.config`), one line for
+each name:
+
+```yaml
+assuredloop: /path/to/folder
+```
+
+In the folder, the files are `<request>/<file>`, with the same names as in
+`origin/`. Every clone on the machine uses the same folder.
+
+- `al new`, `al record <name> origin` and `al record <name> signoff` write
+  each new original file to the folder, under a name that is free in the
+  folder and in `origin/`. With no place set, or when the write fails, they
+  refuse and write nothing. A `--url`, `--source` or `--presented` that is a
+  path inside the folder is recorded as `originals:<path>`.
+- `al` reads `requests/<name>/origin/<file>` first. Only a file that is not
+  there is read from the folder. A file in `origin/` that cannot be read is
+  `not ok record-evidence`, also when the folder holds a good copy.
+- A file in the folder that is missing, cannot be read or has changed is
+  `not ok record-evidence`, named as `originals:<request>/<file>`.
+- With no place set, as on CI, `al check` gives
+  `info originals-not-checked` for each request, with its files, and the
+  `Not known` line names them. A sign-off whose file is not checked is not
+  counted as signed, and is no `not ok` for that reason alone. Its other
+  conditions are checked. So `al check --strict` passes on CI.
+- `al conclude` checks each original file of the request again, and refuses
+  while one is not checked or does not match. So a request closes only on a
+  machine where the place is set.
+- `al export` gives no row for a file kept outside. It names each one with
+  its SHA-256 on standard error, or in the summary with `--out`.
+- A places file that cannot be read or is not valid YAML, or a line that is
+  not the absolute path of a folder, stops the command. No places file, or
+  no line for the name, is "no place set".
 
 ## Hints from the linked work items
 
@@ -628,7 +680,8 @@ hashes and links decides it, with no judgement. These rules are:
   request whose record has `requirements:`, open or archived, the latest
   version of each requirement has a valid sign-off. A sign-off is valid only
   when a `covers` entry matches the requirement's id, version and `sha256`
-  exactly; its file is in the request's `origin/` folder, and the hash of
+  exactly; its file is in the request's `origin/` folder (or at the place,
+  see "Original files outside the repo"), and the hash of
   its signed text equals the sign-off's `sha256`; and it records when it was
   signed and the signer's words. A requirement in `request.md` that is not
   its latest recorded version is not signed. An entry that `al check` cannot
