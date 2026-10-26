@@ -265,6 +265,7 @@ const PINNED = {
       '  format of a monthly export.',
       'Status    draft: in the change spec of open request invoice-exports; not in force',
       'Serves    invoice-exports/R3 (requests/invoice-exports/request.md:22) version 1: signed in S1 (declared)',
+      "Records   only al's record .assuredloop/records/requests/invoice-exports.yaml holds the version and the sign-off state on the Serves lines",
       'Links     buildsOn EXP-3 (specs/exports.md:11), SP-7 (requests/invoice-exports/spec.md:30)',
       'Linked    invoice-exports/SP-12 (requests/invoice-exports/spec.md:53) explains it',
       'Open      no open change builds on or changes it',
