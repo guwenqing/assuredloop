@@ -748,7 +748,12 @@ folder, gets `issue-missing`; so does a `#n` when the request's own
 repository is not known. A task whose `ref` names no item in the folder
 gets `issue-missing` too. An item that several tasks name is checked once.
 The items in the folder that no task names are not checked, and the
-`Not known` line counts them.
+`Not known` line counts them. Two files may hold the same item, in the
+same format or in two formats. The files are read in one name order, across
+all formats. Where a task names the item in a form above other than its
+`ref`, the first copy in that order is checked, and the other copy counts
+as an item that no task names. Where a task names it by its `ref`, each
+copy is checked.
 
 <!-- DES-103 data serves:issue-hints/R1 builds-on:DES-91 -->
 
@@ -804,7 +809,8 @@ that names no open request is ignored.
 
 <!-- DES-96 interface serves:issue-hints/R1,closed-items/R1 builds-on:DES-91 -->
 
-**The format of an item.** An item is a JSON object. Its GitHub fields are
+**The format of an item.** An item is a JSON object, a YAML mapping with
+the same fields, or a Markdown file (below). Its GitHub fields are
 the ones that the GitHub CLI prints with
 `--json number,url,body,comments,parent,state`, so a GitHub user saves the
 output of `gh` as it is, with no conversion:
@@ -830,11 +836,13 @@ An item needs a `body`, and a `url` of the form above, a `number` with a
 
 <!-- DES-97 interface serves:issue-hints/R1,own-item/R1 builds-on:DES-91 -->
 
-**The folder.** `al check --issues <folder>` reads each `*.json` file in
-the folder, but not its subfolders, and not `assuredloop-requests.json`. A
-file holds one item, or a list of items, as `gh issue view` and
-`gh issue list` print them. A file that is not valid JSON gets
-`issue-unread` at the file. In a list, each entry that is not an item gets
+**The folder.** `al check --issues <folder>` reads each `*.json`,
+`*.yaml`, `*.yml` and `*.md` file in the folder, but not its subfolders,
+and not `assuredloop-requests.json`. A JSON or YAML file holds one item,
+or a list of items, as `gh issue view` and `gh issue list` print them. A
+Markdown file holds one item. A file that is not valid JSON or YAML, and a
+Markdown file that is not an item, get `issue-unread` at the file, with
+the reason. In a list, each entry that is not an item gets
 `issue-unread` at the file, and the other entries are read. The `Not known`
 line names each such file. The folder is a path from the current
 directory. A folder that is not there stops `al check` with a refusal: exit
@@ -899,6 +907,92 @@ An item of another tracker, saved by the caller:
 {"ref": "PROJ-12", "repository": "PROJ", "body": "Build the export (ADR-3).",
  "comments": [{"body": "Done.", "isMinimized": false}], "parent": {"ref": "PROJ-1"}}
 ```
+
+<!-- DES-114 interface serves:issue-hints/R1 builds-on:DES-96 -->
+
+**An item in Markdown.** A `.md` file of the folder holds one item, as
+plain text that a person or an AI writes with no tool:
+- The header: the first lines of the file, up to the first blank line.
+  Each is `<Key>: <value>`, with one of the keys `URL`, `Number`,
+  `Repository`, `Ref`, `State` and `Parent`, case ignored. Each gives the
+  field of the same name. `State` is `open` or `closed`, case ignored.
+  `Parent` is a URL, which gives the parent's `url`; `#n`, which gives its
+  `number`; `none`, which gives `parent: null`; or another text, which
+  gives its `ref`. With no `Parent` line, the item has no `parent` field.
+- The body: the lines after the header's blank line, up to the first
+  comment. A `Design:` line in the body names the item's design
+  (light-design LD-48).
+- The comments: each starts at a line that is exactly `## Comment <k>` or
+  `## Comment <k> (minimized)`, outside fenced code, and goes on to the next
+  comment or to the end of the file. k counts the comments from 1, in
+  order, as the place `<key>/comment-<k>` of a hint does. `(minimized)`
+  gives `isMinimized` true.
+- Blank lines at the start and at the end of the body and of each comment
+  are dropped. The rest is kept as it is, with line ends made LF.
+
+<!-- DES-115 interface serves:issue-hints/R1 builds-on:DES-114 -->
+
+Every `.md` file of the folder is read as an item, a README too. A
+Markdown file is not an item, and gets `issue-unread` with the reason, when
+its first line is not a header line, when a header line has another key or
+a key that an earlier line has, when `Number` is not digits, when a
+comment's k is not the next number, or when the header gives no `URL` of
+the form above, no `Number` with a `Repository`, and no `Ref`. The same
+item in JSON, YAML and Markdown has the same kept text (light-design
+LD-22), with one limit: a Markdown body or comment cannot start or end
+with a blank line. So a JSON item whose body or comment starts or ends with
+a blank line has another kept text than its Markdown form.
+
+<!-- DES-116 example illustrates:DES-114 -->
+
+An item in Markdown, with a parent, a design line and two comments, one of
+them minimized:
+
+```markdown
+URL: https://github.com/acme/invoicer/issues/31
+State: OPEN
+Parent: https://github.com/acme/invoicer/issues/30
+
+Build the CSV export of invoices (ADR-3).
+
+Design: docs/rfc/0018-export.md
+
+## Comment 1
+
+The first PR is up.
+
+## Comment 2 (minimized)
+
+An off-topic remark.
+```
+
+<!-- DES-118 example illustrates:DES-114 -->
+
+The item above is the same item as this JSON:
+
+```json
+{"url": "https://github.com/acme/invoicer/issues/31", "state": "OPEN",
+ "parent": {"url": "https://github.com/acme/invoicer/issues/30"},
+ "body": "Build the CSV export of invoices (ADR-3).\n\nDesign: docs/rfc/0018-export.md",
+ "comments": [{"body": "The first PR is up.", "isMinimized": false},
+              {"body": "An off-topic remark.", "isMinimized": true}]}
+```
+
+<!-- DES-117 interface serves:issue-hints/R1 builds-on:DES-94 -->
+
+**Items out of the CI token's reach.** The committed config may name the
+work items that the CI token cannot read, in the list `items-out-of-reach:`
+of `.assuredloop/config.yaml`. Each entry is a repository `owner/repo`,
+which names every item of it, or one item in a form of a task's `ref`
+above. With `--issues`, a task's item that the list names and that is not
+in the folder gets no `issue-missing` and no `issue-changed`. In their
+place, `al check` gives one line for all of them:
+`info issues-out-of-reach - - <n> items out of the CI token's reach (items-out-of-reach in .assuredloop/config.yaml) are not in <folder>, so they are not checked, and al cannot tell whether they changed since the change relied on them: <item> (<request>/<task>, …), …`.
+For one item, the line says "1 item … is not in <folder>, so it is not
+checked, and al cannot tell whether it changed". It names each item once,
+with every task that names it, and the folder as the caller wrote it. An item that the list names and that is in the folder
+is read as usual. A value that is not a list of texts that are not empty
+stops `al check` with exit 2.
 
 <!-- DES-109 interface serves:own-item/R1,closed-items/R1 builds-on:DES-91 -->
 

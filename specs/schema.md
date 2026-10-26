@@ -329,6 +329,14 @@ by a name, not by a path: `originals: {outside: <name>}` in
 `.assuredloop/config.yaml`. With no `originals` key, the files are in the
 repo, as today, and `al` reads no other setting for them.
 
+<!-- SCH-40 data serves:issue-hints/R1 -->
+
+The committed config may name the work items that the CI token cannot
+read: `items-out-of-reach:` in `.assuredloop/config.yaml`, a list of texts.
+Each is a repository `owner/repo` or one item, in a form of a task's
+`ref`. With no `items-out-of-reach` key, every item that a task names is
+looked for in the folder of `--issues` (design.md 8).
+
 <!-- SCH-29 note -->
 
 ## 8. A worked example as records

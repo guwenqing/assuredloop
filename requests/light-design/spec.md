@@ -524,8 +524,7 @@ paths. Each path names one document of the spec repo, or, written
 selected commit. A saved work item gives a design only when a task of the
 change's own request names it. Its design is its `design` field, or a line
 in its body that starts with `Design:`, because the body is Markdown text.
-`al` reads saved items only from JSON files today; items in YAML or
-Markdown files are a later change. A plain mention, or a link for comparison or for
+A plain mention, or a link for comparison or for
 history, does not make a document the change's design. `al` reads the
 named document at the selected revision and shows where the design line
 is, the document's state as `al` reads it (an ADR's status; for another
@@ -839,17 +838,18 @@ prove it.
 
 ## 8. Smaller asks (plan)
 
-<!-- LD-39 plan -->
+<!-- LD-39 plan changes:DES-94,DES-96,DES-97,DES-114,DES-115,DES-116,DES-117,DES-118,SCH-40 -->
 
 - Non-code projects: `al` reads Markdown and git; any text works.
-- Saved work items may be YAML or JSON.
+- Saved work items may be JSON, YAML or Markdown (design.md 8).
 - Schema extension by users: not offered.
 - The AI-filled hint index: not built; the commit message lines and search
   serve its purpose.
 - An ADR may carry a sign-off snapshot, as a requirement does.
 - Typo fixes: the path 0 typo claim stays.
-- Work items out of the CI token's reach (#38, Q9, Q19): a setting names
-  them, and `al` gives one info line for them, in place of a hint for each.
+- Work items out of the CI token's reach (#38, Q9, Q19): a setting,
+  `items-out-of-reach:` in the committed config, names them, and `al` gives
+  one info line for them, in place of a hint for each (design.md 8).
 - Suggestions: `al` suggests file scopes (LD-26). Kinds need no suggestion
   after the six groups. Document links are not suggested now: the adopter
   that answered #38 said that writing the markers and links is "not a pain"

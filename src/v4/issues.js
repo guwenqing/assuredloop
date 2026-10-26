@@ -13,17 +13,24 @@
 // - issue-not-sub: not a child of the request's own item, which the file
 //   assuredloop-requests.json of the folder names (own-item R1);
 // - phrase: a phrase of the config matches (R2, phrases.js);
-// - issue-unread: a file of the folder that is not valid JSON, or an entry
-//   that is not an item, or an assuredloop-requests.json that is not valid;
+// - issue-unread: a file of the folder that is not valid JSON or YAML, a
+//   Markdown file that is not an item, or an entry that is not an item, or
+//   an assuredloop-requests.json that is not valid;
 // - issue-changed: the item's text changed since the change relied on it,
 //   or al cannot tell (light-design R3, kept-items.js).
 // An item's text is its body and its comments that are not minimized (D4).
+// A file of the folder is JSON, YAML with the same fields, or one item in
+// Markdown (DES-114). The items that items-out-of-reach in the config names,
+// and that are not in the folder, get one info line in place of a hint each
+// (DES-117).
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { recordPath } from './base.js';
+import { parse as parseYaml } from 'yaml';
 import { citedMessage, supersededIn } from './blocks.js';
 import { git } from './git.js';
 import { changedHints } from './kept-items.js';
+import { FENCE, lf } from './markers.js';
 import { phraseHits, phraseMessage } from './phrases.js';
 import { outputRepos } from './repos.js';
 import { Fail } from './spec.js';
@@ -38,6 +45,7 @@ const once = (re) => new RegExp(re.source);
 // The file of the folder that names each request's own item (own-item SP-8).
 const OWN_ITEMS = 'assuredloop-requests.json';
 const FORMAT = 'assuredloop-items/1';
+const REACH = 'items-out-of-reach';
 // `text` holds `word` as a whole word: no letter, digit, `_` or `-` beside it.
 const holds = (text, word) => new RegExp(`(?<![\\w-])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(text);
 
@@ -71,6 +79,83 @@ function itemOf(x, file) {
   if (!key) return null;
   // `state` is OPEN or CLOSED, as gh prints it; any other value is ignored, so the item counts as open (closed-items D1).
   return { key, ref, url: typeof x.url === 'string' ? x.url : null, repository, number, closed: x.state === 'CLOSED', body: x.body, comments: x.comments, parent: x.parent, design: x.design, file };
+}
+
+// The keys of an item in Markdown, each with the field it gives (DES-114).
+const MD_KEYS = { url: 'url', number: 'number', repository: 'repository', ref: 'ref', state: 'state', parent: 'parent' };
+const COMMENT = /^## Comment (\d+)( \(minimized\))?$/;
+const blank = (l) => !l.trim();
+const trimmed = (lines) => {
+  const out = [...lines];
+  while (out.length && blank(out[0])) out.shift();
+  while (out.length && blank(out.at(-1))) out.pop();
+  return out.join('\n');
+};
+
+// An item in Markdown, in the fields of a JSON item: { x } or { why }. The
+// header is the first lines up to the first blank line; the body goes on to
+// the first `## Comment <k>` outside fenced code.
+function markdownItem(text) {
+  const lines = lf(text).split('\n');
+  const x = {};
+  let i = 0;
+  for (; i < lines.length && !blank(lines[i]); i++) {
+    const m = /^([A-Za-z][\w-]*):[ \t]*(.*?)[ \t]*$/.exec(lines[i]);
+    if (!m) return { why: `its ${i ? `line ${i + 1}` : 'first line'} is not a header line <Key>: <value>, such as URL: or Ref:` };
+    const key = MD_KEYS[m[1].toLowerCase()];
+    if (!key) return { why: `its header line ${i + 1} has the key ${m[1]}; the keys are URL, Number, Repository, Ref, State and Parent` };
+    if (key in x) return { why: `its header has the key ${m[1]} twice` };
+    const v = m[2];
+    if (key === 'number') {
+      if (!/^\d+$/.test(v)) return { why: `its Number ${JSON.stringify(v)} is not digits` };
+      x.number = Number(v);
+    } else if (key === 'state') x.state = /^(open|closed)$/i.test(v) ? v.toUpperCase() : v;
+    else if (key === 'parent') x.parent = /^https?:\/\//.test(v) ? { url: v } : /^#\d+$/.test(v) ? { number: Number(v.slice(1)) } : /^none$/i.test(v) ? null : { ref: v };
+    else x[key] = v;
+  }
+  if (!i) return { why: 'its first line is not a header line <Key>: <value>, such as URL: or Ref:' };
+  const parts = [{ lines: [] }];
+  let fence = null;
+  for (const [k, l] of lines.slice(i).entries()) {
+    const f = FENCE.exec(l);
+    if (fence) {
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && l.trim() === f[1]) fence = null;
+    } else if (f) fence = f[1];
+    else {
+      const c = COMMENT.exec(l);
+      if (c) {
+        if (Number(c[1]) !== parts.length) return { why: `its comment heading on line ${i + k + 1} says ${c[1]}, not ${parts.length}: the comments count from 1, in order` };
+        parts.push({ lines: [], minimized: !!c[2] });
+        continue;
+      }
+    }
+    parts.at(-1).lines.push(l);
+  }
+  return { x: { ...x, body: trimmed(parts[0].lines), comments: parts.slice(1).map((p) => ({ body: trimmed(p.lines), isMinimized: p.minimized })) } };
+}
+
+// What an item file holds: { data } (its JSON or YAML value, or the fields of
+// its Markdown item), or { why } it is not read.
+function entriesOf(path, name) {
+  const text = readFileSync(path, 'utf8');
+  if (name.endsWith('.md')) {
+    const md = markdownItem(text);
+    return md.why ? { why: `it is not an item: ${md.why}` } : { data: md.x };
+  }
+  if (name.endsWith('.json')) {
+    try {
+      return { data: JSON.parse(text) };
+    } catch (e) {
+      if (e instanceof SyntaxError) return { why: 'it is not valid JSON' };
+      throw e;
+    }
+  }
+  try {
+    return { data: parseYaml(text) };
+  } catch (e) {
+    if (e.name === 'YAMLParseError') return { why: `it is not valid YAML: ${e.message.split('\n')[0]}` };
+    throw e;
+  }
 }
 
 // The own items that assuredloop-requests.json names (own-item SP-8, SP-9):
@@ -110,16 +195,21 @@ export function loadItems(cwd, folder) {
   const shown = (name) => `${folder.replace(/\/+$/, '')}/${name}`;
   const owns = ownItems(join(dir, OWN_ITEMS));
   if (owns.why) unread.push({ file: shown(OWN_ITEMS), why: owns.why });
-  for (const name of readdirSync(dir).filter((n) => n.endsWith('.json') && n !== OWN_ITEMS).sort()) {
+  // One name order across the formats (DES-94).
+  for (const name of readdirSync(dir).filter((n) => /\.(json|ya?ml|md)$/.test(n) && n !== OWN_ITEMS).sort()) {
     const file = shown(name);
-    let data;
+    let read;
     try {
       if (!statSync(join(dir, name)).isFile()) continue;
-      data = JSON.parse(readFileSync(join(dir, name), 'utf8'));
+      read = entriesOf(join(dir, name), name);
     } catch (e) {
-      unread.push({ file, why: e instanceof SyntaxError ? 'it is not valid JSON' : `it cannot be read (${e.code ?? e.message})` });
+      read = { why: `it cannot be read (${e.code ?? e.message})` };
+    }
+    if (read.why) {
+      unread.push({ file, why: read.why });
       continue;
     }
+    const { data } = read;
     (Array.isArray(data) ? data : [data]).forEach((x, i) => {
       const it = itemOf(x, file);
       if (it) items.push(it);
@@ -222,11 +312,62 @@ export function taskItems(top, state, items) {
   return { named, missing, tasked, finder };
 }
 
+// The list items-out-of-reach of the config (DES-117): [] when there is none.
+// A value that is not a list of texts that are not empty is a refusal.
+export function outOfReach(config) {
+  const list = config[REACH];
+  if (list == null) return [];
+  const next = `fix ${REACH}: in .assuredloop/config.yaml`;
+  if (!Array.isArray(list)) throw new Fail(`.assuredloop/config.yaml: ${REACH}: is not a list`, next);
+  list.forEach((e, i) => {
+    if (typeof e !== 'string' || !e.trim()) throw new Fail(`.assuredloop/config.yaml: ${REACH}: entry ${i + 1} is not a text that is not empty`, next);
+  });
+  return list.map((e) => e.trim());
+}
+
+// Whether a reference of a task that names no item in the folder is out of
+// the CI token's reach: the list names its repository `owner/repo`, its item
+// in a form of SP-8, or, for another tracker, a key that the ref holds.
+function reachOf(entries, finder) {
+  const repos = new Set();
+  const keys = new Set();
+  const texts = new Set();
+  const others = [];
+  for (const e of entries) {
+    texts.add(slug(e));
+    if (/^[\w.-]+\/[\w.-]+$/.test(e)) {
+      repos.add(slug(e));
+      continue;
+    }
+    const w = written(e, finder.names, finder.own, finder.folders);
+    for (const x of w) if (x.key) keys.add(slug(x.key));
+    if (!w.length) others.push(e);
+  }
+  return (m) => texts.has(slug(m.written))
+    || (m.key && (keys.has(slug(m.key)) || repos.has(slug(m.key).replace(/#\d+$/, ''))))
+    || (m.none && others.some((k) => holds(m.written, k)));
+}
+
 export function issueHints(top, state, matchers, add, { folder, items, unread, owns }) {
   const notKnown = [];
   const cited = supersededIn(state);
-  const { named, missing, tasked, finder } = taskItems(top, state, items);
+  const { named, missing: lost, tasked, finder } = taskItems(top, state, items);
   const { own, names, folders } = finder;
+  // The items out of the CI token's reach that are not in the folder: one
+  // line names them all, in place of issue-missing and issue-changed (DES-117).
+  const away = reachOf(outOfReach(state.config), finder);
+  const missing = lost.filter((m) => !away(m));
+  const reach = new Map();
+  for (const m of lost.filter(away)) {
+    const shown = m.key ?? m.written;
+    if (!reach.has(shown)) reach.set(shown, []);
+    const id = `${m.r.name}/${m.task}`;
+    if (!reach.get(shown).includes(id)) reach.get(shown).push(id);
+  }
+  if (reach.size) {
+    const one = reach.size === 1;
+    add('info', 'issues-out-of-reach', '-', '-', `${reach.size} item${one ? '' : 's'} out of the CI token's reach (${REACH} in .assuredloop/config.yaml) ${one ? 'is' : 'are'} not in ${folder}, so ${one ? 'it is' : 'they are'} not checked, and al cannot tell whether ${one ? 'it' : 'they'} changed since the change relied on ${one ? 'it' : 'them'}: ${[...reach].map(([k, ids]) => `${k} (${ids.join(', ')})`).join(', ')}`);
+  }
   // al cannot tell when the caller saved the items (light-design LD-22).
   notKnown.push(`when the items in ${folder} were saved: save them again before a check`);
 
