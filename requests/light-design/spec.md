@@ -374,8 +374,10 @@ change alters, plus what the list of section 4a shows by citation or by
 file scope. An answer is reused while its inputs stay the same: the base,
 the changed content, the source versions, the saved work items, the
 repository states and the options. A refreshed work item ends the reuse.
-`al context <ID>` gives the citing places as counts by place with their
-first lines, and "N more: al context <ID> --full".
+`al context <ID>` groups the citing places by file: one line for each
+file, with the count and every line number, so that no place is left out
+(light-resign/R1). `al context <ID> --full` adds the text of each citing
+line.
 
 <!-- LD-20 plan -->
 
@@ -434,9 +436,16 @@ on every task. Its steps:
 
 Answers that a reader can check. Beside each ID that it shows, `al` gives
 the project file and line of the item's text at the selected repository
-and revision. The grouped line of the list (LD-25) names its IDs only;
+and revision. The line is the first line of the item's text: for a
+paragraph, the first line after its marker; for a requirement, its
+`### R<n>` heading; for a decision, its entry under `## Decisions`. An
+item with no text line shows "no text line" as a limit. An item that is
+only at the base shows the base and its line there. A finding of
+`al check` names, after its message, the place of each other ID that it
+shows. A finding about a marker itself names the marker line, as the place
+of the problem, not of the text. The grouped line of the list (LD-25) names its IDs only;
 `al check --full` gives their file, line and text. Where a fact is held only in `al`'s records (a sign-off, a
-tier, a request's state), `al` names that record as the source and says
+tier, a request's state, a close line), `al` names that record as the source and says
 that only its records hold the fact. It never makes up a project line, and
 it never shows its paragraph markers as a source. Evidence that is missing
 or cannot be read is reported as a limit. The skill tells the AI:
