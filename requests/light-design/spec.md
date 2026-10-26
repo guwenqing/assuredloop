@@ -376,8 +376,8 @@ the changed content, the source versions, the saved work items, the
 repository states and the options. A refreshed work item ends the reuse.
 `al context <ID>` groups the citing places by file: one line for each
 file, with the count and every line number, so that no place is left out
-(light-resign/R1). `al context <ID> --full` adds the text of each citing
-line.
+(light-resign/R1). A marker's own ID is no citation; the IDs of its links
+are. `al context <ID> --full` adds the text of each citing line.
 
 <!-- LD-20 plan -->
 
