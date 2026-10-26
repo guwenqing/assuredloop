@@ -239,14 +239,18 @@ export function checks(top, { base, phrases = [], issues = null }) {
   }
 
   // Links that do not resolve, and targets that a change removed (design.md 3).
-  // The request that removed an ID, by its `removes` link, is looked up only
-  // for a link that does not resolve; the last request in order wins.
+  // The request that removed an ID is looked up only for a link that does not
+  // resolve: by its `removes` link, or by a `removed` disposition of an old
+  // record, which stays readable as history (LD-9). Only a record whose text
+  // names the ID is parsed for it; the last request in order wins.
   const removers = new Map();
   const removerOf = (id) => {
     if (removers.has(id)) return removers.get(id);
     let by = null;
     for (const r of now.requests.values()) {
       for (const p of r.paras.values()) if (p.links.removes.some((x) => self(x) === id)) by = r.name;
+      if (!r.mentions(id)) continue;
+      for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) if (d?.disposition === 'removed' && d.spec === id) by = r.name;
     }
     removers.set(id, by);
     return by;
