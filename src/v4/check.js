@@ -8,8 +8,6 @@
 // review, and only the exact rules of checks.js are `not ok` (#238). With --issues <folder> it also checks the
 // work items that the caller saved there (issue-hints R1).
 import { relative } from 'node:path';
-import { parse as parseYaml } from 'yaml';
-import { read, recordPath } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { baseOf } from './git.js';
 import { diffParagraphs, idLints } from './ids.js';
@@ -22,6 +20,7 @@ import { loadItems } from './issues.js';
 import { changeInForce } from './inforce.js';
 import { reviewSection } from './evidence.js';
 import { mapSection } from './map.js';
+import { isCentral } from './indexer.js';
 
 // A file or folder that al check cannot read, and that no check reports as
 // not ok, stops it with a refusal: never an internal error, never a pass (#238).
@@ -49,8 +48,10 @@ function checkAll({ top, cwd, opts }) {
   const now = parseScopes(docsInScope(top, config), kinds);
   const was = base ? parseScopes(docsInScope(top, config, base), kinds) : null;
   const used = base ? idsEverUsed(top, config, base) : null;
-  // A change spec's removes: names spec paragraphs.
-  const removes = [...now.scopes].filter(([s]) => s !== SPEC).flatMap(([, ps]) => ps.flatMap((p) => p.links.removes));
+  // A change spec's removes: names spec paragraphs; in the central repo,
+  // `central:X` is its own X (DES-69).
+  const self = (ref) => (isCentral(config) && ref.startsWith('central:') ? ref.slice('central:'.length) : ref);
+  const removes = [...now.scopes].filter(([s]) => s !== SPEC).flatMap(([, ps]) => ps.flatMap((p) => p.links.removes.map(self)));
 
   // Each marker and ID lint is a hint for the review, in every mode (#238).
   const lints = [...now.lints];
@@ -62,7 +63,7 @@ function checkAll({ top, cwd, opts }) {
       lints.push(...idLints(head, head));
       continue;
     }
-    lints.push(...idLints(before, head, { everUsed: used.get(scope) ?? [], removes: scope === SPEC ? removes : [] }).map((l) => deleted(top, l)));
+    lints.push(...idLints(before, head, { everUsed: used.get(scope) ?? [], removes: scope === SPEC ? removes : [] }).map(deleted));
     changes.push(...diffParagraphs(before, head).filter((c) => c.changes.length));
   }
 
@@ -110,27 +111,12 @@ function checkAll({ top, cwd, opts }) {
 
 // A lost ID of an open request's change spec (its file at the base is
 // requests/<name>/spec.md): deleting a paragraph there is ordinary editing,
-// so it is a hint that names the deletion and each disposition or wording
-// decision of the request's record that names the ID (#230, D1-D4).
+// so it is a hint that names the deletion (#230, D1-D4).
 const OPEN_SPEC = /^requests\/(?!archive\/)([^/]+)\/spec\.md$/;
-function deleted(top, l) {
+function deleted(l) {
   const name = l.code === 'lost-id' && OPEN_SPEC.exec(l.file)?.[1];
   if (!name) return l;
-  const source = `${name}/${l.id}`;
-  let rec;
-  try {
-    rec = parseYaml(read(top, recordPath(name)) ?? 'null');
-  } catch {
-    rec = null;
-  }
-  const list = (x) => (Array.isArray(x) ? x : []);
-  const says = { incorporated: (d) => `incorporated as ${d.spec}`, removed: (d) => `removed ${d.spec}`, superseded: (d) => `superseded by ${d.by}` };
-  const facts = [
-    ...list(rec?.dispositions).filter((d) => d?.source === source && says[d.disposition]).map((d) => `its disposition says ${says[d.disposition](d)}`),
-    ...list(rec?.decisions).filter((d) => d?.wording?.source === source).map((d) => `decision ${d.id} names its wording`),
-  ];
-  const message = `${source} is deleted${facts.map((f) => `; ${f}`).join('')}. If that is on purpose, nothing more is needed: the ID is retired and never used again.`;
-  return { ...l, message };
+  return { ...l, message: `${name}/${l.id} is deleted. If that is on purpose, nothing more is needed: the ID is retired and never used again.` };
 }
 
 // The Next line names what to do for what printed: a not ok, a hint, both, or

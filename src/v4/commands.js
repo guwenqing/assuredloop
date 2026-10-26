@@ -1,4 +1,4 @@
-// al new and al record origin|signoff|decision, v4: they write the request's
+// al new and al record origin|signoff|decision|judgement|close, v4: they write the request's
 // text and snapshots as before, and the request record beside them.
 import { lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -11,6 +11,8 @@ import { loadConfig } from './config.js';
 import { itemFinder, loadItems } from './issues.js';
 import { CHANGED, reliance, textSha } from './kept-items.js';
 import { logical, placeOf, sourceOf } from './originals.js';
+import { onSha, ownTarget, reasonNames, reqVersion } from './close.js';
+import { loadState } from './state.js';
 
 const TIERS = ['1', '1d', '2', '3', 'S'];
 
@@ -117,7 +119,7 @@ export function newRequest({ top, cwd, args, opts }) {
     ...(opts.tier === undefined ? {} : { tier: opts.tier }),
     status: 'open',
     sources: [{ file, kind: 'owner-words', sha256: sha256(words), taken: stamp(when) }],
-    requirements: [], signoff: [], decisions: [], tasks: [], bindings: [], dispositions: [],
+    requirements: [], signoff: [], decisions: [], tasks: [], bindings: [],
   };
   write(top, recordPath(name), stringify(record, YAML_OPTIONS));
   return {
@@ -143,14 +145,15 @@ const oneLine = (opts, keys) => {
   if (bad) throw new Fail(`--${bad} holds a line break; it takes one line`);
 };
 
-// al record <name> origin|signoff|decision|judgement ...
+// al record <name> origin|signoff|decision|judgement|close ...
 export function record(ctx) {
   const [, kind] = ctx.args;
   if (kind === 'origin') return recordOrigin(ctx);
   if (kind === 'signoff') return recordSignoff(ctx);
   if (kind === 'decision') return recordDecision(ctx);
   if (kind === 'judgement') return recordJudgement(ctx);
-  throw new Fail(`record ${kind ?? ''}: al record <name> origin|signoff|decision|judgement`);
+  if (kind === 'close') return recordClose(ctx);
+  throw new Fail(`record ${kind ?? ''}: al record <name> origin|signoff|decision|judgement|close`);
 }
 
 // al record <name> origin --url <source> --from <file|-> [--fetched <stamp>] [--yes]
@@ -269,4 +272,41 @@ function recordJudgement({ top, cwd, args, opts }) {
   for (const e of entries) append(rec, 'judgements', e, true);
   write(top, rec.path, recordText(rec));
   return { body: [`Added to ${rec.path}:`, ...lines], next: `al check --issues ${opts.issues}` };
+}
+
+// al record <name> close --on <ID> --reason <one sentence> [--yes]: a close
+// line (LD-62). --on names a paragraph of the change spec that is not
+// delivered, or a requirement of the current version that is met where no
+// lasting paragraph links to it. al keeps the version of what --on names and
+// of each spec paragraph that the reason names; a word of the ID form that
+// names no paragraph of specs/ is shown, and not kept.
+function recordClose({ top, args, opts }) {
+  const [name] = args;
+  const usage = `al record ${name} close --on <ID> --reason <one sentence>`;
+  oneLine(opts, ['on', 'reason']);
+  if (!opts.on) throw new Fail('--on <ID> is missing: a paragraph of the change spec, or a requirement R<n> of the request', usage);
+  if (!opts.reason) throw new Fail('--reason <one sentence> is missing: say why the paragraph is not delivered, or where the requirement is met', usage);
+  const { rec } = openRequest(top, name);
+  const state = loadState(top);
+  const r = state.requests.get(name);
+  const on = r && ownTarget(r, opts.on);
+  if (!on) throw new Fail(`--on ${opts.on}: not a paragraph of ${name}'s change spec, and not a requirement of its current version`, usage);
+  // A requirement's version is kept with the line, so its text must be indexed.
+  const version = /^[RQ]\d+$/.test(on) ? reqVersion(r, on) : null;
+  if (/^[RQ]\d+$/.test(on) && version?.sha256 !== onSha(r, on)) {
+    throw new Fail(`--on ${on}: its current text has no version in ${rec.path} yet; run al index first`, `al index, then ${usage}`);
+  }
+  const names = reasonNames(state, opts.reason, on);
+  const id = `C${highest(rec, 'closes', 'C') + 1}`;
+  const lines = [`${id} ${name}/${on}: ${opts.reason}`,
+    ...names.map((x) => (x.p ? `  keeps ${x.id} (${x.p.file})` : `  ${x.id}: not a paragraph of specs/, not kept`))];
+  if (!opts.yes) return { body: [`Would add to ${rec.path}:`, ...lines], next: 'run the same command with --yes to write it' };
+  guard(top, [rec.path]);
+  const node = append(rec, 'closes', {
+    id, on, ...(version ? { version: Number(version.version) } : {}), reason: opts.reason, sha256: onSha(r, on),
+    names: names.filter((x) => x.p).map((x) => ({ id: x.id, sha256: x.p.sha256 })), recorded: stamp(now()),
+  });
+  for (const x of node.get('names').items) x.flow = true;
+  write(top, rec.path, recordText(rec));
+  return { body: [`Added to ${rec.path}:`, ...lines], next: `al conclude ${name}` };
 }

@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { invoicer } from './helpers/invoicer.js';
 import { al, commitAll, git, move, read, write, writeYaml } from './helpers/project.js';
-import { conclude, dispositionCounts, has, hasNot, linesWith, show, view, word } from './helpers/views.js';
+import { conclude, has, hasNot, show, view, word } from './helpers/views.js';
 
 const refusesNaming = (r, id) => {
   assert.equal(r.code, 1, show(r));
@@ -27,8 +27,16 @@ test('1: an unsigned removal of the limit INV-4 makes conclude refuse, naming dr
   refusesNaming(conclude(invoicer(t, 'remove-promise', 'unsigned'), 'drop-tax', '--yes'), 'drop-tax/SP-1');
 });
 
+// #72: R1 of drop-tax is met by the removal itself, so no paragraph serves
+// it; a close line on R1 says so, as the close rule asks.
+const closeR1 = (dir) => {
+  const r = al(dir, ['record', 'drop-tax', 'close', '--on', 'R1', '--reason', 'Met by the removal of INV-4.', '--yes']);
+  assert.equal(r.code, 0, show(r));
+  return dir;
+};
+
 test('1 control: the same removal with R1 signed would conclude', (t) => {
-  wouldConclude(conclude(invoicer(t, 'remove-promise', 'signed'), 'drop-tax'), 'drop-tax');
+  wouldConclude(conclude(closeR1(invoicer(t, 'remove-promise', 'signed')), 'drop-tax'), 'drop-tax');
 });
 
 test('1: the removal merged on main earlier (INV-4 absent at the merge-base too): still refused when unsigned', (t) => {
@@ -39,26 +47,18 @@ test('1: the removal merged on main earlier (INV-4 absent at the merge-base too)
 });
 
 test('1 control: the removal merged on main earlier, signed: would conclude', (t) => {
-  wouldConclude(conclude(invoicer(t, 'remove-merged-signed'), 'drop-tax'), 'drop-tax');
+  wouldConclude(conclude(closeR1(invoicer(t, 'remove-merged-signed')), 'drop-tax'), 'drop-tax');
 });
 
 // --- 2. no kept effect, no sign-off needed (design.md 6)
-
-test('2: an unsigned request whose one rule is validly abandoned would conclude, with no sign-off reason', (t) => {
-  const dir = invoicer(t, 'abandon-unsigned', 'abandoned');
-  const ctx = view(dir, ['context', 'csv-bom']);
-  const line = has(ctx, word('SP-2'), /abandoned/);
-  assert.doesNotMatch(line, /not valid/, show(ctx));
-  wouldConclude(conclude(dir, 'csv-bom'), 'csv-bom');
-});
+// #72 (LD-58) removed the dispositions and the abandoned exemption; the
+// unsigned rule refuses on the sign-off alone.
 
 test('2 control: the same rule incorporated with no sign-off refuses on the sign-off alone', (t) => {
   const dir = invoicer(t, 'abandon-unsigned', 'incorporated');
-  const ctx = view(dir, ['context', 'csv-bom']);
-  assert.doesNotMatch(has(ctx, word('SP-2'), /incorporated/, word('EXP-9')), /not valid/, show(ctx));
   const r = conclude(dir, 'csv-bom');
   refusesNaming(r, 'csv-bom/SP-2');
-  assert.equal(r.refused.length, 1, `one reason, the sign-off; the disposition is valid:\n${show(r)}`);
+  assert.equal(r.refused.length, 1, `one reason, the sign-off:\n${show(r)}`);
 });
 
 // --- 3. an archived request is never checked again (design.md 5)
@@ -66,6 +66,8 @@ test('2 control: the same rule incorporated with no sign-off refuses on the sign
 const EDIT = ['A yearly ZIP holds twelve monthly CSV files', 'A yearly ZIP holds 12 monthly CSV files'];
 const editExp10 = (dir) => write(dir, 'specs/exports.md', read(dir, 'specs/exports.md').replace(...EDIT));
 
+// #72 (LD-58): the views no longer judge a disposition; --audit shows an old
+// one as "recorded; not checked".
 test('3: after conclude --yes and a later edit of EXP-10, the archived request shows SP-10 as recorded, not "not valid"', (t) => {
   const dir = invoicer(t, 'd06', 'control');
   const closed = al(dir, ['conclude', 'invoice-exports', '--yes']);
@@ -76,18 +78,8 @@ test('3: after conclude --yes and a later edit of EXP-10, the archived request s
   for (const args of [['context', 'invoice-exports'], ['context', 'invoice-exports', '--audit']]) {
     const r = view(dir, args);
     hasNot(r, word('SP-10'), /not valid/);
-    assert.deepEqual(linesWith(r, /\d+ paragraphs, \d+ with a baseline effect:/, /not valid/), [], show(r));
-    has(r, word('SP-10'), /incorporated/, word('EXP-10'));
   }
-});
-
-test('3 control: the same edit while the request is still open shows SP-10 as not valid', (t) => {
-  const dir = invoicer(t, 'd06', 'control');
-  editExp10(dir);
-  commitAll(dir, 'Say 12 in EXP-10\n\nTier: 1d — exports-wording');
-  const r = view(dir, ['context', 'invoice-exports']);
-  has(r, word('SP-10'), /not valid/);
-  assert.equal(dispositionCounts(r, /^Dispositions\b/).counts['not valid'], 1, show(r));
+  has(view(dir, ['context', 'invoice-exports', '--audit']), /^Disp\./, word('SP-10'), /incorporated/, word('EXP-10'), /recorded; not checked/);
 });
 
 // --- 4. a code cite is not a check (design.md 9)

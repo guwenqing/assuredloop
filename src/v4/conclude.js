@@ -1,16 +1,17 @@
 // al conclude <name> [--yes] (T11; design.md 5 The close rule, 6, 8): the
 // only command that refuses. It reads the working tree, the closing PR's
 // state, and refuses while a promise change has no signed requirement, a
-// spike's current question is not signed, or a change paragraph with a
-// baseline effect has no valid disposition for its current version. A promise
-// change of the branch, against its base (baseOf), counts as al check
-// counts it (branchOf, #217). With
-// --yes it writes the Outcome, sets the status and archives the request.
+// spike's current question is not signed, or, on paths 2 and 3, a signed
+// requirement has no declared link or a named spec paragraph is not changed
+// or removed (close.js, LD-57), unless a current close line clears it
+// (LD-62). A promise change of the branch, against its base (baseOf), counts
+// as al check counts it (branchOf, #217). With --yes it writes the Outcome,
+// sets the status and archives the request.
 import { mkdirSync, renameSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Fail, day, exists, guard, isName, now, write } from './base.js';
 import { branchOf } from './checks.js';
-import { judgeRequest } from './dispositions.js';
+import { closeLine, closeLines, closeRefusals, unsignedRemovals } from './close.js';
 import { baseOf, git } from './git.js';
 import { openRecord, recordText } from './records.js';
 import { requestOriginals } from './originals.js';
@@ -22,8 +23,9 @@ const NOT_KNOWN = ['whether the code, tests and documents do what the paragraphs
   'whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that'];
 
 // The reasons the close rule refuses, each naming its IDs; [] when it holds.
-// `branch` holds the branch's promise changes that no signed requirement covers.
-function reasons(state, r, branch) {
+// `branch` holds the branch's promise changes that no signed requirement
+// covers; `was` is the base state, or null; `lines` the close lines.
+function reasons(state, was, r, branch, lines) {
   const out = [];
   // Each original file of the request is checked again: a request closes only
   // with every one verified (origin-elsewhere/R1).
@@ -34,55 +36,54 @@ function reasons(state, r, branch) {
     if (!r.reqs.length) out.push(`the spike has no organized question to sign in ${r.dir}/request.md`);
     const unsigned = r.reqs.filter((q) => !signState(state, r, q).startsWith('signed'));
     if (unsigned.length) out.push(`the spike's current question is not signed: ${unsigned.map((q) => `${r.name}/${q.id} (${signState(state, r, q)})`).join(', ')}`);
-    return { out, judged: [] };
+    return out;
   }
-  const judged = judgeRequest(state, r);
-  // A paragraph abandoned with no kept effect needs no sign-off (design.md 6);
-  // one whose effect an owner decision keeps is judged with its sign-off in judge().
-  const dropped = new Set(judged.filter((j) => j.status === 'abandoned' && j.valid && j.kept === false).map((j) => j.p.id));
+  // 1. No recorded reason replaces a sign-off (light-resign/R5).
+  const removals = unsignedRemovals(state, was, r);
   const unsigned = [
-    ...[...r.paras.values()].filter((p) => isPromise(state, p.kind) && !dropped.has(p.id) && !servesSigned(state, p, r.name)).map((p) => `${r.name}/${p.id}`),
+    ...[...r.paras.values()].filter((p) => isPromise(state, p.kind) && !servesSigned(state, p, r.name)).map((p) => `${r.name}/${p.id}`),
     ...[...state.spec.values()].filter((p) => isPromise(state, p.kind) && p.links.serves.some((s) => qualify(s, null).req === r.name)
       && !servesSigned(state, p, null)).map((p) => p.id),
-    ...branch.map((c) => c.name),
+    ...removals.map((x) => x.line),
+    ...branch.filter((c) => !removals.some((x) => x.id === c.name)).map((c) => c.name),
   ];
   if (unsigned.length) out.push(`a promise change with no signed requirement that covers it: ${[...new Set(unsigned)].join(', ')}`);
-  const open = judged.filter((j) => j.status === 'pending' || !j.valid);
-  if (open.length) {
-    out.push(`no valid disposition for the current version of ${open.map((j) => `${j.id} (${j.status === 'pending' ? 'none' : `${j.status}, not valid: ${j.reason}`})`).join(', ')}`);
-  }
-  return { out, judged };
+  // 2 and 3, on paths 2 and 3.
+  out.push(...closeRefusals(state, was, r, lines));
+  return out;
 }
 
 // The Outcome block: what became of each requirement, with the evidence and
 // what is unknown.
-function outcome(state, r, judged, top) {
+function outcome(state, r, lines, top) {
   const head = git(top, ['rev-parse', '--short=7', 'HEAD'], { allowFail: true });
-  const lines = ['## Outcome', '', `Concluded ${day(now())} with al conclude, on the working tree${head ? ` at ${head}` : ''}.`, ''];
-  const shown = (j) => `  - ${j.p.id} ${j.p.kind}: ${j.status}${j.d?.spec ? `${j.status === 'incorporated' ? ' as' : ''} ${j.d.spec}` : ''}${j.d?.by ? ` by ${j.d.by}` : ''}${j.reason ? ` (${j.reason})` : ''}`;
-  const placed = new Set();
+  const out = ['## Outcome', '', `Concluded ${day(now())} with al conclude, on the working tree${head ? ` at ${head}` : ''}.`, ''];
+  const closed = (c) => `  - close line ${c.e.id}, ${c.current ? 'current' : 'stale'}: ${c.e.reason}`;
+  const byOn = new Map(lines.map((c) => [String(c.e.on), c]));
   for (const q of r.reqs) {
     const version = (Array.isArray(r.data?.requirements) ? r.data.requirements : []).filter((v) => v?.id === q.id && v.sha256 === q.sha256).at(-1)?.version;
     const v = version ? `version ${version}` : 'version not indexed';
     if (r.spike) {
-      lines.push(`- ${q.id} ${q.title}, ${v}, ${signState(state, r, q)}: the answer answers ${q.id} ${v}.`);
+      out.push(`- ${q.id} ${q.title}, ${v}, ${signState(state, r, q)}: the answer answers ${q.id} ${v}.`);
       continue;
     }
-    lines.push(`- ${q.id} ${q.title}, ${v}, ${signState(state, r, q)}:`);
-    const mine = judged.filter((j) => j.p.links.serves.some((s) => qualify(s, r.name).key === `${r.name}/${q.id}`));
-    for (const j of mine) { lines.push(shown(j)); placed.add(j.id); }
+    out.push(`- ${q.id} ${q.title}, ${v}, ${signState(state, r, q)}:`);
+    const key = `${r.name}/${q.id}`;
+    const mine = [...r.paras.values()].filter((p) => p.links.serves.some((s) => qualify(s, r.name).key === key));
+    for (const p of mine) out.push(`  - ${p.id} ${p.kind ?? '-'}: in the change spec, serves it`);
     // A path-1 promise is served by the spec paragraph itself (design.md 5).
-    const inSpec = [...state.spec.values()].filter((p) => p.links.serves.some((s) => qualify(s, null).key === `${r.name}/${q.id}`));
-    for (const p of inSpec) lines.push(`  - ${p.id} ${p.kind ?? '-'}: in ${p.file}, serves it`);
+    const inSpec = [...state.spec.values()].filter((p) => p.links.serves.some((s) => qualify(s, null).key === key));
+    for (const p of inSpec) out.push(`  - ${p.id} ${p.kind ?? '-'}: in ${p.file}, serves it`);
     // An ADR whose `decides:` names the requirement is evidence too (#41).
-    const decided = [...state.adrs.values()].filter((a) => (a.head?.links.decides ?? []).some((s) => qualify(s, null).key === `${r.name}/${q.id}`));
-    for (const a of decided) lines.push(`  - ${a.id}: decides it (${a.status ?? 'no status'})`);
-    if (!mine.length && !inSpec.length && !decided.length) lines.push('  - no change paragraph and no spec paragraph serves it');
+    const decided = [...state.adrs.values()].filter((a) => (a.head?.links.decides ?? []).some((s) => qualify(s, null).key === key));
+    for (const a of decided) out.push(`  - ${a.id}: decides it (${a.status ?? 'no status'})`);
+    if (byOn.has(q.id)) out.push(closed(byOn.get(q.id)));
+    if (!inSpec.length && !decided.length) out.push('  - no declared paragraph link: no paragraph of specs/ serves it, and no ADR decides it');
   }
-  const rest = judged.filter((j) => !placed.has(j.id));
-  if (rest.length) lines.push('- Other paragraphs with a baseline effect:', ...rest.map(shown));
-  lines.push(`- Not known: ${NOT_KNOWN.join('; ')}.`, '');
-  return lines;
+  const notDelivered = lines.filter((c) => r.paras.has(String(c.e.on)));
+  if (notDelivered.length) out.push('- Change paragraphs named as not delivered:', ...notDelivered.map((c) => `  - ${c.e.on}: ${closed(c).trim().slice(2)}`));
+  out.push(`- Not known: ${NOT_KNOWN.join('; ')}.`, '');
+  return out;
 }
 
 const withStatus = (md) => (/\bStatus:\s*\S+/.test(md) ? md.replace(/\bStatus:\s*\S+/, 'Status: concluded')
@@ -115,17 +116,19 @@ export function conclude({ top, args, opts }) {
     .map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}`) : [];
   const read = base ? `working tree · base ${base.slice(0, 7)} (merge-base with ${found.ref})` : 'working tree · no base';
   const notKnown = base ? NOT_KNOWN : ['the promise changes of the branch: no base (no main branch, or no commit)', ...NOT_KNOWN];
-  const { out, judged } = reasons(state, r, branch);
+  const lines = r.spike ? [] : closeLines(state, r);
+  const shown = lines.map((c) => closeLine(r, c));
+  const out = reasons(state, was, r, branch, lines);
   if (out.length) {
     return {
-      body: [...hints, ...out.map((x) => `refused: ${x}`)],
+      body: [...hints, ...shown, ...out.map((x) => `refused: ${x}`)],
       read,
-      next: `al context ${name}; sign, record the dispositions, or align what is named, then al index`,
+      next: `al context ${name}; sign, link, consolidate, or record a close line (al record ${name} close), then al index`,
       notKnown,
       exit: 1,
     };
   }
-  const block = outcome(state, r, judged, top);
+  const block = outcome(state, r, lines, top);
   const target = `requests/archive/${name}`;
   if (exists(top, target)) throw new Fail(`${target} already exists; a request name is never reused`, `al context ${name}`);
   // The preview refuses for each reason that --yes refuses (#241).
@@ -137,7 +140,7 @@ export function conclude({ top, args, opts }) {
   }
   const what = `Status: concluded, the Outcome in ${target}/request.md, status: concluded in the record, and ${r.dir}/ moved to ${target}/`;
   if (!opts.yes) {
-    return { body: [...hints, `Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read, next: 'run the same command with --yes to do it', notKnown };
+    return { body: [...hints, ...shown, `Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read, next: 'run the same command with --yes to do it', notKnown };
   }
   const md = withOutcome(withStatus(r.md), block);
   rec.doc.set('status', 'concluded');
@@ -145,5 +148,5 @@ export function conclude({ top, args, opts }) {
   renameSync(join(top, r.dir), join(top, target));
   write(top, `${target}/request.md`, md);
   write(top, rec.path, recordText(rec));
-  return { body: [...hints, `Concluded ${name}: ${what}`], read, next: 'commit the archive move with the closing PR', notKnown };
+  return { body: [...hints, ...shown, `Concluded ${name}: ${what}`], read, next: 'commit the archive move with the closing PR', notKnown };
 }

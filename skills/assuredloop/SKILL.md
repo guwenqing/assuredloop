@@ -3,7 +3,7 @@ name: assuredloop
 description: >-
   Keeping the records of a change with AssuredLoop's `al` (v4): the owner's
   words, the signed requirement, the change spec, the hidden paragraph
-  markers in the spec, the decisions and the dispositions. Use in a project
+  markers in the spec, the decisions and the close lines. Use in a project
   whose AGENTS.md names AssuredLoop, before work that changes the spec, and
   whenever you need to know where a request stands.
 ---
@@ -177,43 +177,37 @@ The export link MUST expire 30 minutes after the email is sent.
 3. Snapshot each later word of the owner that you rely on:
    `al record <name> origin --url <where> --from - --yes`. Record each later
    decision: `al record <name> decision --source <who> --text "<it>" --yes`.
-4. Consolidate by hand, in the PR with the code or later: copy each paragraph
-   of a kind that goes into `specs/` (promise, the lasting design kinds,
-   rationale, example, open) into `specs/`, word for word. Give it a spec ID
+4. Consolidate by judgement, in the PR with the code or later: bring each
+   piece of a kind that goes into `specs/` (promise, the lasting design
+   kinds, rationale, example, open) into `specs/`, in the words that make
+   the spec read as the current system. You may rewrite, split or join
+   paragraphs; write no Was/Now text. Give a new paragraph a spec ID
    (`al spec --add-ids`), its kind, and its links. In `specs/`, a link names
-   the request: `serves:<name>/R<n>`. Plan, step, migration, approach and note
-   paragraphs stay with the change.
-5. For each change paragraph that goes into `specs/`, and each `removes:`,
-   add a disposition to `.assuredloop/records/requests/<name>.yaml`, then run
-   `al index` to fill its hashes:
-
-   ```yaml
-   dispositions:
-     - {source: <name>/SP-4, disposition: incorporated, spec: EXP-9}
-     - {source: <name>/SP-6, disposition: removed, spec: INV-4}
-     - {source: <name>/SP-7, disposition: abandoned, decision: D2}
-   ```
-
-   - `incorporated`: the spec text equals the change paragraph exactly. If
-     you word it differently, record a decision and add
-     `wording: {source: <name>/SP-n, spec: <ID>}` to that decision in the
-     record; the disposition then names `decision: Dn`.
-   - `removed`: the paragraph declares `removes:<ID>`, and the ID is gone
-     from `specs/`. Removing a promise needs a signed requirement.
-   - `superseded`: `by: <later request>/SP-n`, when a later change replaced
-     the incorporated text.
-   - `abandoned`: the paragraph is not delivered. Name the owner's decision
-     when an applied effect is kept.
+   the request: `serves:<name>/R<n>`. Remove each paragraph that a
+   `removes:` names; removing a promise needs a signed requirement. Plan,
+   step, migration, approach and note paragraphs stay with the change. Run
+   `al index`, then read the map in `al check`.
+5. The review judges each piece in a consolidation judgement in
+   `requests/<name>/review.md` (see the README). When a paragraph is not
+   delivered, delete it from the change spec while the request is open, or
+   record why: `al record <name> close --on SP-n --reason "<one sentence>" --yes`.
+   When a signed requirement is met where no lasting paragraph links to it
+   (an existing design reused, a one-time migration), record where:
+   `al record <name> close --on R<n> --reason "<one sentence>" --yes`. Name
+   the spec paragraphs that the reason relies on by their IDs: `al` keeps
+   their versions, and the line goes stale when one changes.
 6. When `al check` says a paragraph you build on changed, check your change
    against the new text, then run `al index --align <name>/SP-n`.
 7. Close with `al conclude <name> --yes`. It refuses while a promise change
-   is not signed, or a paragraph with a baseline effect has no valid
-   disposition for its current version. `al context <name>` lists them.
+   is not signed, a signed requirement has no declared paragraph link, a
+   `changes:` target is unchanged since the link, or a `removes:` target is
+   still in `specs/`, unless a current close line names it. Run
+   `al conclude <name>` first: the preview lists each reason.
 
 ## Path 3: an epic
 
-As path 2, in parts. Each part consolidates the paragraphs it delivers,
-with their dispositions, in its own PR. Tasks are optional: where the
+As path 2, in parts. Each part consolidates the paragraphs it delivers in
+its own PR. Tasks are optional: where the
 project uses them, list them in the record as
 `tasks: [{id: T2, ref: "issue #34", delivers: [R3]}]`, and name the task in
 the commit messages of its PRs. Plan, step and migration paragraphs may live
@@ -237,7 +231,7 @@ Run `al conclude <name> --yes` with the last part.
    `## Organized question` with `<!-- Q1 -->` and `### Q1 <title>`.
 2. The owner signs the question, as in path 1, step 3.
 3. The change spec holds the candidates and the experiments. It is never
-   consolidated and needs no dispositions.
+   consolidated.
 4. Write the findings in the request folder. Open them with the answer, and
    name the question version that it answers, for example "Answer to Q1
    version 1: …". Change no spec text.

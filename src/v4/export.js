@@ -369,13 +369,9 @@ export function exportRows(top, commit, h = newHistory(), hs = new Map()) {
       const signed = sourceType === 'owner-words' ? signoffs.find((x) => x?.id && basename(String(x.file ?? "")) === basename(row.file)) : null;
       if (signed) { sourceType = 'signoff'; id = `${meta.request}/${signed.id}`; }
       const role0 = { spec: 'baseline', adr: { proposed: 'proposal', superseded: 'history' }[statusOf.get(row.file)] ?? 'baseline', change: 'proposal', spike: 'spike', result: 'evidence', output: 'evidence' }[sourceType] ?? 'source';
-      // history wins: a past version, a closed or archived request, a dropped change paragraph.
+      // history wins: a past version, a closed or archived request.
       const closed = meta.archived || (rec && rec.status !== undefined && rec.status !== 'open');
-      const dispositions = Array.isArray(rec?.dispositions) ? rec.dispositions : [];
-      const local = meta.id.slice(meta.id.indexOf('/') + 1);
-      const dropped = (sourceType === 'change' || sourceType === 'spike') && dispositions.some((d) => ['abandoned', 'superseded'].includes(d?.disposition)
-        && [meta.id, local].includes(String(d.source)) && (d.source_sha256 === sha || startsWith(sha, d.source_sha256)));
-      const role = !live || closed || dropped ? 'history' : role0;
+      const role = !live || closed ? 'history' : role0;
       const hints = live && ['spec', 'adr', 'change', 'spike'].includes(sourceType) ? hintsOf(row.file, meta.id, sha) : null;
       rows.push({
         repo: config.repo,

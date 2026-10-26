@@ -22,7 +22,9 @@ const PAIRS = {
     control: ['hint overlap link-45/SP-2', 'hint overlap link-refresh/SP-2'],
   },
   d05: { name: 'a test that cites the right ID and checks another condition', defect: [], control: [] },
-  d06: { name: 'a drifted consolidation', defect: ['hint disposition invoice-exports/SP-10'], control: [] },
+  // D06, D14: #72 (LD-58) removed the exact-text rule and the dispositions;
+  // the drift is the review's judgement now, so al check finds nothing.
+  d06: { name: 'a drifted consolidation', defect: [], control: [] },
   d07: { name: 'a stale base after indexing', defect: ['hint stale-base reminder-emails/SP-4'], control: [] },
   d08: { name: 'a stale AI summary with a surviving quote', defect: ['hint stale-ai-hint INV-8'], control: [] },
   // D09: INV-4 is adopted (decision D16); edited with no link on path 0, it gets no-link back.
@@ -32,7 +34,7 @@ const PAIRS = {
   d11: { name: 'a typo claim that changes "only" to "all"', defect: ['hint typo-mark EXP-10'], control: [] },
   d12: { name: 'a typo claim that removes a doubled "MUST MUST"', defect: [], control: [] },
   d13: { name: 'a 1d claim that adds a component', defect: ['hint no-link INV-17', 'hint path-claim INV-17'], control: [] },
-  d14: { name: 'a code example whose trailing spaces change', defect: ['hint disposition csv-header/SP-2'], control: [] },
+  d14: { name: 'a code example whose trailing spaces change', defect: [], control: [] },
 };
 
 const run = (t, name, arm, ...args) => {
@@ -197,18 +199,6 @@ test('D13: path-claim on INV-17 (a 1d claim adds a component); both arms show li
   none(p.defect, 'not ok', 'path-claim', 'INV-17');
   for (const r of [p.defect, p.control]) assert.ok(typoWords(r, 'INV-8').includes('lines -> line items'), show(r));
   assert.deepEqual(p.control.findings.filter((f) => f.code === 'path-claim'), [], show(p.control));
-});
-
-test('D06 and D14 under --strict: the invalid disposition stays a hint and the exit is 0 (#238 R2); the control exits 0', (t) => {
-  for (const [name, id] of [['d06', 'invoice-exports/SP-10'], ['d14', 'csv-header/SP-2']]) {
-    const defect = run(t, name, 'defect', '--strict');
-    assert.equal(defect.code, 0, show(defect));
-    one(defect, 'hint', 'disposition', id);
-    none(defect, 'not ok', 'disposition', id);
-    const control = run(t, name, 'control', '--strict');
-    assert.equal(control.code, 0, show(control));
-    assert.deepEqual(control.findings.filter((f) => f.code === 'disposition'), [], show(control));
-  }
 });
 
 // #238 R2: --strict raises nothing. d02 and d08 have a request with no

@@ -35,20 +35,6 @@ export function view(dir, args) {
   return r;
 }
 
-// The line "<N> paragraphs, <M> with a baseline effect: <a> incorporated, ...
-// [, <k> not valid]" on a line that holds all of `parts`, as numbers; zero
-// counts are dropped, as the line may leave them out.
-export function dispositionCounts(r, ...parts) {
-  const line = has(r, /\d+ paragraphs, \d+ with a baseline effect:/, ...parts);
-  const m = /(\d+) paragraphs, (\d+) with a baseline effect:(.*)$/.exec(line);
-  const counts = {};
-  for (const item of m[3].split(',')) {
-    const c = /^\s*(\d+) (incorporated|pending|removed|abandoned|superseded|not valid)\b/.exec(item);
-    if (c && Number(c[1]) > 0) counts[c[2]] = Number(c[1]);
-  }
-  return { paragraphs: Number(m[1]), baseline: Number(m[2]), counts };
-}
-
 // `al-v4 conclude`: the run, and whether it wrote anything.
 export function conclude(dir, ...args) {
   const before = tree(dir);
