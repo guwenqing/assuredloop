@@ -988,6 +988,25 @@ describe('D: items-out-of-reach in .assuredloop/config.yaml', () => {
     assert.deepEqual(reachLines(r), [], show(r));
   });
 
+  // 2, exact: a task whose ref names no item keeps its issue-missing and
+  // issue-changed unless its ref holds at least one other tracker's key of
+  // the list, and nothing else but such keys, white space and punctuation.
+  // An empty ref, white space only or punctuation only holds no key.
+  const EMPTY_TASKS = [{ id: 'T1', ref: '' }, { id: 'T2', ref: '   ' }, { id: 'T3', ref: '---' }, { id: 'T4', ref: 'Missing item' }];
+  for (const [what, value] of [['no items-out-of-reach key', undefined], ['items-out-of-reach: []', []], ['items-out-of-reach: [PROJ-12]', ['PROJ-12']]]) {
+    test(`DES-117 (2), exact, ${what}: refs "", "   ", "---" and "Missing item", nothing saved: each task keeps issue-missing ("its ref names no item in ${FOLDER}") and issue-changed "not known"; no issues-out-of-reach line`, (t) => {
+      const w = world(t, { tasks: EMPTY_TASKS });
+      setReach(w, value);
+      const r = checked(w, ...ISSUES);
+      for (const { id, ref } of EMPTY_TASKS) {
+        const about = aboutTasks(r, [`${NAME}/${id}`]);
+        assert.ok(about.some((f) => f.code === 'issue-missing' && f.msg.startsWith(`its ref names no item in ${FOLDER}`)), `issue-missing for ${NAME}/${id} (ref ${JSON.stringify(ref)}):\n${show(r)}`);
+        assert.ok(about.some((f) => f.code === 'issue-changed' && /not known/.test(f.msg)), `issue-changed "not known" for ${NAME}/${id} (ref ${JSON.stringify(ref)}):\n${show(r)}`);
+      }
+      assert.deepEqual(reachLines(r), [], show(r));
+    });
+  }
+
   // 3. Items are grouped ignoring case; the line shows the item in the form of
   //    the first task that names it, and lists every task.
   test('DES-117 (3): T1 "Acme/Web#5" and T2 "acme/web#5", acme/web in the list, not saved: "1 item", named once as Acme/Web#5, with inv/T1 and inv/T2 (control: no setting)', (t) => {
