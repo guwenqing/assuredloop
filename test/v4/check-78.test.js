@@ -101,7 +101,7 @@ test('#78 the lines of al index in al check: one line for each kind, each naming
   const dir = world(t, [SP1, SP2, SP3]);
   // Six new paragraphs, each with a serves and a builds-on link: twelve links.
   const many = [1, 2, 3, 4, 5, 6].map((n) => [`SP-${10 + n} data serves:R1 builds-on:INV-12`, `Export field ${n} is named in the header.`]);
-  write(dir, CS, doc([SP1, SP2, ...many]));
+  write(dir, CS, doc([SP1, SP2, SP3, ...many]));
   let r = check(dir);
   const bound = indexLine(r, 'bound');
   for (let n = 11; n <= 16; n++) {
