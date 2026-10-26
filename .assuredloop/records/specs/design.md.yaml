@@ -23,7 +23,7 @@ paragraphs:
     display: DES-5 (1:2, in 1. Intent)
   - id: DES-6
     kind: rationale
-    text_sha256: 37211bbdfdea2af256cbb2ec74a59b02515a8f11238c88d111bfa2f8f3adcd57
+    text_sha256: 09d683fa12a32651e8e46439d419afcbe33a98d439407f21d7ab9e6c85d4e760
     display: DES-6 (1:3, in 1. Intent)
   - id: DES-7
     kind: note
@@ -35,7 +35,7 @@ paragraphs:
     display: DES-8 (2:1, in 2. One change, and the consolidated spec)
   - id: DES-9
     kind: data
-    text_sha256: a2f1ae0b1bfbbc722a82252614d911731be64c0ee91637263c9eb278d0347e00
+    text_sha256: c890c9717a36d1e256fe0e60f24742db8f3935570dcad3555e254e3c3a8c7d7c
     display: DES-9 (2:2, in 2. One change, and the consolidated spec)
   - id: DES-10
     kind: rule
@@ -83,7 +83,7 @@ paragraphs:
     display: DES-20 (3:9, in 3. IDs, kinds and links)
   - id: DES-21
     kind: rule
-    text_sha256: 204ddfe1d54f59c9c391b1d6b0a594f195083d5d06647defcd37604766badd66
+    text_sha256: e09fdf543721f6e212ca9013da4005818f85eee49a6658547b0ae4cee5995ad3
     display: DES-21 (3:10, in 3. IDs, kinds and links)
   - id: DES-22
     kind: rule
@@ -103,7 +103,7 @@ paragraphs:
     display: DES-102 (3:14, in 3. IDs, kinds and links)
   - id: DES-23
     kind: flow
-    text_sha256: c4df1487a90e2903f98685404f4146ce21974cfcf94d970689b1b7e94284c32c
+    text_sha256: 5c1b3a6f98fed226b56c764f1c3a677004fa9d6afe230237e8bb997a1144b32c
     display: DES-23 (3:15, in 3. IDs, kinds and links)
   - id: DES-24
     kind: note
@@ -181,6 +181,10 @@ paragraphs:
     kind: rule
     text_sha256: b7bf37ae78258de9c8a2a045944352f1ef63cb9ec93d63771ea3ba35fea88921
     display: DES-119 (6:8, in 6. Sign-off)
+  - id: DES-129
+    kind: interface
+    text_sha256: 6d56907dfa446184993435078cb974f8583d60f9b29dbe732cfe6a68391c919e
+    display: DES-129 (6:9, in 6. Sign-off)
   - id: DES-46
     kind: note
     text_sha256: 9c19096853dffb1f44888c94dd08da0b2aa9a5972f3c276dbd5f219b36d27e6a
@@ -293,22 +297,30 @@ paragraphs:
     kind: interface
     text_sha256: 1ca03091906eadb739af38bfc9399e112e4d7b2b78b5896d2518e14b47068010
     display: DES-117 (8:23, in 8. Tasks)
+  - id: DES-130
+    kind: flow
+    text_sha256: 551c3a53d144dd7a55ffaa67f570a64e85a9348025779d9059e262cc76db328c
+    display: DES-130 (8:24, in 8. Tasks)
+  - id: DES-131
+    kind: rationale
+    text_sha256: 28686c962db59b0859f1163808d595fedf74382a09829241cfda8e5e1a572bd5
+    display: DES-131 (8:25, in 8. Tasks)
   - id: DES-109
     kind: interface
     text_sha256: dec1ac583a484cc3051daf90ca3138672c091fbec49de21e6595775c5855d852
-    display: DES-109 (8:24, in 8. Tasks)
+    display: DES-109 (8:26, in 8. Tasks)
   - id: DES-110
     kind: interface
     text_sha256: 04c3e5959e54b6a1c1ef80db5cc765ca7415061ecda6f809fa52bbec1226775c
-    display: DES-110 (8:25, in 8. Tasks)
+    display: DES-110 (8:27, in 8. Tasks)
   - id: DES-111
     kind: example
     text_sha256: 06725e209869f91c6ffbd9ff4b31235a2338857727855692a5d84db65f512f49
-    display: DES-111 (8:26, in 8. Tasks)
+    display: DES-111 (8:28, in 8. Tasks)
   - id: DES-112
     kind: rationale
     text_sha256: b0cb22a5c247622580127aca093ea38c55700b6c7de895fd54e2c6119a42ecb6
-    display: DES-112 (8:27, in 8. Tasks)
+    display: DES-112 (8:29, in 8. Tasks)
   - id: DES-53
     kind: note
     text_sha256: f91d2aec151dce2d5789fc73f56fe070d54c599c3c2faf0da191926554c8c9ab
@@ -447,12 +459,24 @@ paragraphs:
     display: DES-71 (13, 13. Commands)
   - id: DES-72
     kind: interface
-    text_sha256: 228b53872a0d7c20ee8a764b20347a8532d3b8fbc4c1c4d7c5c318ad669df2a2
+    text_sha256: 392453f6891f52f67d3f1fd4858db41d11d434c1ba62b00dcef46a6e7d54afef
     display: DES-72 (13:1, in 13. Commands)
+  - id: DES-132
+    kind: interface
+    text_sha256: 20f008ad50824aebb327df445bf842b562406342b8900511d0ed93707cf1284e
+    display: DES-132 (13:2, in 13. Commands)
+  - id: DES-133
+    kind: interface
+    text_sha256: 8fd5dc77b0d310d378d078ed6ef55be5e8b3b6e78f490259f42f17647cae9e2a
+    display: DES-133 (13:3, in 13. Commands)
   - id: DES-125
     kind: interface
     text_sha256: a796e0b565e633a022f47a23cd96a4a6d4d857cefdcd1c81a9d9f17f5220f5b8
-    display: DES-125 (13:2, in 13. Commands)
+    display: DES-125 (13:4, in 13. Commands)
+  - id: DES-134
+    kind: component
+    text_sha256: 82cc8f1387e991d97b20bcb5224410fbe1101820a06e97f3b9a43026592a4a4c
+    display: DES-134 (13:5, in 13. Commands)
   - id: DES-73
     kind: note
     text_sha256: cff5efe0ec75b164e730f7c30d0ad386e7dc235828ba4911d9eaad32213f41ad
@@ -465,27 +489,139 @@ paragraphs:
     kind: rule
     text_sha256: bbc667396b67cf1fcf43b1366493a3351d370a0dd5ea21200073b8a909597131
     display: DES-75 (14:2, in 14. Migration and adoption)
+  - id: DES-135
+    kind: note
+    text_sha256: a4159bbbb4760f6a2ba255ff9a9696d07fc4ccbef7338a5dd1fa38384f0b1395
+    display: "DES-135 (15, 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-136
+    kind: rationale
+    text_sha256: dc8ef4738e5e4bee89bb9ae04ec5df74c6cc19184dd9c8bfd44f7d0450f1a839
+    display: "DES-136 (15:1, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-137
+    kind: rationale
+    text_sha256: d00531ecb0a963f71ea2b5d4db9b441c1357571679a11a068bcc9bbfd4ced8ae
+    display: "DES-137 (15:2, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-138
+    kind: data
+    text_sha256: 0afb66103dc1571a624c1fad8d9b629a7c968377c2e373010a6861e0a66625e7
+    display: "DES-138 (15:3, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-139
+    kind: data
+    text_sha256: 4687c4f578414a1c51f093e7bc708271a49e6ad1f0e3ebb299b8b44bf3df36fc
+    display: "DES-139 (15:4, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-140
+    kind: data
+    text_sha256: b68fb71e8d36a723e545406ac43aac470e54ab4bfae7210e374962b750ce8dc4
+    display: "DES-140 (15:5, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-141
+    kind: data
+    text_sha256: 4d6a20b6ac4da836cda72c65fbf242c557c14d3e5f870e2c9126e45de8d7f0bd
+    display: "DES-141 (15:6, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-142
+    kind: data
+    text_sha256: 999599957ece5a6006aacf13582403757a8eb6e7c71cb61cc86b45040eb898a0
+    display: "DES-142 (15:7, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-143
+    kind: flow
+    text_sha256: e71371091ea9c516357661ae4cc63ac18381ea4278a2a2279ab185735441055e
+    display: "DES-143 (15:8, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-144
+    kind: flow
+    text_sha256: 771f0c6997101df52a7dd603599e5c8236474e3450f8c6cccde9c4c120cf6fc8
+    display: "DES-144 (15:9, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-145
+    kind: flow
+    text_sha256: a71f1d5eb9bb5b66573869f7026de7eaf9d8ae9e9f19e702539fac07999ab548
+    display: "DES-145 (15:10, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-146
+    kind: rationale
+    text_sha256: ef2173d08b6e48e6251359658d505f282ff42c63484619c9de7ac052b9b9ddc4
+    display: "DES-146 (15:11, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-147
+    kind: flow
+    text_sha256: 951d4b2ee067f1a23772c0a7a0a89818c42de442ddbaa50c4c1c588161a92650
+    display: "DES-147 (15:12, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-148
+    kind: data
+    text_sha256: a13b0a8bb3e682ca3bef3350291eb1167da0c86e2ffa6cf209fd31bfd2b1c082
+    display: "DES-148 (15:13, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-149
+    kind: choice
+    text_sha256: 582e2fbf558bc7d7b60f67ad5ac1bf8c11e00e92dec6b86286136ec1d8c4cedd
+    display: "DES-149 (15:14, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-150
+    kind: data
+    text_sha256: f78b2ffc6e8a8328e1029713032f3e1b315398177237e6712a983eacf158fd71
+    display: "DES-150 (15:15, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-151
+    kind: data
+    text_sha256: 1424fc3b8d852f74eddd32c69d0d6332568ebbf672c80d1ea37fd0abe3c4e77a
+    display: "DES-151 (15:16, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-152
+    kind: data
+    text_sha256: 3cc4cc48e0f745ee3ce3e07fa2281360deda2762cb117ec149367cfed6fbc1b0
+    display: "DES-152 (15:17, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-153
+    kind: flow
+    text_sha256: 33a473f8db74c0c160ee3e7b21874ec730a3f992e835d06f88679aa50b957c4e
+    display: "DES-153 (15:18, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-154
+    kind: flow
+    text_sha256: 83e4202634303b247f4559260c574e34b74e4d11a3b8fd713ff95966df39faa6
+    display: "DES-154 (15:19, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-155
+    kind: flow
+    text_sha256: 4ad98bf4bd6432e7dd7d9cceac20c82f19dcd129ebd804ec3274a535dd03e33c
+    display: "DES-155 (15:20, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-156
+    kind: flow
+    text_sha256: 75e731f3df4a30e421f8fee9084cd17f75fbd9a5c9003d5220b2dc07bfec0fba
+    display: "DES-156 (15:21, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-157
+    kind: flow
+    text_sha256: aa7a3b9076c52b49786b873f18ba2886d25c4ae1b93160ae697011edc7f51603
+    display: "DES-157 (15:22, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-158
+    kind: flow
+    text_sha256: 1bdb3b094f92ed08b935fa405b56dd7462075619690bca1e65c941caaf0c6d6a
+    display: "DES-158 (15:23, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-159
+    kind: flow
+    text_sha256: 3f3146b10c47029dc1c7225b7dab70e56f7c703d2ccfce7dd66fe0004a102b14
+    display: "DES-159 (15:24, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-160
+    kind: flow
+    text_sha256: 46d35b73359fb95e62fe5594477d0871eab2dced8cc5cded14501aa23aaceb06
+    display: "DES-160 (15:25, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-161
+    kind: flow
+    text_sha256: 5b40bb9ce97a209b319a5a2004cd34040e53f4ac6d29cf7501de316b828afc88
+    display: "DES-161 (15:26, in 15. A change and its review: what is in force, the judgements and the map)"
+  - id: DES-162
+    kind: flow
+    text_sha256: 617e9f24a561d97df000dcbb2b34c28119c9233c5bdb503f1d180a04626ccc0e
+    display: "DES-162 (15:27, in 15. A change and its review: what is in force, the judgements and the map)"
   - id: DES-76
     kind: note
     text_sha256: 8b1e0eb2525a35669e71695ff65de98bc6699e18376cd3e0cd455485597a271b
-    display: DES-76 (15, 17. Building v4)
+    display: DES-76 (16, 17. Building v4)
   - id: DES-77
     kind: limit
     text_sha256: d8ff4a409717e5ba110dc5adf4388435a8321a861885a18772b50ea08f3eefb3
-    display: DES-77 (15:1, in 17. Building v4)
+    display: DES-77 (16:1, in 17. Building v4)
   - id: DES-85
     kind: choice
     text_sha256: 908bed52654ff3c21393e60232c85caa0cb48cbd038b630d14f3d7d6530ace55
-    display: DES-85 (15:2, in 17. Building v4)
+    display: DES-85 (16:2, in 17. Building v4)
   - id: DES-78
     kind: rule
     text_sha256: 2da7ad4e53634e6c34efce33426d2763406205548b451d4009ea293e8cb40dca
-    display: DES-78 (15:3, in 17. Building v4)
+    display: DES-78 (16:3, in 17. Building v4)
   - id: DES-113
     kind: choice
     text_sha256: e895e08a95561bfc72f073c30f22d46031a7a9b8745d0fed549b803fd73ad4ba
-    display: DES-113 (15:4, in 17. Building v4)
+    display: DES-113 (16:4, in 17. Building v4)
   - id: DES-86
     kind: data
     text_sha256: 5d5ed6675ba29172b9dda9fb0e058482e7b41da37a98203ea224d69ff8248adc
-    display: DES-86 (15:5, in 17. Building v4)
+    display: DES-86 (16:5, in 17. Building v4)

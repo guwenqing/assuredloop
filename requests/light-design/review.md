@@ -1,0 +1,132 @@
+# Review: the light design
+
+## Consolidation
+
+Each judgement below says what `specs/` holds now, and what I checked in the
+code on main. LD-12, LD-40, LD-49 and section 5 stay out: they wait for new
+signatures or are still open. LD-7 and LD-10 are `approach`: they say how
+this change is built.
+
+- LD-4, LD-5, LD-8, LD-53 and LD-9 complies: the reasons for the light design, now in the first rationale of section 15. What is not built stays out: the migration skill and the adoption skill of LD-5 and LD-9, search as a knowledge base (section 5), and the scale figures, which DES-66 holds. "A command that goes still answers" is what `al context --diff` does (src/v4/views.js).
+  - Item (LD-4): "and gets the right answer with the least added tokens, cost"
+  - Item (LD-5): "Consolidation is a judgement, not a mechanical merge."
+  - Item (LD-8): "What a person or an AI must write or read is cut to what a check"
+  - Item (LD-53): "The program keeps only the facts that an AI forgets or invents"
+  - Item (LD-9): "Tasks, declared outputs, decisions, dispositions and sign-offs in today's records stay readable."
+  - Spec (DES-136): "and gets the right answer with the least added tokens, cost and time."
+  - Spec (DES-136): "`al` keeps only the facts that an AI forgets or invents"
+  - Spec (DES-136): "old records that hold dispositions or wording decisions stay readable"
+  - Code (src/v4/views.js): "the review view is now al check"
+- LD-13 complies: why the list reads the change itself, now in the second rationale of section 15, with the adopter's numbers only.
+  - Item (LD-13): "no code file names a spec ID, and 1 of about 30 test files does (Q14)"
+  - Spec (DES-137): "names a spec ID, and 1 of about 30 test files does."
+- LD-11 complies: each thing is judged by its own time, now the rationale beside C7 in section 8.
+  - Item (LD-11): "Judge each thing by its own time."
+  - Spec (DES-131): "each thing is judged by its own time."
+- LD-22 complies: C7, now in section 8, with the judgement that clears the hint. LD-22 was amended before this judgement: the judgement keeps the hash of the item's text, as src/v4/commands.js writes it.
+  - Item (LD-22): "keeps the hash of the item's text with the judgement"
+  - Item (LD-22): "The text at that sign-off is the one that counts, else the text at the"
+  - Spec (DES-130): "keeps the hash of the item's text with the judgement"
+  - Spec (DES-130): "The text at that sign-off"
+  - Code (src/v4/kept-items.js): "A moment that is past is never kept."
+- LD-24 complies: what is in force and the change's own request, now in section 15 under its heading. The own request is described by what `al index` does not derive, as INDEX_KEYS in src/v4/records.js says; tasks are written by hand, not by `al record`.
+  - Item (LD-24): "The ADRs whose status is accepted and that no ADR replaced"
+  - Item (LD-24): "What `al index` derives by itself"
+  - Spec (DES-135): "## 15. A change and its review: what is in force, the judgements and the map"
+  - Spec (DES-138): "The ADRs whose status is accepted and that no accepted ADR replaces by"
+  - Spec (DES-139): "What `al index` derives by itself"
+  - Code (src/v4/records.js): "export const INDEX_KEYS = ['requirements', 'bindings', 'reviewed', 'items', 'own_edits'];"
+- LD-42 complies: what is not in force, now in section 15; a replaced requirement is added from LD-68.
+  - Item (LD-42): "An accepted ADR whose text changed keeps today's hint"
+  - Spec (DES-140): "An accepted ADR whose text changed keeps its hint"
+- LD-48 complies: the proposed design and the design line, now in section 15, with D2, D3 and D4. LD-48 was amended before this judgement: a document with markers is listed and found by the evidence check; no lint reads it as a change spec. Its fixture list is a test plan and stays with the change. DES-10 stays: the document is a proposal, never in force, and the design that lasts goes into `specs/`.
+  - Item (LD-48): "the list shows its promise and design paragraphs, and the evidence check finds them"
+  - Item (LD-48): "It never shows that document as in force."
+  - Spec (DES-141): "A saved work item gives a design only when a"
+  - Spec (DES-142): "and the list shows each of its promise and design paragraphs"
+  - Spec (DES-142): "shown beside its change spec and never in force"
+  - Code (src/v4/inforce.js): "no markers: supporting evidence"
+- LD-25 complies: the list, the grouped line, the audit and the output repo, now in section 15. The edited items and the items whose scope the change edits are named as the code shows them (changed by this change, scope changed in this change).
+  - Item (LD-25): "The items whose confirmed file scope (LD-26) matches a changed, renamed"
+  - Item (LD-25): "the basis `audit`, also when no change is selected"
+  - Spec (DES-143): "the items whose file scope matches a file that the change adds, changes,"
+  - Spec (DES-144): "the basis `audit`, also when no change is selected"
+  - Spec (DES-145): "File scopes name files of the central repo, so they are"
+  - Code (src/v4/inforce.js): "scope changed in this change"
+- LD-52 complies: why the rest is named, now beside the grouped line.
+  - Item (LD-52): "costs tokens and hides the items that"
+  - Spec (DES-146): "costs tokens and hides the items that"
+- LD-43 complies: the basis and the limits of the list, now in section 15, with each basis that the code prints.
+  - Item (LD-43): "It never says that an item it does not show in full cannot apply."
+  - Spec (DES-147): "It does not say that an item that it does not show in full cannot apply."
+  - Code (src/v4/inforce.js): "an item that is not shown in full may still apply"
+- LD-26 complies: the file scope and its hint, now in section 15. "`al` may later suggest it from git history" stays out: it is not built.
+  - Item (LD-26): "A space or a comma in a path is written as `?`."
+  - Spec (DES-148): "A space or a comma in a path is written as `?`."
+  - Code (src/v4/inforce.js): "matches no file"
+- LD-29 complies: search only adds, now in section 15.
+  - Item (LD-29): "The quote check catches an invented quote, not a wrong"
+  - Spec (DES-149): "The quote check catches an invented quote, not a wrong reading"
+- LD-27 and LD-44 complies: what a judgement holds, and the judgement of absence and the audit, now in section 15.
+  - Item (LD-27): "a quote of the item's text, and a quote of the code or test with its repo"
+  - Item (LD-44): "A judgement of absence ("no test found", "the guard was removed") says so,"
+  - Spec (DES-150): "a quote of the item's text, and a quote of the code or test with its repo"
+  - Spec (DES-151): "A judgement of absence ("no test found", "the guard was removed") says so,"
+- LD-65 complies: the form of the review note, now in section 15, and the note's row in the table of section 2.
+  - Item (LD-65): "A quote is the text between the first and the last double"
+  - Spec (DES-152): "A quote is the text between the first and the last double quote of its line."
+  - Spec (DES-9): "the review note: the review's judgements of the change"
+  - Code (src/v4/evidence.js): "const VERDICTS = ['complies', 'violates', 'unclear', 'not applicable'];"
+- LD-28 complies: C8 and the identity of the reviewed change, now in section 15. C8 shows its results in the review section, and gives no hint line, so the spec says that it gives no `not ok` and changes no exit code.
+  - Item (LD-28): "A judgement is current only while the selected change has the same base, the"
+  - Item (LD-28): "`al` shows a quote that it found as"
+  - Spec (DES-153): "A found quote is not shown as "complies""
+  - Spec (DES-154): "A judgement is current only while the selected change has the same base, the same diff hash and the same item version."
+  - Code (src/v4/evidence.js): "if (!same) return `stale: judged at ${short(entry.head)}`;"
+- LD-66 complies: the rules of the check and how `al index` keeps an identity, now in section 15.
+  - Item (LD-66): "The diff hash is taken over each changed path, its git mode and the hash of its"
+  - Item (LD-66): "`al index` keeps the identity in the"
+  - Spec (DES-155): "The diff hash is taken over each changed path, its git mode and the hash of its bytes"
+  - Spec (DES-156): "`al index` keeps the identity in the request's record, once for each"
+- LD-68 complies: how `al` shows a replacement, now beside DES-119 in section 6. DES-119 keeps the rule; a close line says so.
+  - Item (LD-68): "a proposed replacement: it holds once this version"
+  - Item (LD-68): "A paragraph of an open change spec is a proposal and gets no"
+  - Spec (DES-129): "a proposed replacement: it holds once this version is signed"
+  - Spec (DES-129): "A paragraph of an open change spec is a proposal, and gets no such hint."
+  - Code (src/v4/state.js): "a proposed replacement: it holds once this version is signed"
+- LD-56 and LD-61 complies: the map, its states, how its links are bound, and the version that the own branch gave a paragraph, now in section 15; the records that `al index` keeps for them are in schema.md 7.
+  - Item (LD-56): "another open request's `changes` or `removes`"
+  - Item (LD-61): "A merge commit gives none, because it can hold the edit of other work."
+  - Spec (DES-157): "Another open request's `changes` or `removes` link to it shows as an open"
+  - Spec (DES-158): "So a lost edit, and a revert to the linked text, show as"
+  - Spec (DES-159): "the earliest commit of base..HEAD that"
+  - Spec (DES-160): "A merge commit gives none, because it can hold the edit of"
+  - Spec (SCH-28): "the identity of each review"
+  - Code (src/v4/map.js): "A merge commit, which may hold other work's edit,"
+- LD-59 and LD-60 complies: the consolidation judgement and the two hints of the map, now in section 15, beside item 5 of DES-29.
+  - Item (LD-59): "so a split or a join"
+  - Item (LD-60): "A spec paragraph is named when an own change paragraph names it"
+  - Spec (DES-161): "so a split or a join needs one judgement"
+  - Spec (DES-162): "A spec paragraph is named when an own"
+  - Code (src/v4/evidence.js): "current: its named paragraphs are unchanged"
+- LD-63, LD-41 and LD-18 complies: `al check` as the one command for a change and its review, now in the commands table and the paragraph after it. The review view's sentences in DES-21, DES-23 and SCH-22 now name `al check`; their meaning does not change.
+  - Item (LD-63): "`al check` runs `al index`, and names in one line each record file that it"
+  - Item (LD-41): "(`ok: nothing found by <code>, ...`)"
+  - Item (LD-18): "`--full` shows everything;"
+  - Spec (DES-72): "the one command for a change and its review"
+  - Spec (DES-132): "`al check --at <commit>` reads the commit's spec, records and change from"
+  - Spec (DES-132): "`ok: nothing found by <code>, ...`"
+  - Spec (DES-21): "`al context` and `al check` say this in plain words"
+  - Spec (DES-23): "`al check --full` shows each changed paragraph's text"
+  - Spec (SCH-22): "`al check --full` marks each ADR that it names"
+  - Code (src/v4/check.js): "records: al check wrote"
+- LD-19 complies: the built part, `al context <ID>` with the citing places grouped by file, now in section 13. The reuse of answers and the affected IDs of a review are not built and stay with the change.
+  - Item (LD-19): "groups the citing places by file: one line for each"
+  - Spec (DES-133): "It groups the citing places by file: one line for"
+  - Code (src/v4/views.js): "for each file, with the count and every line number"
+- LD-20 complies: the skill and its steps, named in section 13 and not copied.
+  - Item (LD-20): "It names each `al` option beside its command, so that a code test"
+  - Spec (DES-134): "The skill names each `al` option beside its command, so that"
+- DES-6 complies: the reference to a section 15 that no longer existed is gone; the sentence on cost stays.
+  - Item: "Validation measures each rule against that cost."
+  - Spec (DES-6): "Validation measures each rule against that cost."
