@@ -668,3 +668,63 @@ test('#64 the in-force list: an ID named only in review.md is not cited and stay
   g = grouped(r);
   assert.ok(g.unknown.includes('ADR-3') || g.mismatch.includes('ADR-3'), `ADR-3 stays in the grouped line:\n${show(r)}`);
 });
+
+// =====================================================================
+// What the identity leaves out and takes in: every requests/*/review.md
+// and .assuredloop/ are left out; untracked files that git does not
+// ignore are part of the change.
+
+test('#64 identity: the note is left out of the change: a second judgement and an edit of free text keep the first current; al index keeps both; another open request\'s note changing after al index keeps it current', (t) => {
+  const dir = world(t, (d) => newRequest(d, 'pdf'));
+  sourceCommit(dir);
+  note(dir, judged(...J41_ITEMS));
+  index(dir);
+  let r = check(dir);
+  assert.ok(judgement(r, 'INV-41').endsWith(' · current'), show(r));
+
+  // A second judgement and new free text, with no al index.
+  const second = 'INV-13 violates: no code checks the line count.';
+  write(dir, NOTE, `# Review of ${NAME}, round 2\n\nOther free text.\n\n${judged(...J41_ITEMS)}\n${judged(second, 'Item: "at least one line"', 'Test: no test found')}\n`);
+  r = check(dir);
+  assert.equal(headerLine(r), header({ n: 2, c: 1, u: 1 }), show(r));
+  assert.ok(judgement(r, 'INV-41').endsWith(' · current'), `the edit of the note leaves the first judgement current:\n${show(r)}`);
+  assert.ok(judgement(r, 'INV-13').endsWith(' · identity not kept: run al index'), show(r));
+
+  // A note of the other open request, then al index: both current.
+  write(dir, 'requests/pdf/review.md', '# Review of pdf\n\nNothing judged yet.\n');
+  index(dir);
+  r = check(dir);
+  assert.equal(headerLine(r), header({ n: 2, c: 2 }), show(r));
+
+  // The other request's note changes after al index.
+  write(dir, 'requests/pdf/review.md', '# Review of pdf\n\nStill nothing judged.\n\n- a loose remark\n');
+  r = check(dir);
+  assert.equal(headerLine(r), header({ n: 2, c: 2 }), `the note of pdf is left out too:\n${show(r)}`);
+  assert.ok(judgement(r, 'INV-41').endsWith(' · current'), show(r));
+});
+
+test('#64 identity: a new untracked file that git does not ignore makes the judgement stale at the HEAD of al index', (t) => {
+  const dir = world(t);
+  sourceCommit(dir);
+  note(dir, judged(...J41_ITEMS));
+  index(dir);
+  const head = short(dir);
+  assert.ok(judgement(check(dir), 'INV-41').endsWith(' · current'), 'current after al index');
+  write(dir, 'src/new.js', 'export const added = true;\n');
+  const r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, s: 1 }), show(r));
+  assert.ok(judgement(r, 'INV-41').endsWith(` · stale: judged at ${head}`), show(r));
+});
+
+test('#64 identity, control: a new file that .gitignore ignores keeps the judgement current', (t) => {
+  const dir = world(t);
+  write(dir, '.gitignore', 'build/\n');
+  commitAll(dir, `${NAME}: ignore build`);
+  sourceCommit(dir);
+  note(dir, judged(...J41_ITEMS));
+  index(dir);
+  write(dir, 'build/out.js', 'export const built = true;\n');
+  const r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, c: 1 }), show(r));
+  assert.ok(judgement(r, 'INV-41').endsWith(' · current'), show(r));
+});
