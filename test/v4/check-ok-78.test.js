@@ -7,20 +7,27 @@
 // - with a base and no commit on the branch: path-claim and no-claim;
 // - with commits and no Tier line: path-claim;
 // - with no own request of path 2 or 3: map-unnamed and map-consolidation;
-// - with no change selected: design-doc and scope-no-file.
+// - with no change selected: design-doc and scope-no-file;
+// - in an output repo (a repo whose config names a central repo), where the
+//   list does not match file scopes and does not read the change's own
+//   request: scope-no-file, and design-doc without --issues; with a central
+//   repo that cannot be read, neither of the two.
 //
 // Written from the requirement and the public interface only. Nothing here
 // reads src/. No model and no network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { al, commitAll, INVOICES, project, show, write, writeConfig } from './helpers/project.js';
+import { mkdirSync, renameSync } from 'node:fs';
+import { join } from 'node:path';
+import { world as crossWorld } from './helpers/cross-repo.js';
+import { al, commitAll, git, INVOICES, project, read, show, write, writeConfig } from './helpers/project.js';
 import { world } from './helpers/map-68.js';
 
 const lines = (r) => r.stdout.split('\n');
 const OK = /^ok: nothing found by ([a-z0-9-]+(?:, [a-z0-9-]+)*)$/;
 
-function check(dir) {
-  const r = al(dir, ['check']);
+function check(dir, ...args) {
+  const r = al(dir, ['check', ...args]);
   assert.equal(r.code, 0, show(r));
   return r;
 }
@@ -104,4 +111,60 @@ test('#78 control: a base, a Tier line and an own request of path 2: the ok line
     assert.ok(!lines(r).some((l) => l.split(' ')[1] === code || l.split(' ')[2] === code), `no finding of ${code}:\n${show(r)}`);
   }
   namesAll(r, ['lost-id', 'used-again', 'path-claim']);
+});
+
+// =====================================================================
+// An output repo: the list does not match file scopes, and does not read the
+// change's own request. The world is the cross-repo world of
+// helpers/cross-repo.js; invoicer-web names ../invoicer as its central repo.
+
+// invoicer-web on the branch feature, with one source commit.
+function outputBranch(t) {
+  const w = crossWorld(t);
+  git(w.web, 'checkout', '-q', '-b', 'feature');
+  write(w.web, 'src/share.js', 'export const hours = 24;\n');
+  commitAll(w.web, 'a source change');
+  return w;
+}
+
+const SCOPES_LIMIT = 'file scopes name files of the central repo; they are not matched in an output repo';
+
+// 7. The central repo can be read; no --issues.
+test('#78 an output repo, the central repo readable: the ok line names neither scope-no-file nor design-doc', (t) => {
+  const w = outputBranch(t);
+  const r = check(w.web);
+  assert.ok(lines(r).some((l) => l.startsWith('list limits: ') && l.includes(SCOPES_LIMIT)), `the list limits say "${SCOPES_LIMIT}":\n${show(r)}`);
+  namesNone(r, ['scope-no-file', 'design-doc']);
+});
+
+// 8. The same, with --issues and an empty folder of items.
+test('#78 an output repo with --issues <folder>: the ok line does not name scope-no-file', (t) => {
+  const w = outputBranch(t);
+  mkdirSync(join(w.root, 'items'));
+  const r = check(w.web, '--issues', '../items');
+  namesNone(r, ['scope-no-file']);
+});
+
+// 9. The central path points at no clone.
+test('#78 an output repo whose central repo cannot be read: the ok line names neither scope-no-file nor design-doc', (t) => {
+  const w = outputBranch(t);
+  renameSync(w.central, join(w.root, 'moved-away'));
+  const r = check(w.web);
+  assert.ok(lines(r).some((l) => l.startsWith('list limits: ') && l.includes('the central repo cannot be read')), show(r));
+  namesNone(r, ['scope-no-file', 'design-doc']);
+});
+
+// 10. Control: in the central repo itself, scope-no-file runs.
+test('#78 control: the central repo, with an item whose files: scope matches no file, gets a hint scope-no-file line', (t) => {
+  const w = crossWorld(t);
+  const spec = 'specs/invoices.md';
+  const text = read(w.central, spec);
+  const marker = text.split('\n').find((l) => l.startsWith('<!-- INV-13 rule'));
+  assert.ok(marker, `${spec} has the marker of INV-13`);
+  write(w.central, spec, text.replaceAll(marker, marker.replace(/ -->$/, ' files:src/nothing/** -->')));
+  git(w.central, 'checkout', '-q', '-b', 'feature');
+  write(w.central, 'src/share.js', 'export const hours = 24;\n');
+  commitAll(w.central, 'a file scope, and a source change');
+  const r = check(w.central);
+  assert.ok(lines(r).some((l) => l.startsWith('hint scope-no-file ') && l.includes('INV-13')), `a hint scope-no-file line for INV-13:\n${show(r)}`);
 });
