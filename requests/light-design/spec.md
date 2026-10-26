@@ -531,7 +531,9 @@ item is in force.
 
 - The items in force that the change edits, and the ones that it cites: a
   line that it adds or removes names the ID as a whole word. A paragraph's
-  own ID in its marker line is no citation.
+  own ID in its marker line is no citation, and neither is an ID in a
+  review note (LD-27): the note is the review's output, not part of the
+  change.
 - The items whose confirmed file scope (LD-26) matches a changed, renamed
   or deleted file, in the repo that holds it.
 - The items whose scope is all files.
@@ -593,6 +595,20 @@ judgement holds:
 - the test evidence apart: the assertion that checks the item, or "no test
   found", or "tests not examined".
 
+<!-- LD-65 data serves:R2 builds-on:LD-27 -->
+
+The note is `requests/<name>/review.md` of the change's own request
+(LD-24). One judgement is one top-level list item. Its first line is
+`<ID> <verdict>: <reason>`, and each line under it holds one quote:
+`Item: "<quote>"`, `Code (<path>): "<quote>"` or `Test (<path>): "<quote>"`.
+A path is from the repo's root, at the head; `, base` after it names the
+base, and `<repo>:<path>` names a file of an output repo, as in a design
+line (LD-48). A quote is the text between the first and the last double
+quote of its line. The test evidence may also be `Test: no test found` or
+`Test: tests not examined`. A top-level list item that `al` cannot read as
+a judgement is shown as not read, never left out. Other text in the note is
+free, and `al` does not read it.
+
 <!-- LD-44 data serves:R2 -->
 
 A judgement of absence ("no test found", "the guard was removed") says so,
@@ -626,6 +642,30 @@ cannot find gives "item not found". `al` shows a quote that it found as
 gives hints only. A judgement never clears or hides a `not ok` or a refusal
 of `al conclude` (LD-12), and it never blocks. To make a judgement block
 needs its own requirement and the owner's signature.
+
+<!-- LD-66 flow serves:R2 builds-on:LD-28 -->
+
+The rules of the check. A quote matches word for word, with each run of
+white space taken as one space, so that a quote of a wrapped paragraph
+matches. The change in this repo is the one that `al check` selects: its
+base to the working tree, with the untracked files that git does not
+ignore. In an output repo of the configuration, it is the change from the
+merge-base of the selected commit with `main` to that commit; a repo that
+`al` cannot read is kept as unknown, with its reason. The diff hash is
+taken over each changed path and the hash of its bytes now, so it does not
+depend on git's diff settings. `al index` keeps the identity in the
+request's record, once for each judgement, and never writes it again;
+`al check` writes nothing. A judgement that is already committed when
+`al index` first sees it takes the identity of the earliest commit of the
+branch whose note holds it. When the history cannot tell, the judgement is
+"not known when judged", never current. A renewed review rewrites the
+judgement, for example its reason, and the rewritten judgement gets a new
+identity. A judgement with no identity yet says "identity not kept: run al
+index". The item's state is one of: in force; proposed by this change;
+draft (another open request's text, an unsigned requirement, a proposed
+ADR); replaced (a superseded or replaced ADR); or not in force (any other
+kind or status). A judgement of an earlier PR of the same request has
+another base, so it shows as stale.
 
 <!-- LD-29 choice serves:R1 -->
 

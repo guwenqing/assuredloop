@@ -159,7 +159,7 @@ paragraphs:
     display: "LD-42 (5:3, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-25
     kind: flow
-    text_sha256: 2c6b063cee3feaedcb1f599f682169fd2f0a7187d6c071f78be580351888e9a0
+    text_sha256: ca07e8f6871e8434687d3e668e3f8dcbd2fab90e3273a8e0577bc08e2aadb5ad
     display: "LD-25 (5:4, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-52
     kind: rationale
@@ -177,22 +177,30 @@ paragraphs:
     kind: data
     text_sha256: 8c782536b1c43f695db72e149597b7398fca53d5be81e9a23d0e5bd4c688518a
     display: "LD-27 (5:8, in 4a. The code side: what is in force, the list, the judgements)"
+  - id: LD-65
+    kind: data
+    text_sha256: 90cf19ec090777308b48641e9010a05bbe1f5deb2459f1f5fc9c1d2912637e74
+    display: "LD-65 (5:9, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-44
     kind: data
     text_sha256: 9f49953cd260d43f0dc3bad643fa1cfa97eb13df326bad630f5a9a14a1c5ce4e
-    display: "LD-44 (5:9, in 4a. The code side: what is in force, the list, the judgements)"
+    display: "LD-44 (5:10, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-28
     kind: flow
     text_sha256: e48b59f6f158eb3b0ca6d676f7484c1522c39dcefd790324ec03c31743485284
-    display: "LD-28 (5:10, in 4a. The code side: what is in force, the list, the judgements)"
+    display: "LD-28 (5:11, in 4a. The code side: what is in force, the list, the judgements)"
+  - id: LD-66
+    kind: flow
+    text_sha256: c0207b4904355869f75efdfca251833e3251374cc555c7489400f38b3c799dcb
+    display: "LD-66 (5:12, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-29
     kind: choice
     text_sha256: ee711343775a54b6066791749708f64f4cba11827cf89481275c4b57e4c88f4e
-    display: "LD-29 (5:11, in 4a. The code side: what is in force, the list, the judgements)"
+    display: "LD-29 (5:13, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-49
     kind: plan
     text_sha256: afd997cbbf2cee8e64eb7ef6e15c067baff448a12f53461e4cc89d727c5f4844
-    display: "LD-49 (5:12, in 4a. The code side: what is in force, the list, the judgements)"
+    display: "LD-49 (5:14, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-31
     kind: note
     text_sha256: d2ca55c249ceb88d51c81f1a9080fa584e4efea0ff54a566a7c9a879c364dede
