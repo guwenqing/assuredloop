@@ -319,13 +319,14 @@ export function centralRepo(top, config = loadConfig(top)) {
 
 // al check in an output repo (design.md 12): each central ID that the branch's
 // changed files cite, looked up in the central repo at its selected commit.
-// Returns { body, notKnown }; both empty when config names no central repo.
+// Returns { body, notKnown }; both empty when config names no central repo,
+// and `skipped` when no central ID was looked up (LD-41).
 export function centralLookup(top) {
   const config = loadConfig(top);
   const c = config.central;
   const r = centralRepo(top, config);
   if (!r) return { body: [], notKnown: [] };
-  if (r.unknown) return { body: [`unknown: the central repo: ${r.unknown}`], notKnown: [`the central repo (${r.unknown}): no central ID was looked up`] };
+  if (r.unknown) return { body: [`unknown: the central repo: ${r.unknown}`], notKnown: [`the central repo (${r.unknown}): no central ID was looked up`], skipped: ['unresolved-central'] };
   const base = mergeBase(top);
   const lines = [];
   for (const file of changedFiles(top, base)) {

@@ -190,10 +190,13 @@ function checkAll(args) {
   body.push(...map.body);
   // One line that names each check that ran and found nothing (LD-41).
   const gave = new Set(body.map((l) => /^(?:hint|not ok) (\S+) /.exec(l)?.[1]).filter(Boolean));
-  // Only the checks that ran: with no base, the checks of the change against
-  // it did not; nor did the path checks with no Tier line or no commit, the
-  // list's hints that it skipped, or the map's hints with no map.
-  const skipped = new Set([...(base ? [] : BASE_CODES), ...t10.skipped, ...(list.skipped ?? []),
+  // Only the checks that ran in full: a check that a Not known line or a
+  // finding says was not run, or not run on all that it covers, is left out:
+  // with no base, the checks of the change against it; with a shallow
+  // history, used-again; the checks that skipped a part; and the map's hints
+  // with no map.
+  const skipped = new Set([...(base ? [] : BASE_CODES), ...(base && isShallow(top) ? ['used-again'] : []), ...t10.skipped,
+    ...(list.skipped ?? []), ...(central.skipped ?? []),
     ...(map.ran === false ? ['map-unnamed', 'map-consolidation'] : [])]);
   const ran = [...CODES, ...(issues ? ISSUE_CODES : []), ...(central.body.length ? ['unresolved-central'] : [])].filter((c) => !skipped.has(c));
   const quiet = ran.filter((c) => !gave.has(c));
