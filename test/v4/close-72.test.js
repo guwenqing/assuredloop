@@ -329,7 +329,7 @@ test('#72 a stale consolidation judgement: conclude shows hint map-consolidation
   const dir = ready(t);
   note(dir, judged('SP-1 complies: the link rule is INV-41.', 'Item: "lives for 24 hours"', `Spec (INV-41): "${N41}"`));
   save(dir, `${NAME}: the review`);
-  editSpec(dir, 'INV-41', 'rule', N41, 'The export link MUST expire 48 hours after it is created.', { serves: null });
+  editSpec(dir, 'INV-41', 'rule', N41, 'The export link MUST expire 48 hours after it is created.');
   save(dir, `${NAME}: INV-41 again`);
   const [p] = closes(dir);
   assert.ok(p.stdout.split('\n').some((l) => l.startsWith('hint map-consolidation ') && word('SP-1').test(l)), `hint map-consolidation SP-1:\n${show(p)}`);
@@ -527,7 +527,9 @@ function closeLineAdd(dir, cid, on, reason) {
 }
 
 const occurrences = (text, id) => (text.match(new RegExp(word(id).source, 'g')) ?? []).length;
-const closeLinesOf = (r, cid) => r.stdout.split('\n').filter((l) => !l.startsWith('refused: ') && /\bclose\b/.test(l) && word(cid).test(l));
+// The close lines of a view: not a refusal, and not indented (the Outcome
+// block of a preview is indented and may name the close line again).
+const closeLinesOf = (r, cid) => r.stdout.split('\n').filter((l) => !l.startsWith('refused: ') && !/^\s/.test(l) && /\bclose\b/.test(l) && word(cid).test(l));
 
 // The one close line of cid in a view, in the given state. Returns the line
 // and the line without its reason.
