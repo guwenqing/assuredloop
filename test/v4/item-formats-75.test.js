@@ -969,6 +969,20 @@ describe('D: items-out-of-reach in .assuredloop/config.yaml', () => {
     assert.deepEqual(aboutTasks(r, [`${NAME}/T1`]).map((f) => f.line), [], show(r));
   });
 
+  // 2, refined: only other trackers' keys of the list (not owner/repo, not an
+  // SP-8 form) take away a task's issue-missing and issue-changed.
+  test('DES-117 (2): a ref "acme/web", a bare repository that names no item, with acme/web in the list and nothing saved: inv/T1 keeps its issue-missing and issue-changed, as in the control; no issues-out-of-reach line', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: 'acme/web' }] });
+    const control = checked(w, ...ISSUES);
+    const kept = aboutTasks(control, [`${NAME}/T1`]);
+    assert.ok(kept.some((f) => f.code === 'issue-missing' && f.msg.startsWith(`its ref names no item in ${FOLDER}`)), `control: issue-missing:\n${show(control)}`);
+    assert.ok(kept.some((f) => f.code === 'issue-changed' && /not known/.test(f.msg)), `control: issue-changed "not known":\n${show(control)}`);
+    setReach(w, ['acme/web']);
+    const r = checked(w, ...ISSUES);
+    assert.deepEqual(aboutTasks(r, [`${NAME}/T1`]).map((f) => f.line), kept.map((f) => f.line), `inv/T1 keeps its issue-missing and issue-changed:\n${show(r)}`);
+    assert.deepEqual(reachLines(r), [], show(r));
+  });
+
   // 3. Items are grouped ignoring case; the line shows the item in the form of
   //    the first task that names it, and lists every task.
   test('DES-117 (3): T1 "Acme/Web#5" and T2 "acme/web#5", acme/web in the list, not saved: "1 item", named once as Acme/Web#5, with inv/T1 and inv/T2 (control: no setting)', (t) => {
