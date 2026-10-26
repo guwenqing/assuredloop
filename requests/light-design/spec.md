@@ -202,7 +202,8 @@ person and no AI writes or reads it. When a branch adds a `changes` or
 first binds the link, `al index` binds the paragraph's text at the base: the
 state is "changed since the link". A later edit of that paragraph by
 other work gives the parallel-work hint of v4/R6, as today; the change's
-own consolidation does not. A recorded judgement clears that hint and
+own consolidation does not. A `builds-on` link to that paragraph still
+gets the hint. A recorded judgement clears that hint and
 changes no state of the map. `al` compares no text with text. The map also
 shows, for each change paragraph that goes into
 `specs/`, its consolidation judgement (LD-59): current, stale or none. The
