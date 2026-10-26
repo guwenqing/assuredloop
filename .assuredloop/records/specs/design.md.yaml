@@ -283,7 +283,7 @@ paragraphs:
     display: DES-118 (8:22, in 8. Tasks)
   - id: DES-117
     kind: interface
-    text_sha256: cae58012a3e57909d596515f77e848cd910834790fc0f1b97f74195b8cdb7cf0
+    text_sha256: 556d2feccfdf5e797e19b4774b70c5bd045b0cc14c36b9a0f0d3c4382c49b147
     display: DES-117 (8:23, in 8. Tasks)
   - id: DES-109
     kind: interface
