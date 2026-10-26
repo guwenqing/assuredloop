@@ -18,7 +18,7 @@ import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from 
 import { taskItems } from './issues.js';
 import { centralRepo, namedIds, outputRepos } from './repos.js';
 import { ADR_FILE, SPEC, symlinkOn } from './scope.js';
-import { loadState, placeOf, signedBy, unknownBy } from './state.js';
+import { loadState, placeOf, replaceLinks, replacersOf, reqLine, signedBy, unknownBy, versionOf } from './state.js';
 
 const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 const inForceKind = (state, kind) => !!kind && kind !== 'approach' && ['promise', 'design'].includes(groupOf(kind, state.kinds));
@@ -409,6 +409,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     return got.lines ?? [];
   };
   const designs = designPaths(top, now, own, issues);
+  let replacedShown = false;
   for (const r of own) {
     const lines = lf(r.md).split('\n');
     for (const q of r.reqs) {
@@ -419,7 +420,21 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
         continue;
       }
       const at = lines.findIndex((l) => new RegExp(`^###\\s+${q.id}\\b`).test(l)) + 1;
-      body.push(`proposed ${r.name}/${q.id} signed requirement · ${r.dir}/request.md:${at} · signed in ${s.id} (only al's record ${recordPath(r.name)} holds this): `
+      // A replaced requirement is not in force: the list shows the one that
+      // replaces it (LD-68); one whose replacement is not known stays.
+      const by = replacersOf(now, `${r.name}/${q.id}`);
+      for (const l of by.filter((x) => x.holds === null)) limits.push(`whether ${l.key} replaces ${r.name}/${q.id}: not known: the original file of its sign-off is not checked`);
+      if (by.some((l) => l.holds)) {
+        replacedShown = true;
+        for (const l of by.filter((x) => x.holds)) {
+          body.push(`replaced ${r.name}/${q.id} signed requirement · ${r.dir}/request.md:${at} · replaced by ${l.key} (${l.r.dir}/request.md:${reqLine(l.r, l.q.id)}), `
+            + `${versionOf(l.r, l.q)}: signed in ${signedBy(now, l.r.name, l.q.id).id} (only al's record ${recordPath(l.r.name)} holds this): ${l.q.title}: ${oneLine(l.q.text.split('\n').slice(1).join('\n'))}`);
+        }
+        continue;
+      }
+      const replaces = replaceLinks(now).filter((l) => l.key === `${r.name}/${q.id}` && l.target)
+        .map((l) => ` · replaces ${l.target.key} (${l.target.r.dir}/request.md:${reqLine(l.target.r, l.target.q.id)})`).join('');
+      body.push(`proposed ${r.name}/${q.id} signed requirement · ${r.dir}/request.md:${at} · signed in ${s.id} (only al's record ${recordPath(r.name)} holds this)${replaces}: `
         + `${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`);
     }
     const specText = now.docs.find((d) => d.path === r.specFile)?.text ?? '';
@@ -445,7 +460,8 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   }
   body.push('list basis: changed by this change = the change edits the item; cited = a line that the change added or removed names the ID; '
     + 'scope changed in this change = the change edits its files: scope; by scope = its files: scope matches a file that the change touches; all files = its scope is files:**; '
-    + `proposed = this change's own signed requirements and design, not in force; ${auditAll ? 'audit = an item in force that the change does not touch, shown for the audit' : 'the grouped line names every other item in force'}`);
+    + `proposed = this change's own signed requirements and design, not in force; ${replacedShown ? 'replaced = a signed requirement of another request replaces it; the line shows that one; ' : ''}`
+    + `${auditAll ? 'audit = an item in force that the change does not touch, shown for the audit' : 'the grouped line names every other item in force'}`);
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
     + `al check --full shows the text of every item, al context <ID>${central ? ` --at ${central.sha.slice(0, 7)} in the central repo shows` : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
   // In an output repo, no file scope is matched and no own request is read.

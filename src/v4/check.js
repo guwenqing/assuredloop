@@ -248,7 +248,7 @@ const CODES = [
   'spec-root', 'no-id', 'no-kind', 'unknown-kind', 'no-link', 'unknown-link', 'no-blank-before', 'no-blank-after', 'duplicate-id',
   'duplicate-heading', 'lost-id', 'used-again',
   'record-unreadable', 'record-evidence', 'unsigned-requirement', 'signoff-coverage', 'superseded-cited', 'superseded-status',
-  'path-claim', 'no-claim', 'promise-kind', 'typo-mark', 'near-match', 'adoption', 'design-link', 'unresolved-link', 'unknown-task',
+  'path-claim', 'no-claim', 'promise-kind', 'typo-mark', 'near-match', 'adoption', 'design-link', 'unresolved-link', 'replaces-link', 'serves-replaced', 'unknown-task',
   'target-removed', 'holder-changed', 'stale-base', 'stale-ai-hint', 'overlap', 'result', 'phrase',
   'adr-changed', 'adr-supersede', 'adr-marker', 'adr-status', 'adr-number', 'adr-none', 'adr-links', 'adr-governs',
   'design-doc', 'scope-no-file', 'map-unnamed', 'map-consolidation',

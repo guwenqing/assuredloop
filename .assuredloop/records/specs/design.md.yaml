@@ -173,6 +173,10 @@ paragraphs:
     kind: rule
     text_sha256: 42df3e3e8e2be83aa5172f34903cdcc7fab99056da18a3026dc21a47277596e0
     display: DES-45 (6:6, in 6. Sign-off)
+  - id: DES-119
+    kind: rule
+    text_sha256: b7bf37ae78258de9c8a2a045944352f1ef63cb9ec93d63771ea3ba35fea88921
+    display: DES-119 (6:7, in 6. Sign-off)
   - id: DES-46
     kind: note
     text_sha256: 9c19096853dffb1f44888c94dd08da0b2aa9a5972f3c276dbd5f219b36d27e6a

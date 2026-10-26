@@ -599,6 +599,56 @@ Not in force: another open request's proposal (shown as "open proposal on
 paragraphs. An accepted ADR whose text changed keeps today's hint, and the
 list marks it "text changed, review open".
 
+<!-- LD-68 data serves:R1 changes:DES-119 -->
+
+A requirement that replaces a requirement of another request. `al record`
+does not edit an archived request, so a new version of an archived
+request's requirement is a requirement of a new request. Its marker in
+`request.md` names the requirement that it replaces, for example
+`<!-- R5 from:<snapshot> replaces:assuredloop-v4/R5 -->`. A marker may hold
+more than one `replaces:` token, and a token may hold a list joined by
+commas. The token is outside the signed text, so it changes no signed
+hash. Inside one request, the versions of a requirement hold its changes,
+so a `replaces:` link names a requirement `R<n>` of another request only.
+
+- The replacement holds when the current version of the new requirement is
+  signed. Before that, the new requirement is a proposed replacement, and
+  the old one stays as it is. When the original file of the sign-off is not
+  checked, `al` says that it does not know whether the replacement holds.
+- `al context <old>` adds "replaced" after the sign state when the
+  replacement holds, and "replaced: not known" when `al` does not know. It
+  shows a line for each requirement that replaces it:
+  `Replaced  by <new> (<place>), version <n>: <sign state>;` and then "the
+  replacement holds", "a proposed replacement: it holds once this version
+  is signed" or "not known whether the replacement holds".
+- `al context <new>` shows `Replaces  <old> (<place>), last signed version
+  <n>` for each link. When the old requirement has no sign-off, the line
+  says that it was not signed.
+- A replaced requirement is not in force. Where the list shows a
+  requirement whose replacement holds, on any basis, it shows it as
+  replaced, with the requirement that replaces it: its place, version, sign
+  state and text. A listed requirement that replaces another names it.
+  Today the list shows a requirement only as a signed requirement of the
+  change's own request.
+- A paragraph in `specs/` that serves the old requirement and not the new
+  one gets the hint `serves-replaced`, one for each replacement that holds:
+  "<ID> serves <old>, which <new> replaces: check that it still holds, then
+  serve <new>". It clears when the paragraph serves the new requirement, or
+  no longer serves the old one. When `al` does not know whether the
+  replacement holds, `al check` says so in its "not known" output and gives
+  no hint. A paragraph of an open change spec is a proposal and gets no
+  such hint.
+- The hint `replaces-link`, on the marker line, names each mistake: a link
+  on a question's marker, because only a requirement replaces a
+  requirement; a link that names no requirement `R<n>` of another request
+  (a question `Q<n>` too); a link to a requirement of the same request; and
+  two requirements that replace the same one, with a hint on each marker.
+  Each requirement that replaces it stays shown.
+- The full trace of the old request (`al context <old request> --audit`)
+  names each of its requirements that a link replaces, with its place and
+  the same words.
+- Each new finding is a hint and not a `not ok`, and no exit code changes.
+
 <!-- LD-25 flow serves:R1 -->
 
 The list for a change, in plain code, with no model. It is the same with or

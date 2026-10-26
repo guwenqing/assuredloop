@@ -612,6 +612,27 @@ and changes the promise. So:
   serves R2."
 - A spike's organized question can change the same way.
 
+<!-- DES-119 rule serves:light-design/R1,assuredloop-v4/R9 -->
+
+**A requirement that replaces one of another request.** An archived request
+is not edited, so a new version of its requirement is a requirement of a
+new request. Its marker names the old one:
+`<!-- R5 from:<snapshot> replaces:assuredloop-v4/R5 -->`. The token is
+outside the signed text, and it names a requirement `R<n>` of another
+request only.
+- The replacement holds once the current version of the new requirement is
+  signed. Until then, the old one stays as it is. When the original file of
+  the sign-off is not checked, `al` says that it does not know.
+- A replaced requirement is not in force. `al context` shows the link on
+  both requirements, and the full trace of the old request names each of
+  its replaced requirements.
+- A paragraph of `specs/` that serves the replaced requirement and not the
+  new one gets the hint `serves-replaced`, until it serves the new one or no
+  longer serves the old one.
+- A link on a question, a link to no requirement of another request, a link
+  inside one request, and two requirements that replace one are hints
+  (`replaces-link`).
+
 <!-- DES-46 note -->
 
 ## 7. Paths for each kind of work

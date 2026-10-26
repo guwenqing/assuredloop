@@ -47,11 +47,14 @@ export function frameOf(text) {
 // Each `### R<n> <title>` (or `### Q<n>`): { id, title, text, sha256, from }.
 // Its text runs from the heading to the next heading, or an Out:, Assumed:
 // or Signed off: line, with no marker line and no blank line at either end.
-// `from` lists the snapshot files of the `<!-- R<n> from:... -->` markers.
+// `from` lists the snapshot files of the `<!-- R<n> from:... -->` markers;
+// `replaces` the requirements of other requests that its markers name by
+// `replaces:` (LD-68), each as { ref, line }, with the marker's line.
 export function requirements(md) {
   const o = organized(md);
   if (!o) return [];
   const from = new Map();
+  const replaces = new Map();
   const out = [];
   let cur = null;
   const close = () => {
@@ -62,19 +65,21 @@ export function requirements(md) {
     out.push({ id: cur.id, title: cur.title, text, sha256: sha256(text) });
     cur = null;
   };
-  for (const l of o.lines.slice(o.start + 1, o.end)) {
+  o.lines.slice(o.start + 1, o.end).forEach((l, i) => {
     const m = l.match(/^\s*<!--\s*([RQ]\d+)\b(.*?)-->\s*$/);
     if (m) {
       const files = [...m[2].matchAll(/(?:^|\s)from:(\S+)/g)].flatMap((x) => x[1].split(',').filter(Boolean));
       from.set(m[1], [...(from.get(m[1]) ?? []), ...files]);
+      const refs = [...m[2].matchAll(/(?:^|\s)replaces:(\S+)/g)].flatMap((x) => x[1].split(',').filter(Boolean));
+      replaces.set(m[1], [...(replaces.get(m[1]) ?? []), ...refs.map((ref) => ({ ref, line: o.start + 2 + i }))]);
     }
     const h = l.match(/^###\s+([RQ]\d+)\b\s*(.*)$/);
-    if (h) { close(); cur = { id: h[1], title: h[2].trim(), lines: [l] }; continue; }
-    if (/^#{1,6}\s/.test(l) || /^(Out|Assumed|Signed off):/.test(l)) { close(); continue; }
+    if (h) { close(); cur = { id: h[1], title: h[2].trim(), lines: [l] }; return; }
+    if (/^#{1,6}\s/.test(l) || /^(Out|Assumed|Signed off):/.test(l)) { close(); return; }
     if (cur) cur.lines.push(l);
-  }
+  });
   close();
-  return out.map((r) => ({ ...r, from: from.get(r.id) ?? [] }));
+  return out.map((r) => ({ ...r, from: from.get(r.id) ?? [], replaces: replaces.get(r.id) ?? [] }));
 }
 
 // Sets `Signed off: …` as the last line of the organized section, in place of

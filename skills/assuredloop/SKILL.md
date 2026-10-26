@@ -137,6 +137,9 @@ Choose the path. Work that grows changes its path.
   `<!-- R1 from:<snapshot> -->`, `### R1 <title>`, and one sentence with MUST,
   SHOULD or MAY. A spike writes `## Organized question`, `<!-- Q1 -->` and
   `### Q1 <title>`.
+- A new version of an archived request's requirement is a requirement of a
+  new request. Name the old one in its marker:
+  `<!-- R1 from:<snapshot> replaces:<old request>/R<n> -->`.
 - `al record <name> signoff --source <where> --words "<their words>"` shows
   what the owner signs. Only on the owner's own yes, run
   `al record <name> signoff --source <where> --words "<their words>" --yes`.

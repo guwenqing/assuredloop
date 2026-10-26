@@ -90,6 +90,10 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
   `al check` gives a hint. In `specs/`, a removal needs `removes:`. Plan,
   step and migration paragraphs may live in the tracker issue that a task's
   `ref` names, instead of in the change spec.
+- **A new version of an archived requirement** is a requirement of a new
+  request, whose marker names the old one:
+  `<!-- R5 from:<snapshot> replaces:assuredloop-v4/R5 -->`. Once the new one
+  is signed, `al` shows the old one as replaced.
 - **Records** in `.assuredloop/records/`, committed to git: one per request
   (its sources, requirement versions, sign-offs, decisions, tasks, the
   bindings of its links and its close lines) and one per

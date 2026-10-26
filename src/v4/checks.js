@@ -12,7 +12,7 @@ import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  adrParagraph, hasBaselineEffect, isPromise, loadState, named, placeOf, qualify, requestOf, resolve, servesSigned, servesUnknown,
+  adrParagraph, hasBaselineEffect, isPromise, loadState, named, placeOf, qualify, replaceLinks, requestOf, resolve, servesSigned, servesUnknown,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { LINK_WORDS, groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
@@ -308,6 +308,34 @@ export function checks(top, { base, phrases = [], issues = null }) {
         const ids = promises.get(k);
         if (!ids || ids.some((id) => linked.has(`${r.name}/${id}`))) continue;
         add('hint', 'design-link', markerOf(p), `${r.name}/${p.id}`, `serves ${k}, but links to none of its promise paragraphs in this change spec (${ids.join(', ')}): which promise does it keep?`);
+      }
+    }
+  }
+
+  // Requirements that replace a requirement of another request (LD-68).
+  // A link's mistakes are hints on its marker line: a link on a question, a
+  // target that is no requirement R<n> of another request, one of its own
+  // request, and two requirements that replace one.
+  const links = replaceLinks(now);
+  for (const l of links) {
+    const where = `${l.r.dir}/request.md:${l.line}`;
+    if (l.question) add('hint', 'replaces-link', where, l.key, `replaces:${l.ref} is on a question: only a requirement R<n> replaces a requirement`);
+    else if (l.own) add('hint', 'replaces-link', where, l.key, `replaces:${l.ref} names a requirement of its own request: a new version there is a change of its text, not a replaces: link`);
+    else if (!l.target) add('hint', 'replaces-link', where, l.key, `replaces:${l.ref} names no requirement of another request`);
+    else {
+      const others = [...new Set(links.filter((x) => x.target?.key === l.target.key && x.key !== l.key).map((x) => x.key))];
+      if (others.length) add('hint', 'replaces-link', where, l.key, `${l.key} replaces ${l.target.key}, and so does ${others.join(', ')}: keep one replaces: link`);
+    }
+  }
+  // A paragraph of specs/ that serves a replaced requirement and not the one
+  // that replaces it; not known when the sign-off is not checked.
+  for (const p of now.spec.values()) {
+    const serves = new Set(p.links.serves.map((ref) => qualify(self(ref), null).key));
+    for (const l of links.filter((x) => x.target && serves.has(x.target.key) && !serves.has(x.key))) {
+      if (l.holds) add('hint', 'serves-replaced', p, p.id, `${p.id} serves ${l.target.key}, which ${l.key} replaces: check that it still holds, then serve ${l.key}`);
+      else if (l.holds === null) {
+        notKnown.push(`whether ${p.id} serves a replaced requirement: the sign-off of ${l.key} is not checked`);
+        skip('serves-replaced');
       }
     }
   }
