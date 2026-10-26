@@ -824,3 +824,91 @@ test('origin-elsewhere/R1 export: the rows of a commit are the same with and wit
   assert.equal(runOk(dir, A, ['export']).stdout, withPlace);
   assert.ok(!rowsOf(withPlace).some((x) => x.id === `${REQ}/S1`), 'no row for the sign-off');
 });
+
+// =========================================================================
+// Regression tests from the review of PR #67
+
+// The output of a run never names the place's folder.
+function namesNoFolder(r, place) {
+  for (const f of [place, basename(place)]) {
+    assert.ok(!r.stdout.includes(f) && !r.stderr.includes(f), `the output never names the folder (${f}):\n${show(r)}`);
+  }
+}
+
+test('origin-elsewhere/R1 conclude (review of #67): a record entry with no sha256 or no file, and its snapshot missing, is not ok record-evidence, and conclude refuses', async (t) => {
+  const cases = {
+    'a source with no sha256': { edit: (rec) => { delete rec.sources[0].sha256; }, gone: (w) => w.wordsFile },
+    'a source with no file': { edit: (rec) => { delete rec.sources[0].file; }, gone: () => null },
+    'a sign-off with no sha256': { edit: (rec) => { delete rec.signoff[0].sha256; }, gone: () => SIGNOFF_FILE },
+  };
+  for (const originals of [false, true]) {
+    for (const [what, { edit, gone }] of Object.entries(cases)) {
+      await t.test(`${originals ? 'kept outside, the place set' : 'no originals key'}: ${what}`, (tt) => {
+        const w = world(tt, { originals });
+        const file = gone(w);
+        if (file) rmSync(originals ? inPlace(w.place, file) : join(w.dir, `requests/${REQ}/origin/${file}`));
+        editRecord(w.dir, REQ, edit);
+        commitAll(w.dir, `the record: ${what}`);
+        const r = strict(w.dir, w.A);
+        assert.ok(evidence(r).length >= 1, `not ok record-evidence:\n${show(r)}`);
+        assert.equal(r.code, 1, show(r));
+        concludeRefuses(w.dir, w.A, file ? [file] : []);
+        for (const args of [['conclude', REQ], ['conclude', REQ, '--yes']]) {
+          const c = run(w.dir, w.A, args);
+          assert.ok(lines(c).some((l) => l.startsWith('refused: ')), `a refused: line:\n${show(c)}`);
+          if (originals) namesNoFolder(c, w.place);
+        }
+      });
+    }
+  }
+});
+
+test('origin-elsewhere/R1 reading (review of #67): a folder of the place that cannot be searched gives not ok record-evidence for each file, exit 1, and never names the folder', async (t) => {
+  const cases = {
+    '<folder>/<request>/ at 0600': (w) => [join(w.place, REQ), 0o600],
+    '<folder>/<request>/ at 0000': (w) => [join(w.place, REQ), 0o000],
+    'the place folder at 0600': (w) => [w.place, 0o600],
+    'the place folder at 0000': (w) => [w.place, 0o000],
+  };
+  for (const [what, target] of Object.entries(cases)) {
+    await t.test(what, (tt) => {
+      const w = world(tt);
+      passes(strict(w.dir, w.A));
+      const [path, mode] = target(w);
+      withMode(path, mode, () => {
+        const r = strict(w.dir, w.A);
+        for (const f of w.files) failsOutside(r, f, w.place);
+        namesNoFolder(r, w.place);
+      });
+    });
+  }
+});
+
+test('origin-elsewhere/R1 writing (review of #67): a folder of the place that cannot be searched makes al new, record origin and record signoff refuse, previews too', (t) => {
+  const { dir, place, A } = world(t, { sign: false, origin: false });
+  const env = { env: A.env };
+  const check = (r) => { namesNoFolder(r, place); return r; };
+
+  mkdirSync(join(place, 'pay'));
+  withMode(join(place, 'pay'), 0o600, () => {
+    check(refused(dir, ['new', 'pay', '--from', '-'], { ...env, input: WORDS }));
+  });
+  assert.deepEqual(placeFiles(place, 'pay'), [], 'nothing is written for pay');
+  assert.ok(!exists(dir, 'requests/pay'), 'no request pay');
+
+  const before = placeFiles(place);
+  withMode(join(place, REQ), 0o600, () => {
+    check(refused(dir, ['record', REQ, 'origin', '--url', URL1, '--from', '-', '--yes'], { ...env, input: MORE }));
+    check(refused(dir, ['record', REQ, 'origin', '--url', URL1, '--from', '-'], { ...env, input: MORE }));
+    check(refused(dir, ['record', REQ, 'signoff', ...SIGN, '--yes'], env));
+    check(refused(dir, ['record', REQ, 'signoff', ...SIGN], env));
+  });
+  assert.deepEqual(placeFiles(place), before, 'no file is left in the place');
+  const rec = record(dir, REQ);
+  assert.equal(rec.sources.length, 1, 'no new source');
+  assert.deepEqual(rec.signoff, [], 'no sign-off');
+  assert.doesNotMatch(read(dir, `requests/${REQ}/request.md`), /^Signed off:/m, 'no Signed off line');
+  // The control: with the folder searchable again, both record.
+  runOk(dir, A, ['record', REQ, 'origin', '--url', URL1, '--from', '-', '--yes'], MORE);
+  runOk(dir, A, ['record', REQ, 'signoff', ...SIGN, '--yes']);
+});
