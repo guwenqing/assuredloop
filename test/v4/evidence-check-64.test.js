@@ -891,29 +891,33 @@ test('#64 review 6: a requirement restored to its old text after its last al ind
   assert.ok(l.endsWith(` · stale: judged at ${head}`), show(r));
 });
 
-test('#64 review 7: a requirement judged in a committed note at v2, changed to v3, then restored to the v2 text with no al index, is stale, not current', (t) => {
+test('#64 review 7: a requirement judged in a committed note whose record at that commit has no version of the judged text: not known when judged, never current; stale when the change differs', (t) => {
   const dir = world(t); // R1 has text A, recorded at v1.
   sourceCommit(dir);
   const md = `requests/${NAME}/request.md`;
   const A = 'as one CSV file.';
   const B = 'as one CSV file per month.';
   const C = 'as one CSV file per month, sorted by date.';
-  // Text B and a judgement of it, committed with no al index in between.
+  // S2: text B and a judgement of it, committed with no al index in between.
+  // The record at S2 has only A at v1.
   editFile(dir, md, A, B);
   const first = 'R1 complies: one file for each month.';
   note(dir, judged(first, 'Item: "one CSV file per month"', 'Test: tests not examined'));
   const s2 = commitAll(dir, `${NAME}: R1 per month, and its review`);
 
+  // al index records B as v2; the identity, taken at S2, has no version.
   index(dir);
   let r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, k: 1 }), show(r));
   let l = judgement(r, 'R1');
   assert.ok(l.startsWith('judgement R1 version v2 complies · '), `B is v2:\n${show(r)}`);
-  assert.ok(l.endsWith(' · current'), show(r));
+  assert.ok(l.endsWith(' · not known when judged'), show(r));
 
+  // C, indexed as v3: the change differs from S2, so stale.
   editFile(dir, md, B, C);
   index(dir);
   r = check(dir);
-  assert.doesNotMatch(judgement(r, 'R1'), / · current$/, `C (v3) is stale:\n${show(r)}`);
+  assert.ok(judgement(r, 'R1').endsWith(` · stale: judged at ${s2.slice(0, 7)}`), `C (v3) is stale:\n${show(r)}`);
 
   // B again, with no al index: B is an older recorded version, not the latest.
   editFile(dir, md, C, B);
@@ -921,7 +925,7 @@ test('#64 review 7: a requirement judged in a committed note at v2, changed to v
   l = judgement(r, 'R1');
   const v = l.slice('judgement R1 version '.length).split(' ')[0];
   assert.doesNotMatch(l, / · current$/, show(r));
-  assert.ok(l.endsWith(` · stale: judged at ${s2.slice(0, 7)}`), show(r));
+  assert.ok(l.endsWith(' · not known when judged'), show(r));
   assert.notEqual(v, 'v2', `not v2:\n${show(r)}`);
   assert.match(v, /^[0-9a-f]{12}$/, `the first 12 hex of the text hash:\n${show(r)}`);
 });
@@ -958,4 +962,32 @@ test('#64 review 8: an identity that holds no recorded version of the requiremen
   l = judgement(r, 'R1');
   assert.doesNotMatch(l, / · current$/, show(r));
   assert.ok(l.endsWith(' · not known when judged'), show(r));
+});
+
+test('#64 review 9: an identity taken at an earlier commit reads the requirement version from the record of that commit: v1 at S1, v3 now, so stale', (t) => {
+  const dir = world(t); // R1 has text A, recorded at v1.
+  sourceCommit(dir);
+  const md = `requests/${NAME}/request.md`;
+  const A = 'as one CSV file.';
+  const B = 'as one CSV file per month.';
+  // S1: a judgement of A in the note, committed with no al index.
+  note(dir, judged('R1 complies: one month is one file.', 'Item: "download one month as one CSV file"', 'Test: tests not examined'));
+  const committed = read(dir, NOTE);
+  const s1 = commitAll(dir, `${NAME}: the review of R1`);
+  // The note with a free paragraph only; A to B, al index (v2).
+  write(dir, NOTE, `# Review of ${NAME}\n\nNothing judged yet.\n`);
+  editFile(dir, md, A, B);
+  index(dir);
+  // A again, al index (v3); the note still has no judgement.
+  editFile(dir, md, B, A);
+  index(dir);
+  // The note as committed in S1, then al index: the identity is taken at S1.
+  write(dir, NOTE, committed);
+  index(dir);
+  const r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, s: 1 }), show(r));
+  const l = judgement(r, 'R1');
+  assert.ok(l.startsWith('judgement R1 version v3 complies · '), `A is v3 now:\n${show(r)}`);
+  assert.doesNotMatch(l, / · current$/, show(r));
+  assert.ok(l.endsWith(` · stale: judged at ${s1.slice(0, 7)}`), show(r));
 });
