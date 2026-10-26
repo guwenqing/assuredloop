@@ -22,8 +22,14 @@ const NOUN = { spec: 'spec paragraphs', link: 'links', consolidation: 'change pa
 // The own requests that have a map: not a spike, and not of path 0, 1 or 1d.
 export const mapped = (own) => own.filter((r) => !r.spike && !['0', '1', '1d'].includes(r.tier));
 
-// The spec IDs that paragraph `p` of request `r` names by link word `key`.
-const specRefs = (r, p, key) => p.links[key].map((ref) => qualify(ref, r.name, new Set(r.paras.keys()))).filter((t) => !t.cross && !t.req).map((t) => t.id);
+// The spec paragraphs that paragraph `p` of request `r` names by link word
+// `key`, in `state`, as { id, key }: `key` is the target as its binding holds
+// it. In the central repo, `central:X` is its own X (DES-69).
+const specRefs = (state, r, p, key) => p.links[key].flatMap((ref) => {
+  const central = Array.isArray(state.config?.outputs) && state.config.outputs.length > 0;
+  const t = qualify(central && ref.startsWith('central:') ? ref.slice('central:'.length) : ref, r.name, new Set(r.paras.keys()));
+  return t.cross || t.req ? [] : [{ id: t.id, key: ref }];
+});
 
 // The latest version that al kept of spec paragraph `id` from the own branch
 // of request `r` (LD-61), or null.
@@ -49,7 +55,7 @@ export function mapSection(top, { now: state, was, base, own, changes, config, i
     for (const r of rs) {
       for (const q of r.paras.values()) {
         for (const [key, word] of LINKS) {
-          if (!specRefs(r, q, key).includes(c.id)) continue;
+          if (!specRefs(state, r, q, key).some((x) => x.id === c.id)) continue;
           refs.push(`${r.name}/${q.id} ${word}`);
           if (key !== 'buildsOn') named = true;
         }
@@ -59,7 +65,7 @@ export function mapSection(top, { now: state, was, base, own, changes, config, i
     const proposals = [];
     for (const r of [...state.requests.values()].filter((x) => x.open && !names.has(x.name))) {
       for (const q of r.paras.values()) {
-        for (const [key, word] of LINKS.slice(0, 2)) if (specRefs(r, q, key).includes(c.id)) proposals.push(`${r.name}/${q.id} ${word} it`);
+        for (const [key, word] of LINKS.slice(0, 2)) if (specRefs(state, r, q, key).some((x) => x.id === c.id)) proposals.push(`${r.name}/${q.id} ${word} it`);
       }
     }
     const at = c.head ? place(state, c.head) : place(was, c.base);
@@ -79,8 +85,8 @@ export function mapSection(top, { now: state, was, base, own, changes, config, i
     const text = state.docs.find((d) => d.path === r.specFile)?.text ?? '';
     for (const q of r.paras.values()) {
       for (const [key, word] of LINKS.slice(0, 2)) {
-        for (const id of specRefs(r, q, key)) {
-          const b = list(r.data?.bindings).find((x) => x?.holder === `${r.name}/${q.id}` && x.link === word && x.target === id);
+        for (const { id, key: target } of specRefs(state, r, q, key)) {
+          const b = list(r.data?.bindings).find((x) => x?.holder === `${r.name}/${q.id}` && x.link === word && x.target === target);
           const cur = state.spec.get(id);
           const fact = !cur ? (b || was?.spec.has(id) ? 'removed' : 'not known: no such spec paragraph')
             : !b?.target_sha256 ? 'not known: the link has no binding (run al index)'
@@ -149,7 +155,7 @@ export function keepOwnEdits(top, recs, base) {
   for (const r of ownRequests(top, state, base)) {
     const rec = recs.get(r.name);
     if (!rec) continue;
-    const ids = new Set([...r.paras.values()].flatMap((q) => [...specRefs(r, q, 'changes'), ...specRefs(r, q, 'removes')]));
+    const ids = new Set([...r.paras.values()].flatMap((q) => [...specRefs(state, r, q, 'changes'), ...specRefs(state, r, q, 'removes')].map((x) => x.id)));
     for (const id of ids) {
       const cur = state.spec.get(id);
       if (!cur || was.spec.get(id)?.sha256 === cur.sha256) continue;
