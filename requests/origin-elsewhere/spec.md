@@ -120,8 +120,10 @@ A structured source that is a path inside the folder (`--url` of
 absolute, `~/`, or relative to the current folder) is recorded as
 `originals:<path in the folder>`. The folder's path anywhere else in such a
 value becomes `originals:`. This happens before the record is written and
-before a file name is made from the value. The full source stays in the
-snapshot, which is outside the repo. `--words` is kept as given.
+before a file name is made from the value. The full value of `--url` or
+`--source` stays in the snapshot, which is outside the repo. A
+`--presented` value is kept only as the record holds it. `--words` is kept
+as given.
 
 <!-- OE-13 note -->
 

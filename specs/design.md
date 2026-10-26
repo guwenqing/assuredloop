@@ -1616,9 +1616,11 @@ are its outputs.
 example the IDs of the items in force by their state, and names each of
 them there. `al check --full` shows the text of every item in force, and
 `al context <ID>` shows one item in full, with its file and line. A line
-about one paragraph, requirement, decision, judgement or hint names its
-file and line, with the ID beside it only as a label. `al context <name>`
-names a request's folder, and a coverage line names its file and section.
+about one paragraph, requirement, decision or judgement names its file and
+line, with the ID beside it only as a label. A hint names the place that
+it is about: a file and line, a file, or a folder, or `-` when it is about
+no file, for example a missing `Tier:` line. `al context <name>` names a request's folder, and a
+coverage line names its file and section.
 A fact that only `al`'s records hold says so and names the record. An
 answer shows its hints, which are inferences, apart from the project's
 evidence and from the records, and it names what it does not know on a
