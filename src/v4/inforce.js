@@ -283,9 +283,11 @@ export function designPaths(top, now, own, issues) {
 // The line of an item in force, before its text.
 const inForceLine = (it, basis) => `in force ${it.id} ${basis} · ${it.file}:${it.line} · ${it.what}`;
 
-// The list. Returns { body, findings, own, none }: the lines, the design-doc
-// hints, the change's own requests (none with no base, an empty change, or in
-// an output repo), and why no change is selected.
+// The list. Returns { body, findings, own, none, skipped }: the lines, the
+// design-doc hints, the change's own requests (none with no base, an empty
+// change, or in an output repo), why no change is selected, and the list's
+// checks that did not run, for the ok line (LD-41).
+const LIST_CODES = ['design-doc', 'scope-no-file'];
 export function changeInForce(top, { now, was, base, issues = null, full = false, all: auditAll = false }) {
   // --all, the audit (LD-18, LD-44): every item in force on its own line,
   // also with no change selected. al gives no judgement; the review does.
@@ -296,10 +298,10 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
       ...itemsInForce(central ? loadState(central.dir, central.sha) : now).map((it) => `${inForceLine(it, 'audit')}: ${it.text}`)];
   };
   const noBase = 'no base (no main branch, or no commit)';
-  if (!base) return { body: auditAll ? audit(noBase) : [`list: no change selected: ${noBase}`], findings: [], none: noBase };
+  if (!base) return { body: auditAll ? audit(noBase) : [`list: no change selected: ${noBase}`], findings: [], none: noBase, skipped: LIST_CODES };
   const change = changeOf(top, base);
   const empty = `nothing changed against the base ${base.slice(0, 7)}`;
-  if (change.empty) return { body: auditAll ? audit(empty) : [`list: no change selected: ${empty}`], findings: [], none: empty };
+  if (change.empty) return { body: auditAll ? audit(empty) : [`list: no change selected: ${empty}`], findings: [], none: empty, skipped: LIST_CODES };
   const findings = [];
   const limits = [];
   // In an output repo, the items in force are the central repo's at its
@@ -307,7 +309,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   // matched here, and the change's own request is not read (LD-25, D3).
   const central = centralRepo(top, now.config);
   if (central?.unknown) {
-    return { body: [`list limits: the central repo cannot be read: ${central.unknown}, so no item in force is listed; the change's own request is not read in an output repo`], findings };
+    return { body: [`list limits: the central repo cannot be read: ${central.unknown}, so no item in force is listed; the change's own request is not read in an output repo`], findings, skipped: LIST_CODES };
   }
   const items = itemsInForce(central ? loadState(central.dir, central.sha) : now);
   if (central) {
@@ -446,5 +448,6 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     + `proposed = this change's own signed requirements and design, not in force; ${auditAll ? 'audit = an item in force that the change does not touch, shown for the audit' : 'the grouped line names every other item in force'}`);
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
     + `al check --full shows the text of every item, al context <ID>${central ? ` --at ${central.sha.slice(0, 7)} in the central repo shows` : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
-  return { body, findings, own };
+  // In an output repo, no file scope is matched and no own request is read.
+  return { body, findings, own, skipped: central ? LIST_CODES : [] };
 }

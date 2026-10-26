@@ -192,8 +192,8 @@ function checkAll(args) {
   const gave = new Set(body.map((l) => /^(?:hint|not ok) (\S+) /.exec(l)?.[1]).filter(Boolean));
   // Only the checks that ran: with no base, the checks of the change against
   // it did not; nor did the path checks with no Tier line or no commit, the
-  // list's hints with no change selected, or the map's hints with no map.
-  const skipped = new Set([...(base ? [] : BASE_CODES), ...t10.skipped, ...(list.none ? ['design-doc', 'scope-no-file'] : []),
+  // list's hints that it skipped, or the map's hints with no map.
+  const skipped = new Set([...(base ? [] : BASE_CODES), ...t10.skipped, ...(list.skipped ?? []),
     ...(map.ran === false ? ['map-unnamed', 'map-consolidation'] : [])]);
   const ran = [...CODES, ...(issues ? ISSUE_CODES : []), ...(central.body.length ? ['unresolved-central'] : [])].filter((c) => !skipped.has(c));
   const quiet = ran.filter((c) => !gave.has(c));
