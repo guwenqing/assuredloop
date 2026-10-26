@@ -131,7 +131,7 @@ paragraphs:
     display: LD-19 (4:3, in 4. Commands, answers and the skill (plans))
   - id: LD-20
     kind: plan
-    text_sha256: ed4009202464a6f52ad571f1de6618b6cead87abb5f60f8579e6efcaa3a73df6
+    text_sha256: 88cdc26003334418f855c32f32e1ae30545793d38b60717457b37b6753374eb6
     display: LD-20 (4:4, in 4. Commands, answers and the skill (plans))
   - id: LD-47
     kind: plan
