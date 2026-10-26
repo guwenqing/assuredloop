@@ -357,8 +357,10 @@ export function checks(top, { base, phrases = [], issues = null }) {
       if (!cur || !cur.sha || cur.sha === b.target_sha256) continue;
       // The holder's own change made the target what it is now: its disposition names that text.
       if ((Array.isArray(r.data?.dispositions) ? r.data.dispositions : []).some((d) => d?.source === b.holder && d.spec === b.target && d.spec_sha256 === cur.sha)) continue;
-      // The change's own branch made the target what it is now: al kept that version (LD-61).
-      if (!t.req && String(b.holder).startsWith(`${r.name}/`) && ownEdit(r, t.id) === cur.sha) continue;
+      // The change's own branch made the target of its changes or removes
+      // link what it is now: al kept that version (LD-61). Another link to
+      // the same target, such as builds-on, still gets the hint.
+      if (!t.req && ['changes', 'removes'].includes(b.link) && String(b.holder).startsWith(`${r.name}/`) && ownEdit(r, t.id) === cur.sha) continue;
       // A superseded ADR's links are history (schema.md 5).
       if (now.adrs.get(String(b.holder))?.status === 'superseded') continue;
       // A link that its holder no longer declares, or whose holder is gone, is history too (#2).
