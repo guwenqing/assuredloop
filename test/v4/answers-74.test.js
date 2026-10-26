@@ -662,7 +662,9 @@ test('#74 al context INV-13: a file that cannot be read gives "Cited     not kno
   assert.equal(ls[0], citedLine('current', 'src/a.js', [1]), show(r));
   const rest = ls.slice(1);
   assert.ok(rest.length >= 1, `a not known line:\n${show(r)}`);
-  assert.deepEqual([...new Set(rest)], [`Cited     not known: ${DENIED('src/b.js')}`], show(r));
+  assert.deepEqual(rest, [`Cited     not known: ${DENIED('src/b.js')}`], `each message once:\n${show(r)}`);
+  // The Checks line names the limit also when a file line is found.
+  assert.ok(labelled(r, 'Checks    ').endsWith(` · not known: ${DENIED('src/b.js')}`), show(r));
 });
 
 test('#74 al context INV-41: with no file line and an unreadable file, "Cited     nowhere in the files that were read", and the Checks line names the limit', { skip: AS_ROOT }, (t) => {
@@ -674,11 +676,11 @@ test('#74 al context INV-41: with no file line and an unreadable file, "Cited   
   const ls = allLabelled(r, 'Cited     ');
   assert.equal(ls[0], 'Cited     nowhere in the files that were read', show(r));
   assert.ok(!ls.includes('Cited     nowhere'), `never the bare "nowhere":\n${show(r)}`);
-  assert.deepEqual([...new Set(ls.slice(1))], [`Cited     not known: ${DENIED('src/c.js')}`], show(r));
+  assert.deepEqual(ls.slice(1), [`Cited     not known: ${DENIED('src/c.js')}`], `each message once:\n${show(r)}`);
   const checks = labelled(r, 'Checks    ');
   const tail = checks.slice(checks.indexOf(' · not known: ') + ' · not known: '.length);
   assert.ok(checks.includes(' · not known: '), `the Checks line names the limit:\n${show(r)}`);
-  assert.deepEqual([...new Set(tail.split('; '))], [DENIED('src/c.js')], show(r));
+  assert.deepEqual(tail.split('; '), [DENIED('src/c.js')], show(r));
 });
 
 test('#74 al context INV-41: control: with every file readable, "Cited     nowhere" and no limit', (t) => {
