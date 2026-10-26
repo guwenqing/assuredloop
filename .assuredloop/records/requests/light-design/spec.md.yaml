@@ -179,7 +179,7 @@ paragraphs:
     display: "LD-27 (5:8, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-65
     kind: data
-    text_sha256: 90cf19ec090777308b48641e9010a05bbe1f5deb2459f1f5fc9c1d2912637e74
+    text_sha256: b72c32d197d6cd69d4fc3457bdf98572b0e5c5837f78cfac6caecb07a4d14f9a
     display: "LD-65 (5:9, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-44
     kind: data
@@ -191,7 +191,7 @@ paragraphs:
     display: "LD-28 (5:11, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-66
     kind: flow
-    text_sha256: c0207b4904355869f75efdfca251833e3251374cc555c7489400f38b3c799dcb
+    text_sha256: 4e996068b52beb536bce2ffed93a81eacdf81509ddea9a2ff7c5575ca212e16b
     display: "LD-66 (5:12, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-29
     kind: choice
