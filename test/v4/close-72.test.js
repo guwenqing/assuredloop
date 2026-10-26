@@ -49,7 +49,7 @@ import {
 } from './helpers/project.js';
 import { conclude, word } from './helpers/views.js';
 import {
-  CS, NAME, R1, SPEC, T12, T13, T41, addSpec, claim, editSpec, judged, note, removeSpec, show, world,
+  CS, NAME, R1, SPEC, T12, T13, T41, addSpec, check, claim, editSpec, entry, judged, note, removeSpec, show, world,
 } from './helpers/map-68.js';
 
 const PLAN = ['SP-9 plan', 'One PR: the link, then the email.'];
@@ -752,4 +752,83 @@ test('#72 a close line never clears item 1: on SP-5, an unsigned promise change,
     not: [[word('SP-5'), 'unchanged since the link']],
   });
   for (const r of runs) closeLine(r, { cid: 'C1', on: 'SP-5', reason, state: 'current' });
+});
+
+// =====================================================================
+// The close line in al context <name> --audit
+
+test('#72 al context share --audit: after a close line on SP-1 whose reason names INV-12, a line that starts with "Close" holds C1, SP-1, INV-12 and the reason', (t) => {
+  const dir = openLinks(t, [['SP-1 rule serves:R1 changes:INV-41', 'A shared export link lives for 24 hours.'], PLAN]);
+  const reason = 'Not delivered: INV-12 already holds what it meant.';
+  closeLineAdd(dir, 'C1', 'SP-1', reason);
+  const r = writesNothing(dir, ['context', NAME, '--audit']);
+  const found = r.stdout.split('\n').filter((l) => l.startsWith('Close') && word('C1').test(l) && word('SP-1').test(l) && word('INV-12').test(l) && l.includes(reason));
+  assert.equal(found.length, 1, `one Close line with C1, SP-1, INV-12 and the reason:\n${show(r)}`);
+});
+
+// =====================================================================
+// The near-match hint (#72): before #72 a disposition's spec counted as a
+// link. Now the Spec lines of a consolidation judgement count as links, but
+// only for the change paragraphs that the same judgement names (its first
+// line or its Item lines); a stale judgement still counts.
+//
+//   hint near-match <file>:<line> <name>/SP-n does this change <ID>? its text is close, and it has no changes or builds-on link to it
+
+const S1 = 'A shared export link lives for 24 hours.';
+const S2 = 'The email carries only the link.';
+const T50b = 'A shared export link MUST live for 24 full hours.';
+
+// share: SP-1 (close to INV-50) and SP-2, both new; INV-50 added with
+// SP-1's text in other words, and no link from SP-1 to it. Not committed.
+function nearWorld(t) {
+  const dir = world(t, [['SP-1 rule serves:R1', S1], ['SP-2 rule serves:R1', S2], PLAN]);
+  addSpec(dir, 'INV-50 rule serves:share/R1', T50);
+  return dir;
+}
+const nearMatches = (r, id) => r.stdout.split('\n').filter((l) => l.startsWith('hint near-match ') && l.split(' ')[3] === `${NAME}/${id}`);
+const JUDGED_SP1 = 'SP-1 complies: the link rule is INV-50.';
+
+test('#72 near-match (a, control): SP-1 consolidated into INV-50 with nearly the same text and no judgement: the hint names SP-1 and INV-50', (t) => {
+  const dir = nearWorld(t);
+  save(dir, `${NAME}: INV-50`);
+  const r = check(dir);
+  const found = nearMatches(r, 'SP-1');
+  assert.equal(found.length, 1, `one near-match on SP-1:\n${show(r)}`);
+  assert.match(found[0], word('INV-50'), show(r));
+});
+
+test('#72 near-match (b): a consolidation judgement "SP-1 complies" with Spec (INV-50): no near-match on SP-1', (t) => {
+  const dir = nearWorld(t);
+  note(dir, judged(JUDGED_SP1, 'Item: "lives for 24 hours"', `Spec (INV-50): "${T50}"`));
+  save(dir, `${NAME}: INV-50, and the review`);
+  const r = check(dir);
+  assert.deepEqual(nearMatches(r, 'SP-1'), [], `no near-match on SP-1:\n${show(r)}`);
+});
+
+test('#72 near-match (c): a judgement that names only SP-2, with Spec (INV-50): SP-1 still gets the hint', (t) => {
+  const dir = nearWorld(t);
+  note(dir, judged('SP-2 complies: the email rule sits beside INV-50.', 'Item: "carries only the link"', `Spec (INV-50): "${T50}"`));
+  save(dir, `${NAME}: INV-50, and the review`);
+  const r = check(dir);
+  const found = nearMatches(r, 'SP-1');
+  assert.equal(found.length, 1, `SP-1 still gets the near-match:\n${show(r)}`);
+  assert.match(found[0], word('INV-50'), show(r));
+});
+
+test('#72 near-match (d): the judgement of (b), then INV-50 edited a little: the judgement is stale and still counts: no near-match on SP-1; the same edit with no judgement gives it', (t) => {
+  // Control: the edited INV-50 is still close to SP-1.
+  const bare = nearWorld(t);
+  editFile(bare, SPEC, T50, T50b);
+  save(bare, `${NAME}: INV-50`);
+  const c = check(bare);
+  assert.equal(nearMatches(c, 'SP-1').length, 1, `control: the edited INV-50 gives a near-match on SP-1:\n${show(c)}`);
+
+  const dir = nearWorld(t);
+  note(dir, judged(JUDGED_SP1, 'Item: "lives for 24 hours"', `Spec (INV-50): "${T50}"`));
+  save(dir, `${NAME}: INV-50, and the review`);
+  editFile(dir, SPEC, T50, T50b);
+  save(dir, `${NAME}: INV-50 edited`);
+  const r = check(dir);
+  assert.match(entry(r, 'consolidation', `${NAME}/SP-1`).fact, /^stale: /, `the judgement is stale:\n${show(r)}`);
+  assert.deepEqual(nearMatches(r, 'SP-1'), [], `no near-match on SP-1:\n${show(r)}`);
 });
