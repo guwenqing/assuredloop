@@ -890,3 +890,38 @@ test('#64 review 6: a requirement restored to its old text after its last al ind
   assert.ok(l.startsWith('judgement R1 version v3 complies · '), `v3 after al index:\n${show(r)}`);
   assert.ok(l.endsWith(` · stale: judged at ${head}`), show(r));
 });
+
+test('#64 review 7: a requirement judged in a committed note at v2, changed to v3, then restored to the v2 text with no al index, is stale, not current', (t) => {
+  const dir = world(t); // R1 has text A, recorded at v1.
+  sourceCommit(dir);
+  const md = `requests/${NAME}/request.md`;
+  const A = 'as one CSV file.';
+  const B = 'as one CSV file per month.';
+  const C = 'as one CSV file per month, sorted by date.';
+  // Text B and a judgement of it, committed with no al index in between.
+  editFile(dir, md, A, B);
+  const first = 'R1 complies: one file for each month.';
+  note(dir, judged(first, 'Item: "one CSV file per month"', 'Test: tests not examined'));
+  const s2 = commitAll(dir, `${NAME}: R1 per month, and its review`);
+
+  index(dir);
+  let r = check(dir);
+  let l = judgement(r, 'R1');
+  assert.ok(l.startsWith('judgement R1 version v2 complies · '), `B is v2:\n${show(r)}`);
+  assert.ok(l.endsWith(' · current'), show(r));
+
+  editFile(dir, md, B, C);
+  index(dir);
+  r = check(dir);
+  assert.doesNotMatch(judgement(r, 'R1'), / · current$/, `C (v3) is stale:\n${show(r)}`);
+
+  // B again, with no al index: B is an older recorded version, not the latest.
+  editFile(dir, md, C, B);
+  r = check(dir);
+  l = judgement(r, 'R1');
+  const v = l.slice('judgement R1 version '.length).split(' ')[0];
+  assert.doesNotMatch(l, / · current$/, show(r));
+  assert.ok(l.endsWith(` · stale: judged at ${s2.slice(0, 7)}`), show(r));
+  assert.notEqual(v, 'v2', `not v2:\n${show(r)}`);
+  assert.match(v, /^[0-9a-f]{12}$/, `the first 12 hex of the text hash:\n${show(r)}`);
+});
