@@ -376,7 +376,12 @@ The record commands stay: `al new`, `al record`, `al spec` and
 `al conclude`. `al export` stays, to feed a team's own knowledge base.
 `al check` runs `al index`, and names in one line each record file that it
 wrote, so that the author commits them with the change; each other line of
-`al index` shows as one line for each kind. `al check --at <commit>` reads
+`al index` shows as one line for each kind. An `al check` run never changes
+which requests are the change's own (LD-24): it takes them from the working
+tree as it was before it wrote anything, and names in a second line each
+record file that it wrote for a request that is not the change's own,
+because that record was not up to date; the author decides whether to
+commit it. `al check --at <commit>` reads
 the commit's spec, records and change from git, and writes nothing. Today's
 review view (`al context --diff <range> --for review`) becomes the list and
 the map of `al check`: the map names each paragraph that the branch added,
