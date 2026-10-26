@@ -129,10 +129,10 @@ Informative kinds. A change needs review only:
 | `example` | a case | `illustrates` → the rule |
 | `open` | a choice left open | `resolved by` → a later decision or ADR |
 
-<!-- SCH-15 rule serves:assuredloop-v4/R5 -->
+<!-- SCH-15 rule serves:light-resign/R5 -->
 
 In a change spec, informative paragraphs are meant for `specs/`, beside the
-rules they explain, so each gets a disposition like any spec text. A
+rules they explain, so each is consolidated like any spec text. A
 rationale that explains only how one change is built is an `approach`.
 
 <!-- SCH-16 definition serves:assuredloop-v4/R2 -->
@@ -306,7 +306,7 @@ A link to another repo uses a qualified ID: `central:INV-41`,
   `records/`.
 - One record per request, `.assuredloop/records/requests/<name>.yaml`: the
   chain of that change, from the owner's words to the outputs, with its
-  link-time bindings and its dispositions. Each PR of the change writes
+  link-time bindings and its close lines. Each PR of the change writes
   mostly this one file.
 - One record per doc, mirroring the docs, for example
   `.assuredloop/records/specs/invoices.md.yaml`: only fields that the script
@@ -427,8 +427,8 @@ bindings:                       # written when a link is first indexed; advanced
   - {holder: invoice-exports/SP-12, link: builds-on, target: INV-12, target_sha256: 9c41…, holder_sha256: 2f07…}
   - {holder: invoicer-web/test/export-link.test.js, link: verifies, target: central:INV-41, target_sha256: 2f07…, commit: invoicer-web@a81c…}
 
-dispositions:                   # one per change-paragraph version with a baseline effect
-  - {source: invoice-exports/SP-12, source_sha256: 2f07…, disposition: incorporated, spec: INV-41, spec_sha256: 2f07…}
+closes:                         # close lines (design.md 5); al keeps the hashes
+  - {id: C1, on: SP-14, reason: "Not delivered: INV-12 keeps the 30-minute email link.", sha256: 77d0…, names: [{id: INV-12, sha256: 9c41…}], recorded: 2026-03-02T10:15Z}
 ```
 
 <!-- SCH-33 example illustrates:SCH-28 -->
@@ -446,8 +446,9 @@ inputs are unchanged since then.
 On these records, the tool can say, as exact facts or as hints:
 
 1. SP-12 declares that it serves R2 (a declaration). That S1 covers version 1
-   of R2 with its hash, and that INV-41's text equals SP-12's incorporated
-   text, are exact facts.
+   of R2 with its hash, and whether INV-41 changed since SP-12 linked it by
+   `changes`, are exact facts. Whether INV-41 now says what SP-12 means is
+   the review's judgement.
 2. `test/export-link.test.js` declares that it verifies INV-41 (a claim). If
    it, or another test file, names INV-41 in its text, that citation is an
    exact fact. Its declared inputs are unchanged since `invoicer-web@a81c…`

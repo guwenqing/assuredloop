@@ -49,10 +49,11 @@ AI-DLC (awslabs/aidlc-workflows, version 2) runs a deterministic engine with
 must pass these limits:
 - No phases or stages, and no order of work. How and when to test, review or
   design is the project's way of working (R11).
-- The tool refuses only in its own command `al conclude`, for three reasons:
-  a promise change with no signed requirement, a spike with no signed
-  question, and a change paragraph with a baseline effect and no valid
-  disposition (sections 5 and 6). `al check` gives the review hints, and the
+- The tool refuses only in its own command `al conclude`: for a promise
+  change with no signed requirement, a spike with no signed question, and,
+  on paths 2 and 3, a signed requirement with no declared link or a spec
+  paragraph that the change set out to change or remove and did not, with no
+  close line (sections 5 and 6). `al check` gives the review hints, and the
   review decides. Only a few exact rules are `not ok` (section 3), and they
   block CI only where a project opts in with `--strict`.
 - No roles, no approvals beyond the sign-off, no task states (R11).
@@ -257,8 +258,7 @@ semantic coverage as "not checked".
   `removes:`. An ID used again is absent at the base but was used in an
   earlier commit.
 - In an open request's change spec, deleting a paragraph is ordinary
-  editing. Its lost ID is a hint that names the deletion, and each
-  disposition or wording decision of the request that names the ID. When the
+  editing. Its lost ID is a hint that names the deletion. When the
   deletion is on purpose, nothing more is needed: the ID is retired and never
   used again. A marker removed by accident, with its text kept, still leaves
   a paragraph with no ID, which gets its own hint. In `specs/` and in an
@@ -363,7 +363,8 @@ the link was made.
 <!-- DES-26 rule serves:assuredloop-v4/R6,design-links/R1,removed-links/R1,removed-links/R2 -->
 
 - A change paragraph that relies on a spec paragraph says `builds on <ID>`.
-  One that replaces it says `changes <ID>`. It holds no copy of the old text.
+  One that replaces it says `changes <ID>`: a reference, with no copy of the
+  old text and no replacement text.
 - **Bindings.** When a link is first indexed, the script records a binding in
   the request's record: the target's version or text hash at that time, and
   the source paragraph's text hash. Both ends are hashed.
@@ -423,121 +424,86 @@ Why: the owner wants no tool that consolidates (input 95), consolidation
 before an epic closes (input 105), and nothing applied dropped in silence
 (R5).
 
-<!-- DES-29 rule serves:assuredloop-v4/R5 -->
+<!-- DES-29 rule serves:light-resign/R5 -->
 
 **Consolidation:**
-1. The agent replaces the paragraph in `specs/` by hand. No command writes the
-   spec.
+1. The agent brings each piece of a change into `specs/` by its own
+   judgement. No command writes the spec. It may rewrite, split or join
+   paragraphs, so that the spec reads as the current system, and it writes
+   no Was/Now text. `al` does not compare the spec text with the change's
+   text.
 2. It happens when a piece is ready: in the PR with its code, or in a later
-   PR, part by part, before the epic closes.
+   PR, part by part, before the change closes.
 3. Promise kinds, the lasting design kinds (component, interface, data,
    flow, choice) and the informative kinds (rationale, example, open) go into
    `specs/`. Change-only kinds (plan, step, migration), `approach` and `note`
    stay with the change as its history.
 4. A promise-kind paragraph consolidated before its requirement is signed:
    `not ok`.
+5. The review judges the consolidation, one judgement for each piece, in its
+   review note. `al check` shows each judgement as current or stale, and a
+   judgement goes stale when a paragraph that it names changes. A missing or
+   stale judgement is a hint, and it never refuses.
 
-<!-- DES-30 rule serves:assuredloop-v4/R5 -->
-
-**Dispositions.** Each change paragraph with a baseline effect (any paragraph
-of a kind that goes into `specs/`, by item 3 above, and every declared
-`removes:`) gets a disposition
-in the request's record. A disposition closes one named source version, not
-an ID forever: it names the source paragraph's version (its text hash) and
-the spec version it produced. When the source paragraph is edited, the new
-version needs its own disposition; the old one stays as history, and indexing
-never advances it.
-
-| Disposition | Means | Valid when |
-|---|---|---|
-| `incorporated` | the text is in `specs/` | the bound source version is the source's current version, and its text equals the bound spec version (rule below) |
-| `removed` | the change removes a spec paragraph | the ID is absent from `specs/` in the closing state; the ID is never used again |
-| `superseded` | a later change replaced the incorporated text | the later change has a valid `incorporated` or `removed` disposition whose `changes` or `removes` binding names this incorporated version; a pending link alone proves nothing. A chain A→B→C resolves to the closing baseline, a valid removal included. An archived later change counts as recorded |
-| `abandoned` | the paragraph is not delivered | judged through the bindings: the target of its `changes` or `removes` link still has its bound text (it was never applied, or it was reverted); for a new paragraph, its text is not in `specs/`, and a near match there gets the hint "applied in another form?"; or a decision Dn whose source is the owner keeps its effect, with a signed requirement where a promise kind is kept |
-
-<!-- DES-31 rationale explains:DES-30 -->
-
-Why the bindings judge `abandoned`: with exact text alone, a change could apply
-a slightly different text and then claim that it abandoned the paragraph.
-
-<!-- DES-32 rule serves:assuredloop-v4/R5 -->
-
-An owner decision to keep an effect is only for the owner's call on the
-requirement or the scope. A design paragraph can stay `incorporated` while
-another paragraph of the same change is `abandoned`; that needs no owner
-decision.
-
-<!-- DES-33 rule serves:assuredloop-v4/R5,assuredloop-v4/R6,hints-and-blocks/R2 -->
-
-**Invalid dispositions.** `al check` shows an invalid disposition as a hint,
-in every mode; `al conclude` refuses. A small design
-correction (path 1d) to text that an open change incorporated makes that
-change's `incorporated` disposition invalid, because the spec text no longer
-equals the incorporated version. Both sides are told: the 1d PR gets a hint
-that names the open change, and the open change's check shows the invalid
-disposition. The open change aligns by a wording decision that names the new
-text's hash, or by changing the text again. A typo fix (path 0) to such text
-has the same effect, and its PR gets the same information hint.
-
-<!-- DES-34 rule serves:assuredloop-v4/R5 -->
+<!-- DES-34 rule serves:light-resign/R5 -->
 
 **Removals.** A change declares a removal with `removes:<ID>`. For a promise
 paragraph, a removal is allowed only where a signed requirement covers it. An
-informative paragraph needs only the declaration and its `removed`
-disposition, with no sign-off. A loss
-that nobody declared stays a lost-ID lint. Why: a whole-block replace in real
-OpenSpec history dropped scenarios with no notice.
+informative paragraph needs only the declaration. In the central repo,
+`removes:central:<ID>` names its own `<ID>`, for every reader (section 12). A
+loss that nobody declared stays a lost-ID lint. Why: a whole-block replace in
+real OpenSpec history dropped scenarios with no notice.
 
-<!-- DES-35 rule serves:assuredloop-v4/R5 -->
+<!-- DES-37 rule serves:assuredloop-v4/R4,light-resign/R5 -->
 
-**Equality.** Two texts are equal when they match exactly after only two
-steps: line endings are normalized, and the marker framing (the marker line
-and its blank line) is removed. Spaces, hard breaks, list, table and code
-content all count: two trailing spaces in a code example can change its
-output. A difference passes in two cases only, and each names the source
-version and the accepted target version:
-- a recorded wording decision Dn. The decision names its pair, the source
-  paragraph and the spec paragraph (`wording: {source, spec}`). `al index`
-  fills both hashes once, as it does for a disposition. The disposition names
-  the decision (`decision: Dn`). Nobody writes a hash by hand.
-- a typo-fix claim (section 6), shown with its changed words and never as
-  proven. A typo claim excuses a difference only on its own branch. After it
-  merges, an open change aligns by a wording decision.
-
-<!-- DES-36 rule serves:assuredloop-v4/R5 -->
-
-An unexplained revert does not pass: the spec text must equal the bound
-version, a valid successor's version, or a decided final text. Why no more
-normalization: over 2,866 real OpenSpec paragraphs, none differed in
-whitespace only, and 6 differed in markup only; those few
-take a wording decision or a typo claim.
-
-<!-- DES-37 rule serves:assuredloop-v4/R4,assuredloop-v4/R5 -->
-
-**The close rule.** `al conclude` refuses until each change paragraph with a
-baseline effect has a valid disposition for its current version, every
-promise change is signed, and a spike's current question is signed (section
-6). Change-only, `approach` and `note` paragraphs need no disposition. Why:
-R5 asks every change paragraph that affects the spec to have a recorded
-fate, explanations included.
+**The close rule, by path.** A spike closes when its current question is
+signed (section 6), and its change spec needs no consolidation. Paths 0, 1
+and 1d close when every promise change is signed. On paths 2 and 3 (a
+request that is not a spike, and whose tier is not 0, 1 or 1d), `al conclude`
+refuses while:
+1. a promise change is not signed;
+2. a signed requirement of the request's current version has no declared
+   paragraph link: a `serves` link from a paragraph in `specs/`, or a
+   `decides` link from an accepted ADR. A requirement that the owner dropped
+   is not in the current version, so it is not asked for. `al` says "no
+   declared paragraph link", never "not built";
+3. a change paragraph names a spec paragraph by `changes`, and that paragraph
+   is unchanged since the link; or it names one by `removes`, and that
+   paragraph is still in `specs/`. A `changes` link that has no binding yet
+   refuses until `al index` binds it, because `al` cannot tell.
+- Every request also needs each of its original files verified
+  (origin-elsewhere/R1).
+- **The close line.** The author records one sentence with
+  `al record <name> close --on <ID> --reason <sentence>`. On a change
+  paragraph, it says why the paragraph is not delivered, and it clears item
+  3 for that paragraph. On a requirement, it says where the requirement is
+  met when no lasting paragraph links to it (an existing design reused, or
+  a one-time task such as a migration), and it clears item 2. `al` keeps, by
+  itself, the version of what the line names and of each spec paragraph
+  that its reason names. A word of the reason in the ID form that names no
+  paragraph of `specs/` is shown, and not kept. The line clears only while
+  they keep those versions. When one changes, `al conclude` shows the line as
+  stale, and it clears nothing until the author records it again. The
+  latest line for an ID counts. A close line is the author's declaration,
+  shown with its basis; the review reads it. It never clears item 1.
+- Nothing else refuses. A missing or stale consolidation judgement and the
+  map's hints are shown before `al conclude` closes, and never refuse. A
+  review judgement never clears or causes a refusal.
 - The check runs on the closing PR's state. An archived request is never
   checked again against today's spec.
 - The local tree and main stay apart: "consolidated on main" is read from
   main's history, not from the working tree.
-- Code or tests that still cite a removed or abandoned ID get a hint.
+- Code or tests that still cite a removed ID get a hint.
 
-<!-- DES-38 rule serves:assuredloop-v4/R5,assuredloop-v4/R7,removed-links/R1 -->
+<!-- DES-38 rule serves:light-resign/R5,assuredloop-v4/R7,removed-links/R1 -->
 
 **Path 1 and adoption.** A promise paragraph edited directly on path 1
 names its requirement in its marker, `serves:<request>/R<n>`, with a binding.
 A direct edit moves that `serves` link to the new request's requirement;
 `al index` then removes the old binding, and git history keeps it. A typo
-fix (path 0) keeps the link. The request's record names where the spec
-text came from in a `source:` field:
-`source: <request>/SP-12` for consolidated change text, `source:
-<request>/R2` on path 1, and `source: adoption` with the captured baseline
-(the commit and its hash) for a paragraph that existed before adoption. A
-source proves where the text came from, not that it equals the requirement;
+fix (path 0) keeps the link. The adoption record names each paragraph that
+existed before adoption with `source: adoption` and the captured baseline
+(the commit and its hash). It proves where the text came from;
 `source: adoption` is not an owner approval, and it does not excuse later
 changes that nobody asked for. The word `from` is kept only for the link from
 a requirement to the owner's words.
@@ -623,8 +589,8 @@ and changes the promise. So:
 - The spike's current organized question needs the owner's sign-off.
 - Its conclusion names the question version that it answers.
 - Its exploratory change spec (candidate designs and experiments) stays with
-  the spike as history. It needs no consolidation and no disposition, and it
-  never becomes current design.
+  the spike as history. It needs no consolidation, and it never becomes
+  current design.
 - An unsigned spike that the owner drops may be abandoned unsigned.
 
 <!-- DES-45 rule serves:assuredloop-v4/R3,assuredloop-v4/R4 -->
@@ -1092,7 +1058,7 @@ moved the main tag on close to half of the notes in one study (arXiv
   architect design it. A user's extension gets the same careful review.
 - `.assuredloop/records/`, committed to git:
   - one record per request: the chain of that change, its bindings (section
-    4) and its dispositions (section 5). Mostly that change's own PRs touch
+    4) and its close lines (section 5). Mostly that change's own PRs touch
     it.
   - one record per doc: only fields that the script can regenerate (hash
     list, display numbers, derived change kinds), and the AI hints where a
@@ -1179,8 +1145,8 @@ levels above 0 need this export.
   selected commit, through only the commits that touched the docs in scope,
   and reads only the files that changed. Every paragraph or requirement
   version that is not at the selected commit is a `history` row.
-- `valid_from` and `superseded_by` are commits. The edges and the
-  dispositions name the change that replaced a version.
+- `valid_from` and `superseded_by` are commits. The edges name the change
+  that replaced a version.
 - Output files and results add `evidence` rows, in the central repo and in
   the output repos (section 12).
 
@@ -1196,7 +1162,7 @@ existing records:
 - `source`: the owner's words, the requirement and question versions, and
   decisions;
 - `evidence`: results and outputs;
-- `history`: removed, abandoned and superseded text, and closed changes.
+- `history`: removed and superseded text, and closed changes.
 
 <!-- DES-63 rule serves:assuredloop-v4/R10 -->
 
@@ -1399,9 +1365,10 @@ are its outputs.
 |---|---|
 | `al new` | stays: snapshots the owner's words |
 | `al record origin`, `signoff`, `decision` | stay |
+| `al record close` | records a close line (section 5) |
 | `al record section`, `al consolidate` | go |
 | `al spec` | lists IDs, display numbers and kinds; `--add-ids` marks every paragraph |
-| `al context` | a change's dispositions (for example "120 paragraphs, 40 with a baseline effect: 30 incorporated, 6 pending, 2 removed, 2 abandoned"), coverage per section, the hints, the open changes on an ID, and what is not checked |
+| `al context` | a change's sign-off state and close lines, coverage per section, the hints, the open changes on an ID, and what is not checked |
 | `al context --diff ... --for review` | the review view: each changed paragraph's text beside its kind, its requirement and the baseline paragraphs it touches |
 | `al check` | the checks in sections 3-9; `--issues <folder>` also checks the work items that the caller saved for the tasks of the open requests (section 8) |
 | `al conclude` | the close rule. It refuses with exit 1 and a `refused:` line for each reason. Without `--yes` it shows what it would do. With `--yes` it writes the Outcome, which shows the evidence and what is unknown, and moves the request to `requests/archive/` |

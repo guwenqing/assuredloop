@@ -91,15 +91,15 @@ paragraphs:
     display: LD-60 (3:7, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-57
     kind: plan
-    text_sha256: e74b666013b491bbe904228f2b8ae290f9a70c5152a1acbc382f5e73aed12442
+    text_sha256: b1c6861a8720a94102be3e7d0b50dbbc31ef0c871ebbc9897d150602dc5b7210
     display: LD-57 (3:8, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-62
     kind: plan
-    text_sha256: 08d668c0a08b434c9c5237b3386db74a28cc1da023af17d9bf63cf7a3f692b9e
+    text_sha256: dcc05b2b85a26e306c58d4cc209e0eeeb467f2ebec4b139b027bec02a0f4b853
     display: LD-62 (3:9, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-58
     kind: plan
-    text_sha256: 450952d4024cb676dc395bade3aa88c98f6f8920f39314096dcee6ccb24f032f
+    text_sha256: 30304e20e34ede0adf6aacd8440bb44e2910929925de18633c9f2ce2ecfb599f
     display: LD-58 (3:10, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-16
     kind: plan

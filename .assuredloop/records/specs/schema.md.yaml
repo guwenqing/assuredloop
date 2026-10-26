@@ -59,7 +59,7 @@ paragraphs:
     display: SCH-14 (4:3, in 4. The kinds of paragraph)
   - id: SCH-15
     kind: rule
-    text_sha256: 995ea9ecf34f15873cec5f920aaf18842ed685f05c52499d93aac116cd75f5ba
+    text_sha256: 87451085c3b50dd6679769c205061ad87995a0004d12497cfdebf40d52a9477a
     display: SCH-15 (4:4, in 4. The kinds of paragraph)
   - id: SCH-16
     kind: definition
@@ -115,7 +115,7 @@ paragraphs:
     display: SCH-27 (7, 7. Where the model lives)
   - id: SCH-28
     kind: data
-    text_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197
+    text_sha256: 09bf8dcaff40fa4a3bad86b6f4a84b99bc657c0e65adb529976802fcaa52308f
     display: SCH-28 (7:1, in 7. Where the model lives)
   - id: SCH-39
     kind: data
@@ -135,7 +135,7 @@ paragraphs:
     display: SCH-31 (8:2, in 8. A worked example as records)
   - id: SCH-32
     kind: example
-    text_sha256: 6ab63f0323fb6f27cedd312e47a22c369878293ed81f4b3667f89b92eb617f46
+    text_sha256: 6ef67b94454113f7da750c3c876885c3afb54bc98b930f815d06c4709e8b8c28
     display: SCH-32 (8:3, in 8. A worked example as records)
   - id: SCH-33
     kind: example
@@ -147,7 +147,7 @@ paragraphs:
     display: SCH-34 (9, 9. What the graph lets the tool say)
   - id: SCH-35
     kind: example
-    text_sha256: 59f5b645dc51eb06e44695da266f438c77a79af9be9433e0f6cae6c8068c2d93
+    text_sha256: 3456c733ab694ac20883186bc4f259f84ee5e5cd95516753eac619812b3ae9c2
     display: SCH-35 (9:1, in 9. What the graph lets the tool say)
   - id: SCH-36
     kind: limit

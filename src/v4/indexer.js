@@ -1,12 +1,11 @@
 // al index [--align <ID>]: writes the per-doc records (the regenerable fields,
 // with the agents' hints kept), appends requirement versions, freezes the
-// bindings of new links and fills the hashes of new dispositions. Ordinary
-// indexing never advances a binding; only --align does (design.md 4, 10).
+// bindings of new links. Ordinary indexing never advances a binding; only --align does (design.md 4, 10).
 // With --issues <folder>, it keeps the text of the tasks' work items at the
 // moment of reliance (light-design LD-22, kept-items.js).
 import { accessSync, constants, lstatSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
-import { isMap, parse, stringify } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { parseMarkdown } from './markers.js';
 import { git, mergeBase, fileAt, filesAt } from './git.js';
 import { loadConfig } from './config.js';
@@ -424,38 +423,6 @@ export function index({ top, cwd, opts }) {
       items.splice(items.indexOf(it), 1);
       body.push(`removed: ${it.get('holder')} ${it.get('link')} ${it.get('target')} from the record of ${n}: no longer declared`);
       rec.changed = true;
-    }
-  }
-
-  // Dispositions: the hashes of the source version, and of the spec text it
-  // produced, frozen when first indexed.
-  for (const [n, rec] of recs) {
-    const own = new Set(now.requests.get(n).paras.keys());
-    for (const it of seq(rec, 'dispositions').items) {
-      if (!it?.get) continue;
-      const source = it.get('source');
-      // `adoption` names the captured baseline, which has no hash here (T17).
-      if (source && source !== 'adoption' && !it.has('source_sha256')) {
-        const t = targetOf(qualify(String(source), n, own, isCentral(config)), now);
-        if (t) { it.set('source_sha256', t.sha); rec.changed = true; } else body.push(`disposition: ${source} not found, so its hash is not filled`);
-      }
-      const spec = it.get('spec');
-      if (it.get('disposition') === 'incorporated' && spec && !it.has('spec_sha256')) {
-        const t = targetOf(qualify(String(spec), null, new Set(), isCentral(config)), now);
-        if (t) { it.set('spec_sha256', t.sha); rec.changed = true; } else body.push(`disposition: ${spec} not found, so its spec hash is not filled`);
-      }
-    }
-    // A wording decision names its pair, {source, spec}; its hashes are filled
-    // once, as a disposition's are (the architect, #179, D15).
-    for (const it of seq(rec, 'decisions').items) {
-      const w = it?.get?.('wording');
-      if (!isMap(w)) continue;
-      for (const [name, key, request] of [['source', 'source_sha256', n], ['spec', 'target_sha256', null]]) {
-        const ref = w.get(name);
-        if (!ref || w.has(key)) continue;
-        const t = targetOf(qualify(String(ref), request, request ? own : new Set()), now);
-        if (t) { w.set(key, t.sha); rec.changed = true; } else body.push(`decision ${it.get('id')}: ${ref} not found, so its wording hash is not filled`);
-      }
     }
   }
 

@@ -32,4 +32,10 @@ tasks: []
 bindings:
   - { holder: light-resign/R1, link: from, target: light-resign/2026-10-26-owner-words.md, holder_sha256: ccb9983961a7fdf313f708089a694862023cb258dcaf236b9bbf082163c47152, target_sha256: e7ba5cf2a0890cc6f793ce1bd1a8c989fe28371387f76f1cc9ed1463286aebb7 }
   - { holder: light-resign/R5, link: from, target: light-resign/2026-10-26-owner-words.md, holder_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_sha256: e7ba5cf2a0890cc6f793ce1bd1a8c989fe28371387f76f1cc9ed1463286aebb7 }
+  - { holder: DES-29, link: serves, target: light-resign/R5, holder_sha256: 1b8cff7c180353c52362e9279f244f65c276f7feca15716b30b5ad276274aea8, target_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_version: 1 }
+  - { holder: DES-34, link: serves, target: light-resign/R5, holder_sha256: b3398d5ac9d77235e59842134bb3cef08b09cebc3128961ca83fa02c001b6034, target_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_version: 1 }
+  - { holder: DES-37, link: serves, target: light-resign/R5, holder_sha256: de1a2f1d284dd0b00af5997ab0c0bc72a57be3f586fed0a6e99c9f0aa69adf2a, target_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_version: 1 }
+  - { holder: DES-38, link: serves, target: light-resign/R5, holder_sha256: cb840584e6ed04173d3bbe210e8deb59d631d16c95a603200ddf6d8249283899, target_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_version: 1 }
+  - { holder: SCH-15, link: serves, target: light-resign/R5, holder_sha256: 87451085c3b50dd6679769c205061ad87995a0004d12497cfdebf40d52a9477a, target_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_version: 1 }
+  - { holder: DES-37, link: serves, target: assuredloop-v4/R4, holder_sha256: de1a2f1d284dd0b00af5997ab0c0bc72a57be3f586fed0a6e99c9f0aa69adf2a, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
 dispositions: []
