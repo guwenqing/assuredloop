@@ -16,7 +16,7 @@ import { Fail } from './spec.js';
 import { centralLookup } from './repos.js';
 import { checks } from './checks.js';
 import { loadPhrases } from './phrases.js';
-import { loadItems } from './issues.js';
+import { loadItems, outOfReach } from './issues.js';
 import { changeInForce } from './inforce.js';
 import { reviewSection } from './evidence.js';
 import { mapSection } from './map.js';
@@ -41,6 +41,8 @@ function checkAll({ top, cwd, opts }) {
   const { kinds } = loadSchema(top);
   // A bad phrases: list is a refusal before anything is read (issue-hints D6).
   const phrases = loadPhrases(config);
+  // So is a bad items-out-of-reach: list, with or without --issues (DES-117).
+  outOfReach(config);
   // The work items that the caller saved; a folder that is not there is a refusal.
   const issues = opts.issues === undefined ? null : loadItems(cwd ?? top, opts.issues);
   const found = baseOf(top);
