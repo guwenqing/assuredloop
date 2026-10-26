@@ -454,7 +454,7 @@ informative paragraph needs only the declaration. In the central repo,
 loss that nobody declared stays a lost-ID lint. Why: a whole-block replace in
 real OpenSpec history dropped scenarios with no notice.
 
-<!-- DES-37 rule serves:assuredloop-v4/R4,light-resign/R5 -->
+<!-- DES-37 rule serves:assuredloop-v4/R4,light-resign/R5,origin-elsewhere/R1 -->
 
 **The close rule, by path.** A spike closes when its current question is
 signed (section 6), and its change spec needs no consolidation. Paths 0, 1
@@ -471,8 +471,12 @@ refuses while:
    is unchanged since the link; or it names one by `removes`, and that
    paragraph is still in `specs/`. A `changes` link that has no binding yet
    refuses until `al index` binds it, because `al` cannot tell.
-- Every request also needs each of its original files verified
-  (origin-elsewhere/R1).
+- Every request also needs each of its original files verified, on every
+  path. `al conclude` reads each one again with the reader of section 10,
+  in the preview and with `--yes`. It refuses while one is not checked or
+  failed, and names each file and why. It does not run the checks of other
+  requests. A request whose original files are all in the repo and verified
+  needs no place.
 - **The close line.** The author records one sentence with
   `al record <name> close --on <ID> --reason <sentence>`. On a change
   paragraph, it says why the paragraph is not delivered, and it clears item
@@ -511,7 +515,7 @@ existed before adoption with `source: adoption` and the captured baseline
 changes that nobody asked for. The word `from` is kept only for the link from
 a requirement to the owner's words.
 
-<!-- DES-39 definition serves:assuredloop-v4/R5 -->
+<!-- DES-39 definition serves:light-resign/R5 -->
 
 An adopted paragraph is a spec paragraph that a request's record names with
 `source: adoption`, the captured commit and its text hash. It has no
@@ -545,7 +549,7 @@ the requirement may change while the owner explores (input 122).
 - A request with no kept effect may be abandoned without a sign-off. The owner
   never has to sign work that the owner chose not to pursue.
 
-<!-- DES-89 rule serves:hints-and-blocks/R3 -->
+<!-- DES-89 rule serves:hints-and-blocks/R3,origin-elsewhere/R1 -->
 
 **An unsigned requirement version.** In each request whose record has
 `requirements:`, open or archived, the latest version of each requirement
@@ -558,10 +562,18 @@ mappings and any valid indentation give the same result. A sign-off is valid
 only when:
 - a `covers` entry has the requirement's id, version and `sha256` exactly,
   with no case folding;
-- its `file` is in the request's `origin/` folder, and the hash of that
-  file's signed text equals its `sha256`;
+- its `file` is in the request's `origin/` folder, or kept outside the
+  repo (section 10), and the hash of that file's signed text equals its
+  `sha256`;
 - it records when it was signed (`signed`) and the signer's words
   (`words`).
+
+<!-- DES-126 rule serves:origin-elsewhere/R1 builds-on:DES-89 -->
+
+A sign-off whose file is kept outside and is not checked (section 10) is
+never counted as signed. That alone gives no `not ok`. Its other conditions
+(the `covers` entry, `signed` and `words`) are checked in every state, and a
+failure of one stays `not ok`.
 
 <!-- DES-43 rule serves:assuredloop-v4/R4,assuredloop-v4/R7 -->
 
@@ -1211,15 +1223,105 @@ moved the main tag on close to half of the notes in one study (arXiv
   `--strict` in its CI, and the README advises it (input 123).
 - The core checks stay deterministic: no AI, network or database calls.
 
-<!-- DES-90 rule serves:hints-and-blocks/R4 -->
+<!-- DES-90 rule serves:hints-and-blocks/R4,origin-elsewhere/R1 -->
 
 **Record evidence.** Each file that a request's record lists with a hash
 still has that hash: each origin file under `sources:`, and the `file` of
-each sign-off. `al check` hashes the snapshot's text, after its `---` line,
-as `al record` hashed it. A changed, missing or unreadable file, or an entry
-with no file or no hash, is `not ok record-evidence`. This holds for open and
-archived requests. A result file's inputs are not record evidence: when one
-changes, the result "does not apply to the current text", as section 9 says.
+each sign-off. One reader gives each such file one result, and every
+reader of original files uses it: the record checks (`record-evidence`),
+the sign-off state, `unsigned-requirement`, `signoff-coverage`,
+`al context` and `al conclude`. The result is one of three:
+- verified: the snapshot's text after its separator has the recorded
+  SHA-256, as `al record` hashed it. The separator is the first line that
+  is `---` or `--- signed text ---`. A sign-off's file has only
+  `--- signed text ---`;
+- not checked: the project keeps its files outside, the file is not in the
+  repo, and no place is set (DES-120);
+- failed, with the reason: missing, unreadable, a folder or a link where a
+  file should be, no separator, or a different SHA-256.
+
+<!-- DES-127 rule serves:hints-and-blocks/R4,origin-elsewhere/R1 builds-on:DES-90 -->
+
+The repo copy is read first: `requests/<request>/origin/<file>`, or at a
+commit, that commit's file. Only a file that does not exist there goes on
+to the place. A repo copy that exists but cannot be read, or that is a
+folder, is failed, also when the place holds a good copy. A link at
+`<folder>/<request>` or at the file is failed. A failed file, or an entry
+with no file or no hash, is `not ok record-evidence`, for open and archived
+requests. Its message names a file kept outside as
+`originals:<request>/<file>`, never by the folder's path. A not checked
+file gives one line for each request that names its files:
+`info originals-not-checked <record> <request> no place is set on this
+machine for "<name>": <files>`. The `Not known` line names the files and
+the requirements that depend on them. A not checked file alone gives no
+`not ok`, so `al check --strict` passes where the files cannot be reached,
+such as on CI. A result file's inputs are not record evidence: when one
+changes, the result "does not apply to the current text", as section 9
+says.
+
+<!-- DES-120 data serves:origin-elsewhere/R1 -->
+
+**Original files outside the repo.** The committed config may say that the
+project keeps the original files of its requests outside the repo
+(schema.md, `originals`). Each worker maps the config's name to a folder on
+its own machine, in `assuredloop/places.yaml` in the user's config folder
+(`$XDG_CONFIG_HOME`, else `~/.config`): one line for each name,
+`<name>: <folder>`. The folder is an absolute path of an existing folder.
+Every clone on the machine finds the same folder, with no setup in the
+clone. In the folder, the files keep the layout of the repo:
+`<folder>/<request>/<file>`, with the same file names as in `origin/`. A
+worker with several projects has one line for each.
+
+<!-- DES-121 choice serves:origin-elsewhere/R1 -->
+
+No places file, or no line for the name, means that no place is set. A
+places file that cannot be read or is not valid YAML, and a line that is
+empty, relative or names no existing folder, make the command refuse with
+the reason. Such a setting does not count as "no place set", so a broken
+setting cannot pass a strict check. The commands that read the working
+tree's records (`al check`, `al conclude`, `al context`) and the three
+writers of DES-123 read the places file. `al export` does not read it.
+
+<!-- DES-122 rationale explains:DES-120,DES-121 -->
+
+Considered and not taken: one environment variable (each shell and each
+session launch must set it); a git-ignored file in each clone (each new
+clone needs it).
+
+<!-- DES-123 rule serves:origin-elsewhere/R1 -->
+
+**Writing an original file outside.** `al new`, `al record <name> origin`
+and `al record <name> signoff`, in a project that keeps its files outside:
+
+1. Find the place. With no place set, refuse and write nothing. The
+   previews of `al record origin` and `al record signoff` refuse too; a
+   request with nothing to sign says so first.
+2. Choose a name that is free in `origin/` in the repo and in
+   `<folder>/<request>/`, and that the record does not name. Create the
+   file there only if it does not exist yet. If another clone wrote it
+   first, choose the next free name and try again.
+3. If the write fails, refuse with the reason, and write nothing else.
+4. Then write the record, and for a sign-off the `Signed off:` line in
+   `request.md`. Both name the file by its name only (`origin/<file>`). The
+   command's output names it as `originals:<request>/<file>`.
+
+<!-- DES-128 rule serves:origin-elsewhere/R1 builds-on:DES-123 -->
+
+A file written in step 2 whose record then fails to write stays in the
+folder, named by no record. That is no false record. A project that keeps
+its files in the repo keeps the rule that the name is free in `origin/`.
+
+<!-- DES-124 data serves:origin-elsewhere/R1 -->
+
+A structured source that is a path inside the folder (`--url` of
+`al record origin`, `--source` and `--presented` of `al record signoff`;
+absolute, `~/`, or relative to the current folder) is recorded as
+`originals:<path in the folder>`. The folder's path anywhere else in such a
+value becomes `originals:`. This happens before the record is written and
+before a file name is made from the value. The full value of `--url` or
+`--source` stays in the snapshot, which is outside the repo. A
+`--presented` value is kept only as the record holds it. `--words` is kept
+as given.
 
 <!-- DES-82 data serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
 
@@ -1257,7 +1359,7 @@ strong base; and old text must be filtered out, not ranked down.
 - An agent that greps files does well on small corpora, and word search
   (BM25) overtakes it near 10 million tokens (arXiv 2607.26497).
 
-<!-- DES-61 interface serves:assuredloop-v4/R10 -->
+<!-- DES-61 interface serves:assuredloop-v4/R10,origin-elsewhere/R1 -->
 
 **The export.** `al export` writes one deterministic JSONL row per paragraph
 version, built from the committed docs and records. It is not committed;
@@ -1275,6 +1377,12 @@ levels above 0 need this export.
   that replaced a version.
 - Output files and results add `evidence` rows, in the central repo and in
   the output repos (section 12).
+- An original file kept outside the repo (DES-120) gets no row, and the
+  export does not read the folder. The rows of a selected commit still come
+  from that commit, and every row has its text. Each file kept outside is
+  named, with its request, its name and its recorded SHA-256: on standard
+  error when the export goes to standard output, and in the summary with
+  `--out`. Search uses the same rows.
 
 <!-- DES-62 definition serves:assuredloop-v4/R10 -->
 
@@ -1501,6 +1609,22 @@ are its outputs.
 | `al index` | writes derived facts and new bindings; `--align <ID>` advances a binding on purpose; lists the hints that the agent must refresh |
 | `al export` | the export: one JSONL row per paragraph version, output file or result, with its repo, role, version, commit and edges; not committed |
 | `al search` | search at levels 0-2 across the central repo and its output repos, with the current-system, change-context and history queries; it shows each hit's repo and commit |
+
+<!-- DES-125 interface serves:light-resign/R1 -->
+
+**Answers.** An answer of `al` puts repeated output on one line, for
+example the IDs of the items in force by their state, and names each of
+them there. `al check --full` shows the text of every item in force, and
+`al context <ID>` shows one item in full, with its file and line. A line
+about one paragraph, requirement, decision or judgement names its file and
+line, with the ID beside it only as a label. A hint names the place that
+it is about: a file and line, a file, or a folder, or `-` when it is about
+no file, for example a missing `Tier:` line. `al context <name>` names a request's folder, and a
+coverage line names its file and section.
+A fact that only `al`'s records hold says so and names the record. An
+answer shows its hints, which are inferences, apart from the project's
+evidence and from the records, and it names what it does not know on a
+`Not known` line.
 
 <!-- DES-73 note -->
 
