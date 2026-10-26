@@ -87,7 +87,7 @@ function checkAll({ top, cwd, opts }) {
   body.push(...central.body);
   body.push(...list.body);
   // The evidence of the review's judgements: hints only (light-design R2).
-  body.push(...reviewSection(top, { now: t10.now, base, own: list.own ?? [], config }));
+  body.push(...reviewSection(top, { now: t10.now, base, own: list.own ?? [], config, issues }));
   const notKnown = ['IDs used on branches that were never fetched here', ...t10.notKnown, ...central.notKnown,
     'whether each kind is right, whether a requirement is fully covered, and whether a change is authorized in substance (the review judges these)'];
   if (!base) notKnown.unshift('no base (no main branch, or no commit): lost and used-again IDs are not checked');
