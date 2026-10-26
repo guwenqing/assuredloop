@@ -15,11 +15,12 @@ import { baseOf, git } from './git.js';
 import { diffParagraphs, idLints } from './ids.js';
 import { docsInScope, idsEverUsed, isShallow, notRead, parseScopes, rootNotOk, rootProblem, SPEC } from './scope.js';
 import { Fail } from './spec.js';
+import { fromClone } from './base.js';
 import { centralLookup } from './repos.js';
 import { checks } from './checks.js';
 import { loadPhrases } from './phrases.js';
 import { loadItems, outOfReach } from './issues.js';
-import { changeInForce, changePaths } from './inforce.js';
+import { changeInForce } from './inforce.js';
 import { reviewSection } from './evidence.js';
 import { mapSection } from './map.js';
 import { index, isCentral } from './indexer.js';
@@ -34,12 +35,8 @@ export function check(args) {
     if (args.opts.at !== undefined) return atCommit(args);
     // A refusal writes nothing: the settings are read before al index runs.
     settings(args);
-    // A run never changes which requests are the change's own (LD-24,
-    // LD-63): they are read from the working tree before al index writes.
-    const base = baseOf(args.top)?.commit ?? null;
-    const ownPaths = base ? changePaths(args.top, base) : null;
     const indexed = runIndex(args);
-    const out = checkAll({ ...args, opts: { ...args.opts, ownPaths } });
+    const out = checkAll(args);
     const records = recordLines(indexed.written, out.own);
     return { ...out, body: [...records, ...indexed.body, ...out.body], notKnown: [...indexed.notKnown, ...out.notKnown] };
   } catch (e) {
@@ -99,7 +96,7 @@ function atCommit({ top, cwd, opts }) {
   const tree = join(dir, 'tree');
   try {
     git(top, ['-c', 'core.hooksPath=/dev/null', 'worktree', 'add', '--detach', '--quiet', tree, rev]);
-    const out = checkAll({ top: tree, cwd, opts });
+    const out = fromClone(tree, top, () => checkAll({ top: tree, cwd, opts }));
     return { ...out, read: `commit ${rev.slice(0, 7)} (--at ${opts.at}) · ${out.read.replace(/^working tree · /, '')}` };
   } finally {
     git(top, ['worktree', 'remove', '--force', tree], { allowFail: true });
@@ -157,7 +154,7 @@ function checkAll(args) {
   // The ADRs' paragraphs that the branch changed, for the map too.
   if (base) changes.push(...changedParagraphs(t10.was?.adrList ?? [], t10.now.adrList, base));
   // What is in force for the change, and its design-doc hints (light-design R1).
-  const list = changeInForce(top, { now: t10.now, was: t10.was, base, issues, full: opts.full, all: opts.all, ownPaths: opts.ownPaths });
+  const list = changeInForce(top, { now: t10.now, was: t10.was, base, issues, full: opts.full, all: opts.all });
   t10.findings.push(...list.findings);
   // The map of the change and its two hints (light-design LD-56, LD-60).
   const map = mapSection(top, {
@@ -193,7 +190,12 @@ function checkAll(args) {
   body.push(...map.body);
   // One line that names each check that ran and found nothing (LD-41).
   const gave = new Set(body.map((l) => /^(?:hint|not ok) (\S+) /.exec(l)?.[1]).filter(Boolean));
-  const ran = [...CODES, ...(issues ? ISSUE_CODES : []), ...(central.body.length ? ['unresolved-central'] : [])];
+  // Only the checks that ran: with no base, the checks of the change against
+  // it did not; nor did the path checks with no Tier line or no commit, the
+  // list's hints with no change selected, or the map's hints with no map.
+  const skipped = new Set([...(base ? [] : BASE_CODES), ...t10.skipped, ...(list.none ? ['design-doc', 'scope-no-file'] : []),
+    ...(map.ran === false ? ['map-unnamed', 'map-consolidation'] : [])]);
+  const ran = [...CODES, ...(issues ? ISSUE_CODES : []), ...(central.body.length ? ['unresolved-central'] : [])].filter((c) => !skipped.has(c));
   const quiet = ran.filter((c) => !gave.has(c));
   if (quiet.length) body.splice(okAt, 0, `ok: nothing found by ${quiet.join(', ')}`);
   // Each fact once (LD-18): the questions that the review judges.
@@ -248,6 +250,8 @@ const CODES = [
   'adr-changed', 'adr-supersede', 'adr-marker', 'adr-status', 'adr-number', 'adr-none', 'adr-links', 'adr-governs',
   'design-doc', 'scope-no-file', 'map-unnamed', 'map-consolidation',
 ];
+// The checks that compare the change with its base.
+const BASE_CODES = ['lost-id', 'used-again', 'signoff-coverage', 'path-claim', 'no-claim', 'promise-kind', 'typo-mark', 'near-match', 'adoption', 'adr-changed'];
 const ISSUE_CODES = ['issue-changed', 'issue-missing', 'issue-unread', 'issue-not-sub', 'issue-bare-ref', 'issue-superseded'];
 
 // A lost ID of an open request's change spec (its file at the base is

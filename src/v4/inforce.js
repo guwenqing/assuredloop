@@ -8,8 +8,11 @@
 // design. Every other item in force is named in the grouped line. No model,
 // no network, and the same output for the same state and options.
 import { lstatSync, readFileSync } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
+import { parse } from 'yaml';
 import { join, posix } from 'node:path';
 import { recordPath } from './base.js';
+import { INDEX_KEYS } from './records.js';
 import { fileAt, git } from './git.js';
 import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from './markers.js';
 import { taskItems } from './issues.js';
@@ -85,10 +88,6 @@ function pathsOf(top, base) {
   return { paths, untracked };
 }
 
-// The paths of the change, for its own requests (LD-24). al check reads them
-// before its index step writes, so that a run never changes them (LD-63).
-export const changePaths = (top, base) => pathsOf(top, base).paths;
-
 // The selected change: its paths (pathsOf), and each line it adds or removes
 // outside .assuredloop/ and the review notes, as { file, line, text, removed }.
 // A review note is the review's output, not part of the change, so an ID in
@@ -153,8 +152,28 @@ function itemsInForce(now) {
 // folder or their record, or a commit message of base..HEAD names them.
 export function ownRequests(top, now, base, paths = pathsOf(top, base).paths) {
   const messages = git(top, ['log', '--format=%B%x00', `${base}..HEAD`], { allowFail: true }) ?? '';
-  return [...now.requests.values()].filter((r) => r.open).filter((r) => [...paths].some((f) => f.startsWith(`${r.dir}/`) || f === recordPath(r.name))
+  return [...now.requests.values()].filter((r) => r.open)
+    .filter((r) => [...paths].some((f) => f.startsWith(`${r.dir}/`) || (f === recordPath(r.name) && recordTouched(top, base, r.name)))
     || word(r.name).test(messages)).sort((a, b) => (a.name < b.name ? -1 : 1));
+}
+
+// Whether the change touches a request's record in what al new and al record
+// write (LD-24). What al index derives by itself (INDEX_KEYS) is left out,
+// so an al check run, or its written record committed, makes no request
+// the change's own. A record that is not YAML is compared as text.
+function recordTouched(top, base, name) {
+  const path = recordPath(name);
+  const read = (text) => {
+    if (text == null) return {};
+    try {
+      const data = parse(text);
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return text;
+      return Object.fromEntries(Object.entries(data).filter(([k]) => !INDEX_KEYS.includes(k)));
+    } catch { return text; }
+  };
+  let now = null;
+  try { now = readFileSync(join(top, path), 'utf8'); } catch { /* deleted: compared as absent */ }
+  return !isDeepStrictEqual(read(fileAt(top, base, path)), read(now));
 }
 
 // The design lines of request.md (LD-48): `Design: <path>`, outside fenced code.
@@ -267,7 +286,7 @@ const inForceLine = (it, basis) => `in force ${it.id} ${basis} · ${it.file}:${i
 // The list. Returns { body, findings, own, none }: the lines, the design-doc
 // hints, the change's own requests (none with no base, an empty change, or in
 // an output repo), and why no change is selected.
-export function changeInForce(top, { now, was, base, issues = null, full = false, all: auditAll = false, ownPaths = null }) {
+export function changeInForce(top, { now, was, base, issues = null, full = false, all: auditAll = false }) {
   // --all, the audit (LD-18, LD-44): every item in force on its own line,
   // also with no change selected. al gives no judgement; the review does.
   const audit = (none) => {
@@ -329,7 +348,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     return !(b.status === 'accepted' && b.head && a.head && b.rest === a.rest && onlyLinksAdded(b.marker, a.marker, now.kinds));
   };
 
-  const own = central ? [] : ownRequests(top, now, base, ownPaths ?? change.paths);
+  const own = central ? [] : ownRequests(top, now, base, change.paths);
   const ownNames = new Set(own.map((r) => r.name));
   const proposals = new Map();
   for (const r of [...now.requests.values()].filter((x) => x.open && !ownNames.has(x.name))) {

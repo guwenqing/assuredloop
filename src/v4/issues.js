@@ -24,8 +24,8 @@
 // and that are not in the folder, get one info line in place of a hint each
 // (DES-117).
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
-import { recordPath } from './base.js';
+import { join, resolve } from 'node:path';
+import { recordPath, repoDir } from './base.js';
 import { parse as parseYaml } from 'yaml';
 import { citedMessage, supersededIn } from './blocks.js';
 import { git } from './git.js';
@@ -227,7 +227,7 @@ function namedRepos(top, config) {
   for (const o of outputRepos(top, config)) if (o.name) out.set(o.name, o.dir ? { dir: o.dir } : { unknown: o.unknown });
   const c = config.central;
   if (isMap(c) && typeof c.path === 'string' && c.path) {
-    const dir = isAbsolute(c.path) ? c.path : resolve(top, c.path);
+    const dir = repoDir(top, c.path);
     out.set('central', existsSync(dir) ? { dir } : { unknown: `no clone at ${c.path}` });
   }
   return out;

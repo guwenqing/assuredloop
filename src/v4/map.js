@@ -62,12 +62,13 @@ export function linkStates(state, was, r) {
 }
 
 // The map. `changes` are the branch's paragraph changes (branchOf); `none`
-// the reason that no change is selected, or null. Returns { body, findings }.
+// the reason that no change is selected, or null. Returns { body, findings },
+// and `ran: false` when there is no map, so its two hints were not checked.
 export function mapSection(top, { now: state, was, base, own, changes, config, issues = null, none = null, paragraphs = [], full = false }) {
   const paras = paragraphLines(state, was, paragraphs, full);
-  if (none) return { body: [`map: no change selected: ${none}`, ...paras], findings: [] };
+  if (none) return { body: [`map: no change selected: ${none}`, ...paras], findings: [], ran: false };
   const rs = mapped(own);
-  if (!rs.length) return { body: ['map: no open change of path 2 or 3 is this change\'s own', ...paras], findings: [] };
+  if (!rs.length) return { body: ['map: no open change of path 2 or 3 is this change\'s own', ...paras], findings: [], ran: false };
   const findings = [];
   const names = new Set(rs.map((r) => r.name));
   const judged = new Map(rs.map((r) => [r.name, consolidations(top, state, r, { config, issues })]));

@@ -377,8 +377,7 @@ The record commands stay: `al new`, `al record`, `al spec` and
 `al check` runs `al index`, and names in one line each record file that it
 wrote, so that the author commits them with the change; each other line of
 `al index` shows as one line for each kind. An `al check` run does not change
-which requests are the change's own (LD-24): it takes them from the working
-tree as it was before it wrote anything, and names in a second line each
+which requests are the change's own (LD-24). It names in a second line each
 record file that it wrote for a request that is not the change's own,
 because that record was not up to date; the author decides whether to
 commit it. `al check --at <commit>` reads
@@ -492,7 +491,7 @@ or cannot be read is reported as a limit. The skill tells the AI:
 <!-- LD-41 plan -->
 
 On an ordinary change `al` gives no hint; `al check` shows only the list of
-section 4a, the map and one line that names each check that found nothing
+section 4a, the map and one line that names each check that ran and found nothing
 (`ok: nothing found by <code>, ...`). The coding agent reads the list at the start
 (skill step 1), and asks one search question for what is new and has no
 ID.
@@ -548,7 +547,12 @@ lines, supersede links and `specs/`. No new record.
   (LD-48), shown as "proposed by this change", apart from what already
   holds. The change's own request is an open request whose folder or
   record the change touches, or whose name a commit message of the branch
-  names. An unsigned requirement of it is not listed; the limits name it.
+  names. A change touches a request's record only in what `al new` and
+  `al record` write (the owner's words and sources, sign-offs, tasks,
+  decisions, close lines). What `al index` derives by itself (requirement
+  versions, bindings, judgement identities, kept item texts) does not make
+  a request the change's own. An unsigned requirement of it is not listed;
+  the limits name it.
 
 <!-- LD-48 data serves:R1 -->
 
