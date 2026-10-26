@@ -44,8 +44,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  al, appendSection, commitAll, doc, editFile, editRecord, editRequest, exists, index, newRequest, ok, organized, req, write,
-  writeConfig,
+  al, appendSection, commitAll, doc, editFile, editRecord, editRequest, exists, index, newRequest, ok, organized, read, refused,
+  req, write, writeConfig, writesNothing,
 } from './helpers/project.js';
 import { conclude, word } from './helpers/views.js';
 import {
@@ -475,4 +475,279 @@ test('#72 central d. item 3: removes:central:INV-13 refuses while INV-13 is in s
     save(dir, `${NAME}: INV-13 removed`);
     closes(dir);
   }
+});
+
+// =====================================================================
+// The close line (LD-62)
+//
+// - `al record <name> close --on <ID> --reason "<one sentence>" [--yes]`.
+//   --on is an own ID of the request: a change paragraph (SP-4 or
+//   <name>/SP-4) or a requirement R<n> of its current version. Any other
+//   ID, a missing --on or --reason, a reason with a line break, or an
+//   archived request refuses: exit 2, an `al: ` line, nothing written.
+// - Without --yes it writes nothing and shows the line it would add, with
+//   C<n>, the --on ID and the reason. With --yes it writes the request
+//   record and shows the same line. The first is C1, the next C2.
+// - The spec paragraphs that the reason names: each word in al's ID form
+//   other than the --on ID (`central:INV-41` in a central repo reads as
+//   INV-41). One that is a paragraph of specs/ now is listed on its own
+//   line with `keeps` and the ID; one that is not is listed as
+//   `<ID>: not a paragraph of specs/, not kept`. Neither refuses.
+// - al conclude (preview and --yes) and al context <name> print one line
+//   for the latest close line of each --on ID: `close`, C<n>, the --on ID,
+//   `current` or `stale`, and the reason. A stale line names each ID whose
+//   version changed and says to record it again.
+// - A current close line on a change paragraph clears item 3 for it; on
+//   R<n>, item 2 for it. A stale one clears nothing. A new close line on
+//   the same ID makes it current again. Item 1 is never cleared.
+//
+// The YAML shape of the record is not asserted. A stale line is read as
+// naming the changed ID outside the reason: for the --on ID, a second
+// time.
+
+const recordClose = (dir, on, reason, ...extra) => al(dir, ['record', NAME, 'close', '--on', on, '--reason', reason, ...extra]);
+const closeArgs = (on, reason, ...extra) => ['record', NAME, 'close', '--on', on, '--reason', reason, ...extra];
+const recordFile = `.assuredloop/records/requests/${NAME}.yaml`;
+
+// The line that record close shows: C<n>, the --on ID and the reason.
+function addedLine(r, cid, on, reason) {
+  const found = r.stdout.split('\n').filter((l) => word(cid).test(l) && word(on).test(l) && l.includes(reason));
+  assert.ok(found.length >= 1, `a line with ${cid}, ${on} and the reason:\n${show(r)}`);
+  return found[0];
+}
+
+// record close --yes: exit 0, the request record changes, and the added line.
+function closeLineAdd(dir, cid, on, reason) {
+  const before = read(dir, recordFile);
+  const r = recordClose(dir, on, reason, '--yes');
+  assert.equal(r.code, 0, show(r));
+  assert.notEqual(read(dir, recordFile), before, `--yes writes the request record:\n${show(r)}`);
+  addedLine(r, cid, on, reason);
+  return r;
+}
+
+const occurrences = (text, id) => (text.match(new RegExp(word(id).source, 'g')) ?? []).length;
+const closeLinesOf = (r, cid) => r.stdout.split('\n').filter((l) => !l.startsWith('refused: ') && /\bclose\b/.test(l) && word(cid).test(l));
+
+// The one close line of cid in a view, in the given state. Returns the line
+// and the line without its reason.
+function closeLine(r, { cid, on, reason, state }) {
+  const found = closeLinesOf(r, cid).filter((l) => word(on).test(l) && l.includes(reason));
+  assert.equal(found.length, 1, `one close line with ${cid}, ${on} and the reason:\n${show(r)}`);
+  const rest = found[0].replace(reason, '');
+  const other = state === 'current' ? 'stale' : 'current';
+  assert.match(rest, new RegExp(`\\b${state}\\b`), `${cid} is ${state}:\n${found[0]}\n${show(r)}`);
+  assert.doesNotMatch(rest, new RegExp(`\\b${other}\\b`), `${cid} is not ${other}:\n${found[0]}\n${show(r)}`);
+  if (state === 'stale') assert.match(rest, /\bagain\b/, `a stale line says to record it again:\n${found[0]}\n${show(r)}`);
+  return { line: found[0], rest };
+}
+
+// al context <name>: exit 0, nothing written.
+function context(dir) {
+  const r = writesNothing(dir, ['context', NAME]);
+  return r;
+}
+
+const NOT_NOW = 'Not delivered: the owner keeps the 30-minute expiry for this release.';
+
+test('#72 close: the preview writes nothing and shows C1, SP-1 and the reason; --yes writes the record and shows it; the next one is C2', (t) => {
+  const dir = openLinks(t);
+  const p = writesNothing(dir, closeArgs('SP-1', NOT_NOW));
+  addedLine(p, 'C1', 'SP-1', NOT_NOW);
+  closeLineAdd(dir, 'C1', 'SP-1', NOT_NOW);
+  const other = 'Not delivered: invoices keep at least one line for now.';
+  const p2 = writesNothing(dir, closeArgs(`${NAME}/SP-3`, other));
+  addedLine(p2, 'C2', 'SP-3', other);
+  closeLineAdd(dir, 'C2', 'SP-3', other);
+});
+
+test('#72 close: --on R1, a requirement of the current version, is taken', (t) => {
+  const dir = unlinked(t);
+  addedLine(writesNothing(dir, closeArgs('R1', 'The existing export design meets it.')), 'C1', 'R1', 'The existing export design meets it.');
+  closeLineAdd(dir, 'C1', 'R1', 'The existing export design meets it.');
+});
+
+test('#72 close refuses (exit 2, al: , nothing written): --on a spec paragraph, an unknown SP or R, no --on, no --reason, a reason with a line break', (t) => {
+  const dir = openLinks(t);
+  // Control: the same command with an own ID is taken.
+  addedLine(writesNothing(dir, closeArgs('SP-1', NOT_NOW)), 'C1', 'SP-1', NOT_NOW);
+  for (const yes of [[], ['--yes']]) {
+    refused(dir, closeArgs('INV-41', NOT_NOW, ...yes));
+    refused(dir, closeArgs('SP-99', NOT_NOW, ...yes));
+    refused(dir, closeArgs('R9', NOT_NOW, ...yes));
+    refused(dir, ['record', NAME, 'close', '--reason', NOT_NOW, ...yes]);
+    refused(dir, ['record', NAME, 'close', '--on', 'SP-1', ...yes]);
+    refused(dir, closeArgs('SP-1', 'Not delivered.\nThe owner keeps the old expiry.', ...yes));
+  }
+});
+
+test('#72 close refuses on an archived request', (t) => {
+  const dir = ready(t);
+  // Control: before the request is archived, the command is taken.
+  addedLine(writesNothing(dir, closeArgs('SP-1', NOT_NOW)), 'C1', 'SP-1', NOT_NOW);
+  closes(dir);
+  refused(dir, closeArgs('SP-1', NOT_NOW));
+  refused(dir, closeArgs('SP-1', NOT_NOW, '--yes'));
+});
+
+test('#72 close: the reason names INV-12, INV-13 and INV-99: "keeps" INV-12 and INV-13, each on its own line; INV-99 is not a paragraph of specs/, not kept; the --on ID is not kept', (t) => {
+  const dir = openLinks(t);
+  const reason = 'SP-1 is not delivered: INV-12 and INV-13 already hold what it meant, and INV-99 was its old name.';
+  const p = writesNothing(dir, closeArgs('SP-1', reason));
+  const y = closeLineAdd(dir, 'C1', 'SP-1', reason);
+  for (const r of [p, y]) {
+    const ls = r.stdout.split('\n');
+    const keeps = (id) => ls.filter((l) => /\bkeeps\b/.test(l) && word(id).test(l) && !l.includes(reason));
+    assert.equal(keeps('INV-12').length, 1, `a keeps line for INV-12:\n${show(r)}`);
+    assert.equal(keeps('INV-13').length, 1, `a keeps line for INV-13:\n${show(r)}`);
+    assert.doesNotMatch(keeps('INV-12')[0], word('INV-13'), `each kept paragraph on its own line:\n${show(r)}`);
+    assert.deepEqual(keeps('INV-99'), [], `INV-99 is not kept:\n${show(r)}`);
+    assert.deepEqual(keeps('SP-1'), [], `the --on ID is not kept:\n${show(r)}`);
+    assert.ok(ls.some((l) => l.includes('INV-99: not a paragraph of specs/, not kept')), `INV-99: not a paragraph of specs/, not kept:\n${show(r)}`);
+    assert.ok(!ls.some((l) => /SP-1: not a paragraph of specs\//.test(l)), `the --on ID is not listed:\n${show(r)}`);
+  }
+});
+
+test('#72 close in a central repo: central:INV-12 in the reason reads as INV-12 and is kept', (t) => {
+  const dir = central(t, 'INV-13');
+  const reason = 'Not delivered: central:INV-12 already holds it.';
+  for (const r of [writesNothing(dir, closeArgs('SP-3', reason)), closeLineAdd(dir, 'C1', 'SP-3', reason)]) {
+    const ls = r.stdout.split('\n').filter((l) => !l.includes(reason));
+    assert.ok(ls.some((l) => /\bkeeps\b/.test(l) && word('INV-12').test(l)), `keeps INV-12:\n${show(r)}`);
+    assert.ok(!ls.some((l) => l.includes('not a paragraph of specs/')), `nothing is "not a paragraph of specs/":\n${show(r)}`);
+  }
+});
+
+test('#72 close clears item 3 for SP-1 (changes, unchanged since the link): conclude closes, and conclude and context show C1 current', (t) => {
+  const dir = openLinks(t, [['SP-1 rule serves:R1 changes:INV-41', 'A shared export link lives for 24 hours.'], PLAN]);
+  closeLineAdd(dir, 'C1', 'SP-1', NOT_NOW);
+  save(dir, `${NAME}: C1`);
+  const want = { cid: 'C1', on: 'SP-1', reason: NOT_NOW, state: 'current' };
+  closeLine(context(dir), want);
+  const [p, y] = closes(dir);
+  closeLine(p, want);
+  closeLine(y, want);
+});
+
+test('#72 close clears item 3 for SP-3 (removes, still in specs/): conclude closes, and shows C1 current', (t) => {
+  const dir = openLinks(t, [['SP-3 limit serves:R1 removes:INV-13', 'An invoice may have no line now.'], PLAN]);
+  const reason = 'Not delivered: invoices keep at least one line for now.';
+  closeLineAdd(dir, 'C1', 'SP-3', reason);
+  save(dir, `${NAME}: C1`);
+  const want = { cid: 'C1', on: 'SP-3', reason, state: 'current' };
+  closeLine(context(dir), want);
+  const [p, y] = closes(dir);
+  closeLine(p, want);
+  closeLine(y, want);
+});
+
+test('#72 a close line on SP-1 clears item 3 for SP-1 only: SP-3 still refuses', (t) => {
+  const dir = openLinks(t);
+  closeLineAdd(dir, 'C1', 'SP-1', NOT_NOW);
+  save(dir, `${NAME}: C1`);
+  const runs = refuses(dir, [[word('SP-3'), word('INV-13'), 'still in specs/']], { not: [[word('SP-1'), 'unchanged since the link']] });
+  for (const r of runs) closeLine(r, { cid: 'C1', on: 'SP-1', reason: NOT_NOW, state: 'current' });
+});
+
+test('#72 close clears item 2 for R1 (met by a design that is reused): conclude closes, and shows C1 current', (t) => {
+  const dir = unlinked(t);
+  const reason = 'The export link of INV-41 is reused; no new paragraph is needed.';
+  closeLineAdd(dir, 'C1', 'R1', reason);
+  save(dir, `${NAME}: C1`);
+  const want = { cid: 'C1', on: 'R1', reason, state: 'current' };
+  closeLine(context(dir), want);
+  const [p, y] = closes(dir);
+  closeLine(p, want);
+  closeLine(y, want);
+});
+
+test('#72 a close line goes stale when its change paragraph SP-1 changes: the refusal comes back; C2 on SP-1 is current and clears again, and C1 is not shown', (t) => {
+  const dir = openLinks(t, [['SP-1 rule serves:R1 changes:INV-41', 'A shared export link lives for 24 hours.'], PLAN]);
+  closeLineAdd(dir, 'C1', 'SP-1', NOT_NOW);
+  save(dir, `${NAME}: C1`);
+  wouldClose(dir);
+  editFile(dir, CS, 'A shared export link lives for 24 hours.', 'A shared export link lives for 12 hours.');
+  save(dir, `${NAME}: SP-1 changed`);
+  const stale = { cid: 'C1', on: 'SP-1', reason: NOT_NOW, state: 'stale' };
+  const runs = refuses(dir, [[word('SP-1'), word('INV-41'), 'unchanged since the link']]);
+  for (const r of [...runs, context(dir)]) {
+    const { rest } = closeLine(r, stale);
+    assert.ok(occurrences(rest, 'SP-1') >= 2, `the stale line names SP-1 as changed:\n${rest}\n${show(r)}`);
+  }
+  closeLineAdd(dir, 'C2', 'SP-1', NOT_NOW);
+  save(dir, `${NAME}: C2`);
+  const p = wouldClose(dir);
+  closeLine(p, { cid: 'C2', on: 'SP-1', reason: NOT_NOW, state: 'current' });
+  assert.deepEqual(closeLinesOf(p, 'C1'), [], `only the latest close line of SP-1:\n${show(p)}`);
+});
+
+test('#72 a close line goes stale when its requirement R1 changes (re-signed): the refusal on R1 comes back; C2 on R1 is current and clears again', (t) => {
+  const dir = unlinked(t);
+  const reason = 'The existing export design meets it.';
+  closeLineAdd(dir, 'C1', 'R1', reason);
+  save(dir, `${NAME}: C1`);
+  wouldClose(dir);
+  editRequest(dir, NAME, 'MUST live for 24 hours', 'MUST live for 48 hours');
+  ok(dir, ['record', NAME, 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  save(dir, `${NAME}: R1 changed and signed`);
+  const runs = refuses(dir, [[requirement(NAME, 'R1'), 'no declared paragraph link']]);
+  for (const r of [...runs, context(dir)]) {
+    const { rest } = closeLine(r, { cid: 'C1', on: 'R1', reason, state: 'stale' });
+    assert.ok(occurrences(rest, 'R1') >= 2, `the stale line names R1 as changed:\n${rest}\n${show(r)}`);
+  }
+  closeLineAdd(dir, 'C2', 'R1', reason);
+  save(dir, `${NAME}: C2`);
+  closeLine(wouldClose(dir), { cid: 'C2', on: 'R1', reason, state: 'current' });
+});
+
+test('#72 a close line goes stale when a spec paragraph that its reason names changes (INV-12): it names INV-12 and not INV-13, and the refusal comes back', (t) => {
+  const dir = openLinks(t, [['SP-1 rule serves:R1 changes:INV-41', 'A shared export link lives for 24 hours.'], PLAN]);
+  const reason = 'Not delivered: INV-12 and INV-13 already hold what it meant.';
+  closeLineAdd(dir, 'C1', 'SP-1', reason);
+  save(dir, `${NAME}: C1`);
+  wouldClose(dir);
+  editSpec(dir, 'INV-12', 'data', T12, 'An invoice has a number, a customer, a currency, lines, a total and a paid date.');
+  save(dir, `${NAME}: INV-12 changed`);
+  const runs = refuses(dir, [[word('SP-1'), word('INV-41'), 'unchanged since the link']]);
+  for (const r of [...runs, context(dir)]) {
+    const { rest } = closeLine(r, { cid: 'C1', on: 'SP-1', reason, state: 'stale' });
+    assert.match(rest, word('INV-12'), `the stale line names INV-12:\n${rest}\n${show(r)}`);
+    assert.doesNotMatch(rest, word('INV-13'), `INV-13 did not change:\n${rest}\n${show(r)}`);
+  }
+});
+
+test('#72 a close line goes stale when a spec paragraph that its reason names leaves specs/ (INV-13): it names INV-13, and the refusal on SP-1 comes back', (t) => {
+  const dir = openLinks(t, [['SP-1 rule serves:R1 changes:INV-41', 'A shared export link lives for 24 hours.'], PLAN]);
+  const reason = 'Not delivered: INV-13 already holds what it meant.';
+  closeLineAdd(dir, 'C1', 'SP-1', reason);
+  save(dir, `${NAME}: C1`);
+  wouldClose(dir);
+  removeSpec(dir, 'INV-13', T13);
+  save(dir, `${NAME}: INV-13 gone`);
+  const runs = refuses(dir, [[word('SP-1'), word('INV-41'), 'unchanged since the link']]);
+  for (const r of [...runs, context(dir)]) {
+    const { rest } = closeLine(r, { cid: 'C1', on: 'SP-1', reason, state: 'stale' });
+    assert.match(rest, word('INV-13'), `the stale line names INV-13:\n${rest}\n${show(r)}`);
+  }
+});
+
+test('#72 a close line never clears item 1: on SP-5, an unsigned promise change, it clears item 3 for SP-5 and the sign-off refusal stays', (t) => {
+  const dir = world(t, [
+    ['SP-1 rule serves:R1 changes:INV-41', 'A shared export link lives for 24 hours.'],
+    ['SP-5 rule changes:INV-12', 'An invoice has a currency.'],
+    PLAN,
+  ]);
+  editSpec(dir, 'INV-41', 'rule', T41, N41);
+  save(dir, `${NAME}: INV-41`);
+  refuses(dir, [
+    ['a promise change with no signed requirement that covers it', word('SP-5')],
+    [word('SP-5'), word('INV-12'), 'unchanged since the link'],
+  ]);
+  const reason = 'Not delivered: the currency waits for a later change.';
+  closeLineAdd(dir, 'C1', 'SP-5', reason);
+  save(dir, `${NAME}: C1`);
+  const runs = refuses(dir, [['a promise change with no signed requirement that covers it', word('SP-5')]], {
+    not: [[word('SP-5'), 'unchanged since the link']],
+  });
+  for (const r of runs) closeLine(r, { cid: 'C1', on: 'SP-5', reason, state: 'current' });
 });
