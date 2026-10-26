@@ -607,6 +607,9 @@ each one:
     info issues-out-of-reach - - 2 items out of the CI token's reach (items-out-of-reach in .assuredloop/config.yaml) are not in <folder>, so they are not checked, and al cannot tell whether they changed since the change relied on them: acme/private-plans#4 (pay-run/T2), PROJ-12 (pay-run/T1)
 
 An item that the list names and that is in the folder is read as usual.
+The line names each item once, ignoring case. A task's `ref` that names no
+saved item, and that holds more than other trackers' keys of the list,
+keeps its `issue-missing`.
 
 The folder also says which item is each request's own item, in the file
 `assuredloop-requests.json`. `al` reads the own item from this file only,

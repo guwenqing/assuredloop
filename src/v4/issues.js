@@ -47,7 +47,8 @@ const OWN_ITEMS = 'assuredloop-requests.json';
 const FORMAT = 'assuredloop-items/1';
 const REACH = 'items-out-of-reach';
 // `text` holds `word` as a whole word: no letter, digit, `_` or `-` beside it.
-const holds = (text, word) => new RegExp(`(?<![\\w-])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(text);
+const wordRe = (word, flags = '') => new RegExp(`(?<![\\w-])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, flags);
+const holds = (text, word) => wordRe(word).test(text);
 
 // The `owner/repo` of a URL or an `owner/repo#n` (null when it names no item).
 const keyOf = (s) => {
@@ -100,9 +101,10 @@ function markdownItem(text) {
   const x = {};
   let i = 0;
   for (; i < lines.length && !blank(lines[i]); i++) {
-    const m = /^([A-Za-z][\w-]*):[ \t]*(.*?)[ \t]*$/.exec(lines[i]);
+    const m = /^([A-Za-z_][\w-]*):[ \t]*(.*?)[ \t]*$/.exec(lines[i]);
     if (!m) return { why: `its ${i ? `line ${i + 1}` : 'first line'} is not a header line <Key>: <value>, such as URL: or Ref:` };
-    const key = MD_KEYS[m[1].toLowerCase()];
+    // Only the table's own keys: never an inherited name such as constructor.
+    const key = Object.hasOwn(MD_KEYS, m[1].toLowerCase()) ? MD_KEYS[m[1].toLowerCase()] : null;
     if (!key) return { why: `its header line ${i + 1} has the key ${m[1]}; the keys are URL, Number, Repository, Ref, State and Parent` };
     if (key in x) return { why: `its header has the key ${m[1]} twice` };
     const v = m[2];
@@ -315,8 +317,9 @@ export function taskItems(top, state, items) {
 // The list items-out-of-reach of the config (DES-117): [] when there is none.
 // A value that is not a list of texts that are not empty is a refusal.
 export function outOfReach(config) {
+  // A key with no value, or null, is a value that is not a list.
+  if (!Object.hasOwn(config, REACH)) return [];
   const list = config[REACH];
-  if (list == null) return [];
   const next = `fix ${REACH}: in .assuredloop/config.yaml`;
   if (!Array.isArray(list)) throw new Fail(`.assuredloop/config.yaml: ${REACH}: is not a list`, next);
   list.forEach((e, i) => {
@@ -325,10 +328,14 @@ export function outOfReach(config) {
   return list.map((e) => e.trim());
 }
 
-// Whether a reference of a task that names no item in the folder is out of
-// the CI token's reach: the list names its repository `owner/repo`, its item
-// in a form of SP-8, or, for another tracker, a key that the ref holds.
-function reachOf(entries, finder) {
+// The items out of the CI token's reach that no file of the folder holds
+// (DES-117): { hits: [{ shown, id }] in the order of the tasks, away(m) for
+// a reference of `missing` that gets no hint }. The list names an item by
+// its repository `owner/repo`, by a form of SP-8, or, for another tracker,
+// by a key that a task's ref holds as a whole word while no item of the
+// folder has it as its ref. A ref that names no saved item gets no hint only
+// when it holds nothing but such keys.
+function outOfReachItems(state, entries, finder, items, missing) {
   const repos = new Set();
   const keys = new Set();
   const texts = new Set();
@@ -343,9 +350,22 @@ function reachOf(entries, finder) {
     for (const x of w) if (x.key) keys.add(slug(x.key));
     if (!w.length) others.push(e);
   }
-  return (m) => texts.has(slug(m.written))
-    || (m.key && (keys.has(slug(m.key)) || repos.has(slug(m.key).replace(/#\d+$/, ''))))
-    || (m.none && others.some((k) => holds(m.written, k)));
+  const saved = new Set(items.map((it) => it.ref).filter(Boolean).map(slug));
+  // The ref holds nothing but other trackers' keys of the list, each of which the line names.
+  const only = (ref) => !/[\p{L}\p{N}]/u.test(others.reduce((t, k) => t.replace(wordRe(k, 'g'), ' '), String(ref)));
+  const away = (m) => (m.none ? only(m.written)
+    : texts.has(slug(m.written)) || (m.key && (keys.has(slug(m.key)) || repos.has(slug(m.key).replace(/#\d+$/, '')))));
+  const hits = [];
+  for (const r of state.requests.values()) {
+    if (!r.open) continue;
+    for (const t of Array.isArray(r.data?.tasks) ? r.data.tasks : []) {
+      if (!isMap(t) || t.ref == null) continue;
+      const id = `${r.name}/${String(t.id ?? '-')}`;
+      for (const m of missing) if (m.r === r && m.task === String(t.id ?? '-') && !m.none && away(m)) hits.push({ shown: m.key ?? m.written, id });
+      for (const k of others) if (holds(String(t.ref), k) && !saved.has(slug(k))) hits.push({ shown: k, id });
+    }
+  }
+  return { hits, away };
 }
 
 export function issueHints(top, state, matchers, add, { folder, items, unread, owns }) {
@@ -355,18 +375,18 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
   const { own, names, folders } = finder;
   // The items out of the CI token's reach that are not in the folder: one
   // line names them all, in place of issue-missing and issue-changed (DES-117).
-  const away = reachOf(outOfReach(state.config), finder);
+  const { hits, away } = outOfReachItems(state, outOfReach(state.config), finder, items, lost);
   const missing = lost.filter((m) => !away(m));
+  // Each item once, ignoring case, in the form of the first task that names it.
   const reach = new Map();
-  for (const m of lost.filter(away)) {
-    const shown = m.key ?? m.written;
-    if (!reach.has(shown)) reach.set(shown, []);
-    const id = `${m.r.name}/${m.task}`;
-    if (!reach.get(shown).includes(id)) reach.get(shown).push(id);
+  for (const { shown, id } of hits) {
+    if (!reach.has(slug(shown))) reach.set(slug(shown), { shown, ids: [] });
+    const { ids } = reach.get(slug(shown));
+    if (!ids.includes(id)) ids.push(id);
   }
   if (reach.size) {
     const one = reach.size === 1;
-    add('info', 'issues-out-of-reach', '-', '-', `${reach.size} item${one ? '' : 's'} out of the CI token's reach (${REACH} in .assuredloop/config.yaml) ${one ? 'is' : 'are'} not in ${folder}, so ${one ? 'it is' : 'they are'} not checked, and al cannot tell whether ${one ? 'it' : 'they'} changed since the change relied on ${one ? 'it' : 'them'}: ${[...reach].map(([k, ids]) => `${k} (${ids.join(', ')})`).join(', ')}`);
+    add('info', 'issues-out-of-reach', '-', '-', `${reach.size} item${one ? '' : 's'} out of the CI token's reach (${REACH} in .assuredloop/config.yaml) ${one ? 'is' : 'are'} not in ${folder}, so ${one ? 'it is' : 'they are'} not checked, and al cannot tell whether ${one ? 'it' : 'they'} changed since the change relied on ${one ? 'it' : 'them'}: ${[...reach.values()].map((x) => `${x.shown} (${x.ids.join(', ')})`).join(', ')}`);
   }
   // al cannot tell when the caller saved the items (light-design LD-22).
   notKnown.push(`when the items in ${folder} were saved: save them again before a check`);

@@ -990,7 +990,14 @@ place, `al check` gives one line for all of them:
 `info issues-out-of-reach - - <n> items out of the CI token's reach (items-out-of-reach in .assuredloop/config.yaml) are not in <folder>, so they are not checked, and al cannot tell whether they changed since the change relied on them: <item> (<request>/<task>, …), …`.
 For one item, the line says "1 item … is not in <folder>, so it is not
 checked, and al cannot tell whether it changed". It names each item once,
-with every task that names it, and the folder as the caller wrote it. An item that the list names and that is in the folder
+ignoring case, in the form of the first task that names it, with every
+task that names it, and the folder as the caller wrote it. Another
+tracker's key in the list is out of reach for each task whose `ref` holds
+it as a whole word, when no item in the folder has it as its `ref`, also
+when the same `ref` names another item that is in the folder. A task whose
+`ref` names no item in the folder keeps its `issue-missing` and its
+`issue-changed`, unless its `ref` holds nothing but other trackers' keys
+of the list, white space and punctuation. An item that the list names and that is in the folder
 is read as usual. A value that is not a list of texts that are not empty
 stops `al check` with exit 2.
 
