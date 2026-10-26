@@ -598,7 +598,8 @@ judgement holds:
 <!-- LD-65 data serves:R2 builds-on:LD-27 -->
 
 The note is `requests/<name>/review.md` of the change's own request
-(LD-24). One judgement is one top-level list item. Its first line is
+(LD-24). One judgement is one top-level list item, as Markdown reads it:
+a bullet or a numbered item, indented up to three spaces. Its first line is
 `<ID> <verdict>: <reason>`, and each line under it holds one quote:
 `Item: "<quote>"`, `Code (<path>): "<quote>"` or `Test (<path>): "<quote>"`.
 A path is from the repo's root, at the head; `, base` after it names the
@@ -651,9 +652,14 @@ matches. The change in this repo is the one that `al check` selects: its
 base to the working tree, with the untracked files that git does not
 ignore. In an output repo of the configuration, it is the change from the
 merge-base of the selected commit with `main` to that commit; a repo that
-`al` cannot read is kept as unknown, with its reason. The diff hash is
-taken over each changed path and the hash of its bytes now, so it does not
-depend on git's diff settings. `al index` keeps the identity in the
+`al` cannot read is kept as unknown, with its reason; such a repo, now or
+when judged, never counts as unchanged, so the judgement is "not known:
+<repo> cannot be read (<reason>)" unless another part makes it stale. The
+diff hash is taken over each changed path, its git mode and the hash of its
+bytes, in the same form at a commit and in the working tree, so it does not
+depend on git's diff settings. The item's version is the hash of its text,
+and for a requirement its recorded version too. An item of the own
+request's design documents (LD-48) is found as the list reads them. `al index` keeps the identity in the
 request's record, once for each judgement, and never writes it again;
 `al check` writes nothing. A judgement that is already committed when
 `al index` first sees it takes the identity of the earliest commit of the
