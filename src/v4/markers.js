@@ -318,8 +318,10 @@ export function parseMarkdown(text, file, options = {}) {
     while (body.length && body.at(-1).text.trim() === '') body.pop();
     const ptext = body.map((l) => l.text).join('\n');
     const h = body.length ? HEADING.exec(body[0].text) : null;
+    // textAt: the line of its first line of text, the place of its text
+    // (LD-47); null when it has none. `line` is its marker line.
     paragraphs.push({
-      id, kind, links, files, text: ptext, sha256: sha256(ptext), line: n,
+      id, kind, links, files, text: ptext, sha256: sha256(ptext), line: n, textAt: body.length ? body[0].n : null,
       level: h ? h[1].length : 0, heading: h ? headingText(h[2]) : null, file,
     });
   }

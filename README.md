@@ -188,7 +188,9 @@ missing or stale consolidation judgement is shown and never refuses.
   work items that the caller saved in the folder (see "Hints from the
   linked work items"). `--full` shows the text of every item in force.
 - `al context [<name> | <ID>]`: where the project, a request, a paragraph,
-  an ADR (`ADR-2`) or a requirement (`<name>/R1`) stands.
+  an ADR (`ADR-2`) or a requirement (`<name>/R1`) stands. For an ID, it
+  gives one `Cited` line for each file that names the ID, with the count
+  and every line number; `--full` adds the text of each of those lines.
   `--diff <range> --for review` is the review view. `--audit` gives a
   request's whole trace; `--at <commit>` any v4 state.
 - `al conclude <name>`: the close rule; with `--yes` it writes the Outcome
@@ -201,7 +203,11 @@ missing or stale consolidation judgement is shown and never refuses.
 - `al search <words>`: see "Search".
 
 Every command that changes files, except `new` and `index`, shows what it
-would write, and writes only with `--yes`. Each output ends with three lines:
+would write, and writes only with `--yes`. Beside each ID that an answer
+shows, it gives the file and the line of the item's text (never its marker
+line). A finding of `al check` ends with `· places:` and the place of each
+other ID that it names. A fact that only `al`'s records hold, such as a
+sign-off, is named as such. Each output ends with three lines:
 `Read` (what it read), `Next` (what to do next) and `Not known` (what the
 tool cannot know).
 
@@ -218,7 +224,8 @@ the branch against its base, with the untracked files and without
   removes (`cited (<file>:<line>)`), or reaches through the item's file scope
   (`scope changed in this change`, `by scope`, `all files`). An accepted ADR
   whose text changed is marked `text changed, review open`; an item that
-  another open request changes is marked `open proposal: <name>/SP-n changes it`.
+  another open request changes is marked
+  `open proposal: <name>/SP-n (<file>:<line>) changes it`.
 - `proposed ...`: the change's own signed requirements, its change spec
   paragraphs and the documents of its design lines. They are not in force.
   The change's own request is an open request whose folder or record the
