@@ -715,7 +715,7 @@ const PINNED = {
     code: 0,
     lines: [
       'Request   invoice-exports · tier 3 · open · requests/invoice-exports',
-      "Records   only al's record .assuredloop/records/requests/invoice-exports.yaml holds the sign-offs, the requirement versions, the tasks and the close lines below",
+      "Records   only al's record .assuredloop/records/requests/invoice-exports.yaml holds the sign-offs, the requirement versions and the tasks below",
       '  R1 version 1 (Monthly CSV download) · requests/invoice-exports/request.md:12: signed in S1',
       '  R2 version 1 (An email link that expires) · requests/invoice-exports/request.md:17: signed in S1',
       '  R3 version 1 (A yearly ZIP) · requests/invoice-exports/request.md:22: signed in S1',
@@ -854,7 +854,7 @@ const PINNED = {
     code: 0,
     lines: [
       'Request   invoice-exports · tier 3 · open · requests/invoice-exports',
-      "Records   only al's record .assuredloop/records/requests/invoice-exports.yaml holds the sign-offs, the requirement versions, the tasks and the close lines below",
+      "Records   only al's record .assuredloop/records/requests/invoice-exports.yaml holds the sign-offs, the requirement versions and the tasks below",
       '  R1 version 1 (Monthly CSV download) · requests/invoice-exports/request.md:12: signed in S1',
       '  R2 version 1 (An email link that expires) · requests/invoice-exports/request.md:17: signed in S1',
       '  R3 version 1 (A yearly ZIP) · requests/invoice-exports/request.md:22: signed in S1',
@@ -879,7 +879,7 @@ const PINNED = {
     code: 0,
     lines: [
       'Request   portal-downloads · tier 2 · archived · requests/archive/portal-downloads',
-      "Records   only al's record .assuredloop/records/requests/portal-downloads.yaml holds the sign-offs, the requirement versions, the tasks and the close lines below",
+      "Records   only al's record .assuredloop/records/requests/portal-downloads.yaml holds the sign-offs and the requirement versions below",
       '  R1 version 1 (Downloads after login) · requests/archive/portal-downloads/request.md:12: signed in S1',
       'Decision  D1 · requests/archive/portal-downloads/request.md:19 (owner): The email links go; ADR-5 replaces ADR-4.',
       'PRs from git: none found',
@@ -922,7 +922,7 @@ const PINNED = {
     code: 0,
     lines: [
       'Request   invoice-exports · tier 3 · open · requests/invoice-exports',
-      "Records   only al's record .assuredloop/records/requests/invoice-exports.yaml holds the sign-offs, the requirement versions, the tasks and the close lines below",
+      "Records   only al's record .assuredloop/records/requests/invoice-exports.yaml holds the sign-offs, the requirement versions and the tasks below",
       '  R1 version 1 (Monthly CSV download) · requests/invoice-exports/request.md:12: signed in S1',
       '  R2 version 1 (An email link that expires) · requests/invoice-exports/request.md:17: signed in S1',
       '  R3 version 1 (A yearly ZIP) · requests/invoice-exports/request.md:22: signed in S1',

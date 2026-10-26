@@ -34,7 +34,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   al, appendSection, baseProject, commitAll, doc, editFile, editRecord, editRequest, git, move, newRequest, ok, organized,
-  read, req, show, write, INVOICES,
+  project, read, req, show, write, writeConfig, INVOICES,
 } from './helpers/project.js';
 import { word } from './helpers/views.js';
 
@@ -499,4 +499,120 @@ test('#74 al context INV-12 --at <commit>: the head line and the Linked places a
   const now = context(dir, 'INV-12');
   assert.ok(labelled(now, 'Paragraph ').endsWith(` · ${now12}`), show(now));
   assert.equal(labelled(now, 'Linked    '), `Linked    INV-60 (${place(dir, SPEC, T60)}) builds on it`, show(now));
+});
+
+// --- the places tail: a bare ID of the finding's own request
+//
+// A bare ID in a finding that is no spec ID, and that is a paragraph of the
+// finding's own open request, gets the request's name. The own request is
+// the prefix of the finding's <id>, or else the folder of its <where>.
+
+test('#74 al check: a lint on a change-spec paragraph ends with the place of its text, under its request\'s name', (t) => {
+  const dir = baseProject(t);
+  newRequest(dir, 'change');
+  write(dir, 'requests/change/spec.md', doc([['SP-1 note', '# Changes'], ['SP-3 rule', 'A rule with no link.']]));
+  ok(dir, ['index']);
+  const r = ok(dir, ['check']);
+  const file = 'requests/change/spec.md';
+  const want = `hint no-link ${place(dir, file, '<!-- SP-3 rule -->')} SP-3 SP-3 is a rule paragraph with no link`
+    + ` · places: change/SP-3 ${place(dir, file, 'A rule with no link.')}`;
+  assert.ok(outLines(r).includes(want), `the line\n${want}\n${show(r)}`);
+});
+
+test('#74 al check: a bare ID of the own request that is only at the base is named with its request and its place at the base', (t) => {
+  const dir = baseProject(t, { branch: null });
+  const file = 'requests/exp/spec.md';
+  newRequest(dir, 'exp');
+  write(dir, file, doc([['SP-1 note', '# Exports'], ['SP-2 plan', 'Step one: add the route.'], ['SP-3 plan', 'Step two: add the button.']]));
+  ok(dir, ['index']);
+  commitAll(dir, 'exp');
+  const atBase = lineOf(dir, file, 'Step two: add the button.');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  write(dir, file, doc([['SP-1 note', '# Exports'], ['SP-2 plan explains:SP-3', 'Step one: add the route.']]));
+  const base = git(dir, 'rev-parse', '--short=7', 'main');
+  const r = ok(dir, ['check']);
+  const want = `hint unresolved-link ${place(dir, file, '<!-- SP-2 plan explains:SP-3 -->')} exp/SP-2 SP-3: no such ID`
+    + ` · places: exp/SP-2 ${place(dir, file, 'Step one: add the route.')}, exp/SP-3 at the base ${base} ${file}:${atBase}`;
+  assert.ok(outLines(r).includes(want), `the line\n${want}\n${show(r)}`);
+});
+
+// --- Cited and central:<ID>
+//
+// In a repo that is not the central repo, a line that names only
+// central:INV-12 names another repo's INV-12, so it is no citing place of
+// this repo's INV-12. In the central repo it is.
+
+const CENTRAL_SRC = '// central:INV-12 is the invoice data\n// INV-12 is read here\n';
+
+function centralOrNot(t, central) {
+  const dir = project(t);
+  if (central) {
+    const output = project(t);
+    write(output, 'README.md', '# An output repository\n');
+    commitAll(output, 'The output base');
+    writeConfig(dir, [{ file: SPEC, prefix: 'INV' }], {
+      repo: 'invoicer',
+      outputs: [{ name: 'invoicer-worker', path: `../${output.split('/').at(-1)}`, commit: 'HEAD' }],
+    });
+  } else {
+    writeConfig(dir, [{ file: SPEC, prefix: 'INV' }]);
+  }
+  write(dir, SPEC, INVOICES);
+  commitAll(dir, 'base');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  write(dir, 'src/a.js', CENTRAL_SRC);
+  ok(dir, ['index']);
+  return dir;
+}
+
+test('#74 al context INV-12 in a repo that is not central: a line that names only central:INV-12 is no Cited place', (t) => {
+  const r = context(centralOrNot(t, false), 'INV-12');
+  assert.deepEqual(allLabelled(r, 'Cited     '), [citedLine('current', 'src/a.js', [2])], show(r));
+});
+
+test('#74 al context INV-12 in the central repo: a line that names central:INV-12 is a Cited place', (t) => {
+  const r = context(centralOrNot(t, true), 'INV-12');
+  assert.deepEqual(allLabelled(r, 'Cited     '), [citedLine('current', 'src/a.js', [1, 2])], show(r));
+});
+
+// --- the Records line names only the facts that the record holds
+//
+// In this order, joined as "a, b and c": the tier (when request.md has no
+// Tier: line that says it), the sign-offs, the requirement versions, the
+// tasks, the close lines. With none of these: "holds no sign-off, task or
+// close line".
+
+const recordsLine = (r) => labelled(r, 'Records   ');
+const RECORD = "al's record .assuredloop/records/requests/pdf.yaml";
+
+function signedPdf(t, tier = []) {
+  const dir = baseProject(t);
+  newRequest(dir, 'pdf', 'The owner wants pdf.\n', tier);
+  appendSection(dir, 'pdf', organized([R1]));
+  ok(dir, ['record', 'pdf', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  ok(dir, ['index']);
+  return dir;
+}
+
+test('#74 al context pdf: with no close line, the Records line does not name close lines', (t) => {
+  const r = context(signedPdf(t), 'pdf');
+  assert.equal(recordsLine(r), `Records   only ${RECORD} holds the tier, the sign-offs and the requirement versions below`, show(r));
+});
+
+test('#74 al context pdf: with a close line, the Records line names the close lines', (t) => {
+  const dir = signedPdf(t);
+  ok(dir, ['record', 'pdf', 'close', '--on', 'R1', '--reason', 'A one-time setup meets it.', '--yes']);
+  ok(dir, ['index']);
+  const r = context(dir, 'pdf');
+  assert.equal(recordsLine(r),
+    `Records   only ${RECORD} holds the tier, the sign-offs, the requirement versions and the close lines below`, show(r));
+});
+
+test('#74 al context pdf: with a Tier: line and nothing recorded, "holds no sign-off, task or close line"', (t) => {
+  const dir = baseProject(t);
+  newRequest(dir, 'pdf', 'The owner wants pdf.\n', ['--tier', '1']);
+  ok(dir, ['index']);
+  const r = context(dir, 'pdf');
+  assert.match(read(dir, PDF_MD), /^Tier: 1/m, 'the fixture: request.md has a Tier: line');
+  assert.equal(recordsLine(r), `Records   ${RECORD} holds no sign-off, task or close line`, show(r));
 });
