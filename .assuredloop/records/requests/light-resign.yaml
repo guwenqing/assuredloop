@@ -1,0 +1,35 @@
+schema: assuredloop/1
+request: light-resign
+tier: "1"
+status: open
+sources:
+  - file: 2026-10-26-owner-words.md
+    kind: owner-words
+    sha256: e7ba5cf2a0890cc6f793ce1bd1a8c989fe28371387f76f1cc9ed1463286aebb7
+    taken: 2026-10-26T03:12Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: ccb9983961a7fdf313f708089a694862023cb258dcaf236b9bbf082163c47152
+    title: Grouped by default, everything on request
+  - id: R5
+    version: 1
+    sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b
+    title: Consolidation by judgement, and closing
+signoff:
+  - id: S1
+    file: 2026-10-26-signoff.md
+    sha256: 82921a6ff6a68bf64f7867bdc8222e8e40a466a5881c9eb6a1e4c8d7951a9c86
+    signed: 2026-10-26T03:12Z
+    source: owner chat with the architect, 2026-10-25 about 23:10Z
+    words: es I sign off
+    presented: 2026-10-25 about 23:05Z, both texts in full, as assuredloop-v4/R5 version 2 and context-all/R1 version 2
+    covers:
+      - { id: R1, version: 1, sha256: ccb9983961a7fdf313f708089a694862023cb258dcaf236b9bbf082163c47152 }
+      - { id: R5, version: 1, sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b }
+decisions: []
+tasks: []
+bindings:
+  - { holder: light-resign/R1, link: from, target: light-resign/2026-10-26-owner-words.md, holder_sha256: ccb9983961a7fdf313f708089a694862023cb258dcaf236b9bbf082163c47152, target_sha256: e7ba5cf2a0890cc6f793ce1bd1a8c989fe28371387f76f1cc9ed1463286aebb7 }
+  - { holder: light-resign/R5, link: from, target: light-resign/2026-10-26-owner-words.md, holder_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_sha256: e7ba5cf2a0890cc6f793ce1bd1a8c989fe28371387f76f1cc9ed1463286aebb7 }
+dispositions: []
