@@ -96,9 +96,13 @@ for (const level of [0, 1, 2]) {
     wordHits(removed, ['EXP-5 v1 history'], level);
     const all = search(W.dir, ['reminder', '--history', '--limit', '50'], { level });
     const got = new Set(idRoles(all));
-    for (const want of ['EXP-7 v1 baseline', 'reminder-emails/SP-4 v1 history', 'dropped-idea/SP-2 v1 history', 'old-numbers/SP-2 v1 history']) {
+    // #72 (LD-58): the export reads no disposition, so an open request's
+    // paragraph is a proposal (not history) whatever its old disposition
+    // says; a past version and a closed or archived request are history.
+    for (const want of ['EXP-7 v1 baseline', 'reminder-emails/R1 v1 history', 'dropped-idea/SP-2 v1 history', 'old-numbers/SP-2 v1 history']) {
       assert.ok(got.has(want), `${want} in:\n${[...got].join('\n')}`);
     }
+    assert.ok(!got.has('reminder-emails/SP-4 v1 history'), `an open request's abandoned paragraph is no history:\n${[...got].join('\n')}`);
     for (const h of all.hits) assert.ok(['baseline', 'history'].includes(h.role), `${h.id}: the default query + history has no ${h.role}`);
     assertHitsAreRows(all, rows);
   });
@@ -137,9 +141,14 @@ for (const level of [0, 1, 2]) {
     const { W } = get();
     const out = search(W.dir, ['reminder', '--change', 'reminder-emails', '--history', '--limit', '50'], { level });
     const got = new Set(idRoles(out));
-    for (const want of ['reminder-emails/SP-4 v1 history', 'reminder-emails/SP-5 v1 history', 'reminder-emails/SP-2 v1 proposal']) {
+    // #72 (LD-58): SP-4 (old disposition abandoned) and SP-5 (superseded) of
+    // the open request are proposals; R1 version 1 and the closed requests
+    // are history.
+    for (const want of ['reminder-emails/R1 v1 history', 'old-numbers/SP-2 v1 history', 'dropped-idea/SP-2 v1 history',
+      'reminder-emails/SP-4 v1 proposal', 'reminder-emails/SP-5 v1 proposal', 'reminder-emails/SP-2 v1 proposal']) {
       assert.ok(got.has(want), `${want} in:\n${[...got].join('\n')}`);
     }
+    for (const id of ['SP-4', 'SP-5']) assert.ok(!got.has(`reminder-emails/${id} v1 history`), `reminder-emails/${id} is no history:\n${[...got].join('\n')}`);
   });
 
   test(`${L} --change of an unknown request is a refusal`, () => {
