@@ -8,6 +8,12 @@
 //   change's own: their records were not up to date
 // Each line shows only when it has a file. Files are joined by ", ".
 //
+// LD-24: a change touches a request's record only in what `al new` and
+// `al record` write (the owner's words and sources, sign-offs, tasks,
+// decisions, close lines). What `al index` derives by itself (requirement
+// versions, bindings, judgement identities, kept item texts) does not make a
+// request the change's own.
+//
 // Written from the requirement and the public interface only. Nothing here
 // reads src/. No model and no network.
 import { test } from 'node:test';
@@ -107,4 +113,57 @@ test('#78 control: no record is out of date, so there is no "also wrote" line', 
   const r = check(dir);
   assert.deepEqual(recordsLinesOf(r, /^records: al check also wrote /), [], show(r));
   assert.ok(!ownOf(r).includes(B), `the map header does not name ${B}:\n${show(r)}`);
+});
+
+// =====================================================================
+// LD-24: what al index derives in B's record does not make B own.
+
+// B is not own: the map header does not name it, and no list line proposes it.
+function notOwn(r) {
+  assert.ok(!ownOf(r).includes(B), `the map header does not name ${B}:\n${show(r)}`);
+  assert.deepEqual(lines(r).filter((l) => l.startsWith(`proposed ${B}/`)), [], `no "proposed ${B}/" line:\n${show(r)}`);
+}
+
+// Runs `al record ...` and expects exit 0.
+function record(dir, args) {
+  const r = al(dir, ['record', ...args]);
+  assert.equal(r.code, 0, show(r));
+  return r;
+}
+
+// 4. The first al check writes B's record. It stays uncommitted.
+test('#78 LD-24: B\'s record, written by the first al check and left uncommitted, does not make B own in the second al check', (t) => {
+  const dir = world(t);
+  check(dir);
+  assert.notEqual(git(dir, 'status', '--porcelain', '--', recordPath(B)), '', `the first al check writes ${recordPath(B)}`);
+  notOwn(check(dir));
+});
+
+// 5. The record that the first al check wrote is committed on the branch.
+test('#78 LD-24: B\'s record, written by al check and committed on the branch, does not make B own', (t) => {
+  const dir = world(t);
+  check(dir);
+  assert.notEqual(git(dir, 'status', '--porcelain', '--', recordPath(B)), '', `the first al check writes ${recordPath(B)}`);
+  commitAll(dir, `${A}: the records that al check wrote`);
+  notOwn(check(dir));
+});
+
+// 6. Control: a sign-off for B, recorded and committed on the branch.
+test('#78 LD-24 control: a sign-off for B, recorded with al record and committed on the branch, makes B own', (t) => {
+  const dir = world(t);
+  record(dir, [B, 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  commitAll(dir, `${A}: a sign-off`);
+  const r = check(dir);
+  assert.ok(ownOf(r).includes(B), `the map header names ${B}:\n${show(r)}`);
+});
+
+// 7. Control: a close line for B, recorded and committed on the branch. It
+// changes only B's record.
+test('#78 LD-24 control: a close line for B, recorded with al record and committed on the branch, makes B own', (t) => {
+  const dir = world(t);
+  record(dir, [B, 'close', '--on', 'R1', '--reason', 'A one-time setup meets it; no lasting paragraph.', '--yes']);
+  assert.deepEqual(git(dir, 'ls-files', '-m', '-o', '--exclude-standard').split('\n'), [recordPath(B)], 'al record close changes only the record of B');
+  commitAll(dir, `${A}: a close line`);
+  const r = check(dir);
+  assert.ok(ownOf(r).includes(B), `the map header names ${B}:\n${show(r)}`);
 });
