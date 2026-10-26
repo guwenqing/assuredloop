@@ -279,8 +279,11 @@ test('6: SP-2 says explains:SP-3 and SP-3 is deleted: unresolved-link, a hint (#
   write(dir, SPEC, changeSpec([PARAS[0], ['SP-2 plan explains:SP-3', 'Step one: add the route.'], PARAS[3]]));
   for (const args of [[], ['--strict']]) {
     const r = check(dir, ...args);
-    // The marker lint names the marker line, then the place of SP-2's text (#74).
-    assert.deepEqual(coded(r, 'unresolved-link'), ['hint unresolved-link requests/exp/spec.md:5 exp/SP-2 SP-3: no such ID · places: exp/SP-2 requests/exp/spec.md:7'], show(r));
+    // The marker lint names the marker line, then the place of SP-2's text and
+    // of the deleted SP-3's text at the base (#74).
+    const base = git(dir, 'rev-parse', '--short=7', 'main');
+    assert.deepEqual(coded(r, 'unresolved-link'),
+      [`hint unresolved-link requests/exp/spec.md:5 exp/SP-2 SP-3: no such ID · places: exp/SP-2 requests/exp/spec.md:7, exp/SP-3 at the base ${base} requests/exp/spec.md:11`], show(r));
     assert.equal(r.code, 0, show(r));
   }
 });
