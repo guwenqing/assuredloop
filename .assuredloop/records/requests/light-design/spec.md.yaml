@@ -26,7 +26,7 @@ paragraphs:
     text_sha256: f1a379500b38671463260b886d14ffd55c8c4e4e203e56d80dac145f00e26a53
     display: LD-6 (2, 2. The approach)
   - id: LD-7
-    kind: rationale
+    kind: approach
     text_sha256: d8c0d9f99e93d0c99e0b84e81208415088a9fed39df9e89ef816e98d4e7fac62
     display: LD-7 (2:1, in 2. The approach)
   - id: LD-8
@@ -42,7 +42,7 @@ paragraphs:
     text_sha256: 8e8662007bef334051e7fb27126a1b8d212ad1fa4258c067e50790eef7b25a5e
     display: LD-9 (2:4, in 2. The approach)
   - id: LD-10
-    kind: rationale
+    kind: approach
     text_sha256: 1843046550417c5f0181f73352560253580c6aa167c087693e1107ca4009c884
     display: LD-10 (2:5, in 2. The approach)
   - id: LD-11
@@ -143,7 +143,7 @@ paragraphs:
     display: LD-41 (4:6, in 4. Commands, answers and the skill (plans))
   - id: LD-22
     kind: flow
-    text_sha256: d4c1e6191412234cfabdab556e87dc0192a853c522f64af8b8aa3f09a7e86fab
+    text_sha256: 617b51609685077b471493c1e680ac28bf83f35a8c6438873d235ca4ec7ff4f1
     display: LD-22 (4:7, in 4. Commands, answers and the skill (plans))
   - id: LD-23
     kind: note
@@ -155,7 +155,7 @@ paragraphs:
     display: "LD-24 (5:1, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-48
     kind: data
-    text_sha256: 17d96eb5368c44afa75687e4f11dca2850ea2e040feb01189639b905eb367481
+    text_sha256: 2e41f176cb0e236ef32639afc6a2cc64e4ca0f003edf80156b1b577a1e38123e
     display: "LD-48 (5:2, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-42
     kind: data
