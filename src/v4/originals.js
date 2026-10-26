@@ -50,7 +50,13 @@ export function placeOf(config) {
   if (!Object.hasOwn(places, name)) return { name, file, folder: null };
   const folder = places[name];
   if (typeof folder !== 'string' || !isAbsolute(folder)) throw bad(`the line for "${name}" is not the absolute path of a folder`);
-  if (!statSync(folder, { throwIfNoEntry: false })?.isDirectory()) throw bad(`the line for "${name}" names ${folder}, which is not a folder`);
+  let st;
+  try {
+    st = statSync(folder);
+  } catch {
+    st = null;
+  }
+  if (!st?.isDirectory()) throw bad(`the line for "${name}" names ${folder}, which is not a folder`);
   return { name, file, folder };
 }
 
@@ -94,8 +100,12 @@ function readRepo(top, rev, get, path) {
 function readPlace(folder, request, file) {
   const name = logical(request, file);
   for (const p of [join(folder, request), join(folder, request, file)]) {
-    const st = lstatSync(p, { throwIfNoEntry: false });
-    if (!st) return { problem: `${name} is missing` };
+    let st;
+    try {
+      st = lstatSync(p);
+    } catch (e) {
+      return { problem: e.code === 'ENOENT' ? `${name} is missing` : `${name} cannot be read (${e.code ?? e.message})` };
+    }
     if (st.isSymbolicLink()) return { problem: `${name} is reached through a symlink, and al does not read through a symlink` };
   }
   try {
@@ -147,15 +157,15 @@ export function originals(top, rev, get, config) {
 }
 
 // The result of every original file that request r's record names, for al
-// conclude: [{ file, status, problem }].
+// conclude: [{ file, status, problem }]. An entry with no file or no sha256
+// is failed, as in record-evidence.
 export function requestOriginals(state, r) {
   const data = r.data ?? {};
   const list = (x) => (Array.isArray(x) ? x : []);
   const ok = (x) => x && typeof x.file === 'string' && x.file && typeof x.sha256 === 'string' && x.sha256;
-  return [
-    ...list(data.sources).filter(ok).map((s) => ({ file: s.file, ...state.originals.check(r, s.file, s.sha256, false) })),
-    ...list(data.signoff).filter(ok).map((s) => ({ file: s.file, ...state.originals.check(r, s.file, s.sha256, true) })),
-  ];
+  const one = (x, signedOnly, what) => (ok(x) ? { file: x.file, ...state.originals.check(r, x.file, x.sha256, signedOnly) }
+    : { file: typeof x?.file === 'string' && x.file ? x.file : '-', status: 'failed', problem: `a ${what} entry with no file or no sha256` });
+  return [...list(data.sources).map((s) => one(s, false, 'sources')), ...list(data.signoff).map((s) => one(s, true, 'sign-off'))];
 }
 
 // --- writing
