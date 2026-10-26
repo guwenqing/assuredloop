@@ -35,6 +35,29 @@ const specRefs = (state, r, p, key) => p.links[key].flatMap((ref) => {
 // of request `r` (LD-61), or null.
 export const ownEdit = (r, id) => list(r.data?.own_edits).filter((e) => e?.paragraph === id).at(-1)?.sha256 ?? null;
 
+// The `changes` and `removes` links of each change paragraph of request `r`,
+// and the state of each target since the link: its binding holds the version
+// that it had when the change first linked it (LD-61). Read by the map and by
+// the close rule of al conclude (LD-57). `was` is the base state, or null.
+// Returns [{ q, word, id, at, fact }].
+export function linkStates(state, was, r) {
+  const text = state.docs.find((d) => d.path === r.specFile)?.text ?? '';
+  const out = [];
+  for (const q of r.paras.values()) {
+    for (const [key, word] of LINKS.slice(0, 2)) {
+      for (const { id, key: target } of specRefs(state, r, q, key)) {
+        const b = list(r.data?.bindings).find((x) => x?.holder === `${r.name}/${q.id}` && x.link === word && x.target === target);
+        const cur = state.spec.get(id);
+        const fact = !cur ? (b || was?.spec.has(id) ? 'removed' : 'not known: no such spec paragraph')
+          : !b?.target_sha256 ? 'not known: the link has no binding (run al index)'
+            : cur.sha256 === b.target_sha256 ? 'unchanged since the link' : 'changed since the link';
+        out.push({ q, word, id, at: `${r.specFile}:${textLine(text, q)}`, fact });
+      }
+    }
+  }
+  return out;
+}
+
 // The map. `changes` are the branch's paragraph changes (branchOf); `none`
 // the reason that no change is selected, or null. Returns { body, findings }.
 export function mapSection(top, { now: state, was, base, own, changes, config, issues = null, none = null }) {
@@ -79,22 +102,9 @@ export function mapSection(top, { now: state, was, base, own, changes, config, i
   }
 
   // 2. The changes and removes links of the own change paragraphs, and the
-  // state of each target since the link: its binding holds the version that
-  // it had when the change first linked it (LD-61).
+  // state of each target since the link (linkStates).
   for (const r of rs) {
-    const text = state.docs.find((d) => d.path === r.specFile)?.text ?? '';
-    for (const q of r.paras.values()) {
-      for (const [key, word] of LINKS.slice(0, 2)) {
-        for (const { id, key: target } of specRefs(state, r, q, key)) {
-          const b = list(r.data?.bindings).find((x) => x?.holder === `${r.name}/${q.id}` && x.link === word && x.target === target);
-          const cur = state.spec.get(id);
-          const fact = !cur ? (b || was?.spec.has(id) ? 'removed' : 'not known: no such spec paragraph')
-            : !b?.target_sha256 ? 'not known: the link has no binding (run al index)'
-              : cur.sha256 === b.target_sha256 ? 'unchanged since the link' : 'changed since the link';
-          entries.push({ kind: 'link', id: `${r.name}/${q.id} ${word} ${id}`, at: `${r.specFile}:${textLine(text, q)}`, fact });
-        }
-      }
-    }
+    for (const l of linkStates(state, was, r)) entries.push({ kind: 'link', id: `${r.name}/${l.q.id} ${l.word} ${l.id}`, at: l.at, fact: l.fact });
   }
 
   // 3. Each own change paragraph that goes into specs/, with each

@@ -7,7 +7,6 @@
 import { createHash } from 'node:crypto';
 import { parse as parseYaml } from 'yaml';
 import { read } from './base.js';
-import { droppedUnsigned, judgeRequest } from './dispositions.js';
 import { commitsOf, git } from './git.js';
 import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
@@ -22,8 +21,12 @@ import { adrOf, recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
 import { issueHints } from './issues.js';
 import { ownEdit } from './map.js';
+import { consolidations } from './evidence.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
+
+// In the central repo, `central:X` is its own X (design.md 12, DES-69).
+const selfRef = (config, ref) => (isCentral(config) && ref.startsWith('central:') ? ref.slice('central:'.length) : ref);
 const TIER = /^[ \t]*Tier:[ \t]*(0|1d|1|2|3|S)\b[ \t]*(?:—|–|--?)?[ \t]*(.*)$/m;
 
 // The PR's path claim: the Tier line of the newest commit in base..HEAD that
@@ -71,7 +74,6 @@ const changeWord = (c) => (c.changes.includes('New') ? 'new' : c.changes.include
 // The branch against its base, in states `now` and `was` (null with no
 // base): each paragraph's change, adoption aside, the path claim, and the
 // promise changes with no signed requirement that covers them (design.md 6).
-// A change paragraph that is validly abandoned with no kept effect needs none.
 // al check reports each of those, and al conclude refuses on them (DES-37).
 export function branchOf(top, now, was, base) {
   const promise = (k) => isPromise(now, k);
@@ -114,12 +116,10 @@ export function branchOf(top, now, was, base) {
   const unknown = [];
   for (const c of changes.filter(isPromiseChange)) {
     if (typo.has(c.name)) continue;
-    const r = c.request && c.head ? now.requests.get(c.request) : null;
-    if (r && !r.spike && droppedUnsigned(now, r, c.head, { typo, baseSpec: was?.spec ?? null })) continue;
     let covered;
     if (!c.head) {
       if (c.request) continue; // a change spec paragraph taken out is no promise change
-      const removers = open.flatMap((r) => [...r.paras.values()].filter((p) => p.links.removes.includes(c.id)).map((p) => [r, p]));
+      const removers = open.flatMap((r) => [...r.paras.values()].filter((p) => p.links.removes.some((x) => selfRef(now.config, x) === c.id)).map((p) => [r, p]));
       covered = removers.some(([r, p]) => servesSigned(now, p, r.name));
       if (!covered) c.unknown = removers.flatMap(([r, p]) => servesUnknown(now, p, r.name));
     } else {
@@ -184,19 +184,8 @@ export function checks(top, { base, phrases = [], issues = null }) {
   for (const id of typo) shownWords(id, 'typo claim');
   if (claim?.tier === '1d') for (const c of changes) if (c.head && c.base && DESIGN.includes(c.head.kind) && c.changed) shownWords(c.name, '1d claim');
 
-  // A spec edit that makes an open change's incorporated disposition invalid.
-  for (const c of changes.filter((x) => !x.request && x.base && x.changed)) {
-    for (const r of open) {
-      for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) {
-        if (d?.disposition === 'incorporated' && d.spec === c.id && d.spec_sha256 === c.base.sha256) {
-          add('info', 'invalidates', c.head ?? c.base, c.id, `${d.source} incorporated this text; this edit makes that disposition invalid, so ${r.name} aligns`);
-        }
-      }
-    }
-  }
-
   // In the central repo, `central:X` is its own X (design.md 12).
-  const self = (ref) => (isCentral(now.config) && ref.startsWith('central:') ? ref.slice('central:'.length) : ref);
+  const self = (ref) => selfRef(now.config, ref);
 
   // Requirement words in a non-promise kind (design.md 3). A paragraph that
   // builds on a promise paragraph that exists applies that promise: no hint.
@@ -211,12 +200,19 @@ export function checks(top, { base, phrases = [], issues = null }) {
     if (w.length) add('hint', 'promise-kind', p, c.name, `promise kind? a ${p.kind} paragraph holds ${w.join(', ')}`);
   }
 
-  // Near matches (design.md 3): a change paragraph close to a spec paragraph it does not link.
+  // Near matches (design.md 3): a change paragraph close to a spec paragraph
+  // it does not link. The Spec lines of a consolidation judgement that names
+  // the change paragraph count as links, current or stale.
+  const judged = new Map();
+  const judgedOf = (r) => {
+    if (!judged.has(r.name)) judged.set(r.name, consolidations(top, now, r, { config: now.config, issues }));
+    return judged.get(r.name);
+  };
   for (const c of changes) {
     const r = c.request && now.requests.get(c.request);
     if (!r?.open || r.spike || !c.head || !hasBaselineEffect(now, c.head.kind)) continue;
     const linked = new Set([...c.head.links.changes, ...c.head.links.buildsOn, ...c.head.links.removes].map((x) => x.replace(/^central:/, '')));
-    for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) if (d?.source === c.name && d.spec) linked.add(d.spec);
+    for (const j of judgedOf(r)) if (j.named.has(c.id)) for (const id of j.specs) linked.add(id);
     for (const s of now.spec.values()) {
       if (linked.has(s.id) || !s.kind || s.kind === 'note') continue;
       if (closeness(c.head.text, s.text) >= NEAR) add('hint', 'near-match', c.head, c.name, `does this change ${s.id}? its text is close, and it has no changes or builds-on link to it`);
@@ -243,17 +239,14 @@ export function checks(top, { base, phrases = [], issues = null }) {
   }
 
   // Links that do not resolve, and targets that a change removed (design.md 3).
-  // The request that removed an ID is looked up only for a link that does not
-  // resolve, and only a record whose text names the ID is parsed for it; the
-  // last request in order wins.
+  // The request that removed an ID, by its `removes` link, is looked up only
+  // for a link that does not resolve; the last request in order wins.
   const removers = new Map();
   const removerOf = (id) => {
     if (removers.has(id)) return removers.get(id);
     let by = null;
     for (const r of now.requests.values()) {
-      for (const p of r.paras.values()) if (p.links.removes.includes(id)) by = r.name;
-      if (!r.mentions(id)) continue;
-      for (const d of Array.isArray(r.data?.dispositions) ? r.data.dispositions : []) if (d?.disposition === 'removed' && d.spec === id) by = r.name;
+      for (const p of r.paras.values()) if (p.links.removes.some((x) => self(x) === id)) by = r.name;
     }
     removers.set(id, by);
     return by;
@@ -355,8 +348,6 @@ export function checks(top, { base, phrases = [], issues = null }) {
       if (t.cross) continue;
       const cur = resolve(now, t);
       if (!cur || !cur.sha || cur.sha === b.target_sha256) continue;
-      // The holder's own change made the target what it is now: its disposition names that text.
-      if ((Array.isArray(r.data?.dispositions) ? r.data.dispositions : []).some((d) => d?.source === b.holder && d.spec === b.target && d.spec_sha256 === cur.sha)) continue;
       // The change's own branch made the target of its changes or removes
       // link what it is now: al kept that version (LD-61). Another link to
       // the same target, such as builds-on, still gets the hint.
@@ -391,19 +382,6 @@ export function checks(top, { base, phrases = [], issues = null }) {
       const r = requestOfFile(file);
       add('hint', 'stale-ai-hint', p, named(r, p.id), 'its AI hint was made from another version of the text; refresh it (a hint is stale even when its quote still matches)');
     }
-  }
-
-  // Dispositions of the open requests (design.md 5).
-  const baseSpec = was?.spec ?? null;
-  for (const r of open) {
-    const judged = judgeRequest(now, r, { typo, baseSpec });
-    for (const j of judged) {
-      if (j.status === 'pending') continue;
-      if (!j.valid) add('hint', 'disposition', j.p, j.id, `${j.status} is not valid: ${j.reason}`);
-      for (const n of j.notes) add(n.startsWith('near-match') ? 'hint' : 'info', n.startsWith('near-match') ? 'near-match' : 'disposition', j.p, j.id, n.replace(/^near-match /, ''));
-    }
-    const pending = judged.filter((j) => j.status === 'pending').map((j) => j.p.id);
-    if (pending.length) add('info', 'disposition-pending', r.specFile, r.name, `${pending.length} of ${judged.length} paragraphs with a baseline effect have no disposition for their current version: ${pending.join(', ')}`);
   }
 
   // ADRs (schema.md 5). An ADR's text may be rewritten when its decision

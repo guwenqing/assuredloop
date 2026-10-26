@@ -3,7 +3,7 @@
 // with --audit; any of them as of a v4 commit with --at. Views never write.
 import { Fail, recordPath } from './base.js';
 import { applicability, checks } from './checks.js';
-import { judge, judgeRequest } from './dispositions.js';
+import { closeLine, closeLines } from './close.js';
 import { git, mergeBase, mergesOf } from './git.js';
 import { crossRepo, findCites } from './repos.js';
 import { diffParagraphs } from './ids.js';
@@ -46,17 +46,6 @@ function signSummary(state, r) {
   if (not.length === states.length) return not.every(([, s]) => s === 'not signed') ? 'not signed' : `not signed (${not.map(([id, s]) => `${id} ${s}`).join(', ')})`;
   return `partly signed (${not.map(([id, s]) => `${id} ${s}`).join(', ')})`;
 }
-
-// "<N> paragraphs, <M> with a baseline effect: <a> incorporated, ... [, <k> not valid]".
-export function dispositionLine(r, judged) {
-  const counts = ['incorporated', 'pending', 'removed', 'abandoned', 'superseded']
-    .map((s) => [s, judged.filter((j) => j.status === s).length]).filter(([, n]) => n);
-  const invalid = judged.filter((j) => j.status !== 'pending' && !j.valid).length;
-  return `${r.paras.size} paragraphs, ${judged.length} with a baseline effect: ${counts.map(([s, n]) => `${n} ${s}`).join(', ') || 'none'}${invalid ? `, ${invalid} not valid` : ''}`;
-}
-
-const judgedLine = (j) => `  ${j.p.id} ${j.p.kind} ${j.status}${j.d?.spec ? ` ${j.d.spec}` : ''}${j.d?.by ? ` by ${j.d.by}` : ''}`
-  + `${j.status === 'pending' ? '' : j.valid ? ` · valid${j.reason ? ` (${j.reason})` : ''}` : ` · not valid: ${j.reason}`}`;
 
 // The files that name each spec ID (cites, exact): every file outside the
 // spec root, requests/ and .assuredloop/, in the working tree or at `rev`,
@@ -232,8 +221,7 @@ function projectView(state) {
   const open = [...state.requests.values()].filter((r) => r.open);
   for (const r of open) {
     const tier = r.tier ? `tier ${r.tier}` : 'no tier';
-    const d = r.spike ? 'a spike: no dispositions' : dispositionLine(r, judgeRequest(state, r));
-    body.push(line('Request', `${r.name} · ${tier} · ${signSummary(state, r)} · ${d}`));
+    body.push(line('Request', `${r.name} · ${tier} · ${signSummary(state, r)} · ${r.spike ? 'a spike' : `${r.paras.size} change spec paragraphs`}`));
   }
   if (!open.length) body.push(line('Request', 'no open request'));
   body.push(...coverage(state, [...state.spec.values()].filter((p) => p.kind === 'rule'), false));
@@ -259,12 +247,8 @@ function requestView(state, r, audit) {
   }
   const prs = prsFromGit(state, r.name);
   body.push(`PRs from git: ${prs.length ? prs.join(' · ') : 'none found'}`);
-  const judged = judgeRequest(state, r);
-  if (r.spike) body.push(line('Dispositions', 'a spike: its change spec stays as history and needs no disposition'));
-  else {
-    body.push(line('Dispositions', dispositionLine(r, judged)));
-    body.push(...judged.map(judgedLine));
-  }
+  // The close lines (LD-62); al conclude shows what refuses.
+  if (!r.spike) body.push(...closeLines(state, r).map((c) => closeLine(r, c)));
   const rules = [...state.spec.values()].filter((p) => p.kind === 'rule'
     && p.links.serves.some((s) => qualify(s, null).req === r.name));
   body.push(...coverage(state, rules, true));
@@ -276,12 +260,7 @@ function requestView(state, r, audit) {
     body.push(...mine.map((f) => `  ${findingLine(f)}`));
   }
   body.push(line('Not checked', NOT_CHECKED));
-  const pending = judged.filter((j) => j.status === 'pending' || !j.valid);
-  return {
-    body,
-    next: !r.open ? `al context ${r.name} --audit` : pending.length ? `give ${pending.map((j) => j.p.id).join(', ')} a valid disposition in ${`.assuredloop/records/requests/${r.name}.yaml`}, then al index`
-      : `al conclude ${r.name}`,
-  };
+  return { body, next: !r.open ? `al context ${r.name} --audit` : `al conclude ${r.name}` };
 }
 
 // --audit: the whole trace of request `r`.
@@ -310,16 +289,13 @@ function auditLines(state, r) {
     }
     out.push(line('Binding', `${b?.holder} ${b?.link} ${b?.target}${b?.target_version ? ` version ${b.target_version}` : ''} target ${short(b?.target_sha256)} holder ${short(b?.holder_sha256)}: ${st}`));
   }
+  // Old records may hold dispositions: they stay readable, and al no longer checks them (LD-58).
   for (const d of list(data.dispositions)) {
-    const sid = qualify(String(d?.source ?? ''), r.name);
-    const p = r.paras.get(sid.id);
-    let st;
-    if (d?.source === 'adoption') st = 'adoption';
-    else if (!r.open) st = 'as recorded at the close; not checked again';
-    else if (!p) st = 'source not found';
-    else if (d.source_sha256 && d.source_sha256 !== p.sha256) st = 'history (an earlier version)';
-    else { const v = judge(state, r, p, d); st = v.valid ? 'valid' : `not valid: ${v.reason}`; }
+    const st = d?.source === 'adoption' ? 'adoption' : 'recorded; not checked';
     out.push(line('Disp.', `${d?.source} ${short(d?.source_sha256)} ${d?.disposition}${d?.spec ? ` ${d.spec} ${short(d.spec_sha256)}` : ''}${d?.by ? ` by ${d.by}` : ''}${d?.decision ? ` decision ${d.decision}` : ''}: ${st}`));
+  }
+  for (const e of list(data.closes)) {
+    out.push(line('Close', `${e?.id} on ${e?.on} ${short(e?.sha256)}${list(e?.names).map((n) => ` names ${n?.id} ${short(n?.sha256)}`).join('')} recorded ${e?.recorded ?? 'unknown'}: ${e?.reason}`));
   }
   if (!state.rev) for (const res of loadResults(state.top)) out.push(line('Result', `${res.file} ${res.check ?? ''} ${res.outcome ?? ''}: ${res.problems.length ? `not valid: ${res.problems.join('; ')}` : applicability(state.top, res)}`));
   return out;
@@ -393,16 +369,8 @@ function idView(state, id) {
     }
     body.push(line('Open', changes.length ? changes.join(' · ') : 'no open change builds on or changes it'));
     body.push(...checkLines(state, p.id, true));
-    for (const o of state.requests.values()) {
-      for (const d of list(o.data?.dispositions)) {
-        if (d?.spec !== p.id) continue;
-        body.push(line('Disp.', `${d.source} ${d.disposition}${d.by ? ` by ${d.by}` : ''}${o.open ? '' : ' (archived)'}`));
-      }
-    }
   } else {
     body.push(...checkLines(state, who, false));
-    const d = judgeRequest(state, r).find((j) => j.p.id === p.id);
-    if (d) body.push(line('Disp.', judgedLine(d).trim()));
   }
   const findings = hintsNow(state);
   if (findings) for (const f of findings.filter((x) => x.id === who && x.severity !== 'info')) body.push(`  ${findingLine(f)}`);

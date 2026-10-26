@@ -507,7 +507,8 @@ export function reviewSection(top, { now: state, was = null, base, own, config, 
 // current }. `covers` holds the IDs of r's change paragraphs that it names,
 // `specs` the spec paragraphs. The fact is judged by the versions of the
 // named paragraphs alone, which al index keeps: current while each one has
-// its kept version, else stale, naming each one that changed.
+// its kept version, else stale, naming each one that changed. `named` adds
+// to `covers` the change paragraphs of its Item lines (the near-match hint).
 export function consolidations(top, state, r, { config, issues = null }) {
   const text = read(top, notePath(r));
   if (text == null) return [];
@@ -531,6 +532,7 @@ export function consolidations(top, state, r, { config, issues = null }) {
       line: j.line, fact, current, at: `judgement ${notePath(r)}:${j.line}`,
       covers: new Set(j.ids.filter((x) => !/^[a-z0-9][a-z0-9-]*\//.test(x) || x.startsWith(`${r.name}/`)).map(bare)),
       specs: new Set(j.evidence.filter((e) => e.kind === 'spec').map((e) => e.id)),
+      named: new Set([...j.ids, ...j.evidence.filter((e) => e.kind === 'item' && e.id).map((e) => e.id)].map(bare)),
     };
   });
 }
