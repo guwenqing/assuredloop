@@ -32,6 +32,8 @@
 // No model and no network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { chmodSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   al, appendSection, baseProject, commitAll, doc, editFile, editRecord, editRequest, git, move, newRequest, ok, organized,
   project, read, req, show, write, writeConfig, INVOICES,
@@ -215,8 +217,11 @@ test('#74 al context pdf/R1: Served and Open give the place of each serving para
 test('#74 al context ADR-2: one Cited line for each file, current before historical, with the count and each line', (t) => {
   const dir = paragraphWorld(t);
   const r = context(dir, 'ADR-2');
+  // The ADR's own file counts too, but not the marker lines of its own paragraphs.
+  const ownMarker = lineOf(dir, ADR2, '<!-- ADR-2 choice supersedes:ADR-1 decides:INV-12,INV-13 -->');
   assert.deepEqual(allLabelled(r, 'Cited     '), [
     citedLine('current', PDF_SPEC, citing(dir, PDF_SPEC, 'ADR-2')),
+    citedLine('current', ADR2, citing(dir, ADR2, 'ADR-2', [ownMarker])),
     citedLine('historical', ADR1, citing(dir, ADR1, 'ADR-2')),
   ], show(r));
 });
@@ -615,4 +620,241 @@ test('#74 al context pdf: with a Tier: line and nothing recorded, "holds no sign
   const r = context(dir, 'pdf');
   assert.match(read(dir, PDF_MD), /^Tier: 1/m, 'the fixture: request.md has a Tier: line');
   assert.equal(recordsLine(r), `Records   ${RECORD} holds no sign-off, task or close line`, show(r));
+});
+
+// --- a limit: evidence that cannot be read
+//
+// A committed file with mode 000: git grep reports it on stderr
+// ("error: failed to stat '<file>': Permission denied") and goes on. After
+// the file lines, Cited gives one line for each report:
+//   Cited     not known: <git's message without "error: ">
+// With no file line, the first Cited line is "nowhere in the files that
+// were read", never the bare "nowhere", and the Checks line ends with
+// " · not known: <the messages joined by "; ">". Root reads every file, so
+// the tests are skipped there.
+
+const AS_ROOT = process.getuid?.() === 0;
+const DENIED = (file) => `failed to stat '${file}': Permission denied`;
+
+// Runs fn with file at mode 000, and gives the mode back before the temp dir goes.
+function unreadable(dir, file, fn) {
+  chmodSync(join(dir, file), 0o000);
+  try {
+    return fn();
+  } finally {
+    chmodSync(join(dir, file), 0o644);
+  }
+}
+
+function unreadableWorld(t) {
+  const dir = baseProject(t);
+  write(dir, 'src/a.js', '// INV-13 is read here\n');
+  write(dir, 'src/b.js', '// INV-13 is checked here\n');
+  ok(dir, ['index']);
+  commitAll(dir, 'src');
+  return dir;
+}
+
+test('#74 al context INV-13: a file that cannot be read gives "Cited     not known: <git\'s message>" after the file lines', { skip: AS_ROOT }, (t) => {
+  const dir = unreadableWorld(t);
+  const r = unreadable(dir, 'src/b.js', () => context(dir, 'INV-13'));
+  const ls = allLabelled(r, 'Cited     ');
+  assert.equal(ls[0], citedLine('current', 'src/a.js', [1]), show(r));
+  const rest = ls.slice(1);
+  assert.ok(rest.length >= 1, `a not known line:\n${show(r)}`);
+  assert.deepEqual([...new Set(rest)], [`Cited     not known: ${DENIED('src/b.js')}`], show(r));
+});
+
+test('#74 al context INV-41: with no file line and an unreadable file, "Cited     nowhere in the files that were read", and the Checks line names the limit', { skip: AS_ROOT }, (t) => {
+  const dir = baseProject(t);
+  write(dir, 'src/c.js', '// INV-41 is checked here\n');
+  ok(dir, ['index']);
+  commitAll(dir, 'src');
+  const r = unreadable(dir, 'src/c.js', () => context(dir, 'INV-41'));
+  const ls = allLabelled(r, 'Cited     ');
+  assert.equal(ls[0], 'Cited     nowhere in the files that were read', show(r));
+  assert.ok(!ls.includes('Cited     nowhere'), `never the bare "nowhere":\n${show(r)}`);
+  assert.deepEqual([...new Set(ls.slice(1))], [`Cited     not known: ${DENIED('src/c.js')}`], show(r));
+  const checks = labelled(r, 'Checks    ');
+  const tail = checks.slice(checks.indexOf(' · not known: ') + ' · not known: '.length);
+  assert.ok(checks.includes(' · not known: '), `the Checks line names the limit:\n${show(r)}`);
+  assert.deepEqual([...new Set(tail.split('; '))], [DENIED('src/c.js')], show(r));
+});
+
+test('#74 al context INV-41: control: with every file readable, "Cited     nowhere" and no limit', (t) => {
+  const r = context(baseProject(t), 'INV-41');
+  assert.deepEqual(allLabelled(r, 'Cited     '), ['Cited     nowhere'], show(r));
+  assert.doesNotMatch(r.stdout, /not known: failed/, show(r));
+});
+
+// --- the Task lines of the request view
+//
+//   Task      T1 (<record path>:<line>) <ref> (a work item: al context does not read it) · delivers R1 (<place>), R4 (<place>)[ · PRs: ...]
+// <line> is the `- id: T1` line under `tasks:` in the record. A task with no
+// ref has no ref part. A delivered ID that al cannot find shows "(not found)".
+
+const R4 = req('R4', 'ISO dates', 'Every date in an export MUST be ISO 8601.');
+const PDF_RECORD = '.assuredloop/records/requests/pdf.yaml';
+
+function taskWorld(t) {
+  const dir = baseProject(t);
+  newRequest(dir, 'pdf');
+  appendSection(dir, 'pdf', organized([R1, R4]));
+  ok(dir, ['record', 'pdf', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  editRecord(dir, 'pdf', (rec) => {
+    rec.tasks = [{ id: 'T1', ref: 'tasks.md T1', delivers: ['R1', 'R4'] }, { id: 'T2', delivers: ['R9'] }];
+  });
+  ok(dir, ['index']);
+  return dir;
+}
+
+// The line of a task's `- id: <id>` entry under `tasks:` in the record.
+function taskLine(dir, id) {
+  const ls = read(dir, PDF_RECORD).split('\n');
+  const from = ls.indexOf('tasks:');
+  assert.ok(from >= 0, `the record has tasks:\n${ls.join('\n')}`);
+  const at = ls.findIndex((l, i) => i > from && new RegExp(`^\\s*- id: ${id}$`).test(l));
+  assert.ok(at > from, `the record has the task ${id}`);
+  return at + 1;
+}
+
+const isTaskLine = (line, prefix) => line === prefix || line.startsWith(`${prefix} · PRs: `);
+
+test('#74 al context pdf: a Task line gives the task\'s place in the record, says that al does not read the work item, and places each delivered requirement', (t) => {
+  const dir = taskWorld(t);
+  const r = context(dir, 'pdf');
+  const want = `Task      T1 (${PDF_RECORD}:${taskLine(dir, 'T1')}) tasks.md T1 (a work item: al context does not read it)`
+    + ` · delivers R1 (${place(dir, PDF_MD, '### R1 Monthly CSV')}), R4 (${place(dir, PDF_MD, '### R4 ISO dates')})`;
+  const found = outLines(r).filter((l) => l.startsWith('Task      T1 '));
+  assert.equal(found.length, 1, show(r));
+  assert.ok(isTaskLine(found[0], want), `the line\n${want}\n${show(r)}`);
+});
+
+test('#74 al context pdf: a task with no ref has no ref part, and a delivered ID that al cannot find shows "(not found)"', (t) => {
+  const dir = taskWorld(t);
+  const r = context(dir, 'pdf');
+  const want = `Task      T2 (${PDF_RECORD}:${taskLine(dir, 'T2')}) · delivers R9 (not found)`;
+  const found = outLines(r).filter((l) => l.startsWith('Task      T2 '));
+  assert.equal(found.length, 1, show(r));
+  assert.ok(isTaskLine(found[0], want), `the line\n${want}\n${show(r)}`);
+});
+
+// --- facts held only in al's records: the paragraph view
+//
+// Right after the last Serves line, when a Serves line names a requirement
+// that al found:
+//   Records   only al's record <path> holds the version and the sign-off state on the Serves lines
+//   Records   only al's records <path>, <path> hold the versions and the sign-off states on the Serves lines
+// (two or more requests; paths in the order of the Serves lines, each once).
+
+const XLS_R1 = req('R1', 'Monthly XLSX', 'A user MUST be able to download one month as one XLSX file.');
+
+function servesWorld(t, serves) {
+  const dir = baseProject(t);
+  newRequest(dir, 'pdf');
+  appendSection(dir, 'pdf', organized([R1, R4]));
+  ok(dir, ['record', 'pdf', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  newRequest(dir, 'xls');
+  appendSection(dir, 'xls', organized([XLS_R1]));
+  editFile(dir, SPEC, '<!-- INV-13 rule -->', `<!-- INV-13 rule serves:${serves} -->`);
+  ok(dir, ['index']);
+  return dir;
+}
+
+// The line right after the last Serves line.
+function afterServes(r) {
+  const ls = outLines(r);
+  const last = ls.map((l, i) => (l.startsWith('Serves    ') ? i : -1)).filter((i) => i >= 0).at(-1);
+  assert.ok(last >= 0, `a Serves line:\n${show(r)}`);
+  return ls[last + 1];
+}
+
+test('#74 al context INV-13 that serves pdf/R1: a Records line right after Serves names the one record', (t) => {
+  const r = context(servesWorld(t, 'pdf/R1'), 'INV-13');
+  assert.equal(afterServes(r),
+    `Records   only al's record ${PDF_RECORD} holds the version and the sign-off state on the Serves lines`, show(r));
+});
+
+test('#74 al context INV-13 that serves requirements of two requests: the Records line names both records, in the order of the Serves lines, each once', (t) => {
+  const r = context(servesWorld(t, 'pdf/R1,pdf/R4,xls/R1'), 'INV-13');
+  const names = [];
+  for (const l of allLabelled(r, 'Serves    ')) {
+    const m = /^Serves {4}([\w-]+)\/R\d+ /.exec(l);
+    assert.ok(m, `a Serves line that names a requirement: ${l}\n${show(r)}`);
+    if (!names.includes(m[1])) names.push(m[1]);
+  }
+  assert.deepEqual([...names].sort(), ['pdf', 'xls'], show(r));
+  const paths = names.map((n) => `.assuredloop/records/requests/${n}.yaml`).join(', ');
+  assert.equal(afterServes(r),
+    `Records   only al's records ${paths} hold the versions and the sign-off states on the Serves lines`, show(r));
+});
+
+test('#74 al context INV-41: control: no Serves line, no Records line', (t) => {
+  const r = context(servesWorld(t, 'pdf/R1'), 'INV-41');
+  assert.deepEqual(allLabelled(r, 'Records   '), [], show(r));
+});
+
+// --- facts held only in al's records: the project view
+//
+// "the tiers" only when an open request's request.md has no Tier: line that
+// says its tier. A record that is not there adds
+// "; not known: the record of <name> (it is not there)".
+
+const PROJECT_RECORDS = "Records   only al's records in .assuredloop/records/requests/ hold";
+
+function tieredWorld(t, { untiered = false } = {}) {
+  const dir = baseProject(t);
+  newRequest(dir, 'pdf', 'The owner wants pdf.\n', ['--tier', '2']);
+  newRequest(dir, 'other', 'The owner wants other.\n', ['--tier', '1']);
+  if (untiered) newRequest(dir, 'loose');
+  ok(dir, ['index']);
+  return dir;
+}
+
+test('#74 al context: when every open request has a Tier: line, the Records line does not name the tiers', (t) => {
+  const dir = tieredWorld(t);
+  assert.match(read(dir, PDF_MD), /^Tier: 2/m, 'the fixture: request.md has a Tier: line');
+  const r = context(dir);
+  assert.equal(labelled(r, 'Records   '), `${PROJECT_RECORDS} the sign-off states above`, show(r));
+});
+
+test('#74 al context: control: an open request with no Tier: line, so the Records line names the tiers', (t) => {
+  const r = context(tieredWorld(t, { untiered: true }));
+  assert.equal(labelled(r, 'Records   '), `${PROJECT_RECORDS} the tiers and the sign-off states above`, show(r));
+});
+
+test('#74 al context: an open request whose record is not there: the Records line ends with "; not known: the record of <name> (it is not there)"', (t) => {
+  const dir = tieredWorld(t);
+  rmSync(join(dir, '.assuredloop/records/requests/other.yaml'));
+  const r = context(dir);
+  assert.equal(labelled(r, 'Records   '),
+    `${PROJECT_RECORDS} the sign-off states above; not known: the record of other (it is not there)`, show(r));
+});
+
+// --- the ADR's own file in Cited
+//
+// The ADR's own file counts, except the marker lines of its own paragraphs
+// (its head marker and each ADR-n-m marker). It is current, or historical
+// when the ADR is superseded.
+
+test('#74 al context ADR-2: its heading and a body line of its own file are citing lines; its markers are not; --full shows them', (t) => {
+  const dir = baseProject(t);
+  const file = 'specs/adr/0002-csv.md';
+  write(dir, file, adr('accepted', 'ADR-2 choice decides:INV-12', '# ADR-2: CSV files', [['ADR-2-1 rationale', 'ADR-2 applies to the export.']]));
+  ok(dir, ['index']);
+  const ns = [lineOf(dir, file, '# ADR-2: CSV files'), lineOf(dir, file, 'ADR-2 applies to the export.')];
+  const r = context(dir, 'ADR-2');
+  assert.deepEqual(allLabelled(r, 'Cited     '), [citedLine('current', file, ns)], show(r));
+  const full = outLines(context(dir, 'ADR-2', '--full'));
+  const at = full.indexOf(citedLine('current', file, ns));
+  assert.ok(at >= 0, show(r));
+  assert.deepEqual(full.slice(at + 1, at + 3), [`  ${file}:${ns[0]}: # ADR-2: CSV files`, `  ${file}:${ns[1]}: ADR-2 applies to the export.`], show(r));
+});
+
+test('#74 al context ADR-1, superseded: its own file\'s citing lines are historical', (t) => {
+  const dir = paragraphWorld(t);
+  const r = context(dir, 'ADR-1');
+  const own = citing(dir, ADR1, 'ADR-1', [lineOf(dir, ADR1, '<!-- ADR-1 choice decides:INV-12 -->')]);
+  assert.deepEqual(own, [lineOf(dir, ADR1, '# ADR-1: XLSX files')], 'the fixture: its heading names ADR-1');
+  assert.ok(allLabelled(r, 'Cited     ').includes(citedLine('historical', ADR1, own)), show(r));
 });

@@ -151,6 +151,9 @@ test('#58 al context ADR-2: Cited marks specs/ and code as current, and an archi
   for (const p of [spec, 'src/export.js:2']) assert.ok(!c.historical.includes(p), `${p} is not historical:\n${show(r)}`);
   assert.ok(!c.current.includes(archived) && !c.current.includes(`${ADR1}:1`), `no historical place is current:\n${show(r)}`);
   assert.deepEqual([...c.current, ...c.historical].filter((p) => p.startsWith('.assuredloop/')), [], show(r));
+  // #74: the ADR's own file counts (current here), but not its own paragraphs' marker lines.
+  assert.ok(c.current.includes(`${ADR2}:5`), `current: ${ADR2}:5, its heading:\n${show(r)}`);
+  assert.ok(![...c.current, ...c.historical].includes(`${ADR2}:3`), `not ${ADR2}:3, its own marker:\n${show(r)}`);
 });
 
 test('#58 al context ADR-99, an unknown ADR: exit 2 and "al: ADR-99: no such ID"', (t) => {
