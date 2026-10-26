@@ -1,0 +1,502 @@
+// #74: answers that a reader can check, and the complete `al context <ID>`
+// (requests/light-resign/request.md R1, signed; spec LD-18, LD-19, LD-25,
+// LD-47 and section 4a of requests/light-design). Written from the
+// requirement and the public interface only. Nothing here reads src/ or bin/.
+//
+// - The place of an item is `<file>:<line>`, where <line> is the first line
+//   of the item's text, never its marker line: for a paragraph, the first
+//   non-blank line after its marker; for an ADR, the first text line after
+//   its head marker; for a requirement, its `### R<n>` heading; for a
+//   decision, its `- D<n>, ...` entry under `## Decisions`.
+// - In a list of IDs, the place follows the ID: `<ID> (<file>:<line>)`, and
+//   other words for the ID may follow after a comma inside the parentheses.
+//   An item with no text line shows `<ID> (<file>: no text line)`.
+// - Paragraph view: the head line names the text line; a Status line; places
+//   on Serves, Links, Linked, Governed and Open; an Open line also for a
+//   change-spec paragraph; Cited lines.
+// - ADR view: places on Replaced, Decides and Open. Requirement view: places
+//   on Served and Open.
+// - Cited: one line for each file that names the ID as a whole word, with the
+//   exact count and every line number; current files first, then historical,
+//   each group by path; never "N more". `--full` adds each citing line:
+//   `  <file>:<n>: <text>`. The paragraph's own marker line is not counted.
+// - Request view: a Records line; places on the R, Decision and close lines;
+//   `no line in requests/<name>/request.md` for a decision only in the record.
+// - Project view: a Records line after the Request lines.
+// - al check: a finding about a paragraph's text names its text line; a lint
+//   about the marker names the marker line; ` · places: <ID> <file>:<line>,
+//   ...` after the message; a base-only paragraph shows `<file>:<line> at the
+//   base <sha7>`; the change lines name the text line; the list's "open
+//   proposal" names the place of the proposal.
+//
+// No model and no network.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  al, appendSection, baseProject, commitAll, doc, editFile, editRecord, editRequest, git, move, newRequest, ok, organized,
+  read, req, show, write, INVOICES,
+} from './helpers/project.js';
+import { word } from './helpers/views.js';
+
+const SPEC = 'specs/invoices.md';
+const ADR1 = 'specs/adr/0001-xlsx.md';
+const ADR2 = 'specs/adr/0002-csv.md';
+const PDF_SPEC = 'requests/pdf/spec.md';
+const OTHER_SPEC = 'requests/other/spec.md';
+const PDF_MD = 'requests/pdf/request.md';
+const T12 = 'An invoice has a number, a customer, lines, a total and a paid date.';
+const T13 = 'An invoice MUST have at least one line.';
+const T41 = 'The export link MUST expire 30 minutes after the email is sent.';
+const R1 = req('R1', 'Monthly CSV', 'A user MUST be able to download one month as one CSV file.');
+const R2 = req('R2', 'Yearly ZIP', 'A user MUST be able to download one year as one ZIP file.');
+
+const adr = (status, marker, heading, more = []) => `Status: ${status}\n\n${doc([[marker, heading], ...more])}`;
+
+// The 1-based line of the exact line `text` in a file's content.
+function lineIn(content, text, what = 'the file') {
+  const at = content.split('\n').indexOf(text);
+  assert.ok(at >= 0, `${what} has the line ${JSON.stringify(text)}`);
+  return at + 1;
+}
+const lineOf = (dir, file, text) => lineIn(read(dir, file), text, file);
+const place = (dir, file, text) => `${file}:${lineOf(dir, file, text)}`;
+
+// The line numbers of a file that name the ID as a whole word, less `skip`.
+function citing(dir, file, id, skip = []) {
+  const re = word(id);
+  return read(dir, file).split('\n')
+    .map((l, i) => (re.test(l) ? i + 1 : 0))
+    .filter((n) => n > 0 && !skip.includes(n));
+}
+// The Cited line of a file, as the contract gives it.
+const citedLine = (group, file, ns) => `Cited     ${group} ${file}: ${ns.length} line${ns.length === 1 ? '' : 's'}: ${ns.join(', ')}`;
+
+const context = (dir, ...args) => ok(dir, ['context', ...args]);
+const outLines = (r) => r.stdout.split('\n');
+// The one line that starts with the label.
+function labelled(r, label) {
+  const found = outLines(r).filter((l) => l.startsWith(label));
+  assert.equal(found.length, 1, `one line that starts with "${label}":\n${show(r)}`);
+  return found[0];
+}
+// Every line that starts with the label, in order.
+const allLabelled = (r, label) => outLines(r).filter((l) => l.startsWith(label));
+
+// --- the paragraph world
+//
+// specs/invoices.md: INV-1, INV-12, INV-13, INV-41 (baseProject), then
+// INV-60 (rule, builds on INV-12) and INV-61 (rationale, explains INV-12).
+// ADR-1 (superseded by ADR-2) decides INV-12; ADR-2 (accepted) supersedes
+// ADR-1 and decides INV-12 and INV-13. The open request pdf: R1 signed in
+// S1; its spec has SP-1 (serves R1, changes INV-12), SP-2 (builds on SP-1)
+// and SP-3 (serves R1, changes ADR-2). The open request other: its SP-1
+// changes INV-12. src/export.js names pdf/R1 on line 1.
+const T60 = 'An export MUST be a CSV file.';
+const T61 = 'Why: every invoice needs its data.';
+const TSP1 = 'A year is one ZIP of months.';
+const TSP2 = 'Each month in the ZIP is one CSV file.';
+const TSP3 = 'The ZIP holds CSV files only.';
+const TOTHER = 'An invoice also has a currency.';
+
+function paragraphWorld(t) {
+  const dir = baseProject(t);
+  write(dir, ADR1, adr('superseded by ADR-2', 'ADR-1 choice decides:INV-12', '# ADR-1: XLSX files'));
+  write(dir, ADR2, adr('accepted', 'ADR-2 choice supersedes:ADR-1 decides:INV-12,INV-13', '# ADR-2: CSV files',
+    [['ADR-2-1 rationale', 'Context: every spreadsheet reads CSV.']]));
+  write(dir, SPEC, `${read(dir, SPEC)}\n${doc([['INV-60 rule builds-on:INV-12', T60], ['INV-61 rationale explains:INV-12', T61]])}`);
+  newRequest(dir, 'pdf');
+  appendSection(dir, 'pdf', organized([R1]));
+  ok(dir, ['record', 'pdf', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  write(dir, PDF_SPEC, doc([
+    ['SP-1 rule serves:R1 changes:INV-12', TSP1],
+    ['SP-2 rule builds-on:SP-1', TSP2],
+    ['SP-3 choice serves:R1 changes:ADR-2', TSP3],
+  ]));
+  newRequest(dir, 'other');
+  write(dir, OTHER_SPEC, doc([['SP-1 rule changes:INV-12', TOTHER]]));
+  write(dir, 'src/export.js', '// pdf/R1: one month\n');
+  ok(dir, ['index']);
+  return dir;
+}
+
+// 1. A place beside each ID, and 2. no marker line as a source: the paragraph view.
+
+test('#74 al context INV-12: the head line names the text line of INV-12, not its marker line', (t) => {
+  const dir = paragraphWorld(t);
+  const r = context(dir, 'INV-12');
+  const head = labelled(r, 'Paragraph ');
+  const text = place(dir, SPEC, T12);
+  const marker = place(dir, SPEC, '<!-- INV-12 data -->');
+  assert.ok(head.startsWith('Paragraph INV-12 '), show(r));
+  assert.ok(head.endsWith(` · ${text}`), `the head names ${text}:\n${show(r)}`);
+  assert.ok(!head.includes(marker), `the head never names the marker line ${marker}:\n${show(r)}`);
+});
+
+test('#74 al context pdf/SP-1: the head line names the text line of a change-spec paragraph, not its marker line', (t) => {
+  const dir = paragraphWorld(t);
+  const r = context(dir, 'pdf/SP-1');
+  const head = labelled(r, 'Paragraph ');
+  assert.match(head, /^Paragraph (pdf\/)?SP-1 /, show(r));
+  assert.ok(head.endsWith(` · ${place(dir, PDF_SPEC, TSP1)}`), show(r));
+  assert.ok(!head.endsWith(` · ${PDF_SPEC}:1`), `never the marker line:\n${show(r)}`);
+});
+
+test('#74 al context INV-12: Linked, Governed and Open give the place of each ID', (t) => {
+  const dir = paragraphWorld(t);
+  const r = context(dir, 'INV-12');
+  assert.equal(labelled(r, 'Linked    '),
+    `Linked    INV-60 (${place(dir, SPEC, T60)}) builds on it · INV-61 (${place(dir, SPEC, T61)}) explains it`, show(r));
+  assert.equal(labelled(r, 'Governed  '),
+    `Governed  by ADR-1 (${place(dir, ADR1, '# ADR-1: XLSX files')}, superseded: history) · ADR-2 (${place(dir, ADR2, '# ADR-2: CSV files')}, accepted)`, show(r));
+  assert.equal(labelled(r, 'Open      '),
+    `Open      other/SP-1 (${place(dir, OTHER_SPEC, TOTHER)}) changes it · pdf/SP-1 (${place(dir, PDF_SPEC, TSP1)}) changes it`, show(r));
+});
+
+test('#74 al context INV-61 and pdf/SP-1: Links and Serves give the place of each ID', (t) => {
+  const dir = paragraphWorld(t);
+  const p12 = place(dir, SPEC, T12);
+  const r61 = context(dir, 'INV-61');
+  assert.equal(labelled(r61, 'Links     '), `Links     explains INV-12 (${p12})`, show(r61));
+  const sp1 = context(dir, 'pdf/SP-1');
+  assert.equal(labelled(sp1, 'Serves    '),
+    `Serves    pdf/R1 (${place(dir, PDF_MD, '### R1 Monthly CSV')}) version 1: signed in S1 (declared)`, show(sp1));
+  assert.equal(labelled(sp1, 'Links     '), `Links     changes INV-12 (${p12})`, show(sp1));
+});
+
+// 6. The Status line and the Open line of a change-spec paragraph.
+
+test('#74 al context <paragraph>: the Status line says in force, not in force: a <kind> paragraph, or draft in an open request', (t) => {
+  const dir = paragraphWorld(t);
+  assert.equal(labelled(context(dir, 'INV-12'), 'Status    '), 'Status    in force');
+  assert.equal(labelled(context(dir, 'INV-60'), 'Status    '), 'Status    in force');
+  assert.equal(labelled(context(dir, 'INV-61'), 'Status    '), 'Status    not in force: a rationale paragraph');
+  assert.equal(labelled(context(dir, 'pdf/SP-1'), 'Status    '),
+    'Status    draft: in the change spec of open request pdf; not in force');
+});
+
+test('#74 al context pdf/SP-1: an Open line names the open paragraph that builds on it, with its place; pdf/SP-3 has none', (t) => {
+  const dir = paragraphWorld(t);
+  const r = context(dir, 'pdf/SP-1');
+  const open = labelled(r, 'Open      ');
+  assert.ok(open.includes(`pdf/SP-2 (${place(dir, PDF_SPEC, TSP2)})`), show(r));
+  assert.equal(labelled(context(dir, 'pdf/SP-3'), 'Open      '), 'Open      no open change builds on or changes it');
+});
+
+// 1. The ADR view and the requirement view.
+
+test('#74 al context ADR-2 and ADR-1: Replaced, Decides and Open give the place of each ID', (t) => {
+  const dir = paragraphWorld(t);
+  const p1 = place(dir, ADR1, '# ADR-1: XLSX files');
+  const p2 = place(dir, ADR2, '# ADR-2: CSV files');
+  const r = context(dir, 'ADR-2');
+  assert.equal(labelled(r, 'Replaced  '), `Replaced  supersedes ADR-1 (${p1}) · not replaced`, show(r));
+  assert.equal(labelled(r, 'Decides   '),
+    `Decides   INV-12 (${place(dir, SPEC, T12)}), INV-13 (${place(dir, SPEC, T13)})`, show(r));
+  assert.equal(labelled(r, 'Open      '), `Open      pdf/SP-3 (${place(dir, PDF_SPEC, TSP3)}) changes it`, show(r));
+  const r1 = context(dir, 'ADR-1');
+  assert.equal(labelled(r1, 'Replaced  '), `Replaced  replaces no ADR · superseded by ADR-2 (${p2})`, show(r1));
+  assert.equal(labelled(r1, 'Decides   '), `Decides   INV-12 (${place(dir, SPEC, T12)})`, show(r1));
+});
+
+test('#74 al context pdf/R1: Served and Open give the place of each serving paragraph', (t) => {
+  const dir = paragraphWorld(t);
+  const r = context(dir, 'pdf/R1');
+  const sp1 = `pdf/SP-1 (${place(dir, PDF_SPEC, TSP1)})`;
+  const sp3 = `pdf/SP-3 (${place(dir, PDF_SPEC, TSP3)})`;
+  const served = labelled(r, 'Served    ');
+  assert.ok(served.startsWith('Served    by ') && served.endsWith(' (declared serves links)'), show(r));
+  assert.ok(served.includes(sp1) && served.includes(sp3), `Served names ${sp1} and ${sp3}:\n${show(r)}`);
+  const open = labelled(r, 'Open      ');
+  assert.ok(open.includes(`${sp1} serves it`) && open.includes(`${sp3} serves it`), show(r));
+});
+
+// 5. Cited lines of the ADR and the requirement view.
+
+test('#74 al context ADR-2: one Cited line for each file, current before historical, with the count and each line', (t) => {
+  const dir = paragraphWorld(t);
+  const r = context(dir, 'ADR-2');
+  assert.deepEqual(allLabelled(r, 'Cited     '), [
+    citedLine('current', PDF_SPEC, citing(dir, PDF_SPEC, 'ADR-2')),
+    citedLine('historical', ADR1, citing(dir, ADR1, 'ADR-2')),
+  ], show(r));
+});
+
+test('#74 al context pdf/R1: the Cited line of src/export.js gives its count and line', (t) => {
+  const dir = paragraphWorld(t);
+  const r = context(dir, 'pdf/R1');
+  assert.ok(allLabelled(r, 'Cited     ').includes('Cited     current src/export.js: 1 line: 1'), show(r));
+});
+
+// 1. and 2. The findings of al check.
+
+test('#74 al check: an overlap finding names the text line of its paragraph and the place of each other ID', (t) => {
+  const dir = paragraphWorld(t);
+  const r = ok(dir, ['check']);
+  const want = `hint overlap ${place(dir, PDF_SPEC, TSP1)} pdf/SP-1 other/SP-1 also changes INV-12: two open changes change one paragraph; align them`
+    + ` · places: other/SP-1 ${place(dir, OTHER_SPEC, TOTHER)}, INV-12 ${place(dir, SPEC, T12)}`;
+  assert.ok(outLines(r).includes(want), `the line\n${want}\n${show(r)}`);
+  assert.ok(!r.stdout.includes(`hint overlap ${PDF_SPEC}:1 `), `never the marker line of pdf/SP-1:\n${show(r)}`);
+});
+
+test('#74 al check: a lint about the marker still names the marker line, and names the place of its own ID', (t) => {
+  const dir = paragraphWorld(t);
+  const r = ok(dir, ['check']);
+  const marker = place(dir, SPEC, '<!-- INV-12 data -->');
+  const found = outLines(r).filter((l) => l.startsWith(`hint no-link ${marker} INV-12 `));
+  assert.equal(found.length, 1, show(r));
+  assert.ok(found[0].endsWith(` · places: INV-12 ${place(dir, SPEC, T12)}`), show(r));
+});
+
+// --- a changed and a removed paragraph on the branch
+
+function changedWorld(t) {
+  const dir = baseProject(t);
+  editFile(dir, SPEC, `\n<!-- INV-41 rule -->\n\n${T41}\n`, '');
+  editFile(dir, SPEC, T13, 'An invoice MUST have at least two lines.');
+  ok(dir, ['index']);
+  commitAll(dir, 'change INV-13, remove INV-41');
+  return dir;
+}
+
+test('#74 al check: a finding about a changed text names its text line and has no places part when no other ID needs one', (t) => {
+  const dir = changedWorld(t);
+  const r = ok(dir, ['check']);
+  const want = `not ok signoff-coverage ${place(dir, SPEC, 'An invoice MUST have at least two lines.')} INV-13 a rule paragraph is changed with no signed requirement that covers it`;
+  assert.ok(outLines(r).includes(want), `the line\n${want}\n${show(r)}`);
+});
+
+test('#74 al check: a removed paragraph is named at its text line at the base, in its finding and in its change line', (t) => {
+  const dir = changedWorld(t);
+  const base = git(dir, 'rev-parse', '--short=7', 'main');
+  const at = `${SPEC}:${lineIn(INVOICES, T41)} at the base ${base}`;
+  const r = ok(dir, ['check']);
+  assert.ok(outLines(r).some((l) => l.startsWith(`not ok signoff-coverage ${at} INV-41 `)), `a finding at ${at}:\n${show(r)}`);
+  assert.ok(outLines(r).some((l) => new RegExp(`^${at.replace(/[.]/g, '\\.')} INV-41 removed$`, 'i').test(l)),
+    `the change line "${at} INV-41 removed":\n${show(r)}`);
+});
+
+test('#74 al check: the change line of a changed paragraph names its text line', (t) => {
+  const dir = changedWorld(t);
+  const r = ok(dir, ['check']);
+  const at = place(dir, SPEC, 'An invoice MUST have at least two lines.');
+  assert.ok(outLines(r).some((l) => l.startsWith(`${at} INV-13 `)), `a change line that starts with "${at} INV-13 ":\n${show(r)}`);
+  assert.ok(!outLines(r).some((l) => l.startsWith(`${SPEC} INV-13 `)), `no change line without a line number:\n${show(r)}`);
+});
+
+// --- the list's open proposal
+
+test('#74 al check: the list line "open proposal" gives the place of the other request\'s paragraph', (t) => {
+  const dir = baseProject(t, { branch: null });
+  newRequest(dir, 'pdf');
+  appendSection(dir, 'pdf', organized([R2]));
+  write(dir, PDF_SPEC, doc([['SP-1 rule serves:R2 changes:INV-13', 'An invoice MUST have at least two lines.']]));
+  ok(dir, ['index']);
+  commitAll(dir, 'pdf');
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  write(dir, 'src/export.js', '// INV-13\n');
+  ok(dir, ['index']);
+  commitAll(dir, 'export');
+  const r = ok(dir, ['check']);
+  const line = labelled(r, 'in force INV-13 ');
+  const want = ` · open proposal: pdf/SP-1 (${place(dir, PDF_SPEC, 'An invoice MUST have at least two lines.')}) changes it`;
+  assert.ok(line.includes(want), `the in force line holds "${want}":\n${show(r)}`);
+});
+
+// --- 3. the records note, 1. places, and 4. a limit, in the request view
+
+// The open request pdf: R1 signed in S1; D1 in request.md; D2 recorded, then
+// its line taken out of request.md; a close line C1 on R1. No Tier: line.
+const D1 = '- D1, 2026-05-04. Source: owner. Use CSV.';
+function requestWorld(t) {
+  const dir = baseProject(t);
+  newRequest(dir, 'pdf');
+  appendSection(dir, 'pdf', organized([R1]));
+  ok(dir, ['record', 'pdf', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  ok(dir, ['record', 'pdf', 'decision', '--source', 'owner', '--text', 'Use CSV.', '--yes']);
+  ok(dir, ['record', 'pdf', 'decision', '--source', 'architect', '--text', 'Drop XLSX.', '--yes']);
+  ok(dir, ['record', 'pdf', 'close', '--on', 'R1', '--reason', 'A one-time setup meets it.', '--yes']);
+  editRequest(dir, 'pdf', '- D2, 2026-05-04. Source: architect. Drop XLSX.\n', '');
+  ok(dir, ['index']);
+  return dir;
+}
+
+test('#74 al context pdf: a Records line right after the Request line names the record that alone holds the facts below', (t) => {
+  const dir = requestWorld(t);
+  const r = context(dir, 'pdf');
+  const ls = outLines(r);
+  assert.ok(ls[0].startsWith('Request   pdf '), show(r));
+  assert.ok(ls[1].startsWith("Records   only al's record .assuredloop/records/requests/pdf.yaml holds "), show(r));
+  assert.match(ls[1], /sign-off/, `it names the sign-offs:\n${show(r)}`);
+  assert.match(ls[1], /\btier\b/, `request.md has no Tier: line, so it names the tier:\n${show(r)}`);
+});
+
+test('#74 al context pdf: the R, Decision and close lines give the place in request.md', (t) => {
+  const dir = requestWorld(t);
+  const r = context(dir, 'pdf');
+  const pR1 = place(dir, PDF_MD, '### R1 Monthly CSV');
+  const ls = outLines(r);
+  assert.ok(ls.includes(`  R1 version 1 (Monthly CSV) · ${pR1}: signed in S1`), show(r));
+  assert.ok(ls.includes(`Decision  D1 · ${place(dir, PDF_MD, D1)} (owner): Use CSV.`), show(r));
+  assert.ok(ls.includes(`close C1 pdf/R1 (${pR1}) current: A one-time setup meets it.`), show(r));
+});
+
+test('#74 al context pdf: a decision held only in the record says "no line in requests/pdf/request.md"', (t) => {
+  const dir = requestWorld(t);
+  const r = context(dir, 'pdf');
+  assert.ok(outLines(r).includes('Decision  D2 · no line in requests/pdf/request.md (architect): Drop XLSX.'), show(r));
+});
+
+test('#74 al context: with an open request, the Records line follows the Request lines', (t) => {
+  const dir = requestWorld(t);
+  const r = context(dir);
+  const ls = outLines(r);
+  const last = ls.map((l, i) => (l.startsWith('Request   ') ? i : -1)).filter((i) => i >= 0).at(-1);
+  assert.ok(last >= 0, `a Request line:\n${show(r)}`);
+  assert.equal(ls[last + 1],
+    "Records   only al's records in .assuredloop/records/requests/ hold the tiers and the sign-off states above", show(r));
+});
+
+// --- 4. a limit: a paragraph with no text line
+
+test('#74 al context INV-71: a linked paragraph with no text line shows "(<file>: no text line)", never its marker line', (t) => {
+  const dir = baseProject(t);
+  write(dir, SPEC, `${read(dir, SPEC)}\n<!-- INV-70 note -->\n\n<!-- INV-71 rule builds-on:INV-70 -->\n\nText of INV-71.\n`);
+  ok(dir, ['index']);
+  const marker = place(dir, SPEC, '<!-- INV-70 note -->');
+  const r = context(dir, 'INV-71');
+  assert.ok(labelled(r, 'Links     ').includes(`INV-70 (${SPEC}: no text line)`), show(r));
+  assert.ok(!r.stdout.includes(marker), `never the marker line ${marker}:\n${show(r)}`);
+  const r70 = context(dir, 'INV-70');
+  assert.equal(labelled(r70, 'Linked    '), `Linked    INV-71 (${place(dir, SPEC, 'Text of INV-71.')}) builds on it`, show(r70));
+});
+
+// --- 5. the grouped Cited lines of a paragraph
+//
+// INV-12 is named: by its own marker (not counted); by the marker of INV-60
+// (builds-on) and by the second text line of INV-60; on 12 lines of
+// src/a.js; once in each of src/b1.js .. src/b6.js; on two lines of the
+// archived request old (historical); and on two lines of the owner's words
+// of the open request zz, in its origin/ snapshot (historical).
+
+// Concludes a request by hand: the folder moves to requests/archive/.
+function archive(dir, name) {
+  editFile(dir, `requests/${name}/request.md`, 'Status: open', 'Status: concluded');
+  move(dir, `requests/${name}`, `requests/archive/${name}`);
+  editRecord(dir, name, (rec) => { rec.status = 'concluded'; });
+}
+
+const OLD_MD = 'requests/archive/old/request.md';
+const ZZ_WORDS = 'requests/zz/origin/2026-05-04-owner-words.md';
+const B_FILES = ['src/b1.js', 'src/b2.js', 'src/b3.js', 'src/b4.js', 'src/b5.js', 'src/b6.js'];
+
+function citedWorld(t) {
+  const dir = baseProject(t);
+  write(dir, SPEC, `${read(dir, SPEC)}\n${doc([['INV-60 rule builds-on:INV-12', `${T60}\nIt holds each field of INV-12.`]])}`);
+  const a = [];
+  for (let i = 1; i <= 20; i++) a.push(i % 3 === 0 ? `// step ${i}` : `// INV-12 step ${i}`);
+  write(dir, 'src/a.js', `${a.join('\n')}\n`);
+  B_FILES.forEach((f, i) => write(dir, f, `export const n = ${i};\n// INV-12\n`));
+  newRequest(dir, 'old');
+  write(dir, 'requests/old/request.md', `${read(dir, 'requests/old/request.md')}\nThe old export followed INV-12.\nINV-12 stays.\n`);
+  archive(dir, 'old');
+  newRequest(dir, 'zz', 'The owner wants INV-12 kept.\nAnd INV-12 again.\n');
+  ok(dir, ['index']);
+  return dir;
+}
+
+// The Cited lines of INV-12 that the contract gives, in order, as [file, lines, group].
+function expectedCitedOf12(dir) {
+  const own = lineOf(dir, SPEC, '<!-- INV-12 data -->');
+  return [
+    [SPEC, citing(dir, SPEC, 'INV-12', [own]), 'current'],
+    ['src/a.js', citing(dir, 'src/a.js', 'INV-12'), 'current'],
+    ...B_FILES.map((f) => [f, citing(dir, f, 'INV-12'), 'current']),
+    [OLD_MD, citing(dir, OLD_MD, 'INV-12'), 'historical'],
+    [ZZ_WORDS, citing(dir, ZZ_WORDS, 'INV-12'), 'historical'],
+  ];
+}
+
+test('#74 al context INV-12: one Cited line for each file, with the exact count and every line; current first; no "more"', (t) => {
+  const dir = citedWorld(t);
+  const want = expectedCitedOf12(dir);
+  assert.equal(want[0][1].length, 2, 'the fixture: specs/invoices.md names INV-12 on two lines besides its own marker');
+  assert.equal(want[1][1].length, 14, 'the fixture: src/a.js names INV-12 on 14 lines');
+  const r = context(dir, 'INV-12');
+  assert.deepEqual(allLabelled(r, 'Cited     '), want.map(([f, ns, g]) => citedLine(g, f, ns)), show(r));
+  assert.doesNotMatch(r.stdout, /\bmore\b/i, `no line is left out, so no "more":\n${show(r)}`);
+  assert.ok(!r.stdout.includes('  src/a.js:1: '), `no citing text without --full:\n${show(r)}`);
+});
+
+test('#74 al context INV-12: its own marker line is not counted, and .assuredloop/ is left out', (t) => {
+  const dir = citedWorld(t);
+  const own = lineOf(dir, SPEC, '<!-- INV-12 data -->');
+  const r = context(dir, 'INV-12');
+  const spec = allLabelled(r, 'Cited     ').filter((l) => l.includes(` ${SPEC}: `));
+  assert.equal(spec.length, 1, show(r));
+  const ns = spec[0].split(': ').at(-1).split(', ').map(Number);
+  assert.ok(!ns.includes(own), `the marker line ${own} of INV-12 is not counted:\n${show(r)}`);
+  assert.ok(ns.includes(lineOf(dir, SPEC, '<!-- INV-60 rule builds-on:INV-12 -->')), `the marker of INV-60 counts:\n${show(r)}`);
+  assert.deepEqual(allLabelled(r, 'Cited     ').filter((l) => l.includes('.assuredloop/')), [], show(r));
+});
+
+test('#74 al context INV-12 --full: under each file line, one line for each citing line with its file, line and text', (t) => {
+  const dir = citedWorld(t);
+  const want = expectedCitedOf12(dir);
+  const r = context(dir, 'INV-12', '--full');
+  const ls = outLines(r);
+  for (const [f, ns, g] of want) {
+    const at = ls.indexOf(citedLine(g, f, ns));
+    assert.ok(at >= 0, `the Cited line of ${f}:\n${show(r)}`);
+    const text = read(dir, f).split('\n');
+    assert.deepEqual(ls.slice(at + 1, at + 1 + ns.length), ns.map((n) => `  ${f}:${n}: ${text[n - 1]}`),
+      `the citing lines of ${f}:\n${show(r)}`);
+  }
+});
+
+test('#74 al context takes --full for every form', (t) => {
+  const dir = paragraphWorld(t);
+  for (const args of [['--full'], ['pdf', '--full'], ['INV-12', '--full'], ['pdf/SP-1', '--full'], ['ADR-2', '--full'], ['pdf/R1', '--full']]) {
+    context(dir, ...args);
+  }
+});
+
+test('#74 al context pdf/SP-1: cited by pdf/SP-1 anywhere and by a bare SP-1 inside requests/pdf/ only', (t) => {
+  const dir = baseProject(t);
+  newRequest(dir, 'pdf');
+  write(dir, PDF_SPEC, doc([['SP-1 rule', TSP1], ['SP-2 rule builds-on:SP-1', 'SP-1 holds for each month.']]));
+  write(dir, PDF_MD, `${read(dir, PDF_MD)}\nNote: SP-1 matters.\n`);
+  write(dir, 'src/x.js', '// SP-1 is a bare name here\n// pdf/SP-1 names it\n');
+  write(dir, 'docs/notes.md', 'SP-1 of something else.\n');
+  ok(dir, ['index']);
+  const r = context(dir, 'pdf/SP-1');
+  assert.deepEqual(allLabelled(r, 'Cited     '), [
+    citedLine('current', PDF_MD, [lineOf(dir, PDF_MD, 'Note: SP-1 matters.')]),
+    citedLine('current', PDF_SPEC, [lineOf(dir, PDF_SPEC, '<!-- SP-2 rule builds-on:SP-1 -->'), lineOf(dir, PDF_SPEC, 'SP-1 holds for each month.')]),
+    citedLine('current', 'src/x.js', [2]),
+  ], show(r));
+});
+
+// --- 7. --at <commit>: the places as they were at that commit
+
+test('#74 al context INV-12 --at <commit>: the head line and the Linked places are the lines at that commit', (t) => {
+  const dir = baseProject(t);
+  write(dir, SPEC, `${read(dir, SPEC)}\n${doc([['INV-60 rule builds-on:INV-12', T60]])}`);
+  ok(dir, ['index']);
+  const c1 = commitAll(dir, 'INV-60');
+  const before = git(dir, 'show', `${c1}:${SPEC}`);
+  editFile(dir, SPEC, '<!-- INV-12 data -->', '<!-- INV-2 note -->\n\nA new note.\n\n<!-- INV-12 data -->');
+  ok(dir, ['index']);
+  commitAll(dir, 'INV-2 moves INV-12 down');
+  const old12 = `${SPEC}:${lineIn(before, T12)}`;
+  const old60 = `${SPEC}:${lineIn(before, T60)}`;
+  const now12 = place(dir, SPEC, T12);
+  assert.notEqual(old12, now12, 'the fixture moves INV-12 down');
+
+  const r = context(dir, 'INV-12', '--at', c1);
+  assert.ok(labelled(r, 'Paragraph ').endsWith(` · ${old12}`), `the head at ${c1} names ${old12}:\n${show(r)}`);
+  assert.equal(labelled(r, 'Linked    '), `Linked    INV-60 (${old60}) builds on it`, show(r));
+
+  const now = context(dir, 'INV-12');
+  assert.ok(labelled(now, 'Paragraph ').endsWith(` · ${now12}`), show(now));
+  assert.equal(labelled(now, 'Linked    '), `Linked    INV-60 (${place(dir, SPEC, T60)}) builds on it`, show(now));
+});
