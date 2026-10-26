@@ -7,7 +7,9 @@
 // request is a hint, also under --strict; D2, in specs/ it stays not ok; D3,
 // used-again, no-id and unresolved-link stay not ok in every scope; D4, the
 // hint names each disposition and wording decision of the request that names
-// the deleted ID.
+// the deleted ID. #72 (LD-58) removed the dispositions and the wording
+// decisions, so the hint names none; an old record that holds them is read
+// with no error.
 //
 // #238 R2 changes D2 and D3: lost-id, used-again, no-id and unresolved-link
 // are hints in every scope and every mode, so --strict exits 0 on them.
@@ -145,9 +147,10 @@ test('1: two open requests each delete SP-3: one hint each, each with its own na
     rec.dispositions = [{ source: 'other/SP-3', disposition: 'removed', spec: 'INV-3' }];
   });
   const r = check(dir);
+  // #72: the old dispositions are not named.
   assert.deepEqual(coded(r, 'lost-id').sort(), [
-    hintLine(NAME, 9, 'SP-3', ['its disposition says incorporated as INV-2']),
-    hintLine('other', 9, 'SP-3', ['its disposition says removed INV-3']),
+    hintLine(NAME, 9, 'SP-3'),
+    hintLine('other', 9, 'SP-3'),
   ].sort(), show(r));
 });
 
@@ -177,57 +180,6 @@ test('2: SP-3 deleted from a change spec archived at the base stays lost-id, a h
 });
 
 // --- item 1 and D4: the facts of the request record
-
-test('D4: the example: an incorporated disposition and a wording decision, in that order', (t) => {
-  const dir = repo(t);
-  ok(dir, ['record', NAME, 'decision', '--source', 'agent', '--text', 'Word SP-3 as INV-2.', '--yes']);
-  editRecord(dir, NAME, (rec) => {
-    assert.equal(rec.decisions?.[0]?.id, 'D1', 'the decision is D1');
-    rec.decisions[0].wording = { source: `${NAME}/SP-3`, spec: 'INV-2' };
-    rec.dispositions = [{ source: `${NAME}/SP-3`, disposition: 'incorporated', spec: 'INV-2', decision: 'D1' }];
-  });
-  write(dir, SPEC, changeSpec(without('SP-3')));
-  const r = check(dir);
-  assert.deepEqual(coded(r, 'lost-id'), [
-    'hint lost-id requests/exp/spec.md:9 SP-3 exp/SP-3 is deleted; its disposition says incorporated as INV-2; '
-      + 'decision D1 names its wording. If that is on purpose, nothing more is needed: the ID is retired and never used again.',
-  ], show(r));
-});
-
-test('D4: each kind in record order, dispositions before decisions; another SP, SP-30, abandoned and another request do not appear', (t) => {
-  const dir = repo(t, { requests: [NAME, 'other'] });
-  for (const text of ['First wording.', 'Second wording.', 'Third wording.']) {
-    ok(dir, ['record', NAME, 'decision', '--source', 'agent', '--text', text, '--yes']);
-  }
-  ok(dir, ['record', 'other', 'decision', '--source', 'agent', '--text', 'Other wording.', '--yes']);
-  editRecord(dir, NAME, (rec) => {
-    assert.deepEqual(rec.decisions.map((d) => d.id), ['D1', 'D2', 'D3']);
-    rec.decisions[0].wording = { source: `${NAME}/SP-3`, spec: 'INV-2' };
-    rec.decisions[1].wording = { source: `${NAME}/SP-2`, spec: 'INV-2' };
-    rec.decisions[2].wording = { source: `${NAME}/SP-3`, spec: 'INV-3' };
-    rec.dispositions = [
-      { source: `${NAME}/SP-2`, disposition: 'incorporated', spec: 'INV-1' },
-      { source: `${NAME}/SP-3`, disposition: 'superseded', by: 'later/SP-1' },
-      { source: `${NAME}/SP-30`, disposition: 'removed', spec: 'INV-9' },
-      { source: `${NAME}/SP-3`, disposition: 'incorporated', spec: 'INV-2' },
-      { source: `${NAME}/SP-3`, disposition: 'abandoned' },
-      { source: `${NAME}/SP-3`, disposition: 'removed', spec: 'INV-3' },
-    ];
-  });
-  editRecord(dir, 'other', (rec) => {
-    rec.decisions[0].wording = { source: 'other/SP-3', spec: 'INV-1' };
-    rec.dispositions = [{ source: 'other/SP-3', disposition: 'incorporated', spec: 'INV-1' }];
-  });
-  write(dir, SPEC, changeSpec(without('SP-3')));
-  const r = check(dir);
-  assert.deepEqual(coded(r, 'lost-id'), [hintLine(NAME, 9, 'SP-3', [
-    'its disposition says superseded by later/SP-1',
-    'its disposition says incorporated as INV-2',
-    'its disposition says removed INV-3',
-    'decision D1 names its wording',
-    'decision D3 names its wording',
-  ])], show(r));
-});
 
 test('D4: a record entry that names only another SP gives no facts on SP-3, and adds no other hint for it', (t) => {
   const dir = repo(t);

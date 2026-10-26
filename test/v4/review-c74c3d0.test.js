@@ -28,8 +28,16 @@ test('1: INV-4 removed on main by unsigned drop-tax, then the root moved to curr
   refusesNaming(conclude(dir, 'drop-tax', '--yes'), 'drop-tax/SP-1');
 });
 
+// #72: a requirement met only by a removal has no paragraph that serves it;
+// a close line on it says so, as the close rule asks.
+const closeR1 = (dir, name, id) => {
+  const r = al(dir, ['record', name, 'close', '--on', 'R1', '--reason', `Met by the removal of ${id}.`, '--yes']);
+  assert.equal(r.code, 0, show(r));
+  return dir;
+};
+
 test('1 control: the same root move after the signed removal would conclude', (t) => {
-  wouldConclude(conclude(invoicer(t, 'root-moved-signed'), 'drop-tax'), 'drop-tax');
+  wouldConclude(conclude(closeR1(invoicer(t, 'root-moved-signed'), 'drop-tax', 'INV-4'), 'drop-tax'), 'drop-tax');
 });
 
 // --- 2. a kind change in history (INV-99: note, then limit, on main)
@@ -66,5 +74,6 @@ test('2: the same removal committed on the branch, R1 unsigned: conclude refuses
 test('2 control: the same removal in the working tree with R1 signed would conclude', (t) => {
   const dir = invoicer(t, 'remove-kind', 'signed');
   removeInv99(dir);
+  closeR1(dir, 'drop-latest', 'INV-99');
   wouldConclude(conclude(dir, 'drop-latest'), 'drop-latest');
 });

@@ -239,8 +239,6 @@ const PINNED = {
     code: 0,
     lines: [
       'ok: no marker lint',
-      'info disposition-pending requests/invoice-exports/spec.md invoice-exports 4 of 8 paragraphs with a baseline effect have no disposition for their current version: SP-7, SP-10, SP-11, SP-12',
-      'info disposition-pending requests/reminder-emails/spec.md reminder-emails 3 of 3 paragraphs with a baseline effect have no disposition for their current version: SP-2, SP-3, SP-4',
       'info output-repo invoicer-mobile - unknown: no clone at ../invoicer-mobile',
       'info result invoicer-web/.assuredloop/results/export-link-test.yaml test/export-link.test.js pass at invoicer-web@{web:Move the link time into config/link.json (W3):7}: declared inputs unchanged since invoicer-web@{web:Move the link time into config/link.json (W3):7}',
       'info result invoicer-worker/.assuredloop/results/a-no-inputs.yaml test/zip-export.test.js not run at invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}: applicability unknown: no declared inputs',
@@ -278,7 +276,6 @@ const PINNED = {
       'Result    invoicer-worker/.assuredloop/results/h-short.yaml test/zip-export.test.js pass at invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}: declared inputs unchanged since invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}',
       'Result    invoicer-worker/.assuredloop/results/s-clean.yaml test/zip-export.test.js pass at invoicer-worker@{worker:Merge pull request #12 from invoicer/zip-names:7}: declared inputs unchanged since invoicer-worker@{worker:Merge pull request #12 from invoicer/zip-names:7}',
       'Result    invoicer-worker/.assuredloop/results/t-clean.yaml test/zip-export.test.js pass at invoicer-worker@{worker:Merge pull request #12 from invoicer/zip-names:7}: does not apply to the current text: src/zip-export.js changed',
-      'Disp.     SP-10 data pending',
       'Read      working tree',
       'Next      al context invoice-exports',
       'Not known the PRs that never named the request in a commit message',

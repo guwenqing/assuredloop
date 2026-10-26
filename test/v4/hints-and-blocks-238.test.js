@@ -834,7 +834,6 @@ describe('R2: findings that are hints stay hints under --strict', () => {
   for (const [name, arm, code, id] of [
     ['d09', 'defect', 'path-claim', 'INV-4'],
     ['adr-links', 'untouched', 'adr-links', 'ADR-1'],
-    ['cr-revert', undefined, 'disposition', 'reminder-emails/SP-2'],
     ['adr-supersede', 'missing', 'unresolved-link', 'ADR-5'],
     ['cr-abandon-m9', undefined, 'lost-id', 'EXP-9'],
   ]) {

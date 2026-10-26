@@ -63,14 +63,23 @@ test('INV-99 taken out of scope by a config-only commit on the branch, R1 unsign
   refusesNaming(conclude(dir, 'drop-configured', '--yes'), 'drop-configured/SP-1');
 });
 
+// #72: R1 is met by the removal alone, so no paragraph serves it; a close
+// line on it says so, as the close rule asks.
+function closeR1(dir) {
+  const r = al(dir, ['record', 'drop-configured', 'close', '--on', 'R1', '--reason', 'Met by the removal of INV-99.', '--yes']);
+  assert.equal(r.code, 0, show(r));
+}
+
 test('control: the same working-tree removal with R1 signed would conclude', (t) => {
   const dir = invoicer(t, 'remove-scoped', 'signed');
   deleteInv99(dir);
+  closeR1(dir);
   wouldConclude(conclude(dir, 'drop-configured'), 'drop-configured');
 });
 
 test('control: the same out-of-scope removal with R1 signed would conclude', (t) => {
   const dir = invoicer(t, 'remove-scoped', 'signed');
   unscopeInv99(dir);
+  closeR1(dir);
   wouldConclude(conclude(dir, 'drop-configured'), 'drop-configured');
 });
