@@ -442,8 +442,9 @@ paragraph, the first line after its marker; for a requirement, its
 item with no text line shows "no text line" as a limit. An item that is
 only at the base shows the base and its line there. A finding of
 `al check` names, after its message, the place of each other ID that it
-shows. A finding about a marker itself names the marker line, as the place
-of the problem, not of the text. The grouped line of the list (LD-25) names its IDs only;
+shows. A finding about what a marker holds (its ID, kind, links, task or
+file scope) names the marker line, as the place of the problem, not of the
+text. The grouped line of the list (LD-25) names its IDs only;
 `al check --full` gives their file, line and text. Where a fact is held only in `al`'s records (a sign-off, a
 tier, a request's state, a close line), `al` names that record as the source and says
 that only its records hold the fact. It never makes up a project line, and
