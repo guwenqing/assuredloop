@@ -1231,8 +1231,10 @@ each sign-off. One reader gives each such file one result, and every
 reader of original files uses it: the record checks (`record-evidence`),
 the sign-off state, `unsigned-requirement`, `signoff-coverage`,
 `al context` and `al conclude`. The result is one of three:
-- verified: the snapshot's text after its `---` line has the recorded
-  SHA-256, as `al record` hashed it;
+- verified: the snapshot's text after its separator has the recorded
+  SHA-256, as `al record` hashed it. The separator is the first line that
+  is `---` or `--- signed text ---`. A sign-off's file has only
+  `--- signed text ---`;
 - not checked: the project keeps its files outside, the file is not in the
   repo, and no place is set (DES-120);
 - failed, with the reason: missing, unreadable, a folder or a link where a
@@ -1316,8 +1318,10 @@ A structured source that is a path inside the folder (`--url` of
 absolute, `~/`, or relative to the current folder) is recorded as
 `originals:<path in the folder>`. The folder's path anywhere else in such a
 value becomes `originals:`. This happens before the record is written and
-before a file name is made from the value. The full source stays in the
-snapshot, which is outside the repo. `--words` is kept as given.
+before a file name is made from the value. The full value of `--url` or
+`--source` stays in the snapshot, which is outside the repo. A
+`--presented` value is kept only as the record holds it. `--words` is kept
+as given.
 
 <!-- DES-82 data serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
 
@@ -1611,8 +1615,10 @@ are its outputs.
 **Answers.** An answer of `al` puts repeated output on one line, for
 example the IDs of the items in force by their state, and names each of
 them there. `al check --full` shows the text of every item in force, and
-`al context <ID>` shows one item in full. Each fact that an answer reports
-names the file and line that hold it, with an ID beside it only as a label.
+`al context <ID>` shows one item in full, with its file and line. A line
+about one paragraph, requirement, decision, judgement or hint names its
+file and line, with the ID beside it only as a label. `al context <name>`
+names a request's folder, and a coverage line names its file and section.
 A fact that only `al`'s records hold says so and names the record. An
 answer shows its hints, which are inferences, apart from the project's
 evidence and from the records, and it names what it does not know on a

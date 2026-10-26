@@ -335,7 +335,7 @@ paragraphs:
     display: DES-58 (10:2, in 10. Records)
   - id: DES-90
     kind: rule
-    text_sha256: 54337a5b5111df3c146beb7ba3b6f77fa1b28a5cb45237423b1f8a3f15f6dbda
+    text_sha256: 6ce81a252972a86e4213d346a4d2f41484ba1125f2ca1c1cca447f7287d35a4c
     display: DES-90 (10:3, in 10. Records)
   - id: DES-127
     kind: rule
@@ -363,7 +363,7 @@ paragraphs:
     display: DES-128 (10:9, in 10. Records)
   - id: DES-124
     kind: data
-    text_sha256: b1ccbd2575f02adc2072440acc4b271be075f4c37fb5c4498f5183a38aab1dfe
+    text_sha256: 25e4dfb2841f875fba42c9b19180f9b2e5b025eaaf25337ea0efc8e00f91ef87
     display: DES-124 (10:10, in 10. Records)
   - id: DES-82
     kind: data
@@ -451,7 +451,7 @@ paragraphs:
     display: DES-72 (13:1, in 13. Commands)
   - id: DES-125
     kind: interface
-    text_sha256: 56558db1f3ad4e4c2197988309e9dee80e27b19525d63102a38bb1d7c65baa6c
+    text_sha256: f4d111445e41ce2953d8fba657f2c41dd59967857f5a8884a904238ea122798e
     display: DES-125 (13:2, in 13. Commands)
   - id: DES-73
     kind: note
