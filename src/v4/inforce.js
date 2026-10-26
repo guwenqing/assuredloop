@@ -15,7 +15,7 @@ import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from 
 import { taskItems } from './issues.js';
 import { centralRepo, namedIds, outputRepos } from './repos.js';
 import { ADR_FILE, SPEC, symlinkOn } from './scope.js';
-import { loadState, signedBy } from './state.js';
+import { loadState, signedBy, unknownBy } from './state.js';
 
 const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 const inForceKind = (state, kind) => !!kind && kind !== 'approach' && ['promise', 'design'].includes(groupOf(kind, state.kinds));
@@ -322,7 +322,11 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     const lines = lf(r.md).split('\n');
     for (const q of r.reqs) {
       const s = signedBy(now, r.name, q.id);
-      if (!s) { limits.push(`${r.name}/${q.id} is not signed, so it is not listed`); continue; }
+      if (!s) {
+        limits.push(unknownBy(now, r.name, q.id) ? `whether ${r.name}/${q.id} is signed: the original file of its sign-off is not checked, so it is not listed`
+          : `${r.name}/${q.id} is not signed, so it is not listed`);
+        continue;
+      }
       const at = lines.findIndex((l) => new RegExp(`^###\\s+${q.id}\\b`).test(l)) + 1;
       body.push(`proposed ${r.name}/${q.id} signed requirement · ${r.dir}/request.md:${at} · signed in ${s.id} (only al's record ${recordPath(r.name)} holds this): `
         + `${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`);

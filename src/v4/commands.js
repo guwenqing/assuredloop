@@ -1,15 +1,16 @@
 // al new and al record origin|signoff|decision, v4: they write the request's
 // text and snapshots as before, and the request record beside them.
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { stringify } from 'yaml';
-import { Fail, SCHEMA, STAMP, day, exists, freeName, guard, isName, now, read, recordPath, sha256, stamp, write } from './base.js';
+import { Fail, SCHEMA, STAMP, day, exists, guard, isName, now, read, recordPath, sha256, stamp, write } from './base.js';
 import { formatSnapshot, slug } from './snapshot.js';
 import { addDecision, decisionNumbers, requirements, setSignedOff, signedText } from './request-md.js';
 import { YAML_OPTIONS, addVersions, append, highest, latest, openRecord, recordText } from './records.js';
 import { loadConfig } from './config.js';
 import { itemFinder, loadItems } from './issues.js';
 import { CHANGED, reliance, textSha } from './kept-items.js';
+import { logical, placeOf, sourceOf } from './originals.js';
 
 const TIERS = ['1', '1d', '2', '3', 'S'];
 
@@ -20,6 +21,58 @@ function readInput(from, cwd) {
   } catch (e) {
     throw new Fail(`cannot read ${from}: ${e.code || e.message}`);
   }
+}
+
+// Where the new original files of request `name` go (origin-elsewhere/R1):
+// the repo's origin/, as before, or the place of a project that keeps them
+// outside. A places file that is broken refuses here; no place set refuses
+// in name(), before anything is written.
+function originalsStore(top, name, rec) {
+  const dir = `requests/${name}/origin`;
+  const place = placeOf(loadConfig(top));
+  const list = (x) => (Array.isArray(x) ? x : []);
+  const named = new Set([...list(rec?.data.sources), ...list(rec?.data.signoff)].map((e) => String(e?.file ?? '').replace(/^origin\//, '')));
+  const there = (path) => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
+  // Outside, a name is free in neither place and when the record does not name it.
+  const taken = (f) => exists(top, `${dir}/${f}`) || (place && (named.has(f) || there(join(place.folder, name, f))));
+  const free = (base, tried = new Set()) => {
+    let f = `${base}.md`;
+    for (let n = 2; taken(f) || tried.has(f); n++) f = `${base}-${n}.md`;
+    return f;
+  };
+  return {
+    place,
+    // The first free name for `base`; with no place set, a refusal.
+    name(base) {
+      if (place && !place.folder) throw new Fail(`no place is set for the original files of "${place.name}": add a line to ${place.file}`, `add the line ${place.name}: /path/to/folder to ${place.file}, then run it again`);
+      return free(base);
+    },
+    shown: (f) => (place ? logical(name, f) : `${dir}/${f}`),
+    // Writes `bytes` under the first free name for `base`, and gives that name.
+    // Outside, the file is created only if it is not there yet; when another
+    // clone made it first, the next free name is taken.
+    create(base, bytes) {
+      const first = this.name(base);
+      if (!place) {
+        write(top, `${dir}/${first}`, bytes);
+        return first;
+      }
+      const tried = new Set();
+      for (let f = first; ; f = free(base, tried)) {
+        if (lstatSync(join(place.folder, name), { throwIfNoEntry: false })?.isSymbolicLink()) {
+          throw new Fail(`${logical(name, '')} is a symlink in the folder of "${place.name}", and al does not write through a symlink; nothing was written`, 'make it a real folder, then run it again');
+        }
+        try {
+          mkdirSync(join(place.folder, name), { recursive: true });
+          writeFileSync(join(place.folder, name, f), bytes, { flag: 'wx' });
+          return f;
+        } catch (e) {
+          if (e.code !== 'EEXIST') throw new Fail(`cannot write ${logical(name, f)} (${e.code ?? e.message}); nothing was written`, `make the folder of "${place.name}" writable, then run it again`);
+          tried.add(f);
+        }
+      }
+    },
+  };
 }
 
 // al new <name> --from <file|-> [--title <t>] [--tier 1|1d|2|3|S]
@@ -35,10 +88,10 @@ export function newRequest({ top, cwd, args, opts }) {
   if (words.length === 0) throw new Fail('no owner\'s words given', 'pass the words with --from <file> or on standard input');
 
   const when = now();
-  const file = `${day(when)}-owner-words.md`;
   const dir = `requests/${name}`;
-  guard(top, [`${dir}/origin/${file}`, `${dir}/request.md`, recordPath(name)]);
-  write(top, `${dir}/origin/${file}`, formatSnapshot({ source: opts.from === '-' ? 'standard input' : opts.from, fetched: stamp(when), text: words }));
+  const store = originalsStore(top, name, null);
+  guard(top, [`${dir}/origin/${store.name(`${day(when)}-owner-words`)}`, `${dir}/request.md`, recordPath(name)]);
+  const file = store.create(`${day(when)}-owner-words`, formatSnapshot({ source: opts.from === '-' ? 'standard input' : opts.from, fetched: stamp(when), text: words }));
   write(top, `${dir}/request.md`, [
     `# ${opts.title ?? name}`,
     opts.tier === undefined ? 'Status: open' : `Tier: ${opts.tier} · Status: open`,
@@ -58,7 +111,7 @@ export function newRequest({ top, cwd, args, opts }) {
   };
   write(top, recordPath(name), stringify(record, YAML_OPTIONS));
   return {
-    body: [`Wrote ${dir}/request.md, ${dir}/origin/${file} and ${recordPath(name)}`],
+    body: [`Wrote ${dir}/request.md, ${store.shown(file)} and ${recordPath(name)}`],
     next: `write the organized requirement in ${dir}/request.md, then al index`,
   };
 }
@@ -97,28 +150,32 @@ function recordOrigin({ top, cwd, args, opts }) {
   if (!opts.url) throw new Fail('--url <source> is missing', `al record ${name} origin --url <source> --from -`);
   if (opts.fetched !== undefined && !STAMP.test(opts.fetched)) throw new Fail(`--fetched ${opts.fetched}: write it as YYYY-MM-DDTHH:MMZ`);
   const { dir, rec } = openRequest(top, name);
+  const store = originalsStore(top, name, rec);
   const text = readInput(opts.from, cwd);
   if (text.length === 0) throw new Fail('the text is empty', 'pass the text with --from <file> or on standard input');
   const fetched = opts.fetched ?? stamp(now());
-  const file = freeName(top, `${dir}/origin`, `${fetched.slice(0, 10)}-${slug(opts.url)}`);
+  // A source inside the place is recorded by its logical name (originals:<path>).
+  const url = sourceOf(opts.url, store.place, cwd);
+  const base = `${fetched.slice(0, 10)}-${slug(url)}`;
   const snapshot = formatSnapshot({ source: opts.url, fetched, text });
   const shown = snapshot.toString('utf8').replace(/\n$/, '').split('\n');
-  if (!opts.yes) return { body: [`Would write ${dir}/origin/${file}:`, ...shown], next: 'run the same command with --yes to write it' };
-  guard(top, [`${dir}/origin/${file}`, rec.path]);
-  append(rec, 'sources', { file, kind: 'owner-words', sha256: sha256(text), taken: fetched, url: opts.url });
-  write(top, `${dir}/origin/${file}`, snapshot);
+  if (!opts.yes) return { body: [`Would write ${store.shown(store.name(base))}:`, ...shown], next: 'run the same command with --yes to write it' };
+  guard(top, [`${dir}/origin/${store.name(base)}`, rec.path]);
+  const file = store.create(base, snapshot);
+  append(rec, 'sources', { file, kind: 'owner-words', sha256: sha256(text), taken: fetched, url });
   write(top, rec.path, recordText(rec));
-  return { body: [`Wrote ${dir}/origin/${file} and source ${file} in ${rec.path}`], next: `name it in a requirement's marker: <!-- R<n> from:${file} -->` };
+  return { body: [`Wrote ${store.shown(file)} and source ${file} in ${rec.path}`], next: `name it in a requirement's marker: <!-- R<n> from:${file} -->` };
 }
 
 // al record <name> signoff --source <where> --words <quote> [--presented <x>] [--transcribed-by <who>] [--yes]
-function recordSignoff({ top, args, opts }) {
+function recordSignoff({ top, cwd, args, opts }) {
   const [name] = args;
   oneLine(opts, ['source', 'words', 'presented', 'transcribed-by']);
   if (!opts.source) throw new Fail('--source <where the owner signed> is missing', `al record ${name} signoff --source <where> --words <quote>`);
   // A sign-off with no words is not valid in al check (DES-89, D10).
   if (typeof opts.words !== 'string' || !opts.words) throw new Fail('--words <the owner\'s words> is missing', `pass the owner's words: al record ${name} signoff --source <where> --words <quote>`);
   const { dir, rec } = openRequest(top, name);
+  const store = originalsStore(top, name, rec);
   const md = read(top, `${dir}/request.md`);
   const text = signedText(md);
   if (text === null) throw new Fail(`${dir}/request.md has no "## Organized requirement" (or question) to sign`, `write the organized requirement in ${dir}/request.md`);
@@ -132,25 +189,26 @@ function recordSignoff({ top, args, opts }) {
     return { body: [`nothing to sign: unchanged since ${last.id} (${last.file})`], next: `al index` };
   }
   const when = now();
-  const file = freeName(top, `${dir}/origin`, `${day(when)}-signoff`);
+  const base = `${day(when)}-signoff`;
   const body = [last ? `To be signed (last signed: ${last.id}):` : 'To be signed (first sign-off):', ...text.replace(/\n$/, '').split('\n')];
-  if (!opts.yes) return { body: [...body, `Would write ${dir}/origin/${file}, ${rec.path} and the Signed off line`], next: 'show this to the owner; on their OK, run the same command with --yes' };
+  if (!opts.yes) return { body: [...body, `Would write ${store.shown(store.name(base))}, ${rec.path} and the Signed off line`], next: 'show this to the owner; on their OK, run the same command with --yes' };
 
-  guard(top, [`${dir}/origin/${file}`, rec.path, `${dir}/request.md`]);
+  guard(top, [`${dir}/origin/${store.name(base)}`, rec.path, `${dir}/request.md`]);
+  const file = store.create(base, formatSnapshot({ source: opts.source, words: opts.words, fetched: stamp(when), text, signed: true }));
   addVersions(rec, reqs);
   const data = rec.data;
   const id = `S${highest(rec, 'signoff', 'S') + 1}`;
-  const entry = { id, file, sha256: sha256(text), signed: stamp(when), source: opts.source };
+  // A source inside the place is recorded by its logical name (originals:<path>).
+  const entry = { id, file, sha256: sha256(text), signed: stamp(when), source: sourceOf(opts.source, store.place, cwd) };
   if (opts.words !== undefined) entry.words = opts.words;
-  if (opts.presented !== undefined) entry.presented = opts.presented;
+  if (opts.presented !== undefined) entry.presented = sourceOf(opts.presented, store.place, cwd);
   if (opts['transcribed-by'] !== undefined) entry.transcribed_by = opts['transcribed-by'];
   entry.covers = reqs.map((r) => ({ id: r.id, version: latest(data, r.id).version, sha256: r.sha256 }));
   const node = append(rec, 'signoff', entry);
   for (const c of node.get('covers').items) c.flow = true;
-  write(top, `${dir}/origin/${file}`, formatSnapshot({ source: opts.source, words: opts.words, fetched: stamp(when), text, signed: true }));
   write(top, rec.path, recordText(rec));
   write(top, `${dir}/request.md`, setSignedOff(md, `Signed off: ${day(when)} owner, origin/${file}`));
-  return { body: [...body, `Wrote ${dir}/origin/${file}, ${id} in ${rec.path} and the Signed off line in ${dir}/request.md`], next: 'al index' };
+  return { body: [...body, `Wrote ${store.shown(file)}, ${id} in ${rec.path} and the Signed off line in ${dir}/request.md`], next: 'al index' };
 }
 
 // al record <name> decision --source <who> --text <decision> [--clarifies R2,R3] [--yes]
