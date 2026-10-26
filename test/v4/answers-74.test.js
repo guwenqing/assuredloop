@@ -860,3 +860,111 @@ test('#74 al context ADR-1, superseded: its own file\'s citing lines are histori
   assert.deepEqual(own, [lineOf(dir, ADR1, '# ADR-1: XLSX files')], 'the fixture: its heading names ADR-1');
   assert.ok(allLabelled(r, 'Cited     ').includes(citedLine('historical', ADR1, own)), show(r));
 });
+
+// --- a limit: a served request's record that is not there or cannot be read
+//
+// Right after the Serves lines (after the "only al's record" line, if any),
+// for each such record:
+//   Records   not known: the record <path> (<reason>), so al cannot check the version and the sign-off state on its Serves lines
+// <reason>: "it is not there"; the YAML parser's first message line; or
+// "not a mapping". Such a record is never named in the "only al's record"
+// line, which names only records that al read.
+
+const XLS_RECORD = '.assuredloop/records/requests/xls.yaml';
+const NOT_CHECKED = ', so al cannot check the version and the sign-off state on its Serves lines';
+const notKnownRecord = (path, reason) => `Records   not known: the record ${path} (${reason})${NOT_CHECKED}`;
+
+// The Records lines right after the last Serves line, in order.
+function recordsAfterServes(r) {
+  const ls = outLines(r);
+  const last = ls.map((l, i) => (l.startsWith('Serves    ') ? i : -1)).filter((i) => i >= 0).at(-1);
+  assert.ok(last >= 0, `a Serves line:\n${show(r)}`);
+  const out = [];
+  for (let i = last + 1; ls[i]?.startsWith('Records   '); i++) out.push(ls[i]);
+  return out;
+}
+
+const BAD_RECORDS = [
+  ['not there', (dir) => rmSync(join(dir, PDF_RECORD)), 'it is not there'],
+  ['a scalar', (dir) => write(dir, PDF_RECORD, 'just a string\n'), 'not a mapping'],
+  ['a list', (dir) => write(dir, PDF_RECORD, '- a\n- b\n'), 'not a mapping'],
+];
+
+for (const [what, spoil, reason] of BAD_RECORDS) {
+  test(`#74 al context INV-13 that serves pdf/R1, with pdf's record ${what}: a not-known Records line, and no "only al's record" line`, (t) => {
+    const dir = servesWorld(t, 'pdf/R1');
+    spoil(dir);
+    const r = context(dir, 'INV-13');
+    assert.deepEqual(recordsAfterServes(r), [notKnownRecord(PDF_RECORD, reason)], show(r));
+  });
+}
+
+test('#74 al context INV-13 that serves pdf/R1, with pdf\'s record invalid YAML: the not-known line gives the parser\'s reason', (t) => {
+  const dir = servesWorld(t, 'pdf/R1');
+  write(dir, PDF_RECORD, 'requirements: [\n  - id: R1\n');
+  const r = context(dir, 'INV-13');
+  const ls = recordsAfterServes(r);
+  assert.equal(ls.length, 1, show(r));
+  const head = `Records   not known: the record ${PDF_RECORD} (`;
+  assert.ok(ls[0].startsWith(head) && ls[0].endsWith(`)${NOT_CHECKED}`), show(r));
+  assert.ok(ls[0].length > head.length + `)${NOT_CHECKED}`.length, `a reason in the parentheses:\n${show(r)}`);
+});
+
+test('#74 al context INV-13 that serves pdf/R1 and xls/R1, with pdf\'s record not there: "only" names xls\'s record alone, then the limit on pdf\'s', (t) => {
+  const dir = servesWorld(t, 'pdf/R1,xls/R1');
+  rmSync(join(dir, PDF_RECORD));
+  const r = context(dir, 'INV-13');
+  assert.deepEqual(recordsAfterServes(r), [
+    `Records   only al's record ${XLS_RECORD} holds the version and the sign-off state on the Serves lines`,
+    notKnownRecord(PDF_RECORD, 'it is not there'),
+  ], show(r));
+});
+
+// --- citations on a marker line
+//
+// The marker's own ID (the first ID after "<!--") is no citation; every
+// other ID on that line, a link target, is one. In all three views.
+
+function markerWorld(t) {
+  const dir = baseProject(t);
+  write(dir, 'specs/adr/0002-csv.md', adr('accepted', 'ADR-2 choice decides:INV-12', '# CSV files',
+    [['ADR-2-1 rationale explains:ADR-2', 'Context: every spreadsheet reads CSV.']]));
+  write(dir, SPEC, `${read(dir, SPEC)}\n${doc([['INV-80 rule builds-on:INV-80', 'An export MUST be built in one pass.']])}`);
+  newRequest(dir, 'pdf');
+  appendSection(dir, 'pdf', organized([R1]));
+  editFile(dir, SPEC, '<!-- INV-13 rule -->', '<!-- INV-13 rule serves:pdf/R1 -->');
+  ok(dir, ['index']);
+  return dir;
+}
+const ADR2_CSV = 'specs/adr/0002-csv.md';
+
+test('#74 al context ADR-2: the marker <!-- ADR-2-1 rationale explains:ADR-2 --> in its own file cites ADR-2; --full shows that line', (t) => {
+  const dir = markerWorld(t);
+  const at = lineOf(dir, ADR2_CSV, '<!-- ADR-2-1 rationale explains:ADR-2 -->');
+  assert.ok(!read(dir, ADR2_CSV).split('\n').some((l, i) => i + 1 !== at && i + 1 !== lineOf(dir, ADR2_CSV, '<!-- ADR-2 choice decides:INV-12 -->') && word('ADR-2').test(l)),
+    'the fixture: no other line names ADR-2 but its head marker');
+  const r = context(dir, 'ADR-2');
+  assert.deepEqual(allLabelled(r, 'Cited     '), [citedLine('current', ADR2_CSV, [at])], show(r));
+  const full = outLines(context(dir, 'ADR-2', '--full'));
+  const i = full.indexOf(citedLine('current', ADR2_CSV, [at]));
+  assert.ok(i >= 0, show(r));
+  assert.equal(full[i + 1], `  ${ADR2_CSV}:${at}: <!-- ADR-2-1 rationale explains:ADR-2 -->`, show(r));
+});
+
+test('#74 al context INV-12: ADR-2\'s head marker <!-- ADR-2 choice decides:INV-12 --> cites INV-12', (t) => {
+  const dir = markerWorld(t);
+  const r = context(dir, 'INV-12');
+  assert.ok(allLabelled(r, 'Cited     ').includes(citedLine('current', ADR2_CSV, [lineOf(dir, ADR2_CSV, '<!-- ADR-2 choice decides:INV-12 -->')])), show(r));
+});
+
+test('#74 al context INV-80: its own marker <!-- INV-80 rule builds-on:INV-80 --> is counted once, for the link', (t) => {
+  const dir = markerWorld(t);
+  const r = context(dir, 'INV-80');
+  assert.deepEqual(allLabelled(r, 'Cited     '), [citedLine('current', SPEC, [lineOf(dir, SPEC, '<!-- INV-80 rule builds-on:INV-80 -->')])], show(r));
+});
+
+test('#74 al context pdf/R1: the marker <!-- INV-13 rule serves:pdf/R1 --> cites pdf/R1', (t) => {
+  const dir = markerWorld(t);
+  const r = context(dir, 'pdf/R1');
+  assert.ok(allLabelled(r, 'Cited     ').includes(citedLine('current', SPEC, [lineOf(dir, SPEC, '<!-- INV-13 rule serves:pdf/R1 -->')])), show(r));
+});
