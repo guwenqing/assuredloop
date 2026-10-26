@@ -760,7 +760,10 @@ A part that depends on one is built only after the owner signs it. R1, R2
 and R3 of this request are signed, and the code side (section 4a) needs no
 new version. level2-peer/R1 stays as signed: its level 1 is `local` word
 search, and its level 2 is `local` with a model. v4/R1, R2, R6, R8, R9 and
-R12 stay as signed.
+R12 stay as signed. The owner signed the new versions of v4/R5 and
+context-all/R1 on 2026-10-25. They are light-resign/R5 and light-resign/R1,
+because `al` does not edit an archived request. The other three items below
+still wait for the owner.
 
 | Requirement | The new version says, in short |
 |---|---|
@@ -819,5 +822,5 @@ prove it.
 <!-- LD-40 open -->
 
 Not decided here: file formats, the release plan and the order of building.
-Two points wait for the owner: whether item 2 of the close rule (LD-57)
-refuses or only hints, and whether item 3 stays.
+The owner's signed light-resign/R5 settles the two points that waited: item
+2 of the close rule (LD-57) refuses, and item 3 stays.
