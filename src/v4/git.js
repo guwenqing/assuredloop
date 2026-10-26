@@ -17,11 +17,11 @@ export function git(top, args, { allowFail = false } = {}) {
 // the two, that one. With both, the later merge-base (the other is its
 // ancestor), so a local main that is behind origin/main does not give an old
 // base; when neither is the later, the local main (#22). It reads only the
-// refs in the clone, and never fetches.
-export function baseOf(top) {
+// refs in the clone, and never fetches. `head` is HEAD, or another commit.
+export function baseOf(top, head = 'HEAD') {
   const refs = ['main', 'origin/main'].filter((ref) => git(top, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { allowFail: true }) !== null);
   const of = (ref) => {
-    const commit = git(top, ['merge-base', 'HEAD', ref], { allowFail: true });
+    const commit = git(top, ['merge-base', head, ref], { allowFail: true });
     return commit ? { commit, ref } : null;
   };
   if (!refs.length) return null;

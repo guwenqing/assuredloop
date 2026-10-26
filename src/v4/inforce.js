@@ -23,6 +23,9 @@ const designKind = (state, kind) => !!kind && ['promise', 'design'].includes(gro
 const adrNumber = (id) => Number(id.slice('ADR-'.length));
 const word = (name) => new RegExp(`(?<![\\w-])${name.replace(/[-]/g, '\\-')}(?![\\w-])`);
 const unref = (ref) => String(ref).replace(/^central:/, '');
+// The review notes of the open requests (LD-27), as a git glob.
+export const REVIEW_NOTES = 'requests/*/review.md';
+export const isReviewNote = (path) => /^requests\/(?!archive\/)[^/]+\/review\.md$/.test(path);
 
 // A glob of a file scope (LD-26) as a regex: `**` any number of folders,
 // `*` within one folder name, `?` one character.
@@ -72,17 +75,26 @@ const headerPath = (rest) => {
   return p === '/dev/null' ? null : p.slice(2);
 };
 
-// The selected change: the paths it touches (all of them, .assuredloop/
-// included, for the own requests), and each line it adds or removes outside
-// .assuredloop/, as { file, line, text, removed }.
-function changeOf(top, base) {
+// The paths that the selected change touches: all of them, .assuredloop/
+// and the review notes included, for the own requests; and the untracked ones.
+function pathsOf(top, base) {
   const run = (args) => git(top, ['-c', 'core.quotePath=false', ...args], { allowFail: true }) ?? '';
   const paths = new Set(run(['diff', '--name-only', '-z', '--no-renames', '--no-relative', base, '--']).split('\0').filter(Boolean));
   const untracked = run(['ls-files', '-z', '--others', '--exclude-standard', '--', '.']).split('\0').filter(Boolean);
   for (const f of untracked) paths.add(f);
+  return { paths, untracked };
+}
+
+// The selected change: its paths (pathsOf), and each line it adds or removes
+// outside .assuredloop/ and the review notes, as { file, line, text, removed }.
+// A review note is the review's output, not part of the change, so an ID in
+// it is no citation (LD-25, LD-28).
+function changeOf(top, base) {
+  const run = (args) => git(top, ['-c', 'core.quotePath=false', ...args], { allowFail: true }) ?? '';
+  const { paths, untracked } = pathsOf(top, base);
   const lines = [];
   const diff = run(['diff', '-U0', '-M', '--no-color', '--no-ext-diff', '--no-textconv', '--no-relative', '--src-prefix=a/', '--dst-prefix=b/',
-    base, '--', '.', ':(exclude).assuredloop']);
+    base, '--', '.', ':(exclude).assuredloop', `:(exclude,glob)${REVIEW_NOTES}`]);
   let from = null;
   let to = null;
   let hunk = false;
@@ -101,7 +113,7 @@ function changeOf(top, base) {
     if (l.startsWith('-')) lines.push({ file: from, line: o++, text: l.slice(1), removed: true });
     else if (l.startsWith('+')) lines.push({ file: to, line: n++, text: l.slice(1), removed: false });
   }
-  for (const file of untracked.filter((f) => !f.startsWith('.assuredloop/'))) {
+  for (const file of untracked.filter((f) => !f.startsWith('.assuredloop/') && !isReviewNote(f))) {
     let text;
     try {
       text = readFileSync(join(top, file), 'utf8');
@@ -135,7 +147,7 @@ function itemsInForce(now) {
 
 // The open requests that are this change's own: the change touches their
 // folder or their record, or a commit message of base..HEAD names them.
-function ownRequests(top, now, base, paths) {
+export function ownRequests(top, now, base, paths = pathsOf(top, base).paths) {
   const messages = git(top, ['log', '--format=%B%x00', `${base}..HEAD`], { allowFail: true }) ?? '';
   return [...now.requests.values()].filter((r) => r.open).filter((r) => [...paths].some((f) => f.startsWith(`${r.dir}/`) || f === recordPath(r.name))
     || word(r.name).test(messages)).sort((a, b) => (a.name < b.name ? -1 : 1));
@@ -208,7 +220,9 @@ function designDoc(top, now, path, source, repos) {
   };
 }
 
-// The list. Returns { body, findings }: the lines, and the design-doc hints.
+// The list. Returns { body, findings, own }: the lines, the design-doc hints,
+// and the change's own requests (none with no base, an empty change, or in an
+// output repo).
 export function changeInForce(top, { now, was, base, issues = null, full = false }) {
   if (!base) return { body: ['list: no change selected: no base (no main branch, or no commit)'], findings: [] };
   const change = changeOf(top, base);
@@ -365,5 +379,5 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     + 'proposed = this change\'s own signed requirements and design, not in force; the grouped line names every other item in force');
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
     + `al check --full shows the text of every item, al context <ID>${central ? ` --at ${central.sha.slice(0, 7)} in the central repo shows` : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
-  return { body, findings };
+  return { body, findings, own };
 }

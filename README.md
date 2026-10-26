@@ -218,6 +218,44 @@ document with markers lists its design paragraphs; one without is
 supporting evidence. A design line whose document is missing or cannot be
 read gets the hint `design-doc`.
 
+## The review's judgements
+
+The review writes its judgements in `requests/<name>/review.md` of the
+change's own request. One judgement is one top-level list item:
+
+```markdown
+- INV-41 complies: the link expires 30 minutes after the email.
+  - Item: "MUST expire 30 minutes after the email is sent"
+  - Code (src/export.js): "export const ttl = 30;"
+  - Code (invoicer-web:src/guard.js, base): "if (!signed) refuse();"
+  - Test: no test found
+```
+
+The verdict is `complies`, `violates`, `unclear` or `not applicable`. A
+path is read at the head; `, base` reads it at the base, and
+`<repo>:<path>` reads an output repo at its selected commit. `Test` takes a
+quote, `no test found` or `tests not examined`. A quote matches word for
+word, with each run of white space taken as one space. An ID in the note
+is no citation in the list above.
+
+`al index` keeps the identity of each new judgement in the request's record:
+the base and a hash of the change in each repo, without the review notes
+and `.assuredloop/`, and the hash of the item's text. Do not write or read
+it. After the list, `al check` shows one line for each judgement:
+
+```text
+review note requests/csv-export/review.md: 1 judgements, 1 current, 0 stale, 0 not known when judged, 0 identity not kept, 0 not read
+judgement INV-41 version 1a2b3c4d5e6f complies · requests/csv-export/review.md:3 · item quote found; item in force · code quote found (src/export.js) · no test found · current
+```
+
+The item's state is `in force`, `proposed by this change`, `draft`,
+`replaced` or `not in force`. A quote that `al` found is "quote found",
+never "complies". A judgement is `stale: judged at <commit>` when another
+file of the change, in any repo, or the item's text changed since. To renew
+it, rewrite the judgement (for example its reason) and run `al index`.
+These are hints only: a judgement changes no exit code, no `not ok`,
+`--strict` or `al conclude`.
+
 ## Settings
 
 `.assuredloop/config.yaml`, at the repo's root. Every key is optional. A
