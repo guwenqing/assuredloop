@@ -151,13 +151,19 @@ function requestItem(state, q, id, own, ctx) {
   if (/^[RQ]\d+$/.test(id)) {
     const req = q.reqs.find((x) => x.id === id);
     if (!req) return null;
-    // v<n> only while the latest recorded version is the current text.
-    const latest = list(ctx.data(q)?.requirements).filter((e) => e?.id === id)
-      .reduce((a, e) => (Number(e.version) > Number(a?.version ?? 0) ? e : a), null);
-    const v = latest?.sha256 === req.sha256 ? latest : null;
+    // The line shows v<n> only while the latest recorded version is the
+    // current text. The identity keeps the recorded version of this text: at
+    // a past commit, al index reads it from the record that it writes.
+    const versions = list(ctx.data(q)?.requirements).filter((e) => e?.id === id);
+    const newest = (xs) => xs.reduce((a, e) => (Number(e.version) > Number(a?.version ?? 0) ? e : a), null);
+    const latest = newest(versions);
+    const recorded = newest(versions.filter((e) => e.sha256 === req.sha256));
+    const match = !!latest && latest.sha256 === req.sha256;
     const st = !q.open ? 'not in force' : own && signedBy(state, q.name, id) ? 'proposed by this change' : 'draft';
-    const version = v ? `v${v.version}` : req.sha256.slice(0, 12);
-    return { state: st, key: `${version} ${req.sha256}`, version, text: req.text };
+    return {
+      state: st, key: `${recorded ? `v${recorded.version}` : 'none'} ${req.sha256}`, version: match ? `v${latest.version}` : req.sha256.slice(0, 12), text: req.text,
+      req: { sha: req.sha256, latest: match ? Number(latest.version) : null },
+    };
   }
   const p = q.paras.get(id);
   if (!p) return null;
@@ -307,7 +313,7 @@ export function keepJudgements(top, recs, config, issues = null) {
         if (at) {
           const then = loadState(top, at.commit);
           const thenConfig = settingsAt(top, at.commit).config;
-          const item = findItem(then, then.requests.get(r.name), j.id, context(top, thenConfig, issues, { rev: at.commit }));
+          const item = findItem(then, then.requests.get(r.name), j.id, context(top, thenConfig, issues, { rev: at.commit, data: ctx.data }));
           entry = {
             judgement: j.hash, item: j.id, version: item?.key ?? null, head: at.commit,
             repos: changeIdentity(top, baseOf(top, at.commit)?.commit ?? base, thenConfig, at.commit),
@@ -333,14 +339,20 @@ function notesOnBranch(top, base, r) {
 
 // Whether a kept identity is the selected change's: current, stale or not
 // known. A repo that cannot be read, now or when judged, never counts as
-// unchanged, also when its reason is the same.
+// unchanged, also when its reason is the same. A judgement of a requirement
+// is current only when the requirement's text is its latest recorded
+// version, and that version is the one that the identity holds; with no
+// recorded version in the identity, it is never current.
 function identityOf(entry, item, now) {
   if (!entry) return 'identity not kept: run al index';
   if (entry.unknown) return 'not known when judged';
   const was = new Map(list(entry.repos).filter(isMap).map((x) => [x.repo, x]));
   let past = false;
   let unread = null;
-  let same = (item?.key ?? null) === (entry.version ?? null) && was.size === now.length;
+  const kept = item?.req && /^(?:v(\d+)|none) ([0-9a-f]{64})$/.exec(String(entry.version ?? ''));
+  if (kept && !kept[1] && kept[2] === item.req.sha) past = true;
+  let same = was.size === now.length && (!item?.req ? (item?.key ?? null) === (entry.version ?? null)
+    : !!kept && kept[2] === item.req.sha && (!kept[1] || Number(kept[1]) === item.req.latest));
   for (const x of now) {
     const w = was.get(x.repo);
     if (!w) same = false;

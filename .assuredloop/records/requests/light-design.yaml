@@ -73,6 +73,6 @@ bindings:
   - { holder: light-design/LD-48, link: serves, target: light-design/R1, holder_sha256: 39819e90c559ccd23647de74a0ab42b09a8f8b9ee66e56cf01de99eba7f2cbb0, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
   - { holder: light-design/LD-65, link: serves, target: light-design/R2, holder_sha256: b72c32d197d6cd69d4fc3457bdf98572b0e5c5837f78cfac6caecb07a4d14f9a, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
   - { holder: light-design/LD-65, link: builds-on, target: light-design/LD-27, holder_sha256: b72c32d197d6cd69d4fc3457bdf98572b0e5c5837f78cfac6caecb07a4d14f9a, target_sha256: 8c782536b1c43f695db72e149597b7398fca53d5be81e9a23d0e5bd4c688518a }
-  - { holder: light-design/LD-66, link: serves, target: light-design/R2, holder_sha256: f258d51d97706abd7d3a595be09a641fa95847d9c9b341ff82b2ed5fa2202337, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
-  - { holder: light-design/LD-66, link: builds-on, target: light-design/LD-28, holder_sha256: f258d51d97706abd7d3a595be09a641fa95847d9c9b341ff82b2ed5fa2202337, target_sha256: e48b59f6f158eb3b0ca6d676f7484c1522c39dcefd790324ec03c31743485284 }
+  - { holder: light-design/LD-66, link: serves, target: light-design/R2, holder_sha256: 8a23780d0cf7f6d5331cebe1187a86fb9ec473fb939f0c616f20276ab0f47075, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
+  - { holder: light-design/LD-66, link: builds-on, target: light-design/LD-28, holder_sha256: 8a23780d0cf7f6d5331cebe1187a86fb9ec473fb939f0c616f20276ab0f47075, target_sha256: e48b59f6f158eb3b0ca6d676f7484c1522c39dcefd790324ec03c31743485284 }
 dispositions: []
