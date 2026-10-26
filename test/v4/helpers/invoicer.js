@@ -215,12 +215,16 @@ export function invoicer(t, name, arm) {
 
 // --- the check's output
 
-// A finding line: <severity> <code> <file>[:<line>] <id> <message>.
-const FINDING = /^(not ok|hint|info) (\S+) (\S+?)(?::(\d+))? (\S+)(?: (.*))?$/;
+// A finding line: <severity> <code> <file>[:<line>] <id> <message>. A
+// paragraph that is only at the base is `<file>:<line> at the base <sha7>`
+// (#74); `base` holds the <sha7>, else null.
+const FINDING = /^(not ok|hint|info) (\S+) (\S+?)(?::(\d+))?(?: at the base ([0-9a-f]{7,40}))? (\S+)(?: (.*))?$/;
 
 export function findings(stdout) {
   return stdout.split('\n').map((l) => FINDING.exec(l)).filter(Boolean)
-    .map(([line, severity, code, file, at, id, msg = '']) => ({ line, severity, code, file, at: at === undefined ? null : Number(at), id, msg }));
+    .map(([line, severity, code, file, at, base, id, msg = '']) => ({
+      line, severity, code, file, at: at === undefined ? null : Number(at), base: base ?? null, id, msg,
+    }));
 }
 
 export const key = (f) => `${f.severity} ${f.code} ${f.id}`;

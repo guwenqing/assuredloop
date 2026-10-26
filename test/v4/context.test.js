@@ -136,8 +136,9 @@ test('context <ID>: display number, kind, file, text, requirement and its sign-o
   assert.doesNotMatch(has(r, 'invoice-exports/R2', /signed/), /not signed/, show(r));
   has(r, word('ADR-4'), /accepted/);
   has(r, word('ADR-3'), /superseded/, /history/);
-  has(r, 'link-expiry-spike/SP-2 builds on it');
-  has(r, 'link-expiry-spike/SP-3 builds on it');
+  // Each linked ID is followed by the place of its text (#74).
+  has(r, 'link-expiry-spike/SP-2 (requests/link-expiry-spike/spec.md:7) builds on it');
+  has(r, 'link-expiry-spike/SP-3 (requests/link-expiry-spike/spec.md:11) builds on it');
   has(r, /check/i, /\bnone\b/);
   // #72 (LD-58): no Disp. line.
   hasNot(r, /^Disp\./);
@@ -145,10 +146,10 @@ test('context <ID>: display number, kind, file, text, requirement and its sign-o
 
 test('context <ID>: the open changes that change it', (t) => {
   const r = ctx(t, 'd04', 'control', 'EXP-4');
-  has(r, 'link-45/SP-2 changes it');
-  has(r, 'link-refresh/SP-2 changes it');
+  has(r, 'link-45/SP-2 (requests/link-45/spec.md:7) changes it');
+  has(r, 'link-refresh/SP-2 (requests/link-refresh/spec.md:7) changes it');
   const d = ctx(t, 'd04', 'defect', 'EXP-4');
-  hasNot(d, 'link-45/SP-2 changes it');
+  hasNot(d, /link-45\/SP-2 \([^)]*\) changes it/);
 });
 
 test('context <ID>: its checks (cites, exact; verifies, a claim) and its results with their applicability', (t) => {

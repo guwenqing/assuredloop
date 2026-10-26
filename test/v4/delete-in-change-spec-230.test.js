@@ -48,9 +48,11 @@ const changeSpec = (paras = PARAS) => doc(paras);
 const without = (...ids) => PARAS.filter(([m]) => !ids.includes(m.split(' ')[0]));
 
 const HINT_TAIL = 'If that is on purpose, nothing more is needed: the ID is retired and never used again.';
-// The one lost-id hint line of item 1.
-const hintLine = (name, line, id, facts = []) =>
-  `hint lost-id requests/${name}/spec.md:${line} ${id} ${name}/${id} is deleted${facts.length ? `; ${facts.join('; ')}` : ''}. ${HINT_TAIL}`;
+// The one lost-id hint line of item 1. After the message, the place of the
+// deleted paragraph's text at the base (#74): its marker line + 2.
+const hintLine = (dir, name, line, id, facts = []) =>
+  `hint lost-id requests/${name}/spec.md:${line} ${id} ${name}/${id} is deleted${facts.length ? `; ${facts.join('; ')}` : ''}. ${HINT_TAIL}`
+  + ` · places: ${name}/${id} at the base ${git(dir, 'rev-parse', '--short=7', 'main')} requests/${name}/spec.md:${line + 2}`;
 
 const lines = (r) => r.stdout.split('\n');
 const coded = (r, code) => lines(r).filter((l) => new RegExp(`^(not ok|hint|info) ${code} `).test(l));
@@ -84,7 +86,7 @@ test('1: SP-3 deleted from an open change spec: exactly one line, the hint, with
   write(dir, SPEC, changeSpec(without('SP-3')));
   const r = check(dir);
   assert.equal(r.code, 0, show(r));
-  assert.deepEqual(coded(r, 'lost-id'), [hintLine(NAME, 9, 'SP-3')], show(r));
+  assert.deepEqual(coded(r, 'lost-id'), [hintLine(dir, NAME, 9, 'SP-3')], show(r));
   assert.deepEqual(notOk(r), [], show(r));
 });
 
@@ -97,7 +99,7 @@ test('1: under --strict the line stays hint, and with nothing else not ok the ex
   assert.equal(before.code, 0, `the fixture is clean before the deletion:\n${show(before)}`);
   git(dir, 'stash', 'pop', '-q');
   const r = check(dir, '--strict');
-  assert.deepEqual(coded(r, 'lost-id'), [hintLine(NAME, 9, 'SP-3')], show(r));
+  assert.deepEqual(coded(r, 'lost-id'), [hintLine(dir, NAME, 9, 'SP-3')], show(r));
   assert.deepEqual(notOk(r), [], show(r));
   assert.equal(r.code, 0, show(r));
   assert.ok(!read(dir, SPEC).includes('removes:'), 'no removes: anywhere in the change spec');
@@ -108,7 +110,7 @@ test('1: the same holds when the deletion is committed on the branch', (t) => {
   write(dir, SPEC, changeSpec(without('SP-3')));
   commitAll(dir, `Drop SP-3\n\nTier: 2 — ${NAME}`);
   const r = check(dir, '--strict');
-  assert.deepEqual(coded(r, 'lost-id'), [hintLine(NAME, 9, 'SP-3')], show(r));
+  assert.deepEqual(coded(r, 'lost-id'), [hintLine(dir, NAME, 9, 'SP-3')], show(r));
   assert.deepEqual(notOk(r), [], show(r));
   assert.equal(r.code, 0, show(r));
 });
@@ -117,7 +119,7 @@ test('1: the line is the marker line in the base file: SP-4 deleted is line 13',
   const dir = repo(t);
   write(dir, SPEC, changeSpec(without('SP-4')));
   const r = check(dir, '--strict');
-  assert.deepEqual(coded(r, 'lost-id'), [hintLine(NAME, 13, 'SP-4')], show(r));
+  assert.deepEqual(coded(r, 'lost-id'), [hintLine(dir, NAME, 13, 'SP-4')], show(r));
   assert.equal(r.code, 0, show(r));
 });
 
@@ -130,7 +132,7 @@ test('1 + D2 control: in the same run, a specs/ loss with no removes: is still l
     const r = check(dir, ...args);
     const lost = coded(r, 'lost-id');
     assert.equal(lost.length, 2, show(r));
-    assert.ok(lost.includes(hintLine(NAME, 9, 'SP-3')), show(r));
+    assert.ok(lost.includes(hintLine(dir, NAME, 9, 'SP-3')), show(r));
     assert.match(lost.find((l) => l.includes(' INV-3 ')) ?? '', /^hint lost-id specs\/invoices\.md:9 INV-3 \S/, show(r));
     assert.equal(r.code, 0, show(r));
   }
@@ -149,8 +151,8 @@ test('1: two open requests each delete SP-3: one hint each, each with its own na
   const r = check(dir);
   // #72: the old dispositions are not named.
   assert.deepEqual(coded(r, 'lost-id').sort(), [
-    hintLine(NAME, 9, 'SP-3'),
-    hintLine('other', 9, 'SP-3'),
+    hintLine(dir, NAME, 9, 'SP-3'),
+    hintLine(dir, 'other', 9, 'SP-3'),
   ].sort(), show(r));
 });
 
@@ -193,8 +195,8 @@ test('D4: a record entry that names only another SP gives no facts on SP-3, and 
   const before = sp3(check(dir));
   write(dir, SPEC, changeSpec(without('SP-3')));
   const r = check(dir);
-  assert.deepEqual(coded(r, 'lost-id'), [hintLine(NAME, 9, 'SP-3')], show(r));
-  assert.deepEqual(sp3(r).filter((l) => !before.includes(l)), [hintLine(NAME, 9, 'SP-3')],
+  assert.deepEqual(coded(r, 'lost-id'), [hintLine(dir, NAME, 9, 'SP-3')], show(r));
+  assert.deepEqual(sp3(r).filter((l) => !before.includes(l)), [hintLine(dir, NAME, 9, 'SP-3')],
     `the lost-id hint is the only new line on SP-3:\n${show(r)}`);
 });
 
@@ -266,7 +268,7 @@ test('5: SP-3\'s marker removed while its text stays: the lost-id line on SP-3 i
   write(dir, SPEC, unmarkedSp3());
   for (const args of [[], ['--strict']]) {
     const r = check(dir, ...args);
-    assert.deepEqual(coded(r, 'lost-id'), [hintLine(NAME, 9, 'SP-3')], show(r));
+    assert.deepEqual(coded(r, 'lost-id'), [hintLine(dir, NAME, 9, 'SP-3')], show(r));
   }
 });
 
@@ -277,7 +279,11 @@ test('6: SP-2 says explains:SP-3 and SP-3 is deleted: unresolved-link, a hint (#
   write(dir, SPEC, changeSpec([PARAS[0], ['SP-2 plan explains:SP-3', 'Step one: add the route.'], PARAS[3]]));
   for (const args of [[], ['--strict']]) {
     const r = check(dir, ...args);
-    assert.deepEqual(coded(r, 'unresolved-link'), ['hint unresolved-link requests/exp/spec.md:5 exp/SP-2 SP-3: no such ID'], show(r));
+    // The marker lint names the marker line, then the place of SP-2's text and
+    // of the deleted SP-3's text at the base (#74).
+    const base = git(dir, 'rev-parse', '--short=7', 'main');
+    assert.deepEqual(coded(r, 'unresolved-link'),
+      [`hint unresolved-link requests/exp/spec.md:5 exp/SP-2 SP-3: no such ID · places: exp/SP-2 requests/exp/spec.md:7, exp/SP-3 at the base ${base} requests/exp/spec.md:11`], show(r));
     assert.equal(r.code, 0, show(r));
   }
 });

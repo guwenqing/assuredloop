@@ -69,7 +69,8 @@ export function closeLines(state, r) {
   });
 }
 
-export const closeLine = (r, c) => `close ${c.e.id} ${r.name}/${c.e.on} `
+// With `place`, the place of what the line names follows it (LD-47).
+export const closeLine = (r, c, place = null) => `close ${c.e.id} ${r.name}/${c.e.on}${place ? ` (${place})` : ''} `
   + `${c.archived ? 'recorded at the close; an archived request is not checked against today\'s spec' : c.current ? 'current' : `stale: ${c.facts.join(', ')} since it was recorded; it clears nothing until you record it again`}: ${c.e.reason}`;
 
 // The refusals of items 2 and 3 for request `r`, on paths 2 and 3 only (the

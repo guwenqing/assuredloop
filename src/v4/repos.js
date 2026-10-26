@@ -4,6 +4,7 @@
 // selected commit: its tree, its blobs and its commit messages, never its
 // working tree, and nothing is fetched. A repo that cannot be read so is
 // unknown, with its reason, and nothing is inferred from it.
+import { spawnSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { isAbsolute, posix, resolve } from 'node:path';
 import { parse } from 'yaml';
@@ -48,11 +49,19 @@ export function namedIds(text, { qualified = true, known = null } = {}) {
 // that names an ID, at commit `rev`, or in the working tree (tracked, and
 // untracked not ignored) when `rev` is null. Text files only; nothing under
 // the `exclude` paths. Options as namedIds. Returns [{ file, line, text, ids }].
-export function findCites(dir, rev, { qualified = true, known = null, exclude = [] } = {}) {
+// With `errors`, each file that git could not read is added to it as git's
+// message: git reports it and goes on, so the result alone cannot tell.
+export function findCites(dir, rev, { qualified = true, known = null, exclude = [], errors = null } = {}) {
   const pattern = qualified ? 'central:' : '[A-Z][A-Z0-9]*-?[0-9]';
   const args = ['grep', '-I', '-n', '-z', ...(rev ? [] : ['--untracked']), '-E', '-e', pattern, ...(rev ? [rev] : []),
     '--', '.', ...exclude.map((p) => `:(exclude)${p}`)];
-  const out = git(dir, args, { allowFail: true }) ?? '';
+  const run = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', maxBuffer: 1 << 30 });
+  const out = run.status === 0 || run.status === 1 ? run.stdout ?? '' : '';
+  if (errors) {
+    const said = (run.stderr ?? '').split('\n').map((l) => l.replace(/^(error|fatal|warning): /, '').trim()).filter(Boolean);
+    if (run.status !== 0 && run.status !== 1 && !said.length) said.push(`git grep failed (${run.error?.code ?? `exit ${run.status}`})`);
+    for (const m of said) if (!errors.includes(m)) errors.push(m);
+  }
   const found = [];
   for (const l of out.split('\n')) {
     if (!l) continue;
