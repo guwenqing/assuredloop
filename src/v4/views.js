@@ -527,9 +527,13 @@ function citedLines(state, ids, { counts = () => true, full = false } = {}) {
   // A file that git cannot read may cite it: a limit, never "nowhere".
   const unread = [];
   const known = new Set(ids);
+  // The marker lines that al parsed as paragraphs' markers: on such a line
+  // its own ID is no citation, and the IDs of its links are. Any other line,
+  // fenced code and other files too, cites what it names.
+  const markers = new Set([...state.scopes.values()].flat().concat(state.adrList.flatMap((a) => a.paragraphs)).map((p) => `${p.file}:${p.line}`));
   for (const found of findCites(state.top, state.rev ?? null, { qualified: false, known, exclude: ['.assuredloop', 'node_modules'], errors: unread })) {
-    // A marker's own ID is no citation; the IDs of its links are.
-    const c = { ...found, ids: namedIds(found.text.replace(DECLARED, '$1'), { qualified: false, known }) };
+    const text = markers.has(`${found.file}:${found.line}`) ? found.text.replace(DECLARED, '$1') : found.text;
+    const c = { ...found, ids: namedIds(text, { qualified: false, known }) };
     if (!c.ids.length || !counts(c)) continue;
     if (!byFile.has(c.file)) byFile.set(c.file, new Map());
     byFile.get(c.file).set(c.line, c.text);
