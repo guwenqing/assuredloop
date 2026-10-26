@@ -658,7 +658,8 @@ when judged, never counts as unchanged, so the judgement is "not known:
 diff hash is taken over each changed path, its git mode and the hash of its
 bytes, in the same form at a commit and in the working tree, so it does not
 depend on git's diff settings. The item's version is the hash of its text,
-and for a requirement its recorded version too. An item of the own
+and for a requirement its latest recorded version, while that version
+is the current text. An item of the own
 request's design documents (LD-48) is found as the list reads them. `al index` keeps the identity in the
 request's record, once for each judgement, and never writes it again;
 `al check` writes nothing. A judgement that is already committed when
