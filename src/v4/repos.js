@@ -6,9 +6,9 @@
 // unknown, with its reason, and nothing is inferred from it.
 import { spawnSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
-import { isAbsolute, posix, resolve } from 'node:path';
+import { posix } from 'node:path';
 import { parse } from 'yaml';
-import { read, sha256 } from './base.js';
+import { read, repoDir, sha256 } from './base.js';
 import { loadConfig } from './config.js';
 import { commitOf, commitsOf, fileAt, filesAt, git, mergeBase, mergesOf } from './git.js';
 import { loadState, qualify, requestNames } from './indexer.js';
@@ -76,7 +76,7 @@ export function findCites(dir, rev, { qualified = true, known = null, exclude = 
 // A repo named in config, made readable: { dir, sha } or { unknown }.
 function open(top, { name, path, url, commit }) {
   if (typeof path !== 'string' || !path) return { unknown: url ? `no path in config; al does not fetch ${url}` : 'no path in config' };
-  const dir = isAbsolute(path) ? path : resolve(top, path);
+  const dir = repoDir(top, path);
   if (!existsSync(dir)) return { unknown: `no clone at ${path}` };
   const toplevel = git(dir, ['rev-parse', '--show-toplevel'], { allowFail: true });
   if (!toplevel || realpathSync(toplevel) !== realpathSync(dir)) return { unknown: `${path} is not a git repository` };
@@ -319,13 +319,14 @@ export function centralRepo(top, config = loadConfig(top)) {
 
 // al check in an output repo (design.md 12): each central ID that the branch's
 // changed files cite, looked up in the central repo at its selected commit.
-// Returns { body, notKnown }; both empty when config names no central repo.
+// Returns { body, notKnown }; both empty when config names no central repo,
+// and `skipped` when no central ID was looked up (LD-41).
 export function centralLookup(top) {
   const config = loadConfig(top);
   const c = config.central;
   const r = centralRepo(top, config);
   if (!r) return { body: [], notKnown: [] };
-  if (r.unknown) return { body: [`unknown: the central repo: ${r.unknown}`], notKnown: [`the central repo (${r.unknown}): no central ID was looked up`] };
+  if (r.unknown) return { body: [`unknown: the central repo: ${r.unknown}`], notKnown: [`the central repo (${r.unknown}): no central ID was looked up`], skipped: ['unresolved-central'] };
   const base = mergeBase(top);
   const lines = [];
   for (const file of changedFiles(top, base)) {

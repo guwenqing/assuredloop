@@ -332,7 +332,7 @@ describe('a root: that is the repository top is refused', () => {
     const repo = dotSpecs(t);
     const r = runV4(repo.dir, ['check', '--strict']);
     assert.equal(r.code, 0, show(r));
-    assert.deepEqual(lines(r.stdout).filter((l) => /^(\.\/)?specs\//.test(l)), [], show(r));
-    assert.ok(lines(r.stdout).includes('ok: no marker lint'), show(r));
+    assert.deepEqual(lines(r.stdout).filter((l) => /^(\.\/)?specs\/|^map paragraph /.test(l)), [], show(r)); // #78: map paragraph lines
+    assert.ok(lines(r.stdout).some((l) => l.startsWith('ok: nothing found by spec-root, no-id, no-kind, ')), show(r)); // #78
   });
 });

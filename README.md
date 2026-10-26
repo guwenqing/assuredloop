@@ -182,16 +182,23 @@ missing or stale consolidation judgement is shown and never refuses.
   targets' current text and to its own, on purpose.
   `al index --issues <folder>` also keeps the text of the tasks' work items
   (see "Hints from the linked work items").
-- `al check [--strict] [--issues <folder>] [--full]`: the checks of this
-  branch against its base, and what is in force for the change (see "What
-  is in force for a change"). With `--issues <folder>`, it also checks the
-  work items that the caller saved in the folder (see "Hints from the
-  linked work items"). `--full` shows the text of every item in force.
+- `al check [--strict] [--issues <folder>] [--full] [--all] [--at <commit>]`:
+  it runs `al index` first, and names in one line the record files that it
+  wrote, to commit with the change. Then the checks of this branch against
+  its base, what is in force for the change (see "What is in force for a
+  change") and the map. With `--issues <folder>`, it also checks the work
+  items that the caller saved in the folder (see "Hints from the linked
+  work items"). `--full` shows the text of every item in force, and of each
+  changed paragraph with its links. `--all` is the audit: every item in
+  force on its own line. `--at <commit>` answers as of that commit, read
+  from git, and writes nothing. The facts that `al` takes from the branch
+  history need that history: in a shallow clone they are "not known", so
+  check out the whole history (on GitHub Actions, `fetch-depth: 0`).
 - `al context [<name> | <ID>]`: where the project, a request, a paragraph,
   an ADR (`ADR-2`) or a requirement (`<name>/R1`) stands. For an ID, it
   gives one `Cited` line for each file that names the ID, with the count
   and every line number; `--full` adds the text of each of those lines.
-  `--diff <range> --for review` is the review view. `--audit` gives a
+  The review view is now `al check --full`. `--audit` gives a
   request's whole trace; `--at <commit>` any v4 state.
 - `al conclude <name>`: the close rule; with `--yes` it writes the Outcome
   and moves the request to `requests/archive/<name>/`.
@@ -785,7 +792,7 @@ documents only; its config names the central repo.
    HEAD is not adopted: the command names it, and it follows its path as a
    change. `source: adoption` says where the text came from. It is not an
    owner approval, and it does not excuse a later change.
-5. Run `al index`, and commit the markers and the records together. On that
+5. Run `al check`, and commit the markers and the records together. On that
    branch, `al check --strict` reads the adopted paragraphs as unchanged, so
    they need no sign-off and no path claim.
 

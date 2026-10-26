@@ -12,7 +12,7 @@
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { inside, now, read, sha256, stamp } from './base.js';
-import { baseOf, fileAt, git, readObjects } from './git.js';
+import { baseOf, fileAt, git, readObjects, shallowCommits } from './git.js';
 import { FENCE, groupOf, lf } from './markers.js';
 import { append } from './records.js';
 import { centralRepo, outputRepos } from './repos.js';
@@ -312,6 +312,7 @@ export function keepJudgements(top, recs, config, issues = null) {
     const have = new Set(list(rec.data.reviewed).filter(isMap).map((e) => e.judgement));
     const atHead = new Set(parseNote(head ? fileAt(top, head, notePath(r)) ?? '' : '').map((j) => j.hash));
     let past = null;
+    let shallow = null;
     for (const j of parseNote(text).filter((x) => !x.unread && !have.has(x.hash))) {
       have.add(j.hash);
       let entry;
@@ -320,8 +321,13 @@ export function keepJudgements(top, recs, config, issues = null) {
         entry = { judgement: j.hash, item: j.id, ...versionsOf(state, r, j, ctx), head: current.head, repos: current.repos };
       } else {
         past ??= notesOnBranch(top, base, r);
+        shallow ??= shallowCommits(top);
         const at = past.find((c) => c.hashes.has(j.hash));
-        if (at) {
+        // A commit where a shallow clone's history is cut may hold a note
+        // from a commit that is not there, so it cannot tell when it was judged.
+        if (at && shallow.has(at.commit)) {
+          entry = { judgement: j.hash, item: j.id, unknown: 'a shallow clone' };
+        } else if (at) {
           const then = loadState(top, at.commit);
           const thenConfig = settingsAt(top, at.commit).config;
           entry = {

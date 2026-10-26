@@ -87,8 +87,11 @@ test('path 1 control: a requirement that no spec paragraph serves still says tha
 
 // --- 2. the Next line of al-v4 check
 
+// #78: Next comes only where a step follows; then it is the second last
+// line. With no Next, the line is empty.
 function nextLine(r) {
   const ls = r.stdout.replace(/\n+$/, '').split('\n');
+  if (!ls.some((l) => l.startsWith('Next '))) return '';
   const next = ls.at(-2) ?? '';
   assert.match(next, /^Next {6}\S/, `the second last line is Next:\n${show(r)}`);
   return next;

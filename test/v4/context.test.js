@@ -1,5 +1,6 @@
 // al-v4 context: the project view, the request view, the ID view, the review
-// view of a diff, --audit and --at (#179, task T11; design.md 5, 8, 9, 13).
+// view of a diff (now al check, #78), --audit and --at (#179, task T11;
+// design.md 5, 8, 9, 13).
 // States of the invoicer world (test/v4/fixtures/invoicer/cases/).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -172,10 +173,17 @@ test('context <request>/SP-n: a change-spec paragraph by its request-local ID', 
   has(r, 'reminder-emails/R1', /signed/);
 });
 
-// --- 4. the review view of a diff
+// --- 4. the review view of a diff, now al check (#78)
 
-test('context --diff main...HEAD --for review: each changed paragraph with its text, requirement, sign-off state and hints', (t) => {
-  const r = ctx(t, 'd01', 'defect', '--diff', 'main...HEAD', '--for', 'review');
+// #78 removed the review view (al context --diff <range> --for review); its
+// facts are in al check, and their text and links in al check --full.
+const chk = (t, name, arm, ...args) => {
+  const dir = invoicer(t, name, arm);
+  return { dir, ...view(dir, ['check', ...args]) };
+};
+
+test('check --full: each changed paragraph with its text, requirement, sign-off state and hints', (t) => {
+  const r = chk(t, 'd01', 'defect', '--full');
   has(r, word('INV-6'), /definition/);
   has(r, /Changed/);
   has(r, 'remaining amount is less than 1.00 in its currency.');
@@ -183,28 +191,27 @@ test('context --diff main...HEAD --for review: each changed paragraph with its t
   has(r, 'An invoice whose remaining amount is less than 1.00 in its currency counts');
   has(r, /not signed/);
   has(r, /signoff-coverage/);
-  const control = ctx(t, 'd01', 'control', '--diff', 'main...HEAD', '--for', 'review');
+  const control = chk(t, 'd01', 'control', '--full');
   hasNot(control, /not signed/);
 });
 
-test('context --diff --for review: the baseline paragraphs a change paragraph touches, with their text, and the governing ADRs', (t) => {
-  const r = ctx(t, 'd04', 'control', '--diff', 'main...HEAD', '--for', 'review');
+test('check --full: the baseline paragraphs a change paragraph touches, with their text, and the governing ADRs', (t) => {
+  const r = chk(t, 'd04', 'control', '--full');
   has(r, word('link-45/SP-2'), /New/);
   has(r, 'The export link MUST expire 45 minutes after the email is sent, and the');
   has(r, 'The export link MUST expire 30 minutes after the email is sent.');
   has(r, /overlap/);
-  const adr = ctx(t, 'adr-governs', 'decided', '--diff', 'main...HEAD', '--for', 'review');
+  const adr = chk(t, 'adr-governs', 'decided', '--full');
   has(adr, word('ADR-4'));
 });
 
-test('context --diff without --for review: one line per changed paragraph; the A..B form works too', (t) => {
-  const r = ctx(t, 'd01', 'defect', '--diff', 'main...HEAD');
-  assert.equal(linesWith(r, word('INV-6')).filter((l) => !/^(Read|Next|Not known)/.test(l)).length, 1, show(r));
+test('check without --full: one line per changed paragraph, with no text; --at HEAD gives it too', (t) => {
+  const r = chk(t, 'd01', 'defect');
+  assert.equal(linesWith(r, word('INV-6')).filter((l) => /^map paragraph /.test(l)).length, 1, show(r));
   has(r, word('INV-6'), /Changed/);
   hasNot(r, 'An invoice whose remaining amount is less than 1.00 in its currency counts');
-  const main = git(r.dir, 'rev-parse', 'main');
-  const two = ctx(t, 'd01', 'defect', '--diff', `${main}..HEAD`);
-  has(two, word('INV-6'), /Changed/);
+  const at = view(r.dir, ['check', '--at', 'HEAD']);
+  has({ dir: r.dir, ...at }, word('INV-6'), /Changed/);
 });
 
 // --- 5. --audit

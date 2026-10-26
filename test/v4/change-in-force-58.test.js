@@ -34,6 +34,7 @@ import {
   al, appendSection, baseProject, commitAll, doc, editFile, editRecord, exists, git, move, newRequest, ok, organized,
   project, read, req, show, write, writeConfig, INVOICES,
 } from './helpers/project.js';
+import { settled } from './helpers/as-78.js';
 
 const SPEC = 'specs/invoices.md';
 const ADR3_FILE = 'specs/adr/0003-signed-links.md';
@@ -748,7 +749,8 @@ test('#58 R1: the same change, project state and options give the same output, b
   const a = check(dir);
   const b = check(dir);
   grouped(a);
-  assert.equal(b.stdout, a.stdout, `two runs differ:\n${show(a)}\n${show(b)}`);
+  // #78: the first run writes the records; the second writes nothing.
+  assert.equal(settled(b.stdout), settled(a.stdout), `two runs differ:\n${show(a)}\n${show(b)}`);
   const fa = check(dir, '--full');
   const fb = check(dir, '--full');
   assert.equal(fb.stdout, fa.stdout, `two --full runs differ:\n${show(fa)}\n${show(fb)}`);

@@ -79,7 +79,7 @@ paragraphs:
     display: LD-56 (3:4, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-61
     kind: plan
-    text_sha256: 48968518af500e3a744538cbb0dd1b33c1f55a9cab3649cc63df9b9e58ded5cc
+    text_sha256: ffd717393956aa0f5f1f86a4edc02f90ffa327aee07bf14db3feab7808528c0c
     display: LD-61 (3:5, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-59
     kind: plan
@@ -123,11 +123,11 @@ paragraphs:
     display: LD-18 (4:1, in 4. Commands, answers and the skill (plans))
   - id: LD-63
     kind: plan
-    text_sha256: 7492b98ab54917496c5fa1d299bf461efff79669caf6e51081d69a72279f2ec0
+    text_sha256: 48f3fc0aaa5cb16b28f8332e1077120dd05e25cae936e99bf97d4ff45bed1fda
     display: LD-63 (4:2, in 4. Commands, answers and the skill (plans))
   - id: LD-19
     kind: plan
-    text_sha256: f74c67f148d1c7b3b5279aa1664d251f82c656b2746c7ad1d342a99056d0b8c1
+    text_sha256: 3bdd09b9396a20f7050381c66a0678e68e40d2ca90dfcc4979b9aa0be35d8ce8
     display: LD-19 (4:3, in 4. Commands, answers and the skill (plans))
   - id: LD-20
     kind: plan
@@ -135,11 +135,11 @@ paragraphs:
     display: LD-20 (4:4, in 4. Commands, answers and the skill (plans))
   - id: LD-47
     kind: plan
-    text_sha256: 8cf822e1406a459635d71887b76e613d907083ead89ca8a6341ca2e87a4c71bc
+    text_sha256: f06ef722c5336462c4f3fbdf32c76b85d1a71727876db7fa309ccc94ff41e09f
     display: LD-47 (4:5, in 4. Commands, answers and the skill (plans))
   - id: LD-41
     kind: plan
-    text_sha256: 009036dc7567dcfa763dab99773482b5e50cd579722f59ff16a825d2f33d44de
+    text_sha256: 74a8ac893f02e141cbe10d99e0348e499df4da891b8179087e58b7e32548adc9
     display: LD-41 (4:6, in 4. Commands, answers and the skill (plans))
   - id: LD-22
     kind: flow
@@ -151,7 +151,7 @@ paragraphs:
     display: "LD-23 (5, 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-24
     kind: data
-    text_sha256: 272d61d72e923c562f7e85cfde2137d979de976f7d162a000f221546c66aa7a4
+    text_sha256: 6e325146e10c54b47d683060b6ba980bb4a37cf24c177ad6f6c74609978acf9a
     display: "LD-24 (5:1, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-48
     kind: data
@@ -163,7 +163,7 @@ paragraphs:
     display: "LD-42 (5:3, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-25
     kind: flow
-    text_sha256: ca07e8f6871e8434687d3e668e3f8dcbd2fab90e3273a8e0577bc08e2aadb5ad
+    text_sha256: dc0556956f95cda52d514b38c707078fb03b2851007e6d376a4ac9254a2a503a
     display: "LD-25 (5:4, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-52
     kind: rationale
@@ -195,7 +195,7 @@ paragraphs:
     display: "LD-28 (5:11, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-66
     kind: flow
-    text_sha256: 419162bee2b5e154f48d692c7d2e8e10cfb8e83d94e2f71aea803353dc252316
+    text_sha256: f47c4c8dd006d05397c6b64c220f9ccc171b0a6f81198338720d89c95e7969a3
     display: "LD-66 (5:12, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-29
     kind: choice

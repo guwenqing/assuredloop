@@ -5,6 +5,7 @@ import {
   DAY, STAMP, WORDS_FILE, al, appendSection, assertSnapshot, editRecord, editRequest, exists, move, newRequest, ok, organized,
   index, project, read, record, refused, req, sectionNow, sha, show, signedText, writesNothing,
 } from './helpers/project.js';
+import { outsideOk } from './helpers/as-78.js';
 
 const R1 = req('R1', 'Monthly CSV download', 'A user MUST be able to download one month as one CSV file.', [WORDS_FILE]);
 const R2 = req('R2', 'An email link that expires', 'The link MUST stop working after a short time.', [WORDS_FILE]);
@@ -231,5 +232,5 @@ test('D10: with --words, the sign-off records the words and al check calls the r
   assert.equal(s.signed, STAMP);
   const r = al(dir, ['check']);
   assert.equal(r.code, 0, show(r));
-  assert.doesNotMatch(r.stdout, /unsigned-requirement/, r.stdout);
+  assert.deepEqual(outsideOk(r.stdout, 'unsigned-requirement'), [], r.stdout); // #78: the ok line names it
 });

@@ -6,6 +6,11 @@ import { Fail, read, recordPath } from './base.js';
 
 export const YAML_OPTIONS = { lineWidth: 0 };
 
+// The lists of a request record that al index derives by itself:
+// requirement versions, bindings, judgement identities, kept item texts and
+// the versions that the own branch gave named paragraphs (LD-24).
+export const INDEX_KEYS = ['requirements', 'bindings', 'reviewed', 'items', 'own_edits'];
+
 // The record of request `name`: { doc, path, data } or null when absent.
 // A record that is not valid YAML is a refusal: the tool does not guess.
 export function openRecord(top, name) {

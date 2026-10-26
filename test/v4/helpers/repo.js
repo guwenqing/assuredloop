@@ -89,7 +89,9 @@ export function assertFrame(stdout) {
   const ls = lines(stdout);
   assert.ok(ls.some((l) => /^Read {6}\S/.test(l)), `a Read line is expected:\n${stdout}`);
   assert.ok(ls.length >= 3, `output too short:\n${stdout}`);
-  assert.match(ls.at(-2), /^Next {6}\S/, `second last line should be Next:\n${stdout}`);
+  // #78: Next comes only where a step follows; then it is the second last line.
+  const next = ls.findIndex((l) => /^Next {6}/.test(l));
+  if (next >= 0) assert.equal(next, ls.length - 2, `second last line should be Next:\n${stdout}`);
   assert.match(ls.at(-1), /^Not known \S/, `last line should be Not known:\n${stdout}`);
 }
 
