@@ -326,3 +326,43 @@ export const servesUnknown = (state, p, request) => (servesSigned(state, p, requ
 export const requestOf = (scope) => (scope.startsWith('request:') ? scope.slice('request:'.length) : null);
 // How a paragraph is named in findings: a change spec's IDs are its request's own.
 export const named = (request, id) => (request ? `${request}/${id}` : id);
+
+// The version of a requirement's current text, from the record ("new" when not indexed yet).
+export const versionOf = (r, q) => {
+  const v = (Array.isArray(r.data?.requirements) ? r.data.requirements : []).filter((x) => x?.id === q.id && x.sha256 === q.sha256).at(-1);
+  return v ? `version ${v.version}` : `version ${Number(latestVersion(r.data, q.id)?.version ?? 0) + 1} (not indexed)`;
+};
+
+// The replaces: links of every request's requirements (LD-68), read once for
+// each state: { r, q, ref, line, key, target } for each link, with the
+// target's { r, q } when it is a requirement R<n> of another request, and
+// `own` when it names its own request. `holds` is true when the new
+// requirement is signed at its current text, null when its sign-off is not
+// checked, and false when it is a proposed replacement.
+const linksOfState = new WeakMap();
+export function replaceLinks(state) {
+  if (linksOfState.has(state)) return linksOfState.get(state);
+  const out = [];
+  for (const r of state.requests.values()) {
+    for (const q of r.reqs) {
+      for (const { ref, line } of q.replaces) {
+        const t = qualify(ref, r.name);
+        const tr = !t.cross && t.req && t.req !== r.name && /^R\d+$/.test(t.id) ? state.requests.get(t.req) : null;
+        const tq = tr?.reqs.find((x) => x.id === t.id) ?? null;
+        // The same target named twice by one requirement is one link.
+        if (out.some((l) => l.r === r && l.q === q && l.ref === ref)) continue;
+        const holds = !tq ? false : signedBy(state, r.name, q.id) ? true : unknownBy(state, r.name, q.id) ? null : false;
+        out.push({ r, q, ref, line, key: `${r.name}/${q.id}`, own: !t.cross && t.req === r.name, target: tq ? { r: tr, q: tq, key: `${tr.name}/${tq.id}` } : null, holds });
+      }
+    }
+  }
+  linksOfState.set(state, out);
+  return out;
+}
+
+// The valid links that replace the requirement named `key`.
+export const replacersOf = (state, key) => replaceLinks(state).filter((l) => l.target?.key === key);
+
+// What a replacement's state means, after its sign state.
+export const replaceWords = (l) => (l.holds ? 'the replacement holds' : l.holds === null ? 'not known whether the replacement holds'
+  : 'a proposed replacement: it holds once this version is signed');
