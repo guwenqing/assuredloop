@@ -344,14 +344,15 @@ export function keepJudgements(top, recs, config, issues = null) {
 // item's, or a list for several items; and for a consolidation judgement
 // (one with a Spec line, LD-59), `paragraphs`: the version of each change
 // paragraph and each spec paragraph that it names, null for one that is not
-// there. The map judges a consolidation judgement by these alone.
+// there, with its scope: `item` or `spec`, as one ID can name a paragraph of
+// each. The map judges a consolidation judgement by these alone.
 function versionsOf(state, r, j, ctx) {
   const keys = j.ids.map((id) => findItem(state, r, id, ctx)?.key ?? null);
   const out = { version: keys.length === 1 ? keys[0] : keys };
   const specs = [...new Set(j.evidence.filter((e) => e.kind === 'spec').map((e) => e.id))];
   if (specs.length) {
-    out.paragraphs = [...j.ids.map((id, i) => ({ id, version: keys[i] })),
-      ...specs.map((id) => ({ id, version: state.spec.get(id)?.sha256 ?? null }))];
+    out.paragraphs = [...j.ids.map((id, i) => ({ id, scope: 'item', version: keys[i] })),
+      ...specs.map((id) => ({ id, scope: 'spec', version: state.spec.get(id)?.sha256 ?? null }))];
   }
   return out;
 }
@@ -451,7 +452,7 @@ export function reviewSection(top, { now: state, was = null, base, own, config, 
       const used = new Set();
       if (items.length === 1) {
         const [item] = items;
-        const itemQuote = j.evidence.find((e) => e.kind === 'item');
+        const itemQuote = j.evidence.find((e) => e.kind === 'item' && (!e.id || bare(e.id) === bare(j.ids[0])));
         used.add(itemQuote);
         if (!item) results.push('item not found');
         else if (!itemQuote) results.push(`no item quote; item ${item.state}`);
@@ -516,13 +517,13 @@ export function consolidations(top, state, r, { config, issues = null }) {
   return parseNote(text).filter((j) => !j.unread && j.evidence.some((e) => e.kind === 'spec')).map((j) => {
     const entry = entries.find((e) => e.judgement === j.hash);
     const ref = `judgement ${notePath(r)}:${j.line}, ${j.verdict}`;
-    const now = (id) => (j.ids.includes(id) ? findItem(state, r, id, ctx)?.key ?? null : state.spec.get(id)?.sha256 ?? null);
+    const now = (p) => (p.scope === 'item' ? findItem(state, r, String(p.id), ctx)?.key ?? null : state.spec.get(String(p.id))?.sha256 ?? null);
     let fact;
     let current = false;
     if (!entry) fact = `not known: identity not kept: run al index (${ref})`;
     else if (entry.unknown || !Array.isArray(entry.paragraphs)) fact = `not known when judged (${ref})`;
     else {
-      const changed = entry.paragraphs.filter(isMap).filter((p) => now(String(p.id)) !== (p.version ?? null)).map((p) => p.id);
+      const changed = entry.paragraphs.filter(isMap).filter((p) => now(p) !== (p.version ?? null)).map((p) => p.id);
       current = !changed.length;
       fact = current ? `current: its named paragraphs are unchanged (${ref})` : `stale: ${changed.join(', ')} changed since it was judged (${ref})`;
     }
