@@ -15,7 +15,8 @@ import {
   symlinkSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join, relative } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   DAY, INVOICES, STAMP, WORDS_FILE, al, appendSection, assertSnapshot, commitAll, editRecord, editRequest, exists, git,
   organized, parseSnapshot, project, read, record, refused, req, sha, show, signedText, tree, write, writeConfig,
@@ -911,4 +912,103 @@ test('origin-elsewhere/R1 writing (review of #67): a folder of the place that ca
   // The control: with the folder searchable again, both record.
   runOk(dir, A, ['record', REQ, 'origin', '--url', URL1, '--from', '-', '--yes'], MORE);
   runOk(dir, A, ['record', REQ, 'signoff', ...SIGN, '--yes']);
+});
+
+test('origin-elsewhere/R1 conclude (review of #67): sources: or signoff: that is a mapping, not a list, is not ok, and conclude refuses', async (t) => {
+  const cases = {
+    'sources: as a mapping': { key: 'sources', gone: (w) => w.wordsFile },
+    'signoff: as a mapping': { key: 'signoff', gone: () => SIGNOFF_FILE },
+  };
+  for (const originals of [false, true]) {
+    for (const [what, { key, gone }] of Object.entries(cases)) {
+      await t.test(`${originals ? 'kept outside, the place set' : 'no originals key'}: ${what}`, (tt) => {
+        const w = world(tt, { originals, origin: false });
+        passes(strict(w.dir, w.A));
+        const file = gone(w);
+        rmSync(originals ? inPlace(w.place, file) : join(w.dir, `requests/${REQ}/origin/${file}`));
+        editRecord(w.dir, REQ, (rec) => {
+          assert.equal(rec[key].length, 1, `one ${key} entry`);
+          rec[key] = rec[key][0];
+        });
+        commitAll(w.dir, `the record: ${what}`);
+        const r = strict(w.dir, w.A);
+        assert.ok(notOk(r).length >= 1, `a not ok:\n${show(r)}`);
+        assert.equal(r.code, 1, show(r));
+        concludeRefuses(w.dir, w.A, []);
+        for (const args of [['conclude', REQ], ['conclude', REQ, '--yes']]) {
+          const c = run(w.dir, w.A, args);
+          assert.ok(lines(c).some((l) => l.startsWith('refused: ')), `a refused: line:\n${show(c)}`);
+          if (originals) namesNoFolder(c, w.place);
+        }
+      });
+    }
+  }
+});
+
+// A module for NODE_OPTIONS=--import. On the first fs.writeFileSync call whose
+// path is inside the place and whose options have flag 'wx', it writes the
+// competing bytes to that path first, as another clone would, notes the path
+// in the report file, and then makes the call. With downgrade, it makes that
+// call with flag 'w' (a scratch check of the test, never used here).
+const COMPETING = 'Source: another clone\nFetched: 2026-05-04T09:30Z\nSHA-256: 0\n---\nthe other clone wrote this first\n';
+function raceHook(t, place, { downgrade = false } = {}) {
+  const folder = tmp(t, 'al-hook-');
+  const hook = join(folder, 'race.mjs');
+  const report = join(folder, 'report.txt');
+  writeFileSync(hook, `import fs from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { syncBuiltinESMExports } from 'node:module';
+const PLACE = ${JSON.stringify(place)};
+const REPORT = ${JSON.stringify(report)};
+const COMPETING = ${JSON.stringify(COMPETING)};
+const DOWNGRADE = ${JSON.stringify(downgrade)};
+const original = fs.writeFileSync;
+let done = false;
+fs.writeFileSync = function writeFileSync(file, data, options, ...rest) {
+  const p = typeof file === 'string' ? resolve(file) : file instanceof URL ? fileURLToPath(file) : null;
+  const flag = options && typeof options === 'object' ? options.flag : undefined;
+  if (!done && p && p.startsWith(PLACE + '/') && flag === 'wx') {
+    done = true;
+    original.call(fs, p, COMPETING);
+    original.call(fs, REPORT, p + '\\n');
+    if (DOWNGRADE) options = { ...options, flag: 'w' };
+  }
+  return original.call(this, file, data, options, ...rest);
+};
+syncBuiltinESMExports();
+`);
+  return { env: { NODE_OPTIONS: `--import=${pathToFileURL(hook).href}` }, report };
+}
+
+// The run met the competing file: the path that the hook took, inside <place>/<name>/.
+function raced(hook, place, name) {
+  assert.ok(existsSync(hook.report), 'no fs.writeFileSync with flag \'wx\' inside the place: the race could not be made');
+  const p = readFileSync(hook.report, 'utf8').trim();
+  assert.equal(dirname(p), join(place, name), `the competing file is in <place>/${name}/: ${p}`);
+  return p;
+}
+
+test('origin-elsewhere/R1 names (review of #67): a name taken by another clone at the moment of the write is not overwritten; al new, record origin and record signoff take another free name', (t) => {
+  const { dir, place, A } = world(t, { sign: false, origin: false });
+  const raceRun = (args, input, name, file) => {
+    const hook = raceHook(t, place);
+    const r = al(dir, args, { env: { ...A.env, ...hook.env }, input });
+    assert.equal(r.code, 0, show(r));
+    const p = raced(hook, place, name);
+    assert.equal(readFileSync(p, 'utf8'), COMPETING, `the competing file keeps its bytes:\n${show(r)}`);
+    const mine = file();
+    assert.notEqual(mine.file, basename(p), `the record names another name:\n${show(r)}`);
+    assert.ok(existsSync(inPlace(place, mine.file, name)), `the snapshot is in the place:\n${show(r)}`);
+    agrees(readPlace(place, mine.file, name), mine.sha256);
+    return r;
+  };
+
+  raceRun(['new', 'pay', '--from', '-'], 'Pay by card.\n', 'pay', () => record(dir, 'pay').sources[0]);
+  raceRun(['record', REQ, 'origin', '--url', URL1, '--from', '-', '--yes'], MORE, REQ, () => record(dir, REQ).sources[1]);
+  const r = raceRun(['record', REQ, 'signoff', ...SIGN, '--yes'], '', REQ, () => record(dir, REQ).signoff[0]);
+  const s1 = record(dir, REQ).signoff[0];
+  assert.ok(read(dir, `requests/${REQ}/request.md`).includes(`Signed off: ${DAY} owner, origin/${s1.file}`), show(r));
+  assert.deepEqual(repoOrigin(dir), [], 'nothing in the repo');
+  passes(strict(dir, A));
 });
