@@ -15,7 +15,7 @@ import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from 
 import { taskItems } from './issues.js';
 import { centralRepo, namedIds, outputRepos } from './repos.js';
 import { ADR_FILE, SPEC, symlinkOn } from './scope.js';
-import { loadState, signedBy, unknownBy } from './state.js';
+import { loadState, placeOf, signedBy, unknownBy } from './state.js';
 
 const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 const inForceKind = (state, kind) => !!kind && kind !== 'approach' && ['promise', 'design'].includes(groupOf(kind, state.kinds));
@@ -322,7 +322,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
         for (const ref of p.links[key]) {
           const id = unref(ref);
           if (!proposals.has(id)) proposals.set(id, []);
-          proposals.get(id).push(`open proposal: ${r.name}/${p.id} ${verb}`);
+          proposals.get(id).push(`open proposal: ${r.name}/${p.id} (${placeOf(p)}) ${verb}`);
         }
       }
     }

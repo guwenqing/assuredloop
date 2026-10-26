@@ -39,7 +39,7 @@ const COMMANDS = {
       limit: { type: 'string' }, section: { type: 'boolean' }, rebuild: { type: 'boolean' }, json: { type: 'boolean' },
     },
   },
-  context: { run: context, options: { diff: { type: 'string' }, for: { type: 'string' }, audit: { type: 'boolean' }, at: { type: 'string' } } },
+  context: { run: context, options: { diff: { type: 'string' }, for: { type: 'string' }, audit: { type: 'boolean' }, at: { type: 'string' }, full: { type: 'boolean' } } },
   conclude: { run: conclude, options: { yes: { type: 'boolean' } } },
 };
 const USAGE = `al <${Object.keys(COMMANDS).join('|')}|--version> [options]`;

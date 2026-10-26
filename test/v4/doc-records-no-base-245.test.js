@@ -192,7 +192,8 @@ test('al check on a branch still names a changed paragraph, though the record ho
   commitAll(dir, 'the change, indexed on the branch');
   const r = al(dir, ['check']);
   const lines = r.stdout.split('\n');
-  for (const line of ['specs/invoices.md INV-2 Changed', 'specs/invoices.md INV-4 New', 'specs/invoices.md INV-5 Moved']) {
+  // A change line names the text line of the paragraph (#74).
+  for (const line of ['specs/invoices.md:7 INV-2 Changed', 'specs/invoices.md:11 INV-4 New', 'specs/invoices.md:23 INV-5 Moved']) {
     assert.ok(lines.includes(line), `line ${JSON.stringify(line)} expected:\n${show(r)}`);
   }
   onlyRegenerable(dir, SPEC);

@@ -106,7 +106,8 @@ test('control: with no origin/main, the removed ID is a lost-id hint and a Remov
   const { dir, a } = behind(t, idRemoved, { origin: false });
   const r = check(dir);
   assert.equal(linesWith(r, `hint lost-id ${SPEC}:`).filter((l) => l.includes('INV-41 was in specs/invoices.md at the base and is gone')).length, 1, show(r));
-  assert.ok(r.stdout.split('\n').includes(`${SPEC} INV-41 Removed`), show(r));
+  // A removed paragraph is named at its text line at the base (#74).
+  assert.ok(r.stdout.split('\n').includes(`${SPEC}:15 at the base ${a.slice(0, 7)} INV-41 Removed`), show(r));
   assert.match(r.stdout, readLine(a, 'main'), show(r));
 });
 

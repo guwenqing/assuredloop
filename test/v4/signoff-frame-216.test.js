@@ -49,7 +49,7 @@ function signed(t) {
 
 // The line of `al context inv` for a requirement, e.g. "  R1 version 1 (...): signed in S1".
 const reqLine = (dir, id) => has(view(dir, ['context', 'inv']), new RegExp(`^  ${id} version \\d+ \\(`));
-// The Serves line of `al context <ID>`.
+// The Serves line of `al context <ID>`; the requirement has its place (#74).
 const servesLine = (dir, id) => has(view(dir, ['context', id]), /^Serves /);
 const coverage = (r, id) => r.findings.filter((f) => f.severity === 'not ok' && f.code === 'signoff-coverage' && f.id === id);
 
@@ -92,7 +92,7 @@ function concludeRefuses(dir, ids, others = []) {
 test('control: with no change after S1, R1 and R2 are signed in S1, check --strict passes, conclude would conclude', (t) => {
   const dir = signed(t);
   signedIn(dir, 'S1', 'R1', 'R2');
-  assert.match(servesLine(dir, 'INV-41'), /inv\/R1 version 1: signed in S1/);
+  assert.match(servesLine(dir, 'INV-41'), /inv\/R1 \(requests\/inv\/request\.md:14\) version 1: signed in S1/);
   checkPasses(dir);
   wouldConclude(dir);
 });
@@ -116,7 +116,8 @@ for (const [part, from, to] of FRAME) {
     }
 
     const r = check(dir, '--strict');
-    for (const [id, at] of [['INV-41', 5], ['INV-42', 9]]) {
+    // The finding names the text line of the paragraph (#74).
+    for (const [id, at] of [['INV-41', 7], ['INV-42', 11]]) {
       const found = coverage(r, id);
       assert.equal(found.length, 1, `not ok signoff-coverage ${id}:\n${show(r)}`);
       assert.equal(found[0].file, SPEC, show(r));
@@ -133,7 +134,7 @@ test('a new sign-off after the Out: change signs R1 and R2 again in S2: check --
   editRequest(dir, 'inv', OUT, 'Out: all exports.');
   ok(dir, ['record', 'inv', 'signoff', '--source', 'call with the owner', '--words', 'yes, sign them again', '--yes']);
   signedIn(dir, 'S2', 'R1', 'R2');
-  assert.match(servesLine(dir, 'INV-41'), /inv\/R1 version 1: signed in S2/);
+  assert.match(servesLine(dir, 'INV-41'), /inv\/R1 \(requests\/inv\/request\.md:14\) version 1: signed in S2/);
   checkPasses(dir);
   wouldConclude(dir);
 });
@@ -146,7 +147,7 @@ test('a change to R2 after S1 leaves R1 signed in S1: only INV-42, which serves 
 
   signedIn(dir, 'S1', 'R1');
   changedSince(dir, 'S1', 'R2');
-  assert.match(servesLine(dir, 'INV-41'), /inv\/R1 version 1: signed in S1/);
+  assert.match(servesLine(dir, 'INV-41'), /inv\/R1 \(requests\/inv\/request\.md:14\) version 1: signed in S1/);
 
   const r = check(dir, '--strict');
   assert.deepEqual(coverage(r, 'INV-41'), [], show(r));
@@ -167,7 +168,7 @@ test('a new requirement R3 after S1 leaves R1 and R2 signed in S1: check --stric
   signedIn(dir, 'S1', 'R1', 'R2');
   const line = reqLine(dir, 'R3');
   assert.match(line, /: not signed$/, line);
-  assert.match(servesLine(dir, 'INV-41'), /inv\/R1 version 1: signed in S1/);
+  assert.match(servesLine(dir, 'INV-41'), /inv\/R1 \(requests\/inv\/request\.md:14\) version 1: signed in S1/);
   const r = check(dir, '--strict');
   assert.deepEqual(r.findings.filter((f) => f.code === 'signoff-coverage'), [], show(r));
   assert.deepEqual([...new Set(r.findings.filter((f) => f.severity === 'not ok').map((f) => `${f.code} ${f.id}`))],

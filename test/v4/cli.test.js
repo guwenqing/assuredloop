@@ -33,6 +33,10 @@ const assertLine = (r, line) => assert.ok(has(r, line), `line ${JSON.stringify(l
 const assertNoLine = (r, line) => assert.ok(!has(r, line), `line ${JSON.stringify(line)} not expected:\n${show(r)}`);
 const assertStarts = (r, prefix, n = 1) => assert.equal(startsWith(r, prefix).length, n,
   `${n} line(s) starting ${JSON.stringify(prefix)} expected:\n${show(r)}`);
+// The change lines of an ID in a file: `<file>:<line> <ID> <change>`, or
+// `<file>:<line> at the base <sha7> <ID> Removed` (#74).
+const changeLines = (r, file, id) => lines(r.stdout)
+  .filter((l) => l.startsWith(`${file}:`) && new RegExp(`^\\S+:\\d+(?: at the base [0-9a-f]{7})? ${id} `).test(l));
 const assertError = (r) => {
   assert.equal(r.code, 2, show(r));
   assert.match(r.stdout + r.stderr, /^al: \S/m, show(r));
@@ -350,7 +354,7 @@ describe('al check', () => {
     assert.equal(r.code, 0, show(r));
     assertLine(r, 'ok: no marker lint');
     assert.deepEqual(lintLines(r), []);
-    assert.deepEqual(startsWith(r, 'specs/inv.md '), []);
+    assert.deepEqual(lines(r.stdout).filter((l) => /^specs\/inv\.md[: ]/.test(l)), []);
     assertFrame(r.stdout);
     const s = check(repo, '--strict');
     assert.equal(s.code, 0, show(s));
@@ -364,9 +368,10 @@ describe('al check', () => {
     repo.write('specs/inv.md', repo.read('specs/inv.md') + doc('', '<!-- INV-6 rule serves:inv/R3 -->', '', 'A link is used once.'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assertLine(r, 'specs/inv.md INV-4 Changed');
-    assertLine(r, 'specs/inv.md INV-6 New');
-    for (const id of ['INV-1', 'INV-2', 'INV-3', 'INV-5']) assertStarts(r, `specs/inv.md ${id} `, 0);
+    // A change line names the text line of the paragraph (#74).
+    assertLine(r, 'specs/inv.md:15 INV-4 Changed');
+    assertLine(r, 'specs/inv.md:23 INV-6 New');
+    for (const id of ['INV-1', 'INV-2', 'INV-3', 'INV-5']) assert.deepEqual(changeLines(r, 'specs/inv.md', id), [], show(r));
     assertLine(r, 'ok: no marker lint');
   });
 
@@ -382,12 +387,12 @@ describe('al check', () => {
     repo.write('specs/inv.md', moved);
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assertLine(r, 'specs/inv.md INV-5 Changed+Moved');
-    for (const id of ['INV-1', 'INV-2', 'INV-3', 'INV-4']) assertStarts(r, `specs/inv.md ${id} `, 0);
+    assertLine(r, 'specs/inv.md:11 INV-5 Changed+Moved');
+    for (const id of ['INV-1', 'INV-2', 'INV-3', 'INV-4']) assert.deepEqual(changeLines(r, 'specs/inv.md', id), [], show(r));
 
     repo.write('specs/inv.md', moved.replace('A link is signed with a key.', 'A link is signed.'));
     const m = check(repo);
-    assertLine(m, 'specs/inv.md INV-5 Moved');
+    assertLine(m, 'specs/inv.md:11 INV-5 Moved');
   });
 
   test('each lint prints as <severity> <code> <file>:<line> <id or -> <message>', (t) => {
@@ -452,7 +457,8 @@ describe('al check', () => {
     assert.equal(r.code, 0, show(r));
     assertStarts(r, 'hint lost-id specs/inv.md:', 1);
     assert.match(startsWith(r, 'hint lost-id ')[0], /^hint lost-id specs\/inv\.md:\d+ INV-5 \S/);
-    assertLine(r, 'specs/inv.md INV-5 Removed');
+    // A removed paragraph is named at its text line at the base (#74).
+    assertLine(r, `specs/inv.md:19 at the base ${repo.git(['rev-parse', '--short=7', 'main'])} INV-5 Removed`);
     // #238 R2: lost-id stays a hint under --strict.
     const strict = check(repo, '--strict');
     assertStarts(strict, 'hint lost-id specs/inv.md:', 1);
@@ -466,7 +472,8 @@ describe('al check', () => {
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assert.ok(!r.stdout.includes('lost-id'), show(r));
-    assertLine(r, 'specs/inv.md INV-5 Removed');
+    // A removed paragraph is named at its text line at the base (#74).
+    assertLine(r, `specs/inv.md:19 at the base ${repo.git(['rev-parse', '--short=7', 'main'])} INV-5 Removed`);
     assertLine(r, 'ok: no marker lint');
   });
 
@@ -477,7 +484,7 @@ describe('al check', () => {
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assert.ok(!r.stdout.includes('lost-id'), show(r));
-    assertLine(r, 'specs/links.md INV-5 Moved');
+    assertLine(r, 'specs/links.md:3 INV-5 Moved');
     assertLine(r, 'ok: no marker lint');
   });
 
@@ -493,8 +500,8 @@ describe('al check', () => {
     assert.equal(r.code, 0, show(r));
     assertStarts(r, 'hint used-again ', 1);
     assert.match(startsWith(r, 'hint used-again ')[0], /^hint used-again specs\/inv\.md:21 INV-6 \S/);
-    assertLine(r, 'specs/inv.md INV-6 New');
-    assertLine(r, 'specs/inv.md INV-7 New');
+    assertLine(r, 'specs/inv.md:23 INV-6 New');
+    assertLine(r, 'specs/inv.md:27 INV-7 New');
   });
 
   test('duplicate-id: one ID in two docs of the global scope', (t) => {
@@ -648,7 +655,7 @@ describe('al check: used-again from history', () => {
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
     assert.ok(!r.stdout.includes('used-again'), show(r));
-    assertLine(r, 'specs/inv.md INV-6 New');
+    assertLine(r, 'specs/inv.md:23 INV-6 New');
     assertLine(r, 'ok: no marker lint');
   });
 });

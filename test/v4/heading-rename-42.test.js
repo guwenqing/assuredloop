@@ -218,7 +218,8 @@ function featureRepo(t) {
   return repo;
 }
 const check = (repo, ...args) => runV4(repo.dir, ['check', ...args]);
-const changeLines = (r) => lines(r.stdout).filter((l) => l.startsWith('specs/exports.md '));
+// A change line names the text line of the paragraph (#74): `specs/exports.md:<line> <ID> <change>`.
+const changeLines = (r) => lines(r.stdout).filter((l) => l.startsWith('specs/exports.md:'));
 const lintLines = (r) => lines(r.stdout).filter((l) => /^(not ok|hint) /.test(l));
 
 describe('al check: a renamed heading (#42)', () => {
@@ -228,7 +229,7 @@ describe('al check: a renamed heading (#42)', () => {
     repo.commit('rename the title');
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assert.deepEqual(changeLines(r), ['specs/exports.md EXP-1 Changed'], show(r));
+    assert.deepEqual(changeLines(r), ['specs/exports.md:3 EXP-1 Changed'], show(r));
   });
 
   test('the H1 and the H2 renamed in the working tree: two Changed lines and nothing else', (t) => {
@@ -236,7 +237,7 @@ describe('al check: a renamed heading (#42)', () => {
     repo.write('specs/exports.md', EXPORTS('Data exports', 'File formats'));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assert.deepEqual(changeLines(r), ['specs/exports.md EXP-1 Changed', 'specs/exports.md EXP-4 Changed'], show(r));
+    assert.deepEqual(changeLines(r), ['specs/exports.md:3 EXP-1 Changed', 'specs/exports.md:15 EXP-4 Changed'], show(r));
   });
 
   test('a renamed H1 and a real move: the H1 Changed, the moved paragraph Moved, nothing else', (t) => {
@@ -252,7 +253,7 @@ describe('al check: a renamed heading (#42)', () => {
     ));
     const r = check(repo);
     assert.equal(r.code, 0, show(r));
-    assert.deepEqual(changeLines(r), ['specs/exports.md EXP-1 Changed', 'specs/exports.md EXP-5 Moved'], show(r));
+    assert.deepEqual(changeLines(r), ['specs/exports.md:3 EXP-1 Changed', 'specs/exports.md:11 EXP-5 Moved'], show(r));
   });
 
   test('a renamed heading changes no hint, no not ok line and no exit code, also with --strict', (t) => {

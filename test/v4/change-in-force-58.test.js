@@ -381,8 +381,9 @@ test('#58 another open request names an item by changes: or removes:: "open prop
   write(dir, 'src/export.js', '// INV-13 INV-41 INV-12\n// pdf/SP-1 pdf/SP-2 pdf/R2\n');
   commitAll(dir, 'export');
   const r = check(dir);
-  assert.match(inForce(r, 'INV-13'), / · open proposal: pdf\/SP-1 changes it[ :]/, show(r));
-  assert.match(inForce(r, 'INV-41'), / · open proposal: pdf\/SP-2 removes it[ :]/, show(r));
+  // The open proposal names the place of its text (#74).
+  assert.match(inForce(r, 'INV-13'), / · open proposal: pdf\/SP-1 \(requests\/pdf\/spec\.md:3\) changes it[ :]/, show(r));
+  assert.match(inForce(r, 'INV-41'), / · open proposal: pdf\/SP-2 \(requests\/pdf\/spec\.md:7\) removes it[ :]/, show(r));
   assert.doesNotMatch(inForce(r, 'INV-12'), /open proposal/, show(r));
   listNamesNot(r, ['pdf/SP-1', 'pdf/SP-2', 'pdf/R2', 'SP-1', 'SP-2', 'R2']);
   notProposed(r, 'pdf/');

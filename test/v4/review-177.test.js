@@ -123,7 +123,7 @@ describe('2. a marker inside a fenced block in history is not an ID', () => {
     const r = check(repo, '--strict');
     assert.equal(r.code, 0, show(r));
     assert.ok(!r.stdout.includes('used-again'), show(r));
-    assert.ok(lines(r.stdout).includes('specs/a.md A-9 New'), show(r));
+    assert.ok(lines(r.stdout).includes('specs/a.md:11 A-9 New'), show(r)); // #74: the text line
   });
 
   test('--add-ids numbers from the real markers only, not from a fenced one in history', (t) => {
