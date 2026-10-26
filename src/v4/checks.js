@@ -313,13 +313,14 @@ export function checks(top, { base, phrases = [], issues = null }) {
   }
 
   // Requirements that replace a requirement of another request (LD-68).
-  // A link's mistakes are hints on its marker line: a target that is no
-  // requirement R<n> of another request, one of its own request, and two
-  // requirements that replace one.
+  // A link's mistakes are hints on its marker line: a link on a question, a
+  // target that is no requirement R<n> of another request, one of its own
+  // request, and two requirements that replace one.
   const links = replaceLinks(now);
   for (const l of links) {
     const where = `${l.r.dir}/request.md:${l.line}`;
-    if (l.own) add('hint', 'replaces-link', where, l.key, `replaces:${l.ref} names a requirement of its own request: a new version there is a change of its text, not a replaces: link`);
+    if (l.question) add('hint', 'replaces-link', where, l.key, `replaces:${l.ref} is on a question: only a requirement R<n> replaces a requirement`);
+    else if (l.own) add('hint', 'replaces-link', where, l.key, `replaces:${l.ref} names a requirement of its own request: a new version there is a change of its text, not a replaces: link`);
     else if (!l.target) add('hint', 'replaces-link', where, l.key, `replaces:${l.ref} names no requirement of another request`);
     else {
       const others = [...new Set(links.filter((x) => x.target?.key === l.target.key && x.key !== l.key).map((x) => x.key))];

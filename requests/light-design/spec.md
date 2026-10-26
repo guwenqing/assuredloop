@@ -639,12 +639,14 @@ so a `replaces:` link names a requirement `R<n>` of another request only.
   no hint. A paragraph of an open change spec is a proposal and gets no
   such hint.
 - The hint `replaces-link`, on the marker line, names each mistake: a link
-  that names no requirement `R<n>` of another request (a question `Q<n>`
-  too), a link to a requirement of the same request, and two requirements
-  that replace the same one, with a hint on each marker. Each requirement
-  that replaces it stays shown.
+  on a question's marker, because only a requirement replaces a
+  requirement; a link that names no requirement `R<n>` of another request
+  (a question `Q<n>` too); a link to a requirement of the same request; and
+  two requirements that replace the same one, with a hint on each marker.
+  Each requirement that replaces it stays shown.
 - The full trace of the old request (`al context <old request> --audit`)
-  names each of its requirements that a link replaces, with the same words.
+  names each of its requirements that a link replaces, with its place and
+  the same words.
 - Each new finding is a hint and not a `not ok`, and no exit code changes.
 
 <!-- LD-25 flow serves:R1 -->
