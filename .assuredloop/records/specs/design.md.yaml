@@ -135,7 +135,7 @@ paragraphs:
     display: DES-34 (5:3, in 5. Consolidation and the close rule)
   - id: DES-37
     kind: rule
-    text_sha256: de1a2f1d284dd0b00af5997ab0c0bc72a57be3f586fed0a6e99c9f0aa69adf2a
+    text_sha256: fd89c30065f90ca17a2b4e104534b07b9ecac856ced9eb491a8c69c2351d033c
     display: DES-37 (5:4, in 5. Consolidation and the close rule)
   - id: DES-38
     kind: rule

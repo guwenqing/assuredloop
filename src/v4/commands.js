@@ -11,7 +11,7 @@ import { loadConfig } from './config.js';
 import { itemFinder, loadItems } from './issues.js';
 import { CHANGED, reliance, textSha } from './kept-items.js';
 import { logical, placeOf, sourceOf } from './originals.js';
-import { onSha, ownTarget, reasonNames } from './close.js';
+import { onSha, ownTarget, reasonNames, reqVersion } from './close.js';
 import { loadState } from './state.js';
 
 const TIERS = ['1', '1d', '2', '3', 'S'];
@@ -291,6 +291,11 @@ function recordClose({ top, args, opts }) {
   const r = state.requests.get(name);
   const on = r && ownTarget(r, opts.on);
   if (!on) throw new Fail(`--on ${opts.on}: not a paragraph of ${name}'s change spec, and not a requirement of its current version`, usage);
+  // A requirement's version is kept with the line, so its text must be indexed.
+  const version = /^[RQ]\d+$/.test(on) ? reqVersion(r, on) : null;
+  if (/^[RQ]\d+$/.test(on) && version?.sha256 !== onSha(r, on)) {
+    throw new Fail(`--on ${on}: its current text has no version in ${rec.path} yet; run al index first`, `al index, then ${usage}`);
+  }
   const names = reasonNames(state, opts.reason, on);
   const id = `C${highest(rec, 'closes', 'C') + 1}`;
   const lines = [`${id} ${name}/${on}: ${opts.reason}`,
@@ -298,7 +303,7 @@ function recordClose({ top, args, opts }) {
   if (!opts.yes) return { body: [`Would add to ${rec.path}:`, ...lines], next: 'run the same command with --yes to write it' };
   guard(top, [rec.path]);
   const node = append(rec, 'closes', {
-    id, on, reason: opts.reason, sha256: onSha(r, on),
+    id, on, ...(version ? { version: Number(version.version) } : {}), reason: opts.reason, sha256: onSha(r, on),
     names: names.filter((x) => x.p).map((x) => ({ id: x.id, sha256: x.p.sha256 })), recorded: stamp(now()),
   });
   for (const x of node.get('names').items) x.flow = true;

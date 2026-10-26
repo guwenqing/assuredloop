@@ -480,7 +480,10 @@ refuses while:
   met when no lasting paragraph links to it (an existing design reused, or
   a one-time task such as a migration), and it clears item 2. `al` keeps, by
   itself, the version of what the line names and of each spec paragraph
-  that its reason names. A word of the reason in the ID form that names no
+  that its reason names. For a requirement, that is its requirement version,
+  so a text that changes and changes back still makes the line stale; a line
+  on a requirement whose current text has no version yet is refused until
+  `al index` gives it one. A word of the reason in the ID form that names no
   paragraph of `specs/` is shown, and not kept. The line clears only while
   they keep those versions. When one changes, `al conclude` shows the line as
   stale, and it clears nothing until the author records it again. The

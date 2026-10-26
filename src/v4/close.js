@@ -27,6 +27,12 @@ export function ownTarget(r, ref) {
 // The text hash of own ID `on` of request `r` now, or null when it is gone.
 export const onSha = (r, on) => (isReq(on) ? r.reqs.find((q) => q.id === on)?.sha256 : r.paras.get(on)?.sha256) ?? null;
 
+// The latest version of requirement `on` in the record of request `r`, or
+// null. A text A, then B, then A again has three versions, so a close line
+// keeps the version as well as the text hash (LD-16).
+export const reqVersion = (r, on) => list(r.data?.requirements).filter((v) => v?.id === on)
+  .reduce((a, v) => (Number(v.version) > Number(a?.version ?? 0) ? v : a), null);
+
 // The words of `reason` in al's ID form, but `on`, each with its paragraph
 // of specs/ or null. In the central repo, `central:X` is its own X (DES-69).
 export function reasonNames(state, reason, on) {
@@ -41,13 +47,19 @@ export function reasonNames(state, reason, on) {
 }
 
 // The latest close line for each own ID of request `r`, with whether it is
-// current: [{ e, current, facts }], `facts` naming what changed since.
+// current: [{ e, current, facts }], `facts` naming what changed since. An
+// archived request is never checked again against today's spec: its lines
+// are { e, archived: true }.
 export function closeLines(state, r) {
   const latest = new Map();
   for (const e of list(r.data?.closes)) if (e?.on) latest.set(String(e.on), e);
   return [...latest.values()].map((e) => {
-    const now = onSha(r, String(e.on));
-    const facts = now === e.sha256 ? [] : [`${e.on} ${now ? 'changed' : 'is gone'}`];
+    if (!r.open) return { e, archived: true, current: false, facts: [] };
+    const on = String(e.on);
+    const now = onSha(r, on);
+    const v = isReq(on) ? reqVersion(r, on) : null;
+    const facts = now !== e.sha256 ? [`${on} ${now ? 'changed' : 'is gone'}`]
+      : v && e.version != null && Number(v.version) !== Number(e.version) ? [`${on} changed (version ${e.version}, now version ${v.version})`] : [];
     for (const n of list(e.names)) {
       const p = state.spec.get(String(n?.id));
       if (!p) facts.push(`${n?.id} left specs/`);
@@ -58,7 +70,7 @@ export function closeLines(state, r) {
 }
 
 export const closeLine = (r, c) => `close ${c.e.id} ${r.name}/${c.e.on} `
-  + `${c.current ? 'current' : `stale: ${c.facts.join(', ')} since it was recorded; it clears nothing until you record it again`}: ${c.e.reason}`;
+  + `${c.archived ? 'recorded at the close; an archived request is not checked against today\'s spec' : c.current ? 'current' : `stale: ${c.facts.join(', ')} since it was recorded; it clears nothing until you record it again`}: ${c.e.reason}`;
 
 // The refusals of items 2 and 3 for request `r`, on paths 2 and 3 only (the
 // requests that have a map). `was` is the base state, or null.
