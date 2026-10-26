@@ -151,8 +151,10 @@ function requestItem(state, q, id, own, ctx) {
   if (/^[RQ]\d+$/.test(id)) {
     const req = q.reqs.find((x) => x.id === id);
     if (!req) return null;
-    const v = list(ctx.data(q)?.requirements).filter((e) => e?.id === id && e.sha256 === req.sha256)
+    // v<n> only while the latest recorded version is the current text.
+    const latest = list(ctx.data(q)?.requirements).filter((e) => e?.id === id)
       .reduce((a, e) => (Number(e.version) > Number(a?.version ?? 0) ? e : a), null);
+    const v = latest?.sha256 === req.sha256 ? latest : null;
     const st = !q.open ? 'not in force' : own && signedBy(state, q.name, id) ? 'proposed by this change' : 'draft';
     const version = v ? `v${v.version}` : req.sha256.slice(0, 12);
     return { state: st, key: `${version} ${req.sha256}`, version, text: req.text };
