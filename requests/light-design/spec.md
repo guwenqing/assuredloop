@@ -660,9 +660,10 @@ bytes, in the same form at a commit and in the working tree, so it does not
 depend on git's diff settings. The item's version is the hash of its text.
 A judgement of a requirement is current only when the requirement's text
 is its latest recorded version, and that version is the one that the
-identity holds; the identity keeps the recorded version also when al
-index takes it at a past commit, and an identity with no recorded version
-is never current. An item of the own
+identity holds. When al index takes the identity at a past commit, it
+reads the version only from the record as committed there: the version
+whose text is the judged text, or none. An identity with no recorded
+version is never current. An item of the own
 request's design documents (LD-48) is found as the list reads them. `al index` keeps the identity in the
 request's record, once for each judgement, and never writes it again;
 `al check` writes nothing. A judgement that is already committed when
