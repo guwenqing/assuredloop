@@ -920,6 +920,70 @@ describe('D: items-out-of-reach in .assuredloop/config.yaml', () => {
     one(r, 'issue-bare-ref', 'acme/web#7', 1);
   });
 
+  // DES-117, as agreed after the review of #75.
+  // 1. A tracker-key entry is out of reach for each task whose ref holds it as
+  //    a whole word, when no item in the folder has it as its ref, also when
+  //    the same ref names another item that is in the folder.
+  test('DES-117 (1): a ref "PROJ-12 and #31", PROJ-12 in the list and not saved, #31 saved: the line for 1 item names PROJ-12 with inv/T1; #31 is read as usual (control: no setting)', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: 'PROJ-12 and #31' }] });
+    save(w, { 'a.json': own(31, { body: 'We keep ADR-1.\n' }) });
+    const about31 = (r) => r.findings.filter((f) => f.file.startsWith(`${OWN}#31`)).map((f) => f.line);
+    const control = checked(w, ...ISSUES);
+    assert.equal(one(control, 'issue-superseded', `${OWN}#31`, 1).id, `${NAME}/T1`, show(control));
+    assert.deepEqual(reachLines(control), [], show(control));
+    setReach(w, ['PROJ-12']);
+    const r = checked(w, ...ISSUES);
+    const line = reachLine(r);
+    assert.ok(line.startsWith(`${REACH_PREFIX}1 item`), show(r));
+    assert.ok(line.includes(`PROJ-12 (${NAME}/T1)`), `the line names PROJ-12 with inv/T1:\n${show(r)}`);
+    assert.ok(!namesItem(line, 31), `#31 is in the folder, not out of reach:\n${show(r)}`);
+    assert.equal(one(r, 'issue-superseded', `${OWN}#31`, 1).id, `${NAME}/T1`, show(r));
+    assert.deepEqual(about31(r), about31(control), `#31 is read as usual:\n${show(r)}`);
+  });
+
+  // 2. A task whose ref names no item in the folder keeps its issue-missing
+  //    and its issue-changed "not known", unless its ref holds nothing but
+  //    entries of the list, white space and punctuation.
+  test('DES-117 (2): a ref "PROJ-12 and PROJ-13", only PROJ-12 in the list, neither saved: the line names PROJ-12 (not the whole ref) with inv/T1, and inv/T1 keeps its issue-missing and issue-changed (control: no setting)', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: 'PROJ-12 and PROJ-13' }] });
+    const control = checked(w, ...ISSUES);
+    const kept = aboutTasks(control, [`${NAME}/T1`]);
+    assert.ok(kept.some((f) => f.code === 'issue-missing' && f.msg.startsWith(`its ref names no item in ${FOLDER}`)), `control: issue-missing:\n${show(control)}`);
+    assert.ok(kept.some((f) => f.code === 'issue-changed' && /not known/.test(f.msg)), `control: issue-changed "not known":\n${show(control)}`);
+    setReach(w, ['PROJ-12']);
+    const r = checked(w, ...ISSUES);
+    const line = reachLine(r);
+    assert.ok(line.startsWith(`${REACH_PREFIX}1 item`), show(r));
+    assert.ok(line.includes(`PROJ-12 (${NAME}/T1)`), `the line names PROJ-12 with inv/T1:\n${show(r)}`);
+    assert.ok(!line.includes('PROJ-13'), `the line names the entry, not the whole ref:\n${show(r)}`);
+    assert.deepEqual(aboutTasks(r, [`${NAME}/T1`]).map((f) => f.line), kept.map((f) => f.line), `inv/T1 keeps its issue-missing and issue-changed:\n${show(r)}`);
+  });
+
+  test('DES-117 (2): a ref "PROJ-12, PROJ-14", both in the list, neither saved: no issue-missing and no issue-changed for inv/T1; the line for 2 items names each with inv/T1 (control: no setting)', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: 'PROJ-12, PROJ-14' }] });
+    const control = checked(w, ...ISSUES);
+    assert.ok(aboutTasks(control, [`${NAME}/T1`]).some((f) => f.code === 'issue-missing'), `control: issue-missing:\n${show(control)}`);
+    setReach(w, ['PROJ-12', 'PROJ-14']);
+    const r = checked(w, ...ISSUES);
+    assert.equal(reachLine(r), `${REACH_PREFIX}2 items${REACH_MIDDLE}PROJ-12 (${NAME}/T1), PROJ-14 (${NAME}/T1)`, show(r));
+    assert.deepEqual(aboutTasks(r, [`${NAME}/T1`]).map((f) => f.line), [], show(r));
+  });
+
+  // 3. Items are grouped ignoring case; the line shows the item in the form of
+  //    the first task that names it, and lists every task.
+  test('DES-117 (3): T1 "Acme/Web#5" and T2 "acme/web#5", acme/web in the list, not saved: "1 item", named once as Acme/Web#5, with inv/T1 and inv/T2 (control: no setting)', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: 'Acme/Web#5' }, { id: 'T2', ref: 'acme/web#5' }] });
+    const control = checked(w, ...ISSUES);
+    assert.ok(aboutTasks(control, [`${NAME}/T1`]).some((f) => f.code === 'issue-missing'), `control: issue-missing:\n${show(control)}`);
+    setReach(w, ['acme/web']);
+    const r = checked(w, ...ISSUES);
+    const line = reachLine(r);
+    assert.ok(line.startsWith(`${REACH_PREFIX}1 item`), show(r));
+    assert.ok(line.includes(`Acme/Web#5 (${NAME}/T1, ${NAME}/T2)`), `the item once, in the form of T1, with both tasks:\n${show(r)}`);
+    assert.equal(line.split(/#5(?!\d)/).length - 1, 1, `the item is named once:\n${show(r)}`);
+    assert.deepEqual(aboutTasks(r, [`${NAME}/T1`, `${NAME}/T2`]).map((f) => f.line), [], show(r));
+  });
+
   const BAD = [['a text', 'acme/web'], ['a number in the list', [42]], ['an empty text in the list', ['acme/web', '']], ['a list in the list', [['acme/web']]], ['a mapping', { repo: 'acme/web' }]];
   for (const [what, value] of BAD) {
     test(`a value that is not a list of non-empty texts (${what}): al check stops with exit 2, with and without --issues`, (t) => {
