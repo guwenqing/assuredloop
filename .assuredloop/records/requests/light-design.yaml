@@ -106,6 +106,10 @@ bindings:
   - { holder: light-design/LD-39, link: changes, target: DES-117, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: cae58012a3e57909d596515f77e848cd910834790fc0f1b97f74195b8cdb7cf0 }
   - { holder: light-design/LD-39, link: changes, target: DES-118, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: f87e7d74abbcdf7aa69c0b4048e044275777e9fc158fe4f168b8d9728f1071d8 }
   - { holder: light-design/LD-39, link: changes, target: SCH-40, holder_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af, target_sha256: 53563512fe2c39d87ef964bd5c1a562777fc4e384590b9343e4e249834bf07e4 }
+  - { holder: light-design/LD-68, link: serves, target: light-design/R1, holder_sha256: 93dbe65789a76ed842721fbdf32fff6cc6db705d90b1a6c2d3a2039cfc2a6519, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: DES-119, link: serves, target: light-design/R1, holder_sha256: b7bf37ae78258de9c8a2a045944352f1ef63cb9ec93d63771ea3ba35fea88921, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
+  - { holder: DES-119, link: serves, target: assuredloop-v4/R9, holder_sha256: b7bf37ae78258de9c8a2a045944352f1ef63cb9ec93d63771ea3ba35fea88921, target_sha256: df7a13ad51ac0770a9563f85579b5f888c927de4788f27b76754f2c9aa49dfbf, target_version: 1 }
+  - { holder: light-design/LD-68, link: changes, target: DES-119, holder_sha256: 93dbe65789a76ed842721fbdf32fff6cc6db705d90b1a6c2d3a2039cfc2a6519, target_sha256: b7bf37ae78258de9c8a2a045944352f1ef63cb9ec93d63771ea3ba35fea88921 }
 dispositions: []
 own_edits:
   - { paragraph: DES-29, sha256: 1b8cff7c180353c52362e9279f244f65c276f7feca15716b30b5ad276274aea8, kept: 2026-10-26T06:48Z }
@@ -138,3 +142,5 @@ own_edits:
   - { paragraph: DES-117, sha256: 556d2feccfdf5e797e19b4774b70c5bd045b0cc14c36b9a0f0d3c4382c49b147, kept: 2026-10-26T09:54Z }
   - { paragraph: DES-117, sha256: 3cdb816ce9bee264c5ed073492b8f83826f9ef2560e1a054ee0140bf2ef4fa84, kept: 2026-10-26T10:03Z }
   - { paragraph: DES-117, sha256: 1ca03091906eadb739af38bfc9399e112e4d7b2b78b5896d2518e14b47068010, kept: 2026-10-26T10:11Z }
+  - { paragraph: DES-119, sha256: 3d14fcb22eedc8b85401d9fdb61007e81f29286994160fd7a150fbdfaf9a88f1, kept: 2026-10-26T15:58Z }
+  - { paragraph: DES-119, sha256: b7bf37ae78258de9c8a2a045944352f1ef63cb9ec93d63771ea3ba35fea88921, kept: 2026-10-26T16:20Z }

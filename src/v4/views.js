@@ -9,7 +9,8 @@ import { git, mergeBase, mergesOf } from './git.js';
 import { crossRepo, findCites, namedIds } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  adrPlace, decisionLine, latestVersion, loadState, named, placeOf, placeOfTarget, qualify, reqLine, requestOf, resolve, signedBy, unknownBy,
+  adrPlace, decisionLine, loadState, named, placeOf, placeOfTarget, qualify, replaceLinks, replaceWords, replacersOf, reqLine, requestOf, resolve, signedBy, unknownBy,
+  versionOf,
 } from './state.js';
 import { isCentral } from './indexer.js';
 import { LINK_WORDS, groupOf } from './markers.js';
@@ -32,12 +33,6 @@ export function signState(state, r, q) {
   const before = list(r.data?.signoff).filter((x) => list(x?.covers).some((c) => c?.id === q.id)).at(-1);
   return before ? `changed since ${before.id}` : 'not signed';
 }
-
-// The version of a requirement's current text, from the record ("new" when not indexed yet).
-const versionOf = (r, q) => {
-  const v = list(r.data?.requirements).filter((x) => x?.id === q.id && x.sha256 === q.sha256).at(-1);
-  return v ? `version ${v.version}` : `version ${Number(latestVersion(r.data, q.id)?.version ?? 0) + 1} (not indexed)`;
-};
 
 // A request's sign-off state in one phrase.
 function signSummary(state, r) {
@@ -357,6 +352,13 @@ function auditLines(state, r) {
   const data = r.data ?? {};
   for (const s of list(data.sources)) out.push(line('Source', `${s.id ? `${s.id} ` : ''}${s.file} sha256 ${short(s.sha256)}${s.taken ? ` taken ${s.taken}` : ''}${s.url ? ` from ${s.url}` : ''}`));
   for (const v of list(data.requirements)) out.push(line('Version', `${v.id} version ${v.version} sha256 ${short(v.sha256)}${v.title ? ` ${v.title}` : ''}`));
+  // Each requirement of it that a requirement of another request replaces (LD-68).
+  for (const q of r.reqs) {
+    for (const l of replacersOf(state, `${r.name}/${q.id}`)) {
+      out.push(line('Replaced', `${q.id} (${r.dir}/request.md:${reqLine(r, q.id)}) by ${l.key} (${l.r.dir}/request.md:${reqLine(l.r, l.q.id)}), ${versionOf(l.r, l.q)}: `
+        + `${signState(state, l.r, l.q)}; ${replaceWords(l)} (only al's record ${recordPath(l.r.name)} holds the version and the sign-off state)`));
+    }
+  }
   for (const s of list(data.signoff)) {
     out.push(line('Sign-off', `${s.id} ${s.file ?? ''} sha256 ${short(s.sha256)} covers ${list(s.covers).map((c) => `${c.id} version ${c.version} (${short(c.sha256)})`).join(', ')}`
       + `${s.presented ? ` · presented: ${s.presented}` : ''}${s.transcribed_by ? ` · transcribed by ${s.transcribed_by}` : ''}`));
@@ -603,14 +605,31 @@ function requirementView(state, t, full) {
     ...[...state.spec.values()].filter((p) => serves(p, null)).map((p) => `${p.id} (${placeOf(p)})`),
     ...[...state.requests.values()].flatMap((x) => [...x.paras.values()].filter((p) => serves(p, x.name)).map((p) => `${x.name}/${p.id} (${placeOf(p)})`)),
   ];
+  // The requirements that replace it, and the ones that it replaces (LD-68).
+  const by = replacersOf(state, t.key);
+  const status = by.some((l) => l.holds) ? ' · replaced' : by.some((l) => l.holds === null) ? ' · replaced: not known' : '';
   const body = [
-    line('Requirement', `${t.key} ${versionOf(r, q)} · ${signState(state, r, q)} · ${r.dir}/request.md:${reqLine(r, q.id)}: ${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`),
+    line('Requirement', `${t.key} ${versionOf(r, q)} · ${signState(state, r, q)}${status} · ${r.dir}/request.md:${reqLine(r, q.id)}: ${q.title}: ${oneLine(q.text.split('\n').slice(1).join('\n'))}`),
     line('Signed', last ? `last signed: version ${last[1].version} in ${last[0].id} (only al's record ${recordPath(r.name)} holds this)` : 'never signed'),
+    ...by.map((l) => line('Replaced', `by ${l.key} (${l.r.dir}/request.md:${reqLine(l.r, l.q.id)}), ${versionOf(l.r, l.q)}: ${signState(state, l.r, l.q)}; ${replaceWords(l)}`
+      + ` (only al's record ${recordPath(l.r.name)} holds the version and the sign-off state)`)),
+    ...replaceLinks(state).filter((l) => l.key === t.key).map((l) => line('Replaces', replacesLine(l))),
     line('Served', served.length ? `by ${served.join(', ')} (declared serves links)` : 'by no paragraph'),
     openNaming(state, (k) => k === t.key),
     ...citedLines(state, [t.key], { full }),
   ];
   return { body, next: `al context ${t.req}` };
+}
+
+// The Replaces line of a replaces: link (LD-68): the requirement that it
+// names, its place and its last signed version; else why it is no
+// replacement, as the hint replaces-link says.
+function replacesLine(l) {
+  if (l.question) return `${l.ref}: on a question, so no replacement`;
+  if (!l.target) return l.own ? `${l.ref}: a requirement of its own request, so no replacement` : `${l.ref}: not found`;
+  const { r, q } = l.target;
+  const last = list(r.data?.signoff).map((s) => list(s?.covers).find((c) => c?.id === q.id)).filter(Boolean).at(-1);
+  return `${l.target.key} (${r.dir}/request.md:${reqLine(r, q.id)}), ${last ? `last signed version ${last.version} (only al's record ${recordPath(r.name)} holds this)` : 'never signed'}`;
 }
 
 // What the review view showed under a changed paragraph, for al check --full
