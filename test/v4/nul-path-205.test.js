@@ -259,12 +259,16 @@ const PINNED = {
   context: {
     code: 0,
     lines: [
-      'Paragraph SP-10 (2:2, in Design) · data · requests/invoice-exports/spec.md:41',
+      // #74: the head names the text line, and the view has Status, places, Open and Cited.
+      'Paragraph SP-10 (2:2, in Design) · data · requests/invoice-exports/spec.md:43',
       '  A yearly ZIP holds twelve monthly CSV files named YYYY-MM.csv, each in the',
       '  format of a monthly export.',
-      'Serves    invoice-exports/R3 version 1: signed in S1 (declared)',
-      'Links     buildsOn EXP-3, SP-7',
-      'Linked    invoice-exports/SP-12 explains it',
+      'Status    draft: in the change spec of open request invoice-exports; not in force',
+      'Serves    invoice-exports/R3 (requests/invoice-exports/request.md:22) version 1: signed in S1 (declared)',
+      'Links     buildsOn EXP-3 (specs/exports.md:11), SP-7 (requests/invoice-exports/spec.md:30)',
+      'Linked    invoice-exports/SP-12 (requests/invoice-exports/spec.md:53) explains it',
+      'Open      no open change builds on or changes it',
+      'Cited     current requests/invoice-exports/spec.md: 2 lines: 51, 67',
       'Checks    invoicer-worker/test/zip-export.test.js cites it (at invoicer-worker@{worker:Record results with a NUL in an input:7}) · also named in invoicer-worker/src/zip-export.js (not a test: no check)',
       'Result    invoicer-worker/.assuredloop/results/a-no-inputs.yaml test/zip-export.test.js not run at invoicer-worker@{worker:Reminder job: 7 days after the due date (central:INV-11):7}: applicability unknown: no declared inputs',
       'Result    invoicer-worker/.assuredloop/results/b-unknown-no-inputs.yaml test/zip-export.test.js pass at invoicer-worker@unknown: applicability unknown: no declared inputs',
@@ -284,11 +288,12 @@ const PINNED = {
   central: {
     code: 0,
     lines: [
-      'hint no-link specs/invoices.md:5 INV-12 INV-12 is a data paragraph with no link',
-      'hint no-link specs/invoices.md:9 INV-13 INV-13 is a rule paragraph with no link',
-      'hint no-link specs/invoices.md:13 INV-41 INV-41 is a rule paragraph with no link',
+      // #74: a marker lint ends with the place of its paragraph's text.
+      'hint no-link specs/invoices.md:5 INV-12 INV-12 is a data paragraph with no link · places: INV-12 specs/invoices.md:7',
+      'hint no-link specs/invoices.md:9 INV-13 INV-13 is a rule paragraph with no link · places: INV-13 specs/invoices.md:11',
+      'hint no-link specs/invoices.md:13 INV-41 INV-41 is a rule paragraph with no link · places: INV-41 specs/invoices.md:15',
       // #234: baseProject's ADR-3 has no links, like the paragraphs above.
-      'hint adr-links specs/adr/0003-signed-links.md:3 ADR-3 ADR-3 has no source: and no decides:; add the links to its marker',
+      'hint adr-links specs/adr/0003-signed-links.md:3 ADR-3 ADR-3 has no source: and no decides:; add the links to its marker · places: ADR-3 specs/adr/0003-signed-links.md:5',
       'info result .assuredloop/results/clean.yaml test/invoices.test.js pass at {central:Test INV-13:7}: declared inputs unchanged since {central:Test INV-13:7} (that they are complete is a claim)',
       'info result .assuredloop/results/nul.yaml test/invoices.test.js pass at {central:Test INV-13:7}: applicability unknown: the declared input test/invoices.test.js\\x00 is not there',
       'Read      working tree · base {central:base:7} (merge-base with main)',

@@ -287,7 +287,8 @@ test('#58 LD-26: a scope that matches no file of the working tree: "hint scope-n
   change(dir, 'README.md', 'More.\n');
   commitAll(dir, 'readme');
   const r = check(dir);
-  assert.deepEqual(hintLines(r, 'scope-no-file'), ['hint scope-no-file specs/invoices.md:9 INV-13 its file scope src/billing/**,lib/*.js matches no file'], show(r));
+  // At the marker line, then the place of INV-13's text (#74).
+  assert.deepEqual(hintLines(r, 'scope-no-file'), ['hint scope-no-file specs/invoices.md:9 INV-13 its file scope src/billing/**,lib/*.js matches no file · places: INV-13 specs/invoices.md:11'], show(r));
 });
 
 test('#58 LD-26: a scope that matches only an ignored file still gets scope-no-file; one that matches an untracked file that is not ignored gets none', (t) => {
@@ -316,7 +317,7 @@ test('#58 round 3: scope-no-file also fires when the only file that the scope ma
   assert.deepEqual(hintLines(before, 'scope-no-file'), [], `control: the file is there:\n${show(before)}`);
   rmSync(join(dir, 'src/billing/bill.js'));
   const r = check(dir);
-  assert.deepEqual(hintLines(r, 'scope-no-file'), ['hint scope-no-file specs/invoices.md:9 INV-13 its file scope src/billing/** matches no file'], show(r));
+  assert.deepEqual(hintLines(r, 'scope-no-file'), ['hint scope-no-file specs/invoices.md:9 INV-13 its file scope src/billing/** matches no file · places: INV-13 specs/invoices.md:11'], show(r));
 });
 
 test('#58 LD-26: with no change selected (on main, clean), a scope that matches no file gives no scope-no-file hint', (t) => {

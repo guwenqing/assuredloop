@@ -3,20 +3,21 @@
 // public interface only:
 //
 //   ADR       ADR-2 · <status> · <file>:<line>: <heading text>
-//   Replaced  <supersedes ADR-1, ... | replaces no ADR> · <superseded by ADR-5 | not replaced>
-//   Decides   <IDs joined by ", " | nothing>
-//   Linked    <as for a paragraph today>
-//   Open      <name>/<SP-n> <word> it, ... | no open change names it
-//   Cited     current: <file>:<line>, ...; historical: <file>:<line>, ... | nowhere
+//   Replaced  <supersedes ADR-1 (<place>), ... | replaces no ADR> · <superseded by ADR-5 (<place>) | not replaced>
+//   Decides   <IDs, each with its (<place>), joined by ", " | nothing>
+//   Linked    <as for a paragraph>
+//   Open      <name>/<SP-n> (<place>) <word> it, ... | no open change names it
+//   Cited     <current|historical> <file>: <n> line[s]: <l1>, <l2>, ...   (one line for each file) | nowhere
 //
 //   Requirement <name>/R1 version <v> · <signed in S1 | changed since S1 | not signed> · requests/<name>/request.md:<line>: <title>: <body>
 //   Signed    <last signed: version <v> in S<n> (only al's record .assuredloop/records/requests/<name>.yaml holds this) | never signed>
-//   Served    <by <IDs> (declared serves links) | by no paragraph>
+//   Served    <by <IDs, each with its (<place>)> (declared serves links) | by no paragraph>
 //   Open      <...>
 //   Cited     <...>
 //
-// Cited: each file that names the ID as a whole word, with its first line,
-// .assuredloop/ left out. Historical: a file under requests/archive/, an
+// Cited: each file that names the ID as a whole word, with every line that
+// names it (#74), .assuredloop/ left out. <place> is <file>:<line> of the
+// item's text (#74). Historical: a file under requests/archive/, an
 // origin/ snapshot, or a superseded ADR; every other place is current.
 // An unknown ID: exit 2 and `al: <ID>: no such ID`. No model, no network.
 // Nothing here reads src/.
@@ -49,16 +50,21 @@ function labelled(r, label) {
   return found[0];
 }
 
-// The places of a Cited line: {current: [...], historical: [...]}.
+// The places of the Cited lines, as <file>:<line>: {current: [...], historical: [...]}.
+// Each Cited line is `Cited     <current|historical> <file>: <n> line[s]: <l1>, ...` (#74).
 function cited(r) {
-  const line = labelled(r, 'Cited     ');
-  const rest = line.slice('Cited     '.length);
-  if (rest === 'nowhere') return { current: [], historical: [] };
-  const part = (word) => {
-    const m = new RegExp(`(?:^|; )${word}: ([^;]*)`).exec(rest);
-    return m ? m[1].split(', ') : [];
-  };
-  return { current: part('current'), historical: part('historical') };
+  const found = r.stdout.split('\n').filter((l) => l.startsWith('Cited     '));
+  assert.ok(found.length >= 1, `a Cited line:\n${show(r)}`);
+  const out = { current: [], historical: [] };
+  if (found.length === 1 && found[0] === 'Cited     nowhere') return out;
+  for (const line of found) {
+    const m = /^Cited {5}(current|historical) (\S+): (\d+) lines?: (\d+(?:, \d+)*)$/.exec(line);
+    assert.ok(m, `a Cited line of one file: ${line}\n${show(r)}`);
+    const ns = m[4].split(', ');
+    assert.equal(ns.length, Number(m[3]), `the count is the number of lines: ${line}\n${show(r)}`);
+    for (const n of ns) out[m[1]].push(`${m[2]}:${n}`);
+  }
+  return out;
 }
 
 // Concludes a request by hand: the folder moves to requests/archive/.
@@ -104,8 +110,8 @@ test('#58 al context ADR-2: the ADR line names its status, its file and the line
 test('#58 al context ADR-2: "Replaced  supersedes ADR-1 · not replaced" and "Decides   INV-12, INV-13"', (t) => {
   const dir = adrWorld(t);
   const r = context(dir, 'ADR-2');
-  assert.equal(labelled(r, 'Replaced  '), 'Replaced  supersedes ADR-1 · not replaced', show(r));
-  assert.equal(labelled(r, 'Decides   '), 'Decides   INV-12, INV-13', show(r));
+  assert.equal(labelled(r, 'Replaced  '), `Replaced  supersedes ADR-1 (${ADR1}:5) · not replaced`, show(r));
+  assert.equal(labelled(r, 'Decides   '), `Decides   INV-12 (${SPEC}:7), INV-13 (${SPEC}:11)`, show(r));
   labelled(r, 'Linked    ');
 });
 
@@ -113,8 +119,8 @@ test('#58 al context ADR-1, a superseded ADR: its status says superseded, and "R
   const dir = adrWorld(t);
   const r = context(dir, 'ADR-1');
   assert.ok(labelled(r, 'ADR       ').startsWith('ADR       ADR-1 · superseded'), show(r));
-  assert.equal(labelled(r, 'Replaced  '), 'Replaced  replaces no ADR · superseded by ADR-2', show(r));
-  assert.equal(labelled(r, 'Decides   '), 'Decides   INV-12', show(r));
+  assert.equal(labelled(r, 'Replaced  '), `Replaced  replaces no ADR · superseded by ADR-2 (${ADR2}:5)`, show(r));
+  assert.equal(labelled(r, 'Decides   '), `Decides   INV-12 (${SPEC}:7)`, show(r));
 });
 
 test('#58 al context ADR-3: "Decides   nothing", "replaces no ADR · not replaced", and "Open      no open change names it"', (t) => {
@@ -129,7 +135,7 @@ test('#58 al context ADR-3: "Decides   nothing", "replaces no ADR · not replace
 test('#58 al context ADR-2: the Open line names the open paragraph pdf/SP-1 that changes it', (t) => {
   const dir = adrWorld(t);
   const r = context(dir, 'ADR-2');
-  assert.ok(labelled(r, 'Open      ').includes('pdf/SP-1 changes it'), show(r));
+  assert.ok(labelled(r, 'Open      ').includes('pdf/SP-1 (requests/pdf/spec.md:3) changes it'), show(r));
 });
 
 test('#58 al context ADR-2: Cited marks specs/ and code as current, and an archived request and a superseded ADR as historical; never .assuredloop/', (t) => {

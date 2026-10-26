@@ -458,7 +458,8 @@ function checkRun(t, n) {
   assert.equal(r.code, 0, show(r));
   // What a reader needs: each ID the branch changed, and no lint.
   const want = [];
-  for (let i = 1; i <= n; i++) want.push(`${docName(i)} D${i}-2 Changed`, `${docName(i)} D${i}-3 New`);
+  // A change line names the text line of the paragraph (#74).
+  for (let i = 1; i <= n; i++) want.push(`${docName(i)}:7 D${i}-2 Changed`, `${docName(i)}:11 D${i}-3 New`);
   const changeLines = outLines(r).filter((l) => l.startsWith('specs/'));
   assert.deepEqual([...changeLines].sort(), [...want].sort(), show(r));
   assert.ok(outLines(r).includes('ok: no marker lint'), show(r));
@@ -671,8 +672,9 @@ describe('on git 2.31: no cat-file -z, -Z or --batch-command', () => {
     const dir = oddCheckRepo(t);
     const now = al(dir, ['check']);
     assert.equal(now.code, 0, show(now));
-    const want = ['specs/reuse.md G-9 New'];
-    for (const [f, p] of ODD_DOCS) want.push(`${shownPath(f)} ${p}-2 Changed`, `${shownPath(f)} ${p}-3 New`);
+    // A change line names the text line of the paragraph (#74).
+    const want = ['specs/reuse.md:3 G-9 New'];
+    for (const [f, p] of ODD_DOCS) want.push(`${shownPath(f)}:7 ${p}-2 Changed`, `${shownPath(f)}:11 ${p}-3 New`);
     const changeLines = outLines(now).filter((l) => l.startsWith('specs/'));
     assert.deepEqual([...changeLines].sort(), [...want].sort(), show(now));
     const usedAgain = outLines(now).filter((l) => l.startsWith('hint used-again ')); // #238 R2: a hint

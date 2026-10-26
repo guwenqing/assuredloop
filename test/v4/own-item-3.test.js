@@ -532,9 +532,13 @@ function withoutMap(stdout) {
 // line), and, once main prints a list too, it is the same list. The map of
 // #68 and the review section of #64 are taken out first; once main prints a
 // review section too, it is the same.
+// #74 adds ` · places: <ID> <file>:<line>, ...` after the message of a
+// finding; a main from before #74 does not print it, so it is taken out of
+// both outputs.
+const withoutPlaces = (stdout) => stdout.replace(/ · places: .*$/gm, '');
 function sameAsMainOutput(here, main, args) {
-  const hm = withoutMap(here.stdout);
-  const mm = withoutMap(main.stdout);
+  const hm = withoutMap(withoutPlaces(here.stdout));
+  const mm = withoutMap(withoutPlaces(main.stdout));
   assert.ok(hm.map.length > 0, `al ${args.join(' ')}: the map of #68:\n${here.stdout}`);
   if (mm.map.length > 0) assert.deepEqual(hm.map, mm.map, `al ${args.join(' ')}: the same map as on main`);
   const hr = withoutReview(hm.rest);
