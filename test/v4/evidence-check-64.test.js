@@ -925,3 +925,37 @@ test('#64 review 7: a requirement judged in a committed note at v2, changed to v
   assert.notEqual(v, 'v2', `not v2:\n${show(r)}`);
   assert.match(v, /^[0-9a-f]{12}$/, `the first 12 hex of the text hash:\n${show(r)}`);
 });
+
+test('#64 review 8: an identity that holds no recorded version of the requirement is never current: "not known when judged"', (t) => {
+  const dir = world(t); // R1 has text A, recorded at v1.
+  sourceCommit(dir);
+  const md = `requests/${NAME}/request.md`;
+  const A = 'as one CSV file.';
+  const B = 'as one CSV file per month.';
+  const C = 'as one CSV file per month, sorted by date.';
+  // S2: text B and a judgement of it, with no al index.
+  editFile(dir, md, A, B);
+  note(dir, judged('R1 complies: one file for each month.', 'Item: "one CSV file per month"', 'Test: tests not examined'));
+  commitAll(dir, `${NAME}: R1 per month, and its review`);
+  // S3: text C, then al index. C is v2; the identity is taken at S2, whose
+  // text B has no recorded version.
+  editFile(dir, md, B, C);
+  commitAll(dir, `${NAME}: R1 sorted`);
+  index(dir);
+
+  // B again, with no al index: the change is the same as at S2.
+  editFile(dir, md, C, B);
+  let r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, k: 1 }), show(r));
+  let l = judgement(r, 'R1');
+  assert.doesNotMatch(l, / · current$/, show(r));
+  assert.ok(l.endsWith(' · not known when judged'), show(r));
+
+  // al index records B as v3: still not known when judged.
+  index(dir);
+  r = check(dir);
+  assert.equal(headerLine(r), header({ n: 1, k: 1 }), show(r));
+  l = judgement(r, 'R1');
+  assert.doesNotMatch(l, / · current$/, show(r));
+  assert.ok(l.endsWith(' · not known when judged'), show(r));
+});
