@@ -16,6 +16,7 @@ import { openRecord, recordText } from './records.js';
 import { requestOriginals } from './originals.js';
 import { isPromise, loadState, qualify, servesSigned } from './state.js';
 import { signState } from './views.js';
+import { mapSection } from './map.js';
 
 const NOT_KNOWN = ['whether the code, tests and documents do what the paragraphs say',
   'whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that'];
@@ -106,14 +107,18 @@ export function conclude({ top, args, opts }) {
   const found = baseOf(top);
   const base = found?.commit ?? null;
   // A promise change whose sign-off cannot be checked here is not counted as signed.
-  const promises = base ? branchOf(top, state, loadState(top, base), base) : null;
+  const was = base ? loadState(top, base) : null;
+  const promises = base ? branchOf(top, state, was, base) : null;
   const branch = promises ? [...promises.uncovered, ...promises.unknown] : [];
+  // The two hints of the map, shown again before it closes; they never refuse (LD-60).
+  const hints = base ? mapSection(top, { now: state, was, base, own: [r], changes: promises.changes, config: state.config }).findings
+    .map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}`) : [];
   const read = base ? `working tree · base ${base.slice(0, 7)} (merge-base with ${found.ref})` : 'working tree · no base';
   const notKnown = base ? NOT_KNOWN : ['the promise changes of the branch: no base (no main branch, or no commit)', ...NOT_KNOWN];
   const { out, judged } = reasons(state, r, branch);
   if (out.length) {
     return {
-      body: out.map((x) => `refused: ${x}`),
+      body: [...hints, ...out.map((x) => `refused: ${x}`)],
       read,
       next: `al context ${name}; sign, record the dispositions, or align what is named, then al index`,
       notKnown,
@@ -132,7 +137,7 @@ export function conclude({ top, args, opts }) {
   }
   const what = `Status: concluded, the Outcome in ${target}/request.md, status: concluded in the record, and ${r.dir}/ moved to ${target}/`;
   if (!opts.yes) {
-    return { body: [`Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read, next: 'run the same command with --yes to do it', notKnown };
+    return { body: [...hints, `Would conclude ${name}: ${what}`, ...block.slice(2).map((l) => `  ${l}`)], read, next: 'run the same command with --yes to do it', notKnown };
   }
   const md = withOutcome(withStatus(r.md), block);
   rec.doc.set('status', 'concluded');
@@ -140,5 +145,5 @@ export function conclude({ top, args, opts }) {
   renameSync(join(top, r.dir), join(top, target));
   write(top, `${target}/request.md`, md);
   write(top, rec.path, recordText(rec));
-  return { body: [`Concluded ${name}: ${what}`], read, next: 'commit the archive move with the closing PR', notKnown };
+  return { body: [...hints, `Concluded ${name}: ${what}`], read, next: 'commit the archive move with the closing PR', notKnown };
 }

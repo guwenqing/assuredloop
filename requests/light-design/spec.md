@@ -171,7 +171,15 @@ is never used again.
 <!-- LD-56 plan -->
 
 The map. On a branch with an open change (path 2 or 3), `al check` shows
-the change against its base, from facts only:
+the change against its base, from facts only. An open change is an open
+request of the change's own (LD-24) that is not a spike and whose tier is
+not 0, 1 or 1d; with none, the map says so in one line. A spec
+paragraph's line names the own change paragraphs that link to it by
+`changes`, `removes` or `builds-on`, and the consolidation judgements whose
+Spec lines name it (LD-65); another open request's `changes` or `removes`
+link shows as an open proposal. Lines of one kind with the same fact are
+one line, which names each ID with its place, so no line is left out. The
+map shows:
 
 - each spec paragraph that the branch added, changed or removed, with the
   change paragraphs that name it;
@@ -189,7 +197,10 @@ effect is in it is the review's judgement (LD-59). So a lost edit, and a
 revert to the linked text, show as unchanged; a revert in other words shows
 through a stale consolidation judgement. When the change's own branch
 changes a named paragraph, `al` keeps that version in its own records; no
-person and no AI writes or reads it. A later edit of that paragraph by
+person and no AI writes or reads it. When a branch adds a `changes` or
+`removes` link to a paragraph that it has already changed, before `al index`
+first binds the link, `al index` binds the paragraph's text at the base: the
+state is "changed since the link". A later edit of that paragraph by
 other work gives the parallel-work hint of v4/R6, as today; the change's
 own consolidation does not. A recorded judgement clears that hint and
 changes no state of the map. `al` compares no text with text. The map also
@@ -211,15 +222,21 @@ version of each paragraph that the judgement names. The judgement goes
 stale when any of them changes. So a later rewrite that loses an effect of
 a consolidated piece, by this change or by other work, makes the judgement
 stale and shows it again. Nothing is dropped in silence, and no record is
-written for each paragraph.
+written for each paragraph. The map judges a consolidation judgement by
+those versions alone, and its line says so: "current: its named paragraphs
+are unchanged". The review section shows the same judgement with the
+identity of LD-28, which a later commit of another file makes stale.
 
 <!-- LD-60 plan -->
 
 The hints of the map: a spec paragraph that the branch changed and that no
 change paragraph names; and a change paragraph that goes into `specs/` with
 no current consolidation judgement. Each clears by a fix: a link, or a new
-judgement. `al conclude` shows them again before it closes, and they never
-refuse (R2).
+judgement. A spec paragraph is named when an own change paragraph names it
+by `changes` or `removes`, or when the Spec line of a consolidation
+judgement names it; a `builds-on` link alone does not. This holds for a
+paragraph that the branch added, too. `al conclude` shows them again before
+it closes, and they never refuse (R2).
 
 <!-- LD-57 plan -->
 
@@ -606,8 +623,12 @@ A path is from the repo's root, at the head; `, base` after it names the
 base, and `<repo>:<path>` names a file of an output repo, as in a design
 line (LD-48). A quote is the text between the first and the last double
 quote of its line. The test evidence may also be `Test: no test found` or
-`Test: tests not examined`. A top-level list item that `al` cannot read as
-a judgement is shown as not read, never left out. Other text in the note is
+`Test: tests not examined`. A consolidation judgement (LD-59) is one with
+a line `Spec (<ID>): "<quote>"` for each spec paragraph that it names,
+quoted from the head, or from the base with `, base` after the ID. Its
+first line may name several items, joined by ", " or " and "; then each
+item quote names its item: `Item (<ID>): "<quote>"`. A top-level list item
+that `al` cannot read as a judgement is shown as not read, never left out. Other text in the note is
 free, and `al` does not read it.
 
 <!-- LD-44 data serves:R2 -->
