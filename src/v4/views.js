@@ -470,16 +470,21 @@ function idView(state, id, full) {
   const body = [line('Paragraph', `${p.displayNumber} · ${p.kind ?? 'no kind'} · ${placeOf(p)}`), ...indent(p.text)];
   body.push(line('Status', statusOf(state, p, t.req)));
   const records = [];
+  const unread = [];
   for (const s of p.links.serves) {
     const q = qualify(s, t.req);
     const rq = q.req && state.requests.get(q.req);
     const req = rq?.reqs.find((x) => x.id === q.id);
     body.push(line('Serves', req ? `${q.key} (${rq.dir}/request.md:${reqLine(rq, req.id)}) ${versionOf(rq, req)}: ${signState(state, rq, req)} (declared)` : `${q.key}: not found`));
-    if (req && !records.includes(recordPath(rq.name))) records.push(recordPath(rq.name));
+    if (req && !(rq.recordError || !rq.data ? unread : records).some((x) => x.path === recordPath(rq.name))) {
+      (rq.recordError || !rq.data ? unread : records).push({ path: recordPath(rq.name), why: rq.recordError ?? 'it is not there' });
+    }
   }
-  // The versions and sign-off states on the Serves lines are al's records' facts (LD-47).
-  if (records.length === 1) body.push(line('Records', `only al's record ${records[0]} holds the version and the sign-off state on the Serves lines`));
-  else if (records.length) body.push(line('Records', `only al's records ${records.join(', ')} hold the versions and the sign-off states on the Serves lines`));
+  // The versions and sign-off states on the Serves lines are al's records'
+  // facts (LD-47); a record that al cannot read is a limit.
+  if (records.length === 1) body.push(line('Records', `only al's record ${records[0].path} holds the version and the sign-off state on the Serves lines`));
+  else if (records.length) body.push(line('Records', `only al's records ${records.map((x) => x.path).join(', ')} hold the versions and the sign-off states on the Serves lines`));
+  for (const x of unread) body.push(line('Records', `not known: the record ${x.path} (${x.why}), so al cannot check the version and the sign-off state on its Serves lines`));
   for (const [word, refs] of Object.entries(p.links)) {
     if (word === 'serves' || !refs.length) continue;
     body.push(line('Links', `${word} ${refs.map((ref) => `${ref} (${placeOfRef(state, ref, t.req, own)})`).join(', ')}`));
@@ -490,20 +495,22 @@ function idView(state, id, full) {
     body.push(line('Governed', govern.length ? `by ${govern.map((a) => `${a.id} (${adrPlace(a)}, ${a.status ?? 'no status'}${a.status === 'superseded' ? ': history' : ''})`).join(' · ')}` : 'by no ADR'));
   }
   body.push(openChanges(state, who));
-  // Cited: its own marker line is no citation; a change spec's paragraph is
+  // Cited (citedLines leaves out a marker's own ID); a change spec's paragraph is
   // also cited by its bare ID inside its request's folder; `central:<ID>`
   // names this repo's item only in the central repo.
   const central = isCentral(state.config);
   body.push(...citedLines(state, t.req ? [who, p.id] : [p.id], {
     full,
-    counts: (c) => !(c.file === p.file && c.line === p.line)
-      && (c.ids.includes(who) || (central && c.ids.includes(`central:${who}`)) || (!!t.req && c.file.startsWith(`${r.dir}/`) && c.ids.includes(p.id))),
+    counts: (c) => (c.ids.includes(who) || (central && c.ids.includes(`central:${who}`)) || (!!t.req && c.file.startsWith(`${r.dir}/`) && c.ids.includes(p.id))),
   }));
   body.push(...checkLines(state, t.req ? who : p.id, !t.req));
   const hints = hintsNow(state);
   if (hints) for (const f of hints.findings.filter((x) => x.id === who && x.severity !== 'info')) body.push(`  ${hints.line(f)}`);
   return { body, next: t.req ? `al context ${t.req}` : 'al check' };
 }
+
+// The ID that a marker line declares, after its `<!--`.
+const DECLARED = /^(\s*<!--[ \t]+)((?:[a-z0-9][a-z0-9-]*\/)?(?:ADR-\d+-\d+|[A-Z][A-Z0-9]*-\d+|[RQ]\d+))/;
 
 // For an ID, its text in one line (LD-18, LD-47).
 const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
@@ -519,8 +526,11 @@ function citedLines(state, ids, { counts = () => true, full = false } = {}) {
   const byFile = new Map();
   // A file that git cannot read may cite it: a limit, never "nowhere".
   const unread = [];
-  for (const c of findCites(state.top, state.rev ?? null, { qualified: false, known: new Set(ids), exclude: ['.assuredloop', 'node_modules'], errors: unread })) {
-    if (!counts(c)) continue;
+  const known = new Set(ids);
+  for (const found of findCites(state.top, state.rev ?? null, { qualified: false, known, exclude: ['.assuredloop', 'node_modules'], errors: unread })) {
+    // A marker's own ID is no citation; the IDs of its links are.
+    const c = { ...found, ids: namedIds(found.text.replace(DECLARED, '$1'), { qualified: false, known }) };
+    if (!c.ids.length || !counts(c)) continue;
     if (!byFile.has(c.file)) byFile.set(c.file, new Map());
     byFile.get(c.file).set(c.line, c.text);
   }
@@ -572,10 +582,7 @@ function adrView(state, id, full) {
     line('Decides', decides.length ? decides.map(placed).join(', ') : 'nothing'),
     line('Linked', linkedTo(state, id)),
     openNaming(state, (k) => k === id || k.startsWith(`${id}-`)),
-    // Its own file counts too, but for the marker lines of its own paragraphs.
-    ...citedLines(state, [id, ...a.paragraphs.map((p) => p.id)], {
-      full, counts: (c) => !state.adrList.some((x) => x.id === id && x.file === c.file && x.paragraphs.some((p) => p.line === c.line)),
-    }),
+    ...citedLines(state, [id, ...a.paragraphs.map((p) => p.id)], { full }),
   ];
   return { body, next: 'al check' };
 }
