@@ -251,7 +251,9 @@ judgement INV-41 version 1a2b3c4d5e6f complies · requests/csv-export/review.md:
 The item's state is `in force`, `proposed by this change`, `draft`,
 `replaced` or `not in force`. A quote that `al` found is "quote found",
 never "complies". A judgement is `stale: judged at <commit>` when another
-file of the change, in any repo, or the item's text changed since. To renew
+file of the change, in any repo, or the item's text or version changed
+since. When a repo cannot be read, it is `not known: <repo> cannot be read
+(<reason>)`, never `current`. To renew
 it, rewrite the judgement (for example its reason) and run `al index`.
 These are hints only: a judgement changes no exit code, no `not ok`,
 `--strict` or `al conclude`.

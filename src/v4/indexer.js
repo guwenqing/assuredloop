@@ -322,7 +322,7 @@ export function index({ top, cwd, opts }) {
     for (const u of issues.unread) notes.push(`item file not read: ${u.file}: ${u.why}`);
   }
   // The identity of each review judgement that has none (light-design R2).
-  body.push(...keepJudgements(top, recs, loaded));
+  body.push(...keepJudgements(top, recs, loaded, issues));
   const repos = new Map(outputRepos(top, loaded).filter((r) => r.name).map((r) => [r.name, r]));
   const links = linksOf(top, now, config, true, repos);
   const atBase = new Set(base ? linksOf(top, loadState(top, base, config, names), config, false).map(tripleKey) : []);

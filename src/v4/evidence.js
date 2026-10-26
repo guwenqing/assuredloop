@@ -4,7 +4,7 @@
 // keeps, by itself, the identity of each judgement in the request's record
 // (`reviewed:`): in each repo of the change, the base and a hash of the
 // change from it, with the review notes and .assuredloop/ left out; and the
-// hash of the item's text. No person and no AI writes or reads it. `al
+// item's version. No person and no AI writes or reads it. `al
 // check` shows each judgement, whether its quotes are found, the item's
 // state, and whether the judgement is current. Hints only: a judgement never
 // clears or hides a `not ok` or a refusal of `al conclude`, and it never
@@ -17,8 +17,8 @@ import { FENCE, groupOf, lf } from './markers.js';
 import { append } from './records.js';
 import { centralRepo, outputRepos } from './repos.js';
 import { isShallow } from './scope.js';
-import { adrParagraph, latestVersion, loadState, settingsAt, signedBy } from './state.js';
-import { REVIEW_NOTES, ownRequests } from './inforce.js';
+import { adrParagraph, loadState, settingsAt, signedBy } from './state.js';
+import { REVIEW_NOTES, designPaths, ownRequests, readDesign } from './inforce.js';
 
 const VERDICTS = ['complies', 'violates', 'unclear', 'not applicable'];
 const FIRST = new RegExp(`^(\\S+) (${VERDICTS.join('|')}): (.+)$`);
@@ -34,7 +34,14 @@ export const notePath = (r) => `${r.dir}/review.md`;
 // A quote is in `text` word for word, with each run of white space taken as one space.
 const quoted = (text, quote) => !!oneLine(quote) && text != null && oneLine(text).includes(oneLine(quote));
 
+// A list item's marker line: its indent, its marker (`-`, `*`, `+`, `1.`
+// or `1)`) and the spaces after it; a tab counts as four spaces.
+const MARKER = /^([ ]*)([-*+]|\d{1,9}[.)])([ \t]+)\S/;
+const indentOf = (l) => /^[ \t]*/.exec(l)[0].replace(/\t/g, '    ').length;
+
 // The top-level list items of a note, outside fenced code: { line, lines }.
+// As Markdown reads them: an item starts at a marker indented up to three
+// spaces, and a marker indented at least to its content column is a sub-item.
 function listItems(text) {
   const items = [];
   let fence = null;
@@ -46,12 +53,14 @@ function listItems(text) {
       if (cur) cur.lines.push(l);
       return;
     }
-    if (/^[-*+][ \t]+\S/.test(l)) {
-      cur = { line: i + 1, lines: [l] };
+    const m = MARKER.exec(l.replace(/^\t+/, (t) => '    '.repeat(t.length)));
+    const indent = indentOf(l);
+    if (m && indent <= 3 && !(cur && indent >= cur.col)) {
+      cur = { line: i + 1, lines: [l], col: indent + m[2].length + Math.min(m[3].replace(/\t/g, '    ').length, 4) };
       items.push(cur);
-    } else if (cur && (!l.trim() || /^[ \t]/.test(l))) {
+    } else if (cur && (!l.trim() || indent > 0)) {
       cur.lines.push(l);
-      if (f && /^[ \t]/.test(l)) fence = f[1];
+      if (f) fence = f[1];
     } else {
       cur = null;
       if (f) fence = f[1];
@@ -87,10 +96,10 @@ export function parseNote(text) {
     const hash = sha256(oneLine(lines.join('\n')));
     // The first line and its continuation, then each sub-item with its own.
     const parts = [''];
-    for (const l of lines) {
-      const sub = /^[ \t]+[-*+][ \t]+(.*)$/.exec(l);
+    for (const [k, l] of lines.entries()) {
+      const sub = k > 0 && /^[ \t]+(?:[-*+]|\d{1,9}[.)])[ \t]+(.*)$/.exec(l);
       if (sub) parts.push(sub[1]);
-      else parts[parts.length - 1] += ` ${l.replace(/^[-*+][ \t]+/, '')}`;
+      else parts[parts.length - 1] += ` ${l.replace(/^[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]+/, '')}`;
     }
     const first = oneLine(parts[0]);
     const m = FIRST.exec(first);
@@ -100,49 +109,79 @@ export function parseNote(text) {
 }
 
 // The item that a judgement names, as the note's request `r` reads it in
-// `state`: { state, sha, version, text }, or null when al cannot find it.
-// `sha` is the hash of its text, which the identity keeps; `version` is
-// what the line shows: v<n> for a requirement version that al recorded.
-function findItem(state, r, id) {
+// `state`: { state, key, version, text }, or null when al cannot find it.
+// `key` is what the identity keeps: the hash of the item's text, and for a
+// requirement its recorded version too; `version` is what the line shows:
+// v<n> for a requirement version that al recorded, else the hash's start.
+// `ctx` gives the record data of a request (al index reads the records it is
+// writing) and the paragraphs of the request's design documents (LD-48).
+function findItem(state, r, id, ctx) {
   const [, req, bare] = ITEM_ID.exec(id) ?? [];
   if (!bare) return null;
   if (req) {
     const q = state.requests.get(req);
-    return q ? requestItem(state, q, bare, q.name === r.name) : null;
+    return q ? requestItem(state, q, bare, q.name === r?.name, ctx) : null;
   }
-  const own = r && requestItem(state, r, bare, true);
+  const own = r && requestItem(state, r, bare, true, ctx);
   if (own || /^[RQ]\d+$/.test(bare)) return own ?? null;
+  const d = r && ctx.designs(state, r).get(bare);
+  if (d) return paragraph(d, design(state, d) ? 'proposed by this change' : 'not in force');
   const p = state.spec.get(bare);
-  if (p) return paragraph(p, p.kind !== 'approach' && ['promise', 'design'].includes(groupOf(p.kind, state.kinds)) ? 'in force' : 'not in force');
+  if (p) return paragraph(p, design(state, p) ? 'in force' : 'not in force');
   const adr = state.adrs.get(/^(ADR-\d+)(?:-\d+)?$/.exec(bare)?.[1]);
   if (adr) {
     const st = adrState(state, adr);
     if (bare === adr.id) {
       const text = adr.paragraphs.map((x) => x.text).join('\n');
-      return { state: st, sha: sha256(adr.body), version: sha256(adr.body).slice(0, 12), text };
+      return { state: st, key: sha256(adr.body), version: sha256(adr.body).slice(0, 12), text };
     }
     const ap = adrParagraph(state, bare);
     return ap ? paragraph(ap, st) : null;
   }
   // Another open request's paragraph, when only one holds that ID.
   const others = [...state.requests.values()].filter((q) => q.open && q.paras.has(bare));
-  return others.length === 1 ? requestItem(state, others[0], bare, false) : null;
+  return others.length === 1 ? requestItem(state, others[0], bare, false, ctx) : null;
 }
 
-const paragraph = (p, st) => ({ state: st, sha: p.sha256, version: p.sha256.slice(0, 12), text: p.text });
+// A promise or design paragraph; approach is never in force (LD-24, LD-42).
+const design = (state, p) => p.kind !== 'approach' && ['promise', 'design'].includes(groupOf(p.kind, state.kinds));
+const paragraph = (p, st) => ({ state: st, key: p.sha256, version: p.sha256.slice(0, 12), text: p.text });
 
-function requestItem(state, q, id, own) {
+function requestItem(state, q, id, own, ctx) {
   if (/^[RQ]\d+$/.test(id)) {
     const req = q.reqs.find((x) => x.id === id);
     if (!req) return null;
-    const v = list(q.data?.requirements).filter((e) => e?.id === id && e.sha256 === req.sha256).at(-1);
+    const v = list(ctx.data(q)?.requirements).filter((e) => e?.id === id && e.sha256 === req.sha256)
+      .reduce((a, e) => (Number(e.version) > Number(a?.version ?? 0) ? e : a), null);
     const st = !q.open ? 'not in force' : own && signedBy(state, q.name, id) ? 'proposed by this change' : 'draft';
-    return { state: st, sha: req.sha256, version: v ? `v${v.version}` : req.sha256.slice(0, 12), text: req.text };
+    const version = v ? `v${v.version}` : req.sha256.slice(0, 12);
+    return { state: st, key: `${version} ${req.sha256}`, version, text: req.text };
   }
   const p = q.paras.get(id);
   if (!p) return null;
-  const design = p.kind !== 'approach' && ['promise', 'design'].includes(groupOf(p.kind, state.kinds));
-  return paragraph(p, !q.open ? 'not in force' : !own ? 'draft' : design ? 'proposed by this change' : 'not in force');
+  return paragraph(p, !q.open ? 'not in force' : !own ? 'draft' : design(state, p) ? 'proposed by this change' : 'not in force');
+}
+
+// What findItem reads beyond the state: the record data of a request, and
+// the paragraphs of the own request's design documents (LD-48), read as the
+// list reads them, in this repo at `rev` or in the working tree.
+function context(top, config, issues, { data = (q) => q.data, rev = null } = {}) {
+  let outputs = null;
+  const repos = () => (outputs ??= outputRepos(top, config));
+  const designs = new Map();
+  return {
+    data,
+    designs(state, r) {
+      if (!designs.has(r.name)) {
+        const found = new Map();
+        for (const d of designPaths(top, state, [r], issues).filter((x) => !x.bad)) {
+          for (const p of readDesign(top, state, d.path, repos, rev).paras ?? []) if (p.id && !found.has(p.id)) found.set(p.id, p);
+        }
+        designs.set(r.name, found);
+      }
+      return designs.get(r.name);
+    },
+  };
 }
 
 // An ADR's state: in force when accepted and no accepted ADR replaces it;
@@ -156,28 +195,63 @@ function adrState(state, adr) {
 }
 
 // The hash of the change in the repo at `dir` from `base`: each changed path
-// and the hash of its bytes, at `rev`, or in the working tree with the
-// untracked files that git does not ignore. It does not depend on git's diff
-// settings.
+// with its git mode and the hash of its bytes (a symlink's bytes are its
+// target, as git keeps it), at `rev`, or in the working tree with the
+// untracked files that git does not ignore. The form is the same at a commit
+// and in the working tree, and it does not depend on git's diff settings.
 function changeHash(dir, base, rev = null) {
   const run = (args) => (git(dir, args, { allowFail: true }) ?? '').split('\0').filter(Boolean);
   const paths = new Set(run(['diff', '--name-only', '-z', '--no-renames', '--no-relative', base, ...(rev ? [rev] : []), '--', '.', ...LEFT_OUT]));
   if (!rev) for (const f of run(['ls-files', '-z', '--others', '--exclude-standard', '--', '.', ...LEFT_OUT])) paths.add(f);
   const sorted = [...paths].sort();
-  const blobs = rev ? readObjects(dir, sorted.map((p) => `${rev}:${p}`)) : null;
-  const bytesOf = (p) => {
-    if (rev) {
-      const b = blobs.get(`${rev}:${p}`);
-      return b === undefined ? 'deleted' : sha256(b);
+  return sha256(JSON.stringify(rev ? entriesAt(dir, rev, sorted) : entriesNow(dir, sorted)));
+}
+
+// [path, mode, hash] for each path at commit `rev`, or [path, 'deleted'].
+function entriesAt(dir, rev, paths) {
+  const modes = new Map();
+  for (const e of (git(dir, ['ls-tree', '-r', '-z', '--full-tree', rev], { allowFail: true }) ?? '').split('\0')) {
+    const m = /^(\d+) (\w+) ([0-9a-f]+)\t(.*)$/s.exec(e);
+    if (m) modes.set(m[4], { mode: m[1], oid: m[3] });
+  }
+  const blobs = readObjects(dir, paths.filter((p) => modes.get(p)?.mode !== '160000').map((p) => `${rev}:${p}`));
+  return paths.map((p) => {
+    const e = modes.get(p);
+    if (!e) return [p, 'deleted'];
+    if (e.mode === '160000') return [p, e.mode, e.oid];
+    const b = blobs.get(`${rev}:${p}`);
+    return b === undefined ? [p, 'deleted'] : [p, e.mode, sha256(b)];
+  });
+}
+
+// [path, mode, hash] for each path in the working tree, or [path, 'deleted'].
+// With core.fileMode off, git does not read the executable bit, so the mode
+// of a regular file is the index's.
+function entriesNow(dir, paths) {
+  const fileMode = git(dir, ['config', '--bool', 'core.fileMode'], { allowFail: true }) !== 'false';
+  let staged = null;
+  const indexMode = (p) => {
+    if (!staged) {
+      staged = new Map();
+      for (const e of (git(dir, ['ls-files', '-s', '-z'], { allowFail: true }) ?? '').split('\0')) {
+        const m = /^(\d+) [0-9a-f]+ \d\t(.*)$/s.exec(e);
+        if (m) staged.set(m[2], m[1]);
+      }
     }
-    try {
-      const st = lstatSync(join(dir, p));
-      return st.isSymbolicLink() ? `link ${readlinkSync(join(dir, p))}` : sha256(readFileSync(join(dir, p)));
-    } catch {
-      return 'deleted';
-    }
+    return staged.get(p) ?? '100644';
   };
-  return sha256(JSON.stringify(sorted.map((p) => [p, bytesOf(p)])));
+  return paths.map((p) => {
+    const at = join(dir, p);
+    try {
+      const st = lstatSync(at);
+      if (st.isSymbolicLink()) return [p, '120000', sha256(Buffer.from(readlinkSync(at)))];
+      if (st.isDirectory()) return [p, '160000', git(at, ['rev-parse', 'HEAD'], { allowFail: true }) ?? 'unknown'];
+      const mode = fileMode ? ((st.mode & 0o100) ? '100755' : '100644') : indexMode(p);
+      return [p, mode, sha256(readFileSync(at))];
+    } catch {
+      return [p, 'deleted'];
+    }
+  });
 }
 
 // The identity of the change in each repo: this repo from `base` (at `rev`,
@@ -203,7 +277,7 @@ function changeIdentity(top, base, config, rev = null) {
 // earliest commit of the branch whose note holds it; when the history cannot
 // tell, al keeps that it does not know. An identity is never written again.
 // Returns the lines for the output.
-export function keepJudgements(top, recs, config) {
+export function keepJudgements(top, recs, config, issues = null) {
   const base = baseOf(top)?.commit;
   if (!base || centralRepo(top, config)) return [];
   const state = loadState(top);
@@ -211,6 +285,7 @@ export function keepJudgements(top, recs, config) {
   const body = [];
   let current = null;
   const kept = stamp(now());
+  const ctx = context(top, config, issues, { data: (q) => recs.get(q.name)?.data ?? q.data });
   for (const r of ownRequests(top, state, base)) {
     const rec = recs.get(r.name);
     const text = read(top, notePath(r));
@@ -223,15 +298,17 @@ export function keepJudgements(top, recs, config) {
       let entry;
       if (!atHead.has(j.hash)) {
         current ??= { head, repos: changeIdentity(top, base, config) };
-        entry = { judgement: j.hash, item: j.id, version: findItem(state, r, j.id)?.sha ?? null, head: current.head, repos: current.repos };
+        entry = { judgement: j.hash, item: j.id, version: findItem(state, r, j.id, ctx)?.key ?? null, head: current.head, repos: current.repos };
       } else {
         past ??= notesOnBranch(top, base, r);
         const at = past.find((c) => c.hashes.has(j.hash));
         if (at) {
           const then = loadState(top, at.commit);
+          const thenConfig = settingsAt(top, at.commit).config;
+          const item = findItem(then, then.requests.get(r.name), j.id, context(top, thenConfig, issues, { rev: at.commit }));
           entry = {
-            judgement: j.hash, item: j.id, version: findItem(then, then.requests.get(r.name), j.id)?.sha ?? null, head: at.commit,
-            repos: changeIdentity(top, baseOf(top, at.commit)?.commit ?? base, settingsAt(top, at.commit).config, at.commit),
+            judgement: j.hash, item: j.id, version: item?.key ?? null, head: at.commit,
+            repos: changeIdentity(top, baseOf(top, at.commit)?.commit ?? base, thenConfig, at.commit),
           };
         } else {
           entry = { judgement: j.hash, item: j.id, unknown: isShallow(top) ? 'a shallow clone' : 'the judgement was committed before this branch' };
@@ -252,19 +329,25 @@ function notesOnBranch(top, base, r) {
   return commits.map((commit) => ({ commit, hashes: new Set(parseNote(fileAt(top, commit, notePath(r)) ?? '').map((j) => j.hash)) }));
 }
 
-// Whether a kept identity is the selected change's: current, stale or not known.
+// Whether a kept identity is the selected change's: current, stale or not
+// known. A repo that cannot be read, now or when judged, never counts as
+// unchanged, also when its reason is the same.
 function identityOf(entry, item, now) {
   if (!entry) return 'identity not kept: run al index';
   if (entry.unknown) return 'not known when judged';
   const was = new Map(list(entry.repos).filter(isMap).map((x) => [x.repo, x]));
   let past = false;
-  let same = (item?.sha ?? null) === (entry.version ?? null) && was.size === now.length;
+  let unread = null;
+  let same = (item?.key ?? null) === (entry.version ?? null) && was.size === now.length;
   for (const x of now) {
     const w = was.get(x.repo);
-    if (w?.past) past = true;
-    else if (!w || w.base !== x.base || w.diff !== x.diff || w.unknown !== x.unknown) same = false;
+    if (!w) same = false;
+    else if (w.past) past = true;
+    else if (x.unknown || w.unknown) unread ??= `${x.repo} cannot be read (${x.unknown ?? w.unknown})`;
+    else if (w.base !== x.base || w.diff !== x.diff) same = false;
   }
   if (!same) return `stale: judged at ${short(entry.head)}`;
+  if (unread) return `not known: ${unread}`;
   return past ? 'not known when judged' : 'current';
 }
 
@@ -291,11 +374,12 @@ function fileOf(top, base, ev, outputs) {
 // al check: the review section, after the list. One header for each own
 // request's note, then one line for each judgement, in note order; lines
 // that are the same apart from the note line are shown once, with each line.
-export function reviewSection(top, { now: state, base, own, config }) {
+export function reviewSection(top, { now: state, base, own, config, issues = null }) {
   const body = [];
   let identity = null;
   let outputs = null;
   const repos = () => (outputs ??= outputRepos(top, config));
+  const ctx = context(top, config, issues);
   for (const r of own) {
     const path = notePath(r);
     const text = read(top, path);
@@ -313,7 +397,7 @@ export function reviewSection(top, { now: state, base, own, config }) {
         continue;
       }
       count.n++;
-      const item = findItem(state, r, j.id);
+      const item = findItem(state, r, j.id, ctx);
       const results = [];
       const itemQuote = j.evidence.find((e) => e.kind === 'item');
       if (!item) results.push('item not found');
