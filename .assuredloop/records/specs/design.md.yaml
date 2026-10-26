@@ -451,7 +451,7 @@ paragraphs:
     display: DES-72 (13:1, in 13. Commands)
   - id: DES-125
     kind: interface
-    text_sha256: f4d111445e41ce2953d8fba657f2c41dd59967857f5a8884a904238ea122798e
+    text_sha256: a796e0b565e633a022f47a23cd96a4a6d4d857cefdcd1c81a9d9f17f5220f5b8
     display: DES-125 (13:2, in 13. Commands)
   - id: DES-73
     kind: note

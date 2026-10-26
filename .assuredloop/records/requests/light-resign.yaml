@@ -40,5 +40,5 @@ bindings:
   - { holder: DES-37, link: serves, target: assuredloop-v4/R4, holder_sha256: 3c48a72fe4999189cc6374c4439187890e181600deba3a007f71d7ddf2b1ecc6, target_sha256: 12402de9531eb5908d8b8f63cc2e7dc9c56677609b3e136bd3800c93cc41107a, target_version: 1 }
   - { holder: DES-37, link: serves, target: origin-elsewhere/R1, holder_sha256: 3c48a72fe4999189cc6374c4439187890e181600deba3a007f71d7ddf2b1ecc6, target_sha256: 4b567d7c36ffc3ba3ba24e4c2a2e54bc4a176b11dec635d0ee1b0d57097c2f43, target_version: 1 }
   - { holder: DES-39, link: serves, target: light-resign/R5, holder_sha256: 87ec37b75cdfa688ec3882315992ccb13ad1d08ee06c0aa873ddbdad5b11ca55, target_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_version: 1 }
-  - { holder: DES-125, link: serves, target: light-resign/R1, holder_sha256: f4d111445e41ce2953d8fba657f2c41dd59967857f5a8884a904238ea122798e, target_sha256: ccb9983961a7fdf313f708089a694862023cb258dcaf236b9bbf082163c47152, target_version: 1 }
+  - { holder: DES-125, link: serves, target: light-resign/R1, holder_sha256: a796e0b565e633a022f47a23cd96a4a6d4d857cefdcd1c81a9d9f17f5220f5b8, target_sha256: ccb9983961a7fdf313f708089a694862023cb258dcaf236b9bbf082163c47152, target_version: 1 }
 dispositions: []
