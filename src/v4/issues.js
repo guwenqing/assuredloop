@@ -350,7 +350,8 @@ function outOfReachItems(state, entries, finder, items, missing) {
     for (const x of w) if (x.key) keys.add(slug(x.key));
     if (!w.length) others.push(e);
   }
-  const saved = new Set(items.map((it) => it.ref).filter(Boolean).map(slug));
+  // A key is saved when an item has exactly it as its ref: the finder's match is case-sensitive.
+  const saved = new Set(items.map((it) => it.ref).filter(Boolean));
   // The ref holds one or more other trackers' keys of the list, each of which
   // the line names, and nothing else but white space and punctuation.
   const only = (ref) => others.some((k) => holds(String(ref), k))
@@ -364,7 +365,7 @@ function outOfReachItems(state, entries, finder, items, missing) {
       if (!isMap(t) || t.ref == null) continue;
       const id = `${r.name}/${String(t.id ?? '-')}`;
       for (const m of missing) if (m.r === r && m.task === String(t.id ?? '-') && !m.none && away(m)) hits.push({ shown: m.key ?? m.written, id });
-      for (const k of others) if (holds(String(t.ref), k) && !saved.has(slug(k))) hits.push({ shown: k, id });
+      for (const k of others) if (holds(String(t.ref), k) && !saved.has(k)) hits.push({ shown: k, id });
     }
   }
   return { hits, away };

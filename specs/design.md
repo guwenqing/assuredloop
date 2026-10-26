@@ -993,7 +993,8 @@ checked, and al cannot tell whether it changed". It names each item once,
 ignoring case, in the form of the first task that names it, with every
 task that names it, and the folder as the caller wrote it. Another
 tracker's key in the list is out of reach for each task whose `ref` holds
-it as a whole word, when no item in the folder has it as its `ref`, also
+it as a whole word, when no item in the folder has exactly it as its
+`ref` (the match that finds an item by its `ref` is case-sensitive), also
 when the same `ref` names another item that is in the folder. A task whose
 `ref` names no item in the folder keeps its `issue-missing` and its
 `issue-changed`, unless its `ref` holds one or more other trackers' keys
