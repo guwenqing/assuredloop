@@ -409,6 +409,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     return got.lines ?? [];
   };
   const designs = designPaths(top, now, own, issues);
+  let replacedShown = false;
   for (const r of own) {
     const lines = lf(r.md).split('\n');
     for (const q of r.reqs) {
@@ -424,6 +425,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
       const by = replacersOf(now, `${r.name}/${q.id}`);
       for (const l of by.filter((x) => x.holds === null)) limits.push(`whether ${l.key} replaces ${r.name}/${q.id}: not known: the original file of its sign-off is not checked`);
       if (by.some((l) => l.holds)) {
+        replacedShown = true;
         for (const l of by.filter((x) => x.holds)) {
           body.push(`replaced ${r.name}/${q.id} signed requirement · ${r.dir}/request.md:${at} · replaced by ${l.key} (${l.r.dir}/request.md:${reqLine(l.r, l.q.id)}), `
             + `${versionOf(l.r, l.q)}: signed in ${signedBy(now, l.r.name, l.q.id).id} (only al's record ${recordPath(l.r.name)} holds this): ${l.q.title}: ${oneLine(l.q.text.split('\n').slice(1).join('\n'))}`);
@@ -458,7 +460,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   }
   body.push('list basis: changed by this change = the change edits the item; cited = a line that the change added or removed names the ID; '
     + 'scope changed in this change = the change edits its files: scope; by scope = its files: scope matches a file that the change touches; all files = its scope is files:**; '
-    + 'proposed = this change\'s own signed requirements and design, not in force; replaced = a signed requirement of another request replaces it; the line shows that one; '
+    + `proposed = this change's own signed requirements and design, not in force; ${replacedShown ? 'replaced = a signed requirement of another request replaces it; the line shows that one; ' : ''}`
     + `${auditAll ? 'audit = an item in force that the change does not touch, shown for the audit' : 'the grouped line names every other item in force'}`);
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
     + `al check --full shows the text of every item, al context <ID>${central ? ` --at ${central.sha.slice(0, 7)} in the central repo shows` : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
