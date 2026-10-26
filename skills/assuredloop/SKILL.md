@@ -70,7 +70,7 @@ judgements in `requests/<name>/review.md`.
    or not, and compare them with what was decided. A document that you did not
    read stays unknown.
 8. Judge a "fix" claim: does the change alter behaviour that a requirement
-   covers? Then it is not path 0.
+   covers, other than to restore what the spec says? Then it is not path 0.
 9. Run `al check` again. Stop when the search question and the lookups find
    nothing more that applies. An empty lookup alone does not mean that nothing
    applies.
@@ -132,7 +132,8 @@ Choose the path. Work that grows changes its path.
   `Tier: 0 — typo in INV-3`, `Tier: 1 — amends INV-10`. `al check` reads the
   newest `Tier:` line.
 - Start a request: `al new <name> --tier <1|1d|2|3|S> --from -`, with the
-  owner's words on standard input. In `request.md`, write each requirement as
+  owner's words on standard input. In `request.md`, under
+  `## Organized requirement`, write each requirement as
   `<!-- R1 from:<snapshot> -->`, `### R1 <title>`, and one sentence with MUST,
   SHOULD or MAY. A spike writes `## Organized question`, `<!-- Q1 -->` and
   `### Q1 <title>`.
