@@ -400,14 +400,15 @@ function contextWorld(t) {
 
 // The one Linked line of a context view, as its sorted entries. The label is
 // "Linked" padded to 10 columns. The line comes after any Links lines, right
-// before the Governed line (a spec ID) or the Checks line (a change-spec ID).
+// before the Governed line (a spec ID) or the Open line (a change-spec ID,
+// #74). Each entry names the place of the linked paragraph's text (#74).
 function linked(r) {
   const ls = lines(r);
   const at = ls.findIndex((l) => l.startsWith('Linked'));
   assert.equal(ls.filter((l) => l.startsWith('Linked')).length, 1, `one Linked line:\n${show(r)}`);
   const line = ls[at];
   assert.ok(line.startsWith('Linked    ') && line[10] !== ' ', `the label is 10 columns:\n${show(r)}`);
-  const next = /^Paragraph SP-/.test(ls[0]) ? 'Checks    ' : 'Governed  ';
+  const next = /^Paragraph SP-/.test(ls[0]) ? 'Open      ' : 'Governed  ';
   assert.ok(ls[at + 1]?.startsWith(next), `the line after Linked is ${next.trim()}:\n${show(r)}`);
   assert.ok(ls.slice(at + 1).every((l) => !l.startsWith('Links     ')), `Linked comes after the Links lines:\n${show(r)}`);
   return line.slice(10).split(' · ').sort();
@@ -417,13 +418,15 @@ const NONE = ['no paragraph builds on, explains or illustrates it'];
 test('context INV-12: Linked lists the paragraphs of specs/ and of open change specs that build on, explain or illustrate it', (t) => {
   const dir = contextWorld(t);
   const r = view(dir, ['context', 'INV-12']);
-  assert.deepEqual(linked(r), ['INV-70 explains it', 'INV-71 illustrates it', 'x/SP-2 builds on it', 'x/SP-5 explains it'].sort(), show(r));
+  assert.deepEqual(linked(r), [
+    'INV-70 (specs/invoices.md:19) explains it', 'INV-71 (specs/invoices.md:23) illustrates it', 'x/SP-2 (requests/x/spec.md:7) builds on it', 'x/SP-5 (requests/x/spec.md:19) explains it',
+  ].sort(), show(r));
   assert.doesNotMatch(r.stdout, word('old/SP-2'), `an archived request is not a source:\n${show(r)}`);
 });
 
 test('context INV-13: a paragraph with two links to it gives two entries; a changes link is not listed', (t) => {
   const r = view(contextWorld(t), ['context', 'INV-13']);
-  assert.deepEqual(linked(r), ['INV-72 builds on it', 'INV-72 illustrates it'], show(r));
+  assert.deepEqual(linked(r), ['INV-72 (specs/invoices.md:27) builds on it', 'INV-72 (specs/invoices.md:27) illustrates it'], show(r));
 });
 
 test('context INV-12 and INV-13: the Open line stays as it was (builds on, changes)', (t) => {
@@ -431,16 +434,16 @@ test('context INV-12 and INV-13: the Open line stays as it was (builds on, chang
   const r12 = view(dir, ['context', 'INV-12']);
   const open12 = lines(r12).filter((l) => l.startsWith('Open      '));
   assert.equal(open12.length, 1, show(r12));
-  assert.ok(open12[0].includes('x/SP-2 builds on it'), show(r12));
+  assert.ok(open12[0].includes('x/SP-2 (requests/x/spec.md:7) builds on it'), show(r12));
   const r13 = view(dir, ['context', 'INV-13']);
   const open13 = lines(r13).filter((l) => l.startsWith('Open      '));
   assert.equal(open13.length, 1, show(r13));
-  assert.ok(open13[0].includes('x/SP-6 changes it'), show(r13));
+  assert.ok(open13[0].includes('x/SP-6 (requests/x/spec.md:23) changes it'), show(r13));
 });
 
 test('context x/SP-1: Linked lists x/SP-2 builds on it, x/SP-3 explains it, x/SP-4 illustrates it', (t) => {
   const r = view(contextWorld(t), ['context', 'x/SP-1']);
-  assert.deepEqual(linked(r), ['x/SP-2 builds on it', 'x/SP-3 explains it', 'x/SP-4 illustrates it'], show(r));
+  assert.deepEqual(linked(r), ['x/SP-2 (requests/x/spec.md:7) builds on it', 'x/SP-3 (requests/x/spec.md:11) explains it', 'x/SP-4 (requests/x/spec.md:15) illustrates it'], show(r));
 });
 
 test('context: with no such paragraph, Linked says so (a spec ID and a change-spec ID); a linked ID in the same state lists', (t) => {
@@ -455,7 +458,7 @@ test('context INV-12 --at <main>: reads that commit, where no paragraph links to
   const dir = contextWorld(t);
   const main = git(dir, 'rev-parse', 'main');
   assert.deepEqual(linked(view(dir, ['context', 'INV-12', '--at', main])), NONE);
-  assert.ok(linked(view(dir, ['context', 'INV-12', '--at', 'HEAD'])).includes('INV-70 explains it'));
+  assert.ok(linked(view(dir, ['context', 'INV-12', '--at', 'HEAD'])).includes('INV-70 (specs/invoices.md:19) explains it'));
 });
 
 // --- a central repo: central:X means this repo's own X (DES-69)
@@ -507,7 +510,8 @@ function centralWorld(t, { central = true } = {}) {
 test('central repo: context INV-12 lists builds-on, explains and illustrates links written central:INV-12, beside a plain explains:INV-12', (t) => {
   const r = view(centralWorld(t), ['context', 'INV-12']);
   assert.deepEqual(linked(r), [
-    'INV-70 builds on it', 'INV-71 explains it', 'INV-72 illustrates it', 'INV-73 explains it', 'x/SP-5 builds on it',
+    'INV-70 (specs/invoices.md:19) builds on it', 'INV-71 (specs/invoices.md:23) explains it', 'INV-72 (specs/invoices.md:27) illustrates it', 'INV-73 (specs/invoices.md:31) explains it',
+    'x/SP-5 (requests/x/spec.md:19) builds on it',
   ].sort(), show(r));
 });
 
@@ -515,12 +519,12 @@ test('central repo: the Open line of INV-12 lists x/SP-5, which builds on centra
   const r = view(centralWorld(t), ['context', 'INV-12']);
   const open = lines(r).filter((l) => l.startsWith('Open      '));
   assert.equal(open.length, 1, show(r));
-  assert.ok(open[0].includes('x/SP-5 builds on it'), show(r));
+  assert.ok(open[0].includes('x/SP-5 (requests/x/spec.md:19) builds on it'), show(r));
 });
 
 test('central repo: context x/SP-1 lists x/SP-2, which builds on central:x/SP-1, beside x/SP-3 (explains:SP-1)', (t) => {
   const r = view(centralWorld(t), ['context', 'x/SP-1']);
-  assert.deepEqual(linked(r), ['x/SP-2 builds on it', 'x/SP-3 explains it'], show(r));
+  assert.deepEqual(linked(r), ['x/SP-2 (requests/x/spec.md:7) builds on it', 'x/SP-3 (requests/x/spec.md:11) explains it'], show(r));
 });
 
 test('central repo: builds-on:central:x/SP-1 keeps R1\'s promise: no design-link on x/SP-2; x/SP-4 with no link gets one', (t) => {
@@ -548,7 +552,7 @@ test('not central: central:INV-12 names another repo\'s INV-12, so Linked lists 
   assert.ok(!/outputs/.test(read(dir, '.assuredloop/config.yaml')), 'the config lists no outputs');
   const r = view(dir, ['context', 'INV-12']);
   const entries = linked(r);
-  assert.ok(entries.includes('INV-73 explains it'), show(r));
+  assert.ok(entries.includes('INV-73 (specs/invoices.md:31) explains it'), show(r));
   assert.deepEqual(entries.filter((e) => /^INV-7[0-2] /.test(e)), [], `INV-70, INV-71 and INV-72 link to central:INV-12:\n${show(r)}`);
 });
 

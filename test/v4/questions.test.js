@@ -57,7 +57,7 @@ test('Q07 (cr-45): yes, the owner signed the 45-minute link time: R2 version 2 i
 test('Q08 (cr-supersede): EXP-4 holds link-refresh/SP-2\'s text; link-refresh/SP-2 changes it', (t) => {
   const r = ctx(t, 'cr-supersede', 'EXP-4');
   has(r, 'expired page MUST offer to send a new link.');
-  has(r, 'link-refresh/SP-2 changes it');
+  has(r, 'link-refresh/SP-2 (requests/link-refresh/spec.md:7) changes it'); // #74: with the place of its text
 });
 
 // #72 (LD-58): the chain of superseded and removed dispositions is not

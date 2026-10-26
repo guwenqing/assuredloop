@@ -106,7 +106,8 @@ describe('#40: a name that starts with one or more digits and a dash is an ADR; 
     test(`${nameOf(file)} is ADR-${n}: \`al context INV-2\` names ADR-${n} (accepted) as governing INV-2`, (t) => {
       const dir = world(t, { [file]: adr(n, 'accepted', `Number ${n}`) });
       const { line, r } = governed(dir);
-      assert.match(line, new RegExp(`\\bADR-${n} \\(accepted\\)`), show(r));
+      // The place of the ADR's heading text, then its status (#74).
+      assert.ok(line.includes(`ADR-${n} (${file}:5, accepted)`), show(r));
     });
   }
 
@@ -145,7 +146,7 @@ describe('#40: a name with no digits before the dash is not an ADR', () => {
       assert.deepEqual(r.findings.filter((f) => f.id === 'ADR-9').map((f) => f.line), [], show(r));
       const { line } = governed(dir);
       assert.doesNotMatch(line, /\bADR-9\b/, line);
-      assert.match(line, /\bADR-3 \(accepted\)/, line);
+      assert.ok(line.includes('ADR-3 (specs/adr/0003-a.md:5, accepted)'), line);
     });
   }
 });
@@ -261,8 +262,8 @@ describe('#40: two ADR files with the same number', () => {
         'specs/adr/1-b.md': adr(1, second, 'Beta'),
       });
       const { line, r } = governed(dir);
-      assert.match(line, new RegExp(`\\bADR-1 \\(${first}\\)`), show(r));
-      assert.doesNotMatch(line, new RegExp(`\\bADR-1 \\(${second}\\)`), show(r));
+      assert.ok(line.includes(`ADR-1 (specs/adr/001-a.md:5, ${first})`), show(r));
+      assert.doesNotMatch(line, new RegExp(`\\bADR-1 \\([^)]*\\b${second}\\)`), show(r));
     });
 
     test(`0040-a.md ${first}, 0040-b.md ${second}: \`al context INV-2\` shows ADR-40 (${first}), from 0040-a.md`, (t) => {
@@ -271,8 +272,8 @@ describe('#40: two ADR files with the same number', () => {
         'specs/adr/0040-b.md': adr(40, second, 'Beta'),
       });
       const { line, r } = governed(dir);
-      assert.match(line, new RegExp(`\\bADR-40 \\(${first}\\)`), show(r));
-      assert.doesNotMatch(line, new RegExp(`\\bADR-40 \\(${second}\\)`), show(r));
+      assert.ok(line.includes(`ADR-40 (specs/adr/0040-a.md:5, ${first})`), show(r));
+      assert.doesNotMatch(line, new RegExp(`\\bADR-40 \\([^)]*\\b${second}\\)`), show(r));
     });
   }
 

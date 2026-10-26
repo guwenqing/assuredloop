@@ -175,7 +175,8 @@ test('adr-history: the accepted ADR-6 has no decides: and gets adr-links; the su
 const review = (t, name, arm) => view(invoicer(t, name, arm), ['context', '--diff', 'main...HEAD', '--for', 'review']);
 const GOVERNED = '  governed by ADR-4 (accepted)';
 const GOVERNED_NO_SOURCE = '  governed by ADR-4 (accepted; no source:)';
-const HINT = '  hint adr-governs specs/exports.md:37 EXP-6 check that ADR-4 still holds';
+// The hint names the text line of EXP-6 (#74).
+const HINT = '  hint adr-governs specs/exports.md:39 EXP-6 check that ADR-4 still holds';
 const HINT_NO_SOURCE = `${HINT}; ADR-4 has no source:`;
 
 test('review view, ADR-4 with no source: the governed line and the adr-governs line say so', (t) => {
@@ -219,6 +220,6 @@ test("al check in the same world: its adr-governs line has no '; ADR-4 has no so
   const r = run(t, 'adr-governs-nosource');
   const governs = all(r, 'hint', 'adr-governs', 'EXP-6');
   assert.equal(governs.length, 1, show(r));
-  assert.equal(governs[0].msg, 'check that ADR-4 still holds', show(r));
+  assert.equal(governs[0].msg, 'check that ADR-4 still holds · places: ADR-4 specs/adr/0004-one-time-tokens.md:5', show(r));
   missing(r, links(r, 'hint', 'ADR-4'), { source: true, decides: false });
 });

@@ -334,10 +334,14 @@ function withoutMap(stdout) {
 // still prints them, so they are taken out of main's output.
 const DISPOSITION_LINE = /^(not ok|hint|info) disposition(-pending)? /;
 const withoutDispositions = (stdout) => stdout.split('\n').filter((l) => !DISPOSITION_LINE.test(l)).join('\n');
+// #74 adds ` · places: <ID> <file>:<line>, ...` after the message of a
+// finding; a main from before #74 does not print it, so it is taken out of
+// both outputs.
+const withoutPlaces = (stdout) => stdout.replace(/ · places: .*$/gm, '');
 function sameAsMainOutput(here, main, args) {
   assert.doesNotMatch(here.stdout, /^(not ok|hint|info) disposition(-pending)? /m, `al ${args.join(' ')}: no disposition finding:\n${here.stdout}`);
-  const hm = withoutMap(here.stdout);
-  const mm = withoutMap(withoutDispositions(main.stdout));
+  const hm = withoutMap(withoutPlaces(here.stdout));
+  const mm = withoutMap(withoutPlaces(withoutDispositions(main.stdout)));
   assert.ok(hm.map.length > 0, `al ${args.join(' ')}: the map of #68:\n${here.stdout}`);
   if (mm.map.length > 0) assert.deepEqual(hm.map, mm.map, `al ${args.join(' ')}: the same map as on main`);
   const h = withoutList(hm.rest);
