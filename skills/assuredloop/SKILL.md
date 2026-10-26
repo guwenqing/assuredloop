@@ -49,6 +49,8 @@ grows changes its path: a small change that needs a design becomes path 2.
    `Tier: 1 — amends INV-10`. `al check` reads the newest `Tier:` line of the
    branch.
 
+If `al` says no place is set for the original files, add the line it names.
+
 ## Markers
 
 Each paragraph in `specs/` and in a `requests/<name>/spec.md` has a hidden
