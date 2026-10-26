@@ -87,7 +87,7 @@ paragraphs:
     display: SCH-21 (5, 5. ADRs)
   - id: SCH-22
     kind: rule
-    text_sha256: 5f72c2457c15041780066cf061ce998873cb68f2181249ae5a2183e6dc822bef
+    text_sha256: 26bf92b7d71e5e43b3207fa58988ed95e14fab36bf44e39eab2b41772e8ea067
     display: SCH-22 (5:1, in 5. ADRs)
   - id: SCH-37
     kind: rule
@@ -115,7 +115,7 @@ paragraphs:
     display: SCH-27 (7, 7. Where the model lives)
   - id: SCH-28
     kind: data
-    text_sha256: 09bf8dcaff40fa4a3bad86b6f4a84b99bc657c0e65adb529976802fcaa52308f
+    text_sha256: 736537193af2388f644e8f74b3c4dabbf8f7b55aefaf697b1ed1a00c5e49f405
     display: SCH-28 (7:1, in 7. Where the model lives)
   - id: SCH-39
     kind: data

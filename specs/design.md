@@ -69,8 +69,7 @@ The risk to watch: an ID on every paragraph, and a kind and links on promise
 and design paragraphs, come close to an element-level trace chain. The
 difference must hold: the links live in the doc and in git, most checks are
 hints, and the records cost a small share of the work (a flexible 20%
-target, input 123). Validation measures each rule against that cost
-(section 15).
+target, input 123). Validation measures each rule against that cost.
 
 <!-- DES-7 note -->
 
@@ -89,6 +88,7 @@ A reader must find the current system without reading past changes (R1).
 | One change | `requests/<name>/origin/` | the owner's words as snapshots, with SHA-256 | append only |
 | | `requests/<name>/request.md` | the dialog, the organized requirement (R1...), the sign-off line, decisions (D1...), task references, the outcome | the requirement is an editable draft until it is signed (section 6); signed versions, the dialog and the decisions are append only; task references and the outcome are updated |
 | | `requests/<name>/spec.md` | **the change spec**: the promises this change adds or changes, its design (the largest part), its plan, and its explanations | edited in the change's PRs |
+| | `requests/<name>/review.md` | the review note: the review's judgements of the change, consolidation judgements included (section 15) | written by the review in the change's PRs |
 | Consolidated | `specs/*.md` | the system now: the promises and the lasting design, told apart by kind | a PR replaces paragraphs by hand |
 | | `specs/adr/` | the decisions; an ADR's text may be rewritten when its decision stays the same, and a changed decision is a new ADR that supersedes it | a new ADR file, or a rewrite that keeps the decision |
 | Outputs | code, tests, `docs/` | the product and its user documents | normal PRs; traced from the change's record (input 112) |
@@ -225,7 +225,7 @@ shown as a fact misleads the review (the rules of the TraceLayer tool).
 **What "checked" means.** The script checks that declarations are well formed
 and that references resolve. It does not check that a kind is right, that a
 requirement is fully covered, or that a change is authorized in substance.
-`al context` and the review view say this in plain words; a clean check names
+`al context` and `al check` say this in plain words; a clean check names
 semantic coverage as "not checked".
 - A code or test file that names an ID **cites** it. That is an exact fact.
 - `implements`, `verifies` and `documents` are declared claims, and they are
@@ -344,8 +344,9 @@ phrases:
 <!-- DES-23 flow serves:assuredloop-v4/R2 -->
 
 **Who sets the kind.** The developer's agent proposes it in the PR, and the
-review checks it. The review view shows each changed paragraph's text beside
-its kind and its requirement, with the baseline paragraphs it touches. Text
+review checks it. `al check --full` shows each changed paragraph's text
+beside its kind and the requirements that it serves, with the text at the
+base of the spec paragraphs that it builds on, changes or removes. Text
 that changes a promise gets the promise treatment, whatever its kind. The
 review may ask for a split where that makes the text clearer.
 
@@ -644,6 +645,35 @@ request only.
 - A link on a question, a link to no requirement of another request, a link
   inside one request, and two requirements that replace one are hints
   (`replaces-link`).
+
+<!-- DES-129 interface serves:light-design/R1,assuredloop-v4/R9 builds-on:DES-119 -->
+
+How `al` shows a replacement. A marker may hold more than one `replaces:`
+token, and a token may hold a list joined by commas.
+- `al context <old>` adds "replaced" after the sign state when the
+  replacement holds, and "replaced: not known" when `al` does not know. It
+  shows a `Replaced` line for each requirement that replaces it, with that
+  requirement's place, version and sign state, and then "the replacement
+  holds", "a proposed replacement: it holds once this version is signed" or
+  "not known whether the replacement holds".
+- `al context <new>` shows a `Replaces` line for each link, with the old
+  requirement's place and its last signed version, or "never signed".
+- Where the list of section 15 shows a signed requirement whose replacement
+  holds, it shows it as replaced, with the requirement that replaces it: its
+  place, version, sign state and text. A listed requirement that replaces
+  another names it.
+- The hint `serves-replaced` comes once for each replacement that holds:
+  "<ID> serves <old>, which <new> replaces: check that it still holds, then
+  serve <new>". When `al` does not know whether the replacement holds, its
+  `Not known` line says so, and it gives no hint. A paragraph of an open
+  change spec is a proposal, and gets no such hint.
+- The hint `replaces-link` is on the marker line. For two requirements that
+  replace the same one, each marker gets the hint, and each requirement
+  that replaces it stays shown.
+- `al context <old request> --audit` names each of its requirements that a
+  link replaces, with its place and the same words.
+- Each of these findings is a hint and not a `not ok`, and no exit code
+  changes.
 
 <!-- DES-46 note -->
 
@@ -1034,6 +1064,46 @@ when the same `ref` names another item that is in the folder. A task whose
 of the list, and nothing else but white space and punctuation. An item that the list names and that is in the folder
 is read as usual. A value that is not a list of texts that are not empty
 stops `al check` with exit 2.
+
+<!-- DES-130 flow serves:light-design/R3 builds-on:DES-91 -->
+
+**A work item that changed** (C7). `al check --issues <folder>` gives the
+hint `issue-changed` for a work item whose text differs from the text that
+`al` kept when the change relied on it. The text is the item's body and
+each comment that is not minimized, in order, with line ends made LF; its
+state is not text. `al index --issues <folder>`, which `al check --issues`
+runs, keeps the SHA-256 of a JSON list of these texts in the request's
+record, by itself; no person and no AI writes or reads it. It keeps it only
+at a moment that is now: when the record at HEAD has no task that names the
+item (the request names it in this edit), and at the first sign-off after
+the naming, while that sign-off is not at HEAD. The text at that sign-off
+is the one that counts, else the text at the naming. A moment that is past
+is not kept.
+- The hint says "not known whether it changed", never "unchanged", for an
+  item named in an earlier commit with no text kept, for a sign-off after
+  the naming with no text kept at it, and for an item that is not in the
+  folder or cannot be read.
+- `al` cannot know when the caller saved a file, so each
+  `al check --issues` says so in its `Not known` line. The caller saves the
+  items again before a check.
+- A closed item gets the same hint (DES-91): C7 compares the item with its
+  own text at the moment of reliance, which is what held then. An archived
+  request is not checked. Without `--issues`, no line is about items
+  (DES-92).
+- The hint clears by a recorded judgement that the change was read:
+  `al record <name> judgement --hint issue-changed --on <item> --reason <why> --issues <folder>`
+  keeps the hash of the item's text with the judgement, and the moment of
+  reliance that held then. The hint comes back when that text changes again, or
+  when a later sign-off becomes the moment of reliance. Only
+  `issue-changed` takes such a judgement.
+- It is a hint in every mode, and never a `not ok`.
+
+<!-- DES-131 rationale explains:DES-130 -->
+
+Why the moment counts, and not today: each thing is judged by its own time.
+A record of the past, such as a closed work item or an archived request, is
+judged by what held when it was written. Only open work is checked against
+what holds now.
 
 <!-- DES-109 interface serves:own-item/R1,closed-items/R1 builds-on:DES-91 -->
 
@@ -1595,20 +1665,61 @@ are its outputs.
 
 <!-- DES-72 interface serves:assuredloop-v4/R9,issue-hints/R1 -->
 
-| Command | v4 |
+| Command | What it does |
 |---|---|
-| `al new` | stays: snapshots the owner's words |
-| `al record origin`, `signoff`, `decision` | stay |
+| `al new` | starts a request and snapshots the owner's words |
+| `al record origin`, `signoff`, `decision` | record later owner's words, a sign-off and a decision |
 | `al record close` | records a close line (section 5) |
-| `al record section`, `al consolidate` | go |
+| `al record judgement` | records that the change of a work item was read; only `--hint issue-changed` (section 8) |
 | `al spec` | lists IDs, display numbers and kinds; `--add-ids` marks every paragraph |
-| `al context` | a change's sign-off state and close lines, coverage per section, the hints, the open changes on an ID, and what is not checked |
-| `al context --diff ... --for review` | the review view: each changed paragraph's text beside its kind, its requirement and the baseline paragraphs it touches |
-| `al check` | the checks in sections 3-9; `--issues <folder>` also checks the work items that the caller saved for the tasks of the open requests (section 8) |
+| `al context` | with no argument, where the project stands; `al context <name>`, where a request stands and what comes next, and with `--audit` its whole trace; `al context <ID>`, one paragraph, requirement or ADR (below). `--full` adds the text of each citing line, and `--at <commit>` answers as of that commit. `--diff` and `--for` refuse and name `al check` |
+| `al check` | the one command for a change and its review: the checks in sections 3-10, the list, the review section and the map (section 15). `--full` shows the text of every item and of each changed paragraph; `--at <commit>` answers as of that commit; `--all` is the audit; `--issues <folder>` also checks the work items that the caller saved for the tasks of the open requests (section 8); `--strict` exits 1 on a `not ok` |
 | `al conclude` | the close rule. It refuses with exit 1 and a `refused:` line for each reason. Without `--yes` it shows what it would do. With `--yes` it writes the Outcome, which shows the evidence and what is unknown, and moves the request to `requests/archive/` |
-| `al index` | writes derived facts and new bindings; `--align <ID>` advances a binding on purpose; lists the hints that the agent must refresh |
+| `al index` | writes derived facts and new bindings; `--align <ID>` advances a binding on purpose; `--issues <folder>` keeps the text of the work items (section 8); lists the hints that the agent must refresh. `al check` runs it |
 | `al export` | the export: one JSONL row per paragraph version, output file or result, with its repo, role, version, commit and edges; not committed |
 | `al search` | search at levels 0-2 across the central repo and its output repos, with the current-system, change-context and history queries; it shows each hit's repo and commit |
+
+<!-- DES-132 interface serves:light-design/R1,light-resign/R1 builds-on:DES-72 -->
+
+**`al check` for a change and its review.** `al check` runs `al index`
+first, and writes what `al index` writes, so `al index` need not be run by
+hand. It names in one line each record file that it wrote, so that the
+author commits them with the change. It names in a second line each record
+file that it wrote for a request that is not the change's own (section 15),
+because that record was not up to date; the author decides whether to
+commit it. Each other line of `al index` shows as one line for each kind. An
+`al check` run does not change which requests are the change's own.
+- `al check --at <commit>` reads the commit's spec, records and change from
+  git, in a temporary worktree outside the project, and writes nothing. A
+  review of another range uses `--at` for a past head, and `git diff` for
+  what changed since an earlier review.
+- The map names each paragraph that the branch added, changed, moved or
+  removed, in `specs/`, the open change specs and the ADRs, with its place,
+  its kind and its change, a change of its kind included. Two or more
+  paragraphs with the same change are one line. `al check --full` gives each
+  one its own line, and adds under it its text, each requirement that it
+  serves with its version, its sign state and its text, the text at the base
+  of each paragraph that it builds on, changes or removes, and, for a spec
+  paragraph, each ADR that governs it, with its status.
+- On an ordinary change, with no finding, `al check` shows the list, the
+  review section, the map, and one line that names each check that ran and
+  found nothing: `ok: nothing found by <code>, ...`. A check that a
+  `Not known` line or a finding says did not run on all that it covers is
+  not in that line.
+- An answer gives a `Next` line only when it names a step that follows from
+  the answer's facts.
+
+<!-- DES-133 interface serves:light-resign/R1,assuredloop-v4/R9 builds-on:DES-72 -->
+
+**`al context <ID>`.** The ID may name a paragraph, a requirement or an ADR
+(`ADR-2`). The answer gives its text, its file and line, its status, what
+replaced what, its last signed version where it has one, the paragraphs
+that build on, explain or illustrate it, the open changes that name it, and
+the places that cite it. It groups the citing places by file: one line for
+each file, marked current or historical, with the count and every line
+number, so that no place is left out. A marker's own ID is no citation; the
+IDs of its links are. `al context <ID> --full` adds the text of each citing
+line.
 
 <!-- DES-125 interface serves:light-resign/R1 -->
 
@@ -1625,6 +1736,22 @@ A fact that only `al`'s records hold says so and names the record. An
 answer shows its hints, which are inferences, apart from the project's
 evidence and from the records, and it names what it does not know on a
 `Not known` line.
+
+<!-- DES-134 component serves:light-design/R2,light-resign/R1 -->
+
+**The skill.** `skills/assuredloop/SKILL.md` guides the user's AI through
+the judgements; `al` keeps the facts. The AI reads the skill on every task,
+so it stays short, and it leaves out what a hint or an answer of `al`
+already says when it is needed. Its steps: the start of a task (run
+`al check`, read the list); writing a change spec; consolidating (section
+5); reviewing, in nine steps that start from the change's behaviour, ask one
+search question, judge only the items that apply, write one consolidation
+judgement for each piece, and find the tests and the user documents; a large
+spec or other words; every answer, which a reader can check; and an audit,
+only on request (`al check --all`). After the steps, one short section names
+what differs by path: the records, the owner's sign-off, the close line and
+`al conclude`. The skill names each `al` option beside its command, so that
+a code test can check that `al` accepts each one.
 
 <!-- DES-73 note -->
 
@@ -1648,6 +1775,373 @@ Why: "no need to take care of nbackward copatibility" (input 98).
   captured as `source: adoption` with its commit and hash (section 5). The
   command writes that adoption record itself, because every adopter needs it
   (T17 builds it).
+
+<!-- DES-135 note -->
+
+## 15. A change and its review: what is in force, the judgements and the map
+
+<!-- DES-136 rationale explains:DES-138,DES-153,DES-157 -->
+
+Why: AssuredLoop finds misalignment and keeps the coding agent focused on
+its change. The user's AI, mainly the review agent, asks small questions
+and gets the right answer with the least added tokens, cost and time. Most
+of the spec is derived design, and consolidation is a judgement, not a
+mechanical merge. So the skill guides the judgements: how to write a
+change's design, how to consolidate it, and how to review it. `al` keeps
+only the facts that an AI forgets or invents: the signed text and its
+changes, the items in force for a change, the spec paragraphs that a change
+named and the ones that it changed, the quotes of a review judgement, and a
+work item that changed. It may keep exact records (hashes, versions,
+bindings) that no person and no AI writes or reads. What a person or an AI
+must write or read is cut to what a check needs. A cut must not force a
+rewrite and must not lose a fact: old records that hold dispositions or
+wording decisions stay readable (`al context <name> --audit` shows them as
+recorded, and `al` no longer checks them), and a command that goes still
+answers, and says what replaces it. Audit questions run
+only on request. `al` calls no model.
+
+<!-- DES-137 rationale explains:DES-143 -->
+
+Why the list reads the change itself: in one adopter project, no code file
+names a spec ID, and 1 of about 30 test files does. A check that waits for
+code or tests to name an ID sees almost nothing there. So `al` lists, in
+plain code, the requirements and decisions in force that may govern a
+change, and says the limits of the list. The user's AI judges the ones that
+apply, and `al` checks the evidence that the AI quotes.
+
+<!-- DES-138 data serves:light-design/R1 -->
+
+**What is in force** for the selected change, at the selected commit. "In
+force" is `al`'s own term; the kind `rule` keeps its meaning as one of the
+promise kinds. `al` reads it from the records that exist: sign-offs, status
+lines, supersede links and `specs/`. No record is added for it.
+- The promise and design paragraphs in `specs/`, but not `approach`. An
+  archived request's text is history; its result is in `specs/`.
+- The ADRs whose status is accepted and that no accepted ADR replaces by
+  `supersedes:`, each with its `decides` links. An ADR's text also names the
+  alternatives that were considered (schema.md 5), so the review reads which
+  part is the decision; `al` marks no part as binding.
+- The change's own signed requirements and its proposed design, shown as
+  "proposed", apart from what already holds. An unsigned requirement of the
+  change's own request is not listed; the limits name it.
+
+<!-- DES-139 data serves:light-design/R1 builds-on:DES-138 -->
+
+**The change's own request** is an open request whose folder or record the
+change touches, or whose name a commit message of base..HEAD names. A change
+touches a request's record only in what `al index` does not derive, such as
+the owner's words and sources, sign-offs, tasks, decisions, close lines and
+judgements. What `al index` derives by itself (requirement versions,
+bindings, judgement identities, the kept hashes of work items, and the
+versions that the map keeps) does not make a request the change's own.
+
+<!-- DES-140 data serves:light-design/R1 builds-on:DES-138 -->
+
+Not in force: another open request's proposal, which the list shows as an
+open proposal beside the item that it changes or removes; a replaced ADR; a
+replaced requirement (section 6); and `approach`, informative, change-only
+and note paragraphs. An accepted ADR whose text changed keeps its hint
+(schema.md 5), and the list marks it "text changed, review open".
+
+<!-- DES-141 data serves:light-design/R1 builds-on:DES-10 -->
+
+**The change's proposed design.** Besides its change spec, a change may name
+a project document as its design, by a design line. In the request's
+`request.md`, or in the body of a saved work item, a design line is a line
+that starts with `Design:` and holds one path from the repo's root, for
+example `Design: docs/rfc/0018-streaming-http-api.md`. In a saved work item
+in JSON or YAML, the field `design` holds one path or a list of paths.
+`<repo>:<path>` names a document of an output repo in the configuration,
+read at its selected commit. A saved work item gives a design only when a
+task of the change's own request names it, and only with `--issues`. A
+plain mention, or a link for comparison or for history, does not make a
+document the change's design.
+
+<!-- DES-142 data serves:light-design/R1 builds-on:DES-141,DES-10 -->
+
+`al` reads the named document at the selected revision. The list shows the
+design line's place, the document's state as `al` reads it (an ADR's status;
+for another document, a first line `Status: <state>`, or "state unknown"),
+and that it is the proposed design of this change. A document with paragraph
+markers is read as design paragraphs of the change, and the list shows each
+of its promise and design paragraphs. A document with no markers is
+supporting evidence: the list shows it, and the change spec holds the trace
+(the `serves`, `builds-on`, `changes` and `removes` links). A design line
+whose document is missing or cannot be read gives the hint `design-doc`; an
+output repo that `al` cannot read gives an info line. The document is the
+change's proposal, shown beside its change spec and never in force. When it
+conflicts with an item in force, both are shown, and the item in force
+stays in force. The design that lasts goes into `specs/` by consolidation
+(section 5).
+
+<!-- DES-143 flow serves:light-design/R1 builds-on:DES-138 -->
+
+**The list** for a change, in plain code, with no model. It is the same
+with or without search. The change is what `al check` selects: its base to
+the working tree, with the untracked files that git does not ignore, and
+with `.assuredloop/` left out. With no base, or an empty change, the list
+says "no change selected". The list shows, each with its ID, its place, its
+basis and its text in one line:
+- the items in force that the change edits, and the ones that it cites: a
+  line that the change adds or removes names the ID as a whole word. A
+  paragraph's own ID in its marker line is no citation, and neither is an ID
+  in a review note: the note is the review's output, not part of the
+  change;
+- the items whose file scope matches a file that the change adds, changes,
+  renames or deletes, and the items whose scope the change edits, so that a
+  narrower scope cannot move an item out of view;
+- the items whose scope is all files;
+- the change's own signed requirements and proposed design.
+
+<!-- DES-144 flow serves:light-design/R1 builds-on:DES-143 -->
+
+Every other item in force is named in one grouped line, with exact counts:
+"N further items in force: U with no known scope: <IDs>; K with a scope that
+does not match this change: <IDs>". Their text is not shown;
+`al check --full` shows it. No item is left out. `al check --all`, the
+audit, shows each item in force on its own line, an item that the change
+does not touch with the basis `audit`, also when no change is selected. It
+gives no judgement.
+
+<!-- DES-145 flow serves:light-design/R1 builds-on:DES-143,DES-69 -->
+
+In an output repo, the items in force are the central repo's at its
+selected commit. The list shows the ones that the change cites as
+`central:<ID>` and the ones whose scope is all files, and names the rest in
+the grouped line. File scopes name files of the central repo, so they are
+not matched there, and the limits say so. The change's own request is not
+read in an output repo. When the central repo cannot be read, the limits
+give the reason, and the list does not say that no item is in force.
+
+<!-- DES-146 rationale explains:DES-144 -->
+
+Why the rest is named and not shown: the full text of every item in force,
+on every check, repeats long text, costs tokens and hides the items that
+matter for the change. The names keep every item in view, and `--full`
+shows the text.
+
+<!-- DES-147 flow serves:light-design/R1 builds-on:DES-143 -->
+
+The list says the basis of each item that it shows (changed by this change,
+cited, scope changed in this change, by scope, all files, proposed, or replaced), the
+way to the text that it does not show, and its limits. It does not say that
+an item that it does not show in full cannot apply. A scope that does not
+match is not proof that the item cannot apply: new behaviour can make an old
+scope incomplete. The search question of the review covers the shown items
+and the grouped ones.
+
+<!-- DES-148 data serves:light-design/R1 builds-on:DES-143 -->
+
+**File scope**, optional. An item in force may say which files it concerns,
+or all files, in its marker line: `files:` and one or more globs from the
+repo's root, joined by commas, for example `files:src/export/**,test/**`.
+`**` matches any number of folders, `*` matches within one folder name, and
+`?` matches one character. A space or a comma in a path is written as `?`.
+All files is `files:**`. The author writes the token. It is not part of the
+item's text and is no link: adding, changing or removing it changes no hash
+and gives no marker hint. A scope helps the list; it does not prove that other
+files cannot affect the item. A scope that matches no file at the selected
+revision gets the hint `scope-no-file`.
+
+<!-- DES-149 choice serves:light-design/R1 builds-on:DES-143 -->
+
+Search only adds. The search question of the review adds candidates for the
+review to read. It does not add to or remove from the list, which stays the
+same with or without search, and it does not change the result of a check.
+The quote check catches an invented quote, not a wrong reading; the meaning
+stays the review's judgement.
+
+<!-- DES-150 data serves:light-design/R2 -->
+
+**The judgements.** The review judges the items that apply to the change,
+conflict with it, or that it is not sure of, however it found them. It
+writes no routine "not applicable" judgement, and earlier judgements stay.
+Each judgement holds:
+- the item's ID; `al` adds the item's version;
+- complies, violates or unclear (and, in an audit, not applicable), with the
+  reason in one sentence;
+- a quote of the item's text, and a quote of the code or test with its repo
+  and file, from the head of the change, or from its base when the change
+  removed the text (a removed guard is quoted from the base);
+- the test evidence apart: the assertion that checks the item, or "no test
+  found", or "tests not examined".
+
+<!-- DES-151 data serves:light-design/R2 builds-on:DES-150 -->
+
+A judgement of absence ("no test found", "the guard was removed") says so,
+and needs no quote from the head. A judgement for every item in force is an
+audit: it runs only on request (`al check --all` with the skill's audit
+step), not on an ordinary change.
+
+<!-- DES-152 data serves:light-design/R2 builds-on:DES-150 -->
+
+**The review note** is `requests/<name>/review.md` of the change's own
+request. One judgement is one top-level list item, as Markdown reads it: a
+bullet or a numbered item, indented up to three spaces. Its first line is
+`<ID> <verdict>: <reason>`, and each line under it holds one quote:
+`Item: "<quote>"`, `Code (<path>): "<quote>"` or `Test (<path>): "<quote>"`.
+A path is from the repo's root, at the head; `, base` after it names the
+base, and `<repo>:<path>` names a file of an output repo. A quote is the
+text between the first and the last double quote of its line. The test
+evidence may also be `Test: no test found` or `Test: tests not examined`. A
+consolidation judgement is one with a line `Spec (<ID>): "<quote>"` for each
+spec paragraph that it names, quoted from the head, or from the base with
+`, base` after the ID. Its first line may name several items, joined by
+", " or " and "; then each item quote names its item:
+`Item (<ID>): "<quote>"`. A top-level list item that `al` cannot read as a
+judgement is shown as not read, not left out. Other text in the note is
+free, and `al` does not read it.
+
+<!-- DES-153 flow serves:light-design/R2 builds-on:DES-152 -->
+
+**C8, the evidence check**, with no model. For each judgement in the note of
+each own request, `al check` shows, in its review section, whether the
+item's quote is in that item's text, wherever `al` can find the item, and
+whether each code, test or spec quote is in the file or the spec paragraph
+that it names, at the head or at the base. A result is "quote found", "quote
+not found", or "item not found" for an item that `al` cannot find. A found
+quote is not shown as "complies": the meaning is the AI's judgement.
+Beside the result, `al` shows the item's state: in force; proposed by this
+change; draft (another open request's text, an unsigned requirement, a
+proposed ADR); replaced (a superseded or replaced ADR); or not in force (any
+other kind or status).
+
+<!-- DES-154 flow serves:light-design/R2 builds-on:DES-153,DES-37 -->
+
+`al` also keeps, by itself, the identity of the reviewed change for each
+judgement: in each repo that it considered, the base commit and a hash of
+the change's diff from that base, with the review notes and `al`'s own
+records left out; and the item's version. A judgement is current only while
+the selected change has the same base, the same diff hash and the same item
+version. So a commit that only saves review notes or `al`'s records keeps it
+current, and a commit that changes any other file of the change, quoted or
+not, in any repo, makes it "stale: judged at <head>". A stale judgement
+needs a new judgement or a renewed review, even when every quote is still
+there. A judgement of an earlier PR of the same request has another base, so
+it shows as stale. C8 gives no `not ok` and changes no exit code. A
+judgement never clears or hides a `not ok` or a refusal of `al conclude`,
+and it never blocks.
+
+<!-- DES-155 flow serves:light-design/R2 builds-on:DES-153 -->
+
+The rules of the check. A quote matches word for word, with each run of
+white space taken as one space, so that a quote of a wrapped paragraph
+matches. The change in this repo is the one that `al check` selects. In an
+output repo of the configuration, it is the change from the merge-base of
+the selected commit with `main` to that commit. A repo that `al` cannot
+read, now or when judged, does not count as unchanged, so the judgement is
+"not known: <repo> cannot be read (<reason>)" unless another part makes it
+stale. The diff hash is taken over each changed path, its git mode and the
+hash of its bytes, in the same form at a commit and in the working tree, so
+it does not depend on git's diff settings. The item's version is the hash
+of its text. A judgement of a requirement is current only when the
+requirement's text is its latest recorded version, and that version is the
+one that the identity holds; an identity with no recorded version is not
+current. An item of the own request's design documents is found as the list
+reads them.
+
+<!-- DES-156 flow serves:light-design/R2 builds-on:DES-154 -->
+
+`al index` keeps the identity in the request's record, once for each
+judgement, and does not write it again; `al check --at` writes nothing. A
+judgement that is not in the note at HEAD is judged now. One that is
+already committed when `al index` first sees it takes the identity of the
+earliest commit of the branch whose note holds it, with the requirement
+version read only from the record as committed there. When the history
+cannot tell, for example because a shallow clone cuts it at that commit,
+the judgement is "not known when judged", not current. A rewritten
+judgement, for example with a new reason, gets a new identity. A judgement
+with no identity yet says "identity not kept: run al index".
+
+<!-- DES-157 flow serves:light-resign/R5 builds-on:DES-29 -->
+
+**The map.** On a branch with an open change of path 2 or 3, `al check`
+shows the change against its base, from facts only. Such a change is an
+open request of the change's own that is not a spike, and whose tier is not
+0, 1 or 1d; with none, the map says so in one line. Entries of one kind with
+the same fact are one line, which names each ID with its place, so no entry
+is left out. Beside the paragraphs that the branch changed (section 13),
+the map shows:
+- each spec paragraph that the branch added, changed or removed, with the
+  own change paragraphs that name it by `changes`, `removes` or
+  `builds-on`, and the consolidation judgements whose Spec lines name it.
+  Another open request's `changes` or `removes` link to it shows as an open
+  proposal;
+- each `changes` or `removes` link of an own change paragraph, with the
+  state of its target: unchanged since the link, changed since the link, or
+  removed;
+- each own change paragraph that goes into `specs/`, with its consolidation
+  judgement: current, stale or none.
+
+<!-- DES-158 flow serves:light-resign/R5 builds-on:DES-157,DES-26 -->
+
+The states are facts. "Unchanged since the link" means that the named
+paragraph still has the version that it had when the change first linked
+it: the version that the link's binding holds (section 4). No judgement
+moves that version. "Changed since the link" and "removed" say only that the
+text changed or left `specs/`. Whether the change's effect is in it is the
+review's judgement. So a lost edit, and a revert to the linked text, show as
+unchanged; a revert in other words shows through a stale consolidation
+judgement. A link with no binding yet is "not known". `al` compares no text
+with text.
+
+<!-- DES-159 flow serves:light-resign/R5 builds-on:DES-26 -->
+
+How a link of the map is bound. A new `changes` or `removes` link of a
+change spec binds the target's text at the base, when the target is there,
+so a link that a branch adds after it changed the target shows "changed
+since the link". `al index`
+keeps a fact at a moment that is now only for what the working tree adds
+against HEAD. For what HEAD already holds with no record, it takes the
+moment from the branch history: the earliest commit of base..HEAD that
+holds it. So a link that HEAD declares with no binding gets the holder's
+and the target's text at the first commit that declares it; a `changes` or
+`removes` link gets the target's text at the base of that commit; a
+requirement gets the version whose text it had there. Where the history
+cannot tell (a shallow clone), the link gets no binding, and the fact stays
+not known.
+
+<!-- DES-160 flow serves:light-resign/R5 builds-on:DES-158 -->
+
+When the change's own branch changes a paragraph that an own change
+paragraph names by `changes` or `removes`, `al index` keeps that version in
+the request's record; no person and no AI writes or reads it. It is the
+paragraph's text in the working tree when the tree changes it against HEAD;
+else its text at the latest commit of base..HEAD that is not a merge and
+that changed it. A merge commit gives none, because it can hold the edit of
+other work, and so does a commit where a shallow clone cuts the history. A
+later edit of that paragraph by other work gives the parallel-work hint
+`stale-base` (section 4); the change's own consolidation does not. A
+`builds-on` link to that paragraph still gets the hint.
+
+<!-- DES-161 flow serves:light-resign/R5 builds-on:DES-29,DES-152 -->
+
+**The consolidation judgement.** The review writes it as an ordinary
+judgement, in the same note, one for each piece that it consolidates
+(section 5). Its items are the change paragraphs of that piece. Its Spec
+lines name the spec paragraphs that hold them now. It says complies,
+violates or unclear with the reason, and quotes the change paragraph and
+the spec text. It may name several change paragraphs and several spec
+paragraphs, so a split or a join needs one judgement. C8 checks its quotes.
+`al index` keeps, by itself, the version of each paragraph that the
+judgement names. The map judges a consolidation judgement by those versions
+alone: "current: its named paragraphs are unchanged", or stale, naming each
+paragraph that changed since it was judged. So a later rewrite that loses
+an effect of a consolidated piece, by this change or by other work, makes
+the judgement stale and shows it again. No record is written for each
+paragraph. The review section shows the same judgement with the identity of
+C8, which a later commit of another file makes stale.
+
+<!-- DES-162 flow serves:light-resign/R5 builds-on:DES-157,DES-37 -->
+
+The hints of the map: `map-unnamed`, for a spec paragraph that the branch
+added, changed or removed and that no own change paragraph names; and
+`map-consolidation`, for the change paragraphs that go into `specs/` with no
+current consolidation judgement. A spec paragraph is named when an own
+change paragraph names it by `changes` or `removes`, or when the Spec line
+of a consolidation judgement names it; a `builds-on` link alone does not.
+Each clears by a fix: a link, or a new judgement. `al conclude` shows them
+again before it closes, and they never refuse.
 
 <!-- DES-76 note -->
 
