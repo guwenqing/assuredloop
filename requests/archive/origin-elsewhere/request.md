@@ -1,5 +1,5 @@
 # Original files outside the repo
-Tier: 2 · Status: open
+Tier: 2 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -22,3 +22,34 @@ Amends: hints-and-blocks/R3 (a sign-off's file may be outside the repo; every ot
 
 Out: moving the existing original files out of the repo and out of its history (#63).
 Signed off: 2026-10-26 owner, origin/2026-10-26-signoff.md
+
+## Outcome
+
+Concluded 2026-10-26 with al conclude, on the working tree at c2dc30a.
+
+- R1 Original files outside the repo, version 1, signed in S1:
+  - OE-4 data: in the change spec, serves it
+  - OE-5 data: in the change spec, serves it
+  - OE-6 choice: in the change spec, serves it
+  - OE-8 rule: in the change spec, serves it
+  - OE-19 rule: in the change spec, serves it
+  - OE-9 rule: in the change spec, serves it
+  - OE-11 rule: in the change spec, serves it
+  - OE-20 rule: in the change spec, serves it
+  - OE-12 data: in the change spec, serves it
+  - OE-14 rule: in the change spec, serves it
+  - OE-15 interface: in the change spec, serves it
+  - OE-17 plan: in the change spec, serves it
+  - DES-37 rule: in specs/design.md, serves it
+  - DES-89 rule: in specs/design.md, serves it
+  - DES-126 rule: in specs/design.md, serves it
+  - DES-90 rule: in specs/design.md, serves it
+  - DES-127 rule: in specs/design.md, serves it
+  - DES-120 data: in specs/design.md, serves it
+  - DES-121 choice: in specs/design.md, serves it
+  - DES-123 rule: in specs/design.md, serves it
+  - DES-128 rule: in specs/design.md, serves it
+  - DES-124 data: in specs/design.md, serves it
+  - DES-61 interface: in specs/design.md, serves it
+  - SCH-39 data: in specs/schema.md, serves it
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
