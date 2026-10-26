@@ -123,7 +123,7 @@ paragraphs:
     display: LD-18 (4:1, in 4. Commands, answers and the skill (plans))
   - id: LD-63
     kind: plan
-    text_sha256: eac1498d0fcadf25cbaa5e79f5e637ec6bce3aef874480772b601667997df193
+    text_sha256: 48f3fc0aaa5cb16b28f8332e1077120dd05e25cae936e99bf97d4ff45bed1fda
     display: LD-63 (4:2, in 4. Commands, answers and the skill (plans))
   - id: LD-19
     kind: plan
@@ -139,7 +139,7 @@ paragraphs:
     display: LD-47 (4:5, in 4. Commands, answers and the skill (plans))
   - id: LD-41
     kind: plan
-    text_sha256: d1854f352aeb68ed527c7178dca1d7eea34239480473ec91c54e3705de7178a9
+    text_sha256: 24a2691ac3cd381a6832de19522ee21b7edb65522aaaa3f56185bdf8b3f6b3ef
     display: LD-41 (4:6, in 4. Commands, answers and the skill (plans))
   - id: LD-22
     kind: flow
@@ -151,7 +151,7 @@ paragraphs:
     display: "LD-23 (5, 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-24
     kind: data
-    text_sha256: 272d61d72e923c562f7e85cfde2137d979de976f7d162a000f221546c66aa7a4
+    text_sha256: 6e325146e10c54b47d683060b6ba980bb4a37cf24c177ad6f6c74609978acf9a
     display: "LD-24 (5:1, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-48
     kind: data
