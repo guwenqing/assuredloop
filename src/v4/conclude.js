@@ -11,7 +11,7 @@ import { mkdirSync, renameSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Fail, day, exists, guard, isName, now, write } from './base.js';
 import { branchOf } from './checks.js';
-import { closeLine, closeLines, closeRefusals } from './close.js';
+import { closeLine, closeLines, closeRefusals, unsignedRemovals } from './close.js';
 import { baseOf, git } from './git.js';
 import { openRecord, recordText } from './records.js';
 import { requestOriginals } from './originals.js';
@@ -39,11 +39,13 @@ function reasons(state, was, r, branch, lines) {
     return out;
   }
   // 1. No recorded reason replaces a sign-off (light-resign/R5).
+  const removals = unsignedRemovals(state, was, r);
   const unsigned = [
     ...[...r.paras.values()].filter((p) => isPromise(state, p.kind) && !servesSigned(state, p, r.name)).map((p) => `${r.name}/${p.id}`),
     ...[...state.spec.values()].filter((p) => isPromise(state, p.kind) && p.links.serves.some((s) => qualify(s, null).req === r.name)
       && !servesSigned(state, p, null)).map((p) => p.id),
-    ...branch.map((c) => c.name),
+    ...removals.map((x) => x.line),
+    ...branch.filter((c) => !removals.some((x) => x.id === c.name)).map((c) => c.name),
   ];
   if (unsigned.length) out.push(`a promise change with no signed requirement that covers it: ${[...new Set(unsigned)].join(', ')}`);
   // 2 and 3, on paths 2 and 3.
@@ -76,7 +78,7 @@ function outcome(state, r, lines, top) {
     const decided = [...state.adrs.values()].filter((a) => (a.head?.links.decides ?? []).some((s) => qualify(s, null).key === key));
     for (const a of decided) out.push(`  - ${a.id}: decides it (${a.status ?? 'no status'})`);
     if (byOn.has(q.id)) out.push(closed(byOn.get(q.id)));
-    if (!inSpec.length && !decided.length) out.push('  - no declared paragraph link');
+    if (!inSpec.length && !decided.length) out.push('  - no declared paragraph link: no paragraph of specs/ serves it, and no ADR decides it');
   }
   const notDelivered = lines.filter((c) => r.paras.has(String(c.e.on)));
   if (notDelivered.length) out.push('- Change paragraphs named as not delivered:', ...notDelivered.map((c) => `  - ${c.e.on}: ${closed(c).trim().slice(2)}`));
