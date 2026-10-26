@@ -260,6 +260,47 @@ it, rewrite the judgement (for example its reason) and run `al index`.
 These are hints only: a judgement changes no exit code, no `not ok`,
 `--strict` or `al conclude`.
 
+A consolidation judgement says how a piece of the change went into
+`specs/`. It has a `Spec` line for each spec paragraph that holds the piece
+now. It may name several change paragraphs, so a split or a join needs one
+judgement:
+
+```markdown
+- SP-3 and SP-4 complies: one shared link that lives 24 hours, now in INV-41 and INV-42.
+  - Item (SP-3): "A shared export link lives for 24 hours"
+  - Item (SP-4): "the email carries only the link"
+  - Spec (INV-41): "The export link MUST expire 24 hours after it is created."
+  - Spec (INV-42): "The email MUST hold the link and no file."
+  - Spec (INV-9, base): "The link expires 30 minutes after the email is sent."
+```
+
+`al index` keeps the version of each paragraph that it names. The
+judgement goes stale when any of them changes, by this change or by other
+work.
+
+## The map of a change
+
+On a branch with an open change of path 2 or 3, `al check` shows the map
+after the review section, from facts only. al compares no text with text:
+
+```text
+map: the change against its base 1a2b3c4 (own changes: csv-export), from facts only
+map spec INV-41 · specs/invoices.md:14 · changed; named by csv-export/SP-3 changes, judgement requests/csv-export/review.md:3
+map spec INV-43 · specs/invoices.md:30 · added; named by no change paragraph
+map link csv-export/SP-3 changes INV-41 · requests/csv-export/spec.md:9 · changed since the link
+map consolidation · 2 change paragraphs · current: its named paragraphs are unchanged (judgement requests/csv-export/review.md:3, complies): csv-export/SP-3 (requests/csv-export/spec.md:9), csv-export/SP-4 (requests/csv-export/spec.md:13)
+```
+
+A link's target is `unchanged since the link`, `changed since the link` or
+`removed`. "Unchanged" means that the paragraph still has the text that it
+had when the change first linked it. Whether the change's effect is in it
+is the review's judgement. Lines with the same fact are one line, which
+names each ID. Two hints come with the map: `map-unnamed`, a spec paragraph
+that the branch changed and that no `changes` or `removes` link and no
+consolidation judgement names; and `map-consolidation`, the change
+paragraphs that go into `specs/` with no current consolidation judgement.
+`al conclude` shows them again, and never refuses on them.
+
 ## Settings
 
 `.assuredloop/config.yaml`, at the repo's root. Every key is optional. A

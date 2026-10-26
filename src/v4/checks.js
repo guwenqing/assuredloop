@@ -21,6 +21,7 @@ import { canAlignTo, declaredNow, isCentral } from './indexer.js';
 import { adrOf, recordBlocks, supersededBlocks } from './blocks.js';
 import { phraseFindings } from './phrases.js';
 import { issueHints } from './issues.js';
+import { ownEdit } from './map.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
 const TIER = /^[ \t]*Tier:[ \t]*(0|1d|1|2|3|S)\b[ \t]*(?:—|–|--?)?[ \t]*(.*)$/m;
@@ -356,6 +357,8 @@ export function checks(top, { base, phrases = [], issues = null }) {
       if (!cur || !cur.sha || cur.sha === b.target_sha256) continue;
       // The holder's own change made the target what it is now: its disposition names that text.
       if ((Array.isArray(r.data?.dispositions) ? r.data.dispositions : []).some((d) => d?.source === b.holder && d.spec === b.target && d.spec_sha256 === cur.sha)) continue;
+      // The change's own branch made the target what it is now: al kept that version (LD-61).
+      if (!t.req && String(b.holder).startsWith(`${r.name}/`) && ownEdit(r, t.id) === cur.sha) continue;
       // A superseded ADR's links are history (schema.md 5).
       if (now.adrs.get(String(b.holder))?.status === 'superseded') continue;
       // A link that its holder no longer declares, or whose holder is gone, is history too (#2).
@@ -508,7 +511,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   const adopted = new Set();
   for (const [id, hashes] of captured) if (!notAdopted.has(id) && now.spec.has(id) && hashes.has(now.spec.get(id).sha256)) adopted.add(id);
 
-  return { findings, notKnown, adopted, now, was };
+  return { findings, notKnown, adopted, now, was, changes };
 }
 
 // Whether a result applies (design.md 9): never "applies", only what is known.

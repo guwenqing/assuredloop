@@ -17,6 +17,7 @@ import { outputRepos } from './repos.js';
 import { loadItems, taskItems } from './issues.js';
 import { keepItems } from './kept-items.js';
 import { keepJudgements } from './evidence.js';
+import { keepOwnEdits } from './map.js';
 import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
 // The marker links that get a binding, by the parser's key; `for` (a task) has no text to bind.
@@ -323,9 +324,12 @@ export function index({ top, cwd, opts }) {
   }
   // The identity of each review judgement that has none (light-design R2).
   body.push(...keepJudgements(top, recs, loaded, issues));
+  // The versions that the change's own branch gave the spec paragraphs it names (LD-61).
+  body.push(...keepOwnEdits(top, recs, main));
   const repos = new Map(outputRepos(top, loaded).filter((r) => r.name).map((r) => [r.name, r]));
   const links = linksOf(top, now, config, true, repos);
-  const atBase = new Set(base ? linksOf(top, loadState(top, base, config, names), config, false).map(tripleKey) : []);
+  const then = base ? loadState(top, base, config, names) : null;
+  const atBase = new Set(then ? linksOf(top, then, config, false).map(tripleKey) : []);
 
   // --align <ID>: the ID must be something that holds links now.
   const align = opts.align;
@@ -378,6 +382,11 @@ export function index({ top, cwd, opts }) {
       if (!target) { once(`not bound: ${name}: target not found`); continue; }
       if (l.holderSha === null) { once(`not bound: ${name}: output file not found`); continue; }
       const entry = { holder: l.holder, link: l.link, target: l.target, holder_sha256: l.holderSha, target_sha256: target.sha };
+      // A new changes or removes link of a change spec whose target the
+      // branch already changed binds the target's text at the base: the
+      // version that it had when the change linked it (LD-61).
+      const before = main && at < 0 && !aligning && !l.t.req && ['changes', 'removes'].includes(l.link) && l.holder.includes('/') ? then.spec.get(l.t.id) : null;
+      if (before) entry.target_sha256 = before.sha256;
       if (target.version !== undefined) entry.target_version = target.version;
       if (l.commit) entry.commit = l.commit;
       const node = rec.doc.createNode(entry);

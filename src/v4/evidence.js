@@ -21,7 +21,9 @@ import { adrParagraph, loadState, settingsAt, signedBy } from './state.js';
 import { REVIEW_NOTES, designPaths, ownRequests, readDesign } from './inforce.js';
 
 const VERDICTS = ['complies', 'violates', 'unclear', 'not applicable'];
-const FIRST = new RegExp(`^(\\S+) (${VERDICTS.join('|')}): (.+)$`);
+// The first line names one item, or several joined by ", " or " and " (LD-59).
+const FIRST = new RegExp(`^([^\\s,]+(?:(?:, and |, | and )[^\\s,]+)*) (${VERDICTS.join('|')}): (.+)$`);
+const SEPARATOR = /, and |, | and /;
 const ITEM_ID = /^(?:([a-z0-9][a-z0-9-]*)\/)?((?:[A-Z][A-Z0-9]*-\d+(?:-\d+)?)|[RQ]\d+)$/;
 // The paths that are no part of the change (LD-28).
 const LEFT_OUT = [':(exclude).assuredloop', `:(exclude,glob)${REVIEW_NOTES}`];
@@ -70,11 +72,18 @@ function listItems(text) {
 }
 
 // One evidence line: { kind: item|code|test, quote, path, repo, base }, or
-// { kind: 'test', said } for "no test found" and "tests not examined", or
-// { unread } for a line that starts like evidence but is not in its form.
+// { kind: 'item', id, quote } for an item quote that names its item, or
+// { kind: 'spec', id, base, quote } for a spec paragraph of a consolidation
+// judgement (LD-59), or { kind: 'test', said } for "no test found" and "tests
+// not examined", or { unread } for a line that starts like evidence but is
+// not in its form.
 function evidence(s) {
   let m = /^Item:\s*"(.*)"$/.exec(s);
   if (m) return { kind: 'item', quote: m[1] };
+  m = /^Item\s*\(\s*(\S+?)\s*\):\s*"(.*)"$/.exec(s);
+  if (m && ITEM_ID.test(m[1])) return { kind: 'item', id: m[1], quote: m[2] };
+  m = /^Spec\s*\(\s*(\S+?)(,\s*base)?\s*\):\s*"(.*)"$/.exec(s);
+  if (m && ITEM_ID.test(m[1])) return { kind: 'spec', id: m[1], base: !!m[2], where: `${m[1]}${m[2] ? ', base' : ''}`, quote: m[3] };
   m = /^(Code|Test)\s*\((.+?)\):\s*"(.*)"$/.exec(s);
   if (m) {
     const [, path, base] = /^(.*?)(,\s*base)?$/.exec(m[2].trim());
@@ -83,14 +92,15 @@ function evidence(s) {
   }
   m = /^Test:\s*(no test found|tests not examined)\.?$/.exec(s);
   if (m) return { kind: 'test', said: m[1] };
-  if (/^(Item|Code|Test)\b/.test(s)) return { unread: s };
+  if (/^(Item|Code|Test|Spec)\b/.test(s)) return { unread: s };
   return null;
 }
 
-// The judgements of a note's text, in note order: { line, hash, id, verdict,
-// evidence } for each one in the judgement form, { line, unread } for each
-// other top-level list item (LD-27). The hash is the item's text with each
-// run of white space made one space: the judgement's own key.
+// The judgements of a note's text, in note order: { line, hash, id, ids,
+// verdict, evidence } for each one in the judgement form, { line, unread }
+// for each other top-level list item (LD-27). `ids` are the items that the
+// first line names, `id` them as one name. The hash is the item's text with
+// each run of white space made one space: the judgement's own key.
 export function parseNote(text) {
   return listItems(text).map(({ line, lines }) => {
     const hash = sha256(oneLine(lines.join('\n')));
@@ -103,8 +113,9 @@ export function parseNote(text) {
     }
     const first = oneLine(parts[0]);
     const m = FIRST.exec(first);
-    if (!m || !ITEM_ID.test(m[1])) return { line, unread: first.split(' ').slice(0, 8).join(' ') };
-    return { line, hash, id: m[1], verdict: m[2], evidence: parts.slice(1).map((p) => evidence(oneLine(p))).filter(Boolean) };
+    const ids = m ? m[1].split(SEPARATOR) : [];
+    if (!m || !ids.every((x) => ITEM_ID.test(x))) return { line, unread: first.split(' ').slice(0, 8).join(' ') };
+    return { line, hash, id: ids.join(', '), ids, verdict: m[2], evidence: parts.slice(1).map((p) => evidence(oneLine(p))).filter(Boolean) };
   });
 }
 
@@ -306,16 +317,15 @@ export function keepJudgements(top, recs, config, issues = null) {
       let entry;
       if (!atHead.has(j.hash)) {
         current ??= { head, repos: changeIdentity(top, base, config) };
-        entry = { judgement: j.hash, item: j.id, version: findItem(state, r, j.id, ctx)?.key ?? null, head: current.head, repos: current.repos };
+        entry = { judgement: j.hash, item: j.id, ...versionsOf(state, r, j, ctx), head: current.head, repos: current.repos };
       } else {
         past ??= notesOnBranch(top, base, r);
         const at = past.find((c) => c.hashes.has(j.hash));
         if (at) {
           const then = loadState(top, at.commit);
           const thenConfig = settingsAt(top, at.commit).config;
-          const item = findItem(then, then.requests.get(r.name), j.id, context(top, thenConfig, issues, { rev: at.commit }));
           entry = {
-            judgement: j.hash, item: j.id, version: item?.key ?? null, head: at.commit,
+            judgement: j.hash, item: j.id, ...versionsOf(then, then.requests.get(r.name), j, context(top, thenConfig, issues, { rev: at.commit })), head: at.commit,
             repos: changeIdentity(top, baseOf(top, at.commit)?.commit ?? base, thenConfig, at.commit),
           };
         } else {
@@ -328,6 +338,22 @@ export function keepJudgements(top, recs, config, issues = null) {
     }
   }
   return body;
+}
+
+// The versions that an identity keeps for judgement `j` in `state`: the
+// item's, or a list for several items; and for a consolidation judgement
+// (one with a Spec line, LD-59), `paragraphs`: the version of each change
+// paragraph and each spec paragraph that it names, null for one that is not
+// there. The map judges a consolidation judgement by these alone.
+function versionsOf(state, r, j, ctx) {
+  const keys = j.ids.map((id) => findItem(state, r, id, ctx)?.key ?? null);
+  const out = { version: keys.length === 1 ? keys[0] : keys };
+  const specs = [...new Set(j.evidence.filter((e) => e.kind === 'spec').map((e) => e.id))];
+  if (specs.length) {
+    out.paragraphs = [...j.ids.map((id, i) => ({ id, version: keys[i] })),
+      ...specs.map((id) => ({ id, version: state.spec.get(id)?.sha256 ?? null }))];
+  }
+  return out;
 }
 
 // The commits of base..HEAD that change the note of `r`, oldest first, each
@@ -343,16 +369,22 @@ function notesOnBranch(top, base, r) {
 // is current only when the requirement's text is its latest recorded
 // version, and that version is the one that the identity holds; with no
 // recorded version in the identity, it is never current.
-function identityOf(entry, item, now) {
+// `items` are the judgement's items, in the order of its first line; the
+// identity keeps one version, or a list of them for several items.
+function identityOf(entry, items, now) {
   if (!entry) return 'identity not kept: run al index';
   if (entry.unknown) return 'not known when judged';
   const was = new Map(list(entry.repos).filter(isMap).map((x) => [x.repo, x]));
   let past = false;
   let unread = null;
-  const kept = item?.req && /^(?:v(\d+)|none) ([0-9a-f]{64})$/.exec(String(entry.version ?? ''));
-  if (kept && !kept[1] && kept[2] === item.req.sha) past = true;
-  let same = was.size === now.length && (!item?.req ? (item?.key ?? null) === (entry.version ?? null)
-    : !!kept && kept[2] === item.req.sha && (!kept[1] || Number(kept[1]) === item.req.latest));
+  const versions = items.length === 1 ? [entry.version] : list(entry.version);
+  let same = was.size === now.length && versions.length === items.length;
+  items.forEach((item, i) => {
+    const kept = item?.req && /^(?:v(\d+)|none) ([0-9a-f]{64})$/.exec(String(versions[i] ?? ''));
+    if (kept && !kept[1] && kept[2] === item.req.sha) past = true;
+    same &&= !item?.req ? (item?.key ?? null) === (versions[i] ?? null)
+      : !!kept && kept[2] === item.req.sha && (!kept[1] || Number(kept[1]) === item.req.latest);
+  });
   for (const x of now) {
     const w = was.get(x.repo);
     if (!w) same = false;
@@ -388,7 +420,7 @@ function fileOf(top, base, ev, outputs) {
 // al check: the review section, after the list. One header for each own
 // request's note, then one line for each judgement, in note order; lines
 // that are the same apart from the note line are shown once, with each line.
-export function reviewSection(top, { now: state, base, own, config, issues = null }) {
+export function reviewSection(top, { now: state, was = null, base, own, config, issues = null }) {
   const body = [];
   let identity = null;
   let outputs = null;
@@ -411,25 +443,47 @@ export function reviewSection(top, { now: state, base, own, config, issues = nul
         continue;
       }
       count.n++;
-      const item = findItem(state, r, j.id, ctx);
+      const items = j.ids.map((x) => findItem(state, r, x, ctx));
       const results = [];
-      const itemQuote = j.evidence.find((e) => e.kind === 'item');
-      if (!item) results.push('item not found');
-      else if (!itemQuote) results.push(`no item quote; item ${item.state}`);
-      else results.push(`item quote ${quoted(item.text, itemQuote.quote) ? 'found' : 'not found'}; item ${item.state}`);
-      for (const e of j.evidence.filter((x) => x !== itemQuote)) {
+      const bare = (x) => (x.startsWith(`${r.name}/`) ? x.slice(r.name.length + 1) : x);
+      // One item: its first item quote. Several: each item's own quote,
+      // `Item (<ID>)` (LD-59).
+      const used = new Set();
+      if (items.length === 1) {
+        const [item] = items;
+        const itemQuote = j.evidence.find((e) => e.kind === 'item');
+        used.add(itemQuote);
+        if (!item) results.push('item not found');
+        else if (!itemQuote) results.push(`no item quote; item ${item.state}`);
+        else results.push(`item quote ${quoted(item.text, itemQuote.quote) ? 'found' : 'not found'}; item ${item.state}`);
+      } else {
+        j.ids.forEach((x, i) => {
+          const q = j.evidence.find((e) => e.kind === 'item' && e.id && bare(e.id) === bare(x));
+          used.add(q);
+          if (!items[i]) results.push(`${x}: item not found`);
+          else if (!q) results.push(`${x}: no item quote; item ${items[i].state}`);
+          else results.push(`${x}: item quote ${quoted(items[i].text, q.quote) ? 'found' : 'not found'}; item ${items[i].state}`);
+        });
+      }
+      for (const e of j.evidence.filter((x) => !used.has(x))) {
         if (e.unread) results.push(`evidence line not read: ${e.unread}`);
-        else if (e.kind === 'item') results.push(`item quote ${item && quoted(item.text, e.quote) ? 'found' : 'not found'}`);
-        else if (e.said) results.push(e.said);
+        else if (e.kind === 'item' && e.id && !j.ids.some((x) => bare(x) === bare(e.id))) results.push(`item quote not checked (${e.id}): not an item of this judgement`);
+        else if (e.kind === 'item') {
+          const of = e.id ? items.filter((it, i) => bare(j.ids[i]) === bare(e.id)) : items;
+          results.push(`item quote ${of.some((it) => it && quoted(it.text, e.quote)) ? 'found' : 'not found'}`);
+        } else if (e.kind === 'spec') {
+          results.push(`spec quote ${quoted((e.base ? was : state)?.spec.get(e.id)?.text, e.quote) ? 'found' : 'not found'} (${e.where})`);
+        } else if (e.said) results.push(e.said);
         else {
           const f = fileOf(top, base, e, repos);
           results.push(f.why ? `${e.kind} quote not checked (${e.where}): ${f.why}` : `${e.kind} quote ${quoted(f.text, e.quote) ? 'found' : 'not found'} (${e.where})`);
         }
       }
       identity ??= changeIdentity(top, base, config);
-      const id = identityOf(entries.find((e) => e.judgement === j.hash), item, identity);
+      const id = identityOf(entries.find((e) => e.judgement === j.hash), items, identity);
       count[id === 'current' ? 'current' : id.startsWith('stale') ? 'stale' : id.startsWith('identity') ? 'unkept' : 'unknown']++;
-      lines.push({ head: `judgement ${j.id} version ${item ? item.version : 'none'} ${j.verdict} · ${path}:`, line: j.line, tail: ` · ${results.join(' · ')} · ${id}` });
+      const versions = j.ids.map((x, i) => `${x} version ${items[i] ? items[i].version : 'none'}`).join(', ');
+      lines.push({ head: `judgement ${versions} ${j.verdict} · ${path}:`, line: j.line, tail: ` · ${results.join(' · ')} · ${id}` });
     }
     body.push(`review note ${path}: ${count.n} judgements, ${count.current} current, ${count.stale} stale, ${count.unknown} not known when judged, `
       + `${count.unkept} identity not kept, ${count.unread} not read`);
@@ -445,4 +499,37 @@ export function reviewSection(top, { now: state, base, own, config, issues = nul
     for (let i = 0; i < body.length; i++) if (typeof body[i] !== 'string') body[i] = `${body[i].l.head}${body[i].at.join(', ')}${body[i].l.tail}`;
   }
   return body;
+}
+
+// The consolidation judgements of the note of own request `r` (LD-59): each
+// judgement with a Spec line, in note order, as { line, covers, specs, fact,
+// current }. `covers` holds the IDs of r's change paragraphs that it names,
+// `specs` the spec paragraphs. The fact is judged by the versions of the
+// named paragraphs alone, which al index keeps: current while each one has
+// its kept version, else stale, naming each one that changed.
+export function consolidations(top, state, r, { config, issues = null }) {
+  const text = read(top, notePath(r));
+  if (text == null) return [];
+  const ctx = context(top, config, issues);
+  const entries = list(r.data?.reviewed).filter(isMap);
+  const bare = (x) => (x.startsWith(`${r.name}/`) ? x.slice(r.name.length + 1) : x);
+  return parseNote(text).filter((j) => !j.unread && j.evidence.some((e) => e.kind === 'spec')).map((j) => {
+    const entry = entries.find((e) => e.judgement === j.hash);
+    const ref = `judgement ${notePath(r)}:${j.line}, ${j.verdict}`;
+    const now = (id) => (j.ids.includes(id) ? findItem(state, r, id, ctx)?.key ?? null : state.spec.get(id)?.sha256 ?? null);
+    let fact;
+    let current = false;
+    if (!entry) fact = `not known: identity not kept: run al index (${ref})`;
+    else if (entry.unknown || !Array.isArray(entry.paragraphs)) fact = `not known when judged (${ref})`;
+    else {
+      const changed = entry.paragraphs.filter(isMap).filter((p) => now(String(p.id)) !== (p.version ?? null)).map((p) => p.id);
+      current = !changed.length;
+      fact = current ? `current: its named paragraphs are unchanged (${ref})` : `stale: ${changed.join(', ')} changed since it was judged (${ref})`;
+    }
+    return {
+      line: j.line, fact, current, at: `judgement ${notePath(r)}:${j.line}`,
+      covers: new Set(j.ids.filter((x) => !/^[a-z0-9][a-z0-9-]*\//.test(x) || x.startsWith(`${r.name}/`)).map(bare)),
+      specs: new Set(j.evidence.filter((e) => e.kind === 'spec').map((e) => e.id)),
+    };
+  });
 }
