@@ -492,7 +492,8 @@ or cannot be read is reported as a limit. The skill tells the AI:
 
 On an ordinary change `al` gives no hint; `al check` shows only the list of
 section 4a, the map and one line that names each check that ran and found nothing
-(`ok: nothing found by <code>, ...`). The coding agent reads the list at the start
+(`ok: nothing found by <code>, ...`). A check that a Not known line or a finding
+says did not run on all that it covers is not in that line. The coding agent reads the list at the start
 (skill step 1), and asks one search question for what is new and has no
 ID.
 
