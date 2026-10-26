@@ -859,3 +859,34 @@ test('#64 review 5b: chmod +x of a file that the change changed, with no content
   assert.equal(headerLine(r), header({ n: 1, s: 1 }), show(r));
   assert.ok(judgement(r, 'INV-41').endsWith(` · stale: judged at ${head}`), show(r));
 });
+
+test('#64 review 6: a requirement restored to its old text after its last al index shows a text hash as version and is stale; al index then gives v3, still stale', (t) => {
+  const dir = world(t);
+  sourceCommit(dir);
+  const first = 'R1 complies: one month is one file.';
+  note(dir, judged(first, 'Item: "download one month as one CSV file"', 'Test: tests not examined'));
+  index(dir);
+  const head = short(dir);
+  let r = check(dir);
+  assert.ok(judgement(r, 'R1').startsWith('judgement R1 version v1 complies · '), show(r));
+  assert.ok(judgement(r, 'R1').endsWith(' · current'), show(r));
+
+  const md = `requests/${NAME}/request.md`;
+  editFile(dir, md, 'as one CSV file.', 'as one CSV file per month.');
+  index(dir);
+  // Text A again, with no al index: the latest recorded version (v2) is not the current text.
+  editFile(dir, md, 'as one CSV file per month.', 'as one CSV file.');
+  r = check(dir);
+  let l = judgement(r, 'R1');
+  const v = l.slice('judgement R1 version '.length).split(' ')[0];
+  assert.notEqual(v, 'v1', `not v1:\n${show(r)}`);
+  assert.match(v, /^[0-9a-f]{12}$/, `the first 12 hex of the text hash:\n${show(r)}`);
+  assert.doesNotMatch(l, / · current$/, show(r));
+  assert.ok(l.endsWith(` · stale: judged at ${head}`), show(r));
+
+  index(dir);
+  r = check(dir);
+  l = judgement(r, 'R1');
+  assert.ok(l.startsWith('judgement R1 version v3 complies · '), `v3 after al index:\n${show(r)}`);
+  assert.ok(l.endsWith(` · stale: judged at ${head}`), show(r));
+});
