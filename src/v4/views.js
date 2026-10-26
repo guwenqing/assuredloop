@@ -221,7 +221,7 @@ function projectView(state) {
   const open = [...state.requests.values()].filter((r) => r.open);
   for (const r of open) {
     const tier = r.tier ? `tier ${r.tier}` : 'no tier';
-    body.push(line('Request', `${r.name} · ${tier} · ${signSummary(state, r)} · ${r.spike ? 'a spike' : `${r.paras.size} change spec paragraphs`}`));
+    body.push(line('Request', `${r.name} · ${tier} · ${signSummary(state, r)}${r.spike ? ' · a spike' : ''}`));
   }
   if (!open.length) body.push(line('Request', 'no open request'));
   body.push(...coverage(state, [...state.spec.values()].filter((p) => p.kind === 'rule'), false));
