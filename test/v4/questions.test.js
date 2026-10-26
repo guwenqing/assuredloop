@@ -30,31 +30,21 @@ test('Q03 (base): invoice-exports R2 version 1, signed in S1, covers EXP-4; the 
   hasNot(r, word('D1'), /agent/);
 });
 
-test('Q04 (base): SP-7, SP-10 and SP-11 still need a disposition (and SP-12, a rationale, in the final design)', (t) => {
-  const r = ctx(t, 'clean', 'invoice-exports');
-  for (const id of ['SP-7', 'SP-10', 'SP-11', 'SP-12']) has(r, word(id), /pending/);
-  for (const id of ['SP-4', 'SP-5', 'SP-6', 'SP-9']) hasNot(r, word(id), /pending/);
-});
-
-test('Q05 (cr-wording): the request can close: D3 records the wording, so SP-10 -> EXP-10 is valid', (t) => {
+// #72 (LD-58): no wording decision is needed; the request can still close.
+test('Q05 (cr-wording): the request can close; D3 is recorded', (t) => {
   const r = ctx(t, 'cr-wording', 'invoice-exports');
-  const sp10 = has(r, word('SP-10'), /incorporated/, word('EXP-10'));
-  assert.match(sp10, /\bvalid\b/, show(r));
-  assert.doesNotMatch(sp10, /not valid/, show(r));
   has(r, word('D3'), /agent/);
   const c = conclude(invoicer(t, 'cr-wording'), 'invoice-exports');
   assert.equal(c.code, 0, show(c));
 });
 
-test('Q06 (cr-45): it could not close: SP-6\'s 45-minute version has no disposition, nor have SP-7, SP-10, SP-11', (t) => {
+// #72: the reason is now the close rule's item 2 (R3 has no declared
+// paragraph link); the dispositions are gone.
+test('Q06 (cr-45): it could not close: R3 has no declared paragraph link; nothing refuses on R2, signed in version 2', (t) => {
   const c = conclude(invoicer(t, 'cr-45'), 'invoice-exports');
   assert.equal(c.code, 1, show(c));
-  for (const id of ['SP-6', 'SP-7', 'SP-10', 'SP-11']) {
-    assert.ok(c.refused.some((l) => word(`invoice-exports/${id}`).test(l)), `${id}:\n${show(c)}`);
-  }
+  assert.ok(c.refused.some((l) => word('invoice-exports/R3').test(l) && /no declared paragraph link/.test(l)), show(c));
   assert.ok(!c.refused.some((l) => word('R2').test(l)), `R2 version 2 is signed:\n${show(c)}`);
-  const r = ctx(t, 'cr-45', 'invoice-exports');
-  has(r, word('SP-6'), /pending/);
 });
 
 test('Q07 (cr-45): yes, the owner signed the 45-minute link time: R2 version 2 in S2', (t) => {
@@ -62,34 +52,31 @@ test('Q07 (cr-45): yes, the owner signed the 45-minute link time: R2 version 2 i
   assert.match(has(r, word('R2'), /signed in S2/), /\b(version |v)2\b/, show(r));
 });
 
-test('Q08 (cr-supersede): EXP-4 holds link-refresh/SP-2\'s text; invoice-exports/SP-6 is superseded', (t) => {
+// #72 (LD-58): the superseded and incorporated dispositions are not shown;
+// the link of link-refresh/SP-2 is.
+test('Q08 (cr-supersede): EXP-4 holds link-refresh/SP-2\'s text; link-refresh/SP-2 changes it', (t) => {
   const r = ctx(t, 'cr-supersede', 'EXP-4');
   has(r, 'expired page MUST offer to send a new link.');
-  has(r, word('link-refresh/SP-2'), /incorporated/);
-  has(r, word('invoice-exports/SP-6'), /superseded/);
+  has(r, 'link-refresh/SP-2 changes it');
 });
 
-test('Q09 (cr-chain): invoice-exports/SP-6, then link-refresh/SP-2, then portal-downloads/SP-2 removed EXP-4', (t) => {
-  const a = ctx(t, 'cr-chain', 'invoice-exports');
-  has(a, word('SP-6'), /superseded/);
+// #72 (LD-58): the chain of superseded and removed dispositions is not
+// shown; the removal of EXP-4 shows on link-refresh/SP-2's link.
+test('Q09 (cr-chain): portal-downloads removed EXP-4: link-refresh/SP-2\'s link to it says so', (t) => {
   const b = ctx(t, 'cr-chain', 'link-refresh');
-  has(b, word('SP-2'), /superseded/);
-  const c = ctx(t, 'cr-chain', 'portal-downloads');
-  const removal = has(c, word('SP-2'), /removed/, word('EXP-4'));
-  assert.doesNotMatch(removal, /not valid/, show(c));
+  has(b, /target-removed/, word('link-refresh/SP-2'), word('EXP-4'), /target removed by portal-downloads/);
 });
 
-test('Q10 (cr-remove): PR #51 removes INV-4 and adds INV-19; tax-module R1, signed in S1, covers both', (t) => {
+// #72 (LD-58): the removed and incorporated dispositions are not shown.
+test('Q10 (cr-remove): tax-module R1 is signed in S1', (t) => {
   const r = ctx(t, 'cr-remove', 'tax-module');
-  has(r, word('SP-2'), /removed/, word('INV-4'));
-  has(r, word('SP-3'), /incorporated/, word('INV-19'));
   has(r, word('R1'), /signed in S1/);
 });
 
-test('Q12 (cr-abandon): the ZIP is not in the spec; the owner dropped it (D3); SP-7, SP-10, SP-11 abandoned; PRs #46 and #47', (t) => {
+// #72 (LD-58): the abandoned dispositions are not shown.
+test('Q12 (cr-abandon): the owner dropped the ZIP (D3); PRs #46 and #47', (t) => {
   const r = ctx(t, 'cr-abandon', 'invoice-exports');
   has(r, word('D3'), /owner/);
-  for (const id of ['SP-7', 'SP-10', 'SP-11']) has(r, word(id), /abandoned/);
   const prs = has(r, /PRs from git:/);
   assert.match(prs, word('#46'), show(r));
   assert.match(prs, word('#47'), show(r));
@@ -110,11 +97,15 @@ test('Q19 (base): the spike has not answered: Q1 is signed in S1, and the reques
 });
 
 test('Q20 (base): SP-4 is a flow; only SP-2 (rule) and SP-3 (definition) need the signed R1, which S1 covers', (t) => {
+  // #72: the kinds were on the Dispositions lines of the request view, which
+  // are gone; each paragraph's view gives its kind.
+  for (const [id, kind] of [['SP-4', 'flow'], ['SP-2', 'rule'], ['SP-3', 'definition']]) {
+    has(ctx(t, 'clean', `reminder-emails/${id}`), /^Paragraph\b/, word(id), word(kind));
+  }
   const r = ctx(t, 'clean', 'reminder-emails');
-  has(r, word('SP-4'), word('flow'));
-  has(r, word('SP-2'), word('rule'));
-  has(r, word('SP-3'), word('definition'));
   has(r, word('R1'), /signed in S1/);
+  // #72: conclude refuses on the close rule (R1, SP-2), with no sign-off reason.
   const c = conclude(invoicer(t, 'clean'), 'reminder-emails');
-  assert.equal(c.refused.length, 1, `only the dispositions are missing, no sign-off:\n${show(c)}`);
+  assert.equal(c.code, 1, show(c));
+  assert.deepEqual(c.refused.filter((l) => /no signed requirement/.test(l)), [], `no sign-off reason:\n${show(c)}`);
 });

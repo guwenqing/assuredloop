@@ -80,11 +80,6 @@ test('refusal 3, the request is already archived: the preview and --yes refuse a
   refusesAlike(dir, ['old-one'], { code: 2, message: /^al: old-one is already archived/m });
 });
 
-test('refusal 4, the close rule: a paragraph with no valid disposition; the preview and --yes refuse alike (exit 1)', (t) => {
-  const { preview } = refusesAlike(invoicer(t, 'd06', 'defect'), ['invoice-exports'], { code: 1, message: /^refused: .*invoice-exports\/SP-10/m });
-  assert.ok(preview.stdout.split('\n').filter((l) => l.startsWith('refused: ')).length >= 1, show(preview));
-});
-
 test('refusal 4, the close rule: a promise change with no signed requirement; the preview and --yes refuse alike (exit 1)', (t) => {
   refusesAlike(invoicer(t, 'conclude-unsigned'), ['late-fees'], { code: 1, message: /^refused: a promise change with no signed requirement.*late-fees\/SP-2/m });
 });

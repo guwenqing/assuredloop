@@ -11,9 +11,10 @@
 //    "Indexed <d> docs and <t> request records (<o> open and <a> archived); bound <b> new links".
 // 2. The Outcome that al conclude writes (DES-72) lists, under a requirement,
 //    each ADR whose heading marker's decides: names it, as
-//    "  - ADR-<n>: decides it (<status>)". The line "  - no change paragraph
-//    and no spec paragraph serves it" stays only where nothing serves the
-//    requirement and no ADR decides it. The preview shows the same lines.
+//    "  - ADR-<n>: decides it (<status>)". The line "  - no declared
+//    paragraph link: no paragraph of specs/ serves it, and no ADR decides it"
+//    (#72) stays only where nothing serves the requirement and no ADR decides
+//    it. The preview shows the same lines.
 //
 // No exit code changes: al index and al conclude --yes exit 0 here. Nothing
 // here reads the code under test.
@@ -30,7 +31,8 @@ const ADR8 = 'specs/adr/0008-csv-files.md';
 const ADR9 = 'specs/adr/0009-zip-files.md';
 const ADR10 = 'specs/adr/0010-month-names.md';
 const SPEC = 'specs/invoices.md';
-const NONE = '  - no change paragraph and no spec paragraph serves it';
+// #72: the item 2 words of the close rule; a change paragraph's serves: is not a declared link.
+const NONE = '  - no declared paragraph link: no paragraph of specs/ serves it, and no ADR decides it';
 
 const adr = (status, marker, heading) => `Status: ${status}\n\n${doc([[marker, heading]])}`;
 
@@ -78,10 +80,19 @@ function toMain(dir, next = 'next') {
   git(dir, 'checkout', '-q', '-b', next);
 }
 
-// linked, then al conclude inv --yes, committed. With base: merged to main,
+// The close rule (#72): R2 (decided only by the proposed ADR-9) and R3
+// (served by nothing) have no declared link, so each gets a close line
+// before inv concludes.
+function closeLines(dir) {
+  ok(dir, ['record', NAME, 'close', '--on', 'R2', '--reason', 'A proposed decision covers it for now.', '--yes']);
+  ok(dir, ['record', NAME, 'close', '--on', 'R3', '--reason', 'A later change meets it.', '--yes']);
+}
+
+// linked, then close lines on R2 and R3 and al conclude inv --yes, committed. With base: merged to main,
 // on the branch next.
 function archived(t, { base = true } = {}) {
   const dir = linked(t);
+  closeLines(dir);
   const r = al(dir, ['conclude', NAME, '--yes']);
   assert.equal(r.code, 0, show(r));
   commitAll(dir, 'conclude inv');
@@ -158,6 +169,7 @@ test('the Outcome of al conclude --yes lists ADR-8 (accepted) under R1 and ADR-9
 
 test('the preview (al conclude without --yes) shows the same ADR lines, indented', (t) => {
   const dir = linked(t);
+  closeLines(dir);
   const r = al(dir, ['conclude', NAME]);
   assert.equal(r.code, 0, show(r));
   assert.match(r.stdout, new RegExp(`^Would conclude ${NAME}: `, 'm'), show(r));
