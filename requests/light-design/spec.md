@@ -760,11 +760,14 @@ A part that depends on one is built only after the owner signs it. R1, R2
 and R3 of this request are signed, and the code side (section 4a) needs no
 new version. level2-peer/R1 stays as signed: its level 1 is `local` word
 search, and its level 2 is `local` with a model. v4/R1, R2, R6, R8, R9 and
-R12 stay as signed.
+R12 stay as signed. The owner signed the new versions of v4/R5 and
+context-all/R1 on 2026-10-25. They are light-resign/R5 and light-resign/R1,
+because `al` does not edit an archived request. The other three items below
+still wait for the owner.
 
 | Requirement | The new version says, in short |
 |---|---|
-| v4/R5 | The agent brings each piece of a change into the consolidated spec by its own judgement, with no tool command, part by part for an epic, before the change closes, as long as it does not deviate. The review checks it. Concluding needs every promise change signed, every signed requirement served in the consolidated spec, and every spec part that the change set out to change or remove either changed or named as not delivered, with a reason. Nothing applied may be dropped silently. |
+| v4/R5 | The agent brings each piece of a change into the consolidated spec by its own judgement, with no tool command, part by part for an epic, before the change closes, as long as it does not deviate. The review checks it. Concluding needs every promise change signed, every signed requirement served in the consolidated spec, by an accepted decision or by a recorded account of where it is met, and every spec part that the change set out to change or remove either changed or named as not delivered, with a reason. Nothing applied may be dropped silently. |
 | v4/R10 | Search is the team's own knowledge base, a local one, or none, as the user chooses; no level is a default. Setup asks for the team's own one first. A local model stays optional, and the user picks it. Every level works, and the checks never use search. The rest of R10 stays. |
 | hints-and-blocks/R1 | A changed ADR text is a hint until the change is judged in one recorded line, in place of `al index --align`. |
 | context-all/R1 | Answers group repeated output but never leave a line out, and show everything on request. A reader can find the evidence of each reported fact, and an answer keeps apart project evidence, facts held only in `al`'s records, inferences and unknowns. |
@@ -819,5 +822,5 @@ prove it.
 <!-- LD-40 open -->
 
 Not decided here: file formats, the release plan and the order of building.
-Two points wait for the owner: whether item 2 of the close rule (LD-57)
-refuses or only hints, and whether item 3 stays.
+The owner's signed light-resign/R5 settles the two points that waited: item
+2 of the close rule (LD-57) refuses, and item 3 stays.
