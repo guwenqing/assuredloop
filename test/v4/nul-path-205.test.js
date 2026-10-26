@@ -135,10 +135,28 @@ const linesOf = (text) => text.replace(/\n$/, '').split('\n');
 // #58: al check prints the list of what is in force, which main did not
 // print: one block of lines after the findings, right before the Read line.
 const LIST_LINE = /^(list: |list basis: |list limits: |in force |proposed |\d+ further items in force: )/;
-// The lines without the list block. al check must have the block (with its
-// grouped line or its "no change selected" line), as one run of lines right
-// before the Read line; another command must have none.
-function withoutList(lines, r) {
+// #64: al check prints the review section of each own request, which main
+// did not print: one block of lines right after the list block and right
+// before the Read line. Another command must have none.
+const REVIEW_LINE = /^(review note |judgement )/;
+function withoutReview(lines, r) {
+  const at = lines.flatMap((l, i) => (REVIEW_LINE.test(l) ? [i] : []));
+  if (r.args[0] !== 'check') {
+    assert.deepEqual(at, [], `no review section outside al check:\n${show(r)}`);
+    return lines;
+  }
+  if (at.length === 0) return lines;
+  assert.equal(at.at(-1) - at[0] + 1, at.length, `the review section is one block:\n${show(r)}`);
+  assert.match(lines[at[0] - 1] ?? '', LIST_LINE, `the review section comes right after the list block:\n${show(r)}`);
+  assert.match(lines[at.at(-1) + 1] ?? '', /^Read /, `the review section comes right before the Read line:\n${show(r)}`);
+  return lines.filter((_, i) => !at.includes(i));
+}
+// The lines without the review block and the list block. al check must have
+// the list block (with its grouped line or its "no change selected" line),
+// as one run of lines right before the Read line, once the review block is
+// out; another command must have none.
+function withoutList(all, r) {
+  const lines = withoutReview(all, r);
   const at = lines.flatMap((l, i) => (LIST_LINE.test(l) ? [i] : []));
   if (r.args[0] !== 'check') {
     assert.deepEqual(at, [], `no list outside al check:\n${show(r)}`);
