@@ -376,7 +376,7 @@ The record commands stay: `al new`, `al record`, `al spec` and
 `al conclude`. `al export` stays, to feed a team's own knowledge base.
 `al check` runs `al index`, and names in one line each record file that it
 wrote, so that the author commits them with the change; each other line of
-`al index` shows as one line for each kind. An `al check` run never changes
+`al index` shows as one line for each kind. An `al check` run does not change
 which requests are the change's own (LD-24): it takes them from the working
 tree as it was before it wrote anything, and names in a second line each
 record file that it wrote for a request that is not the change's own,
