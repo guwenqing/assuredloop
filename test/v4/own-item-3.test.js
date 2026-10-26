@@ -506,13 +506,39 @@ function withoutReview(stdout) {
   assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the review section comes right before the Read line:\n${stdout}`);
   return { rest: ls.filter((_, i) => !at.includes(i)).join('\n'), review: at.map((i) => ls[i]) };
 }
+// #68: al check prints the map of the change, which main did not print: one
+// block of lines right after the review block (or the list block when there is none) and right before the Read line. Its
+// first line is its one "map: " line. The map's two hints, map-unnamed and
+// map-consolidation, are new findings lines among the others, before the list.
+const MAP_LINE = /^(map: |map )/;
+const MAP_HINT = /^hint map-(unnamed|consolidation) /;
+// The output without the map block and the map's hints.
+function withoutMap(stdout) {
+  const ls = stdout.split('\n');
+  const at = ls.flatMap((l, i) => (MAP_LINE.test(l) ? [i] : []));
+  const hints = ls.flatMap((l, i) => (MAP_HINT.test(l) ? [i] : []));
+  if (at.length === 0 && hints.length === 0) return { rest: stdout, map: [] };
+  assert.equal(at.filter((i) => ls[i].startsWith('map: ')).length, 1, `one "map: " line:\n${stdout}`);
+  assert.ok(ls[at[0]].startsWith('map: '), `the map starts with its "map: " line:\n${stdout}`);
+  assert.equal(at.at(-1) - at[0] + 1, at.length, `the map is one block:\n${stdout}`);
+  assert.ok(REVIEW_LINE.test(ls[at[0] - 1] ?? '') || LIST_LINE.test(ls[at[0] - 1] ?? ''), `the map comes right after the review block (or the list block when there is none):\n${stdout}`);
+  assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the map comes right before the Read line:\n${stdout}`);
+  const firstList = ls.findIndex((l) => LIST_LINE.test(l));
+  for (const i of hints) assert.ok(i < firstList, `a map hint is a findings line, before the list:\n${stdout}`);
+  return { rest: ls.filter((_, i) => !at.includes(i) && !hints.includes(i)).join('\n'), map: at.map((i) => ls[i]) };
+}
 // Every line that main printed, in the same order, and the same exit code;
 // the list of #58 is there (its grouped line or its "no change selected"
-// line), and, once main prints a list too, it is the same list. The review
-// section of #64 is taken out first; once main prints one too, it is the same.
+// line), and, once main prints a list too, it is the same list. The map of
+// #68 and the review section of #64 are taken out first; once main prints a
+// review section too, it is the same.
 function sameAsMainOutput(here, main, args) {
-  const hr = withoutReview(here.stdout);
-  const mr = withoutReview(main.stdout);
+  const hm = withoutMap(here.stdout);
+  const mm = withoutMap(main.stdout);
+  assert.ok(hm.map.length > 0, `al ${args.join(' ')}: the map of #68:\n${here.stdout}`);
+  if (mm.map.length > 0) assert.deepEqual(hm.map, mm.map, `al ${args.join(' ')}: the same map as on main`);
+  const hr = withoutReview(hm.rest);
+  const mr = withoutReview(mm.rest);
   if (mr.review.length > 0) assert.deepEqual(hr.review, mr.review, `al ${args.join(' ')}: the same review section as on main`);
   const h = withoutList(hr.rest);
   const m = withoutList(mr.rest);

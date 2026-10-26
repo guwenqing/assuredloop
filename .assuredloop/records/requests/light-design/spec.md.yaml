@@ -75,19 +75,19 @@ paragraphs:
     display: LD-55 (3:3, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-56
     kind: plan
-    text_sha256: a7c8a0b95af51a94b1a6780a5c30fdafaf411dda163cfa943fb8df3fd9823a0f
+    text_sha256: e1e6b437b7d14bdfb15bdf52cb695b0190283e76b16b860cf0f0b35ed3f48694
     display: LD-56 (3:4, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-61
     kind: plan
-    text_sha256: aa1dbacb654d7695b71eff4810e94459931b9e4bb705270cc818cd0d6182a4c9
+    text_sha256: 48968518af500e3a744538cbb0dd1b33c1f55a9cab3649cc63df9b9e58ded5cc
     display: LD-61 (3:5, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-59
     kind: plan
-    text_sha256: faa82844ec03afe1d629012feff9e3c3bc554937b2522d146759919bebf785a3
+    text_sha256: b990c2e9e89e6ba33829948b199f10929fec516d695f78d7d9f93d638a6bde9d
     display: LD-59 (3:6, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-60
     kind: plan
-    text_sha256: ed263f8b9fde562e498d3698d99fc7d0f157e67041f24b815f7846a5a1ee7c1a
+    text_sha256: f1167b2f60008365ba78d0b887c21f3e2b740c6d918d1e4ab7b52fe209d0da65
     display: LD-60 (3:7, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-57
     kind: plan
@@ -179,7 +179,7 @@ paragraphs:
     display: "LD-27 (5:8, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-65
     kind: data
-    text_sha256: b72c32d197d6cd69d4fc3457bdf98572b0e5c5837f78cfac6caecb07a4d14f9a
+    text_sha256: 9d027bc8ccc9beb6dd68b2d9ee1a363d6e48737d0fecfd61a148ced41fdb91b5
     display: "LD-65 (5:9, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-44
     kind: data

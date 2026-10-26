@@ -49,18 +49,22 @@ const one = (r, severity, code, id) => {
 const none = (r, severity, code, id) => assert.deepEqual(all(r, severity, code, id), [], show(r));
 const results = (r, file) => r.findings.filter((f) => f.code === 'result' && f.file === `.assuredloop/results/${file}`);
 const both = (p) => `--- defect\n${show(p.defect)}--- control\n${show(p.control)}`;
+// #68: the map's two hints are new findings, not planted defects; a world
+// with an own path-2 request shows them. The pair comparisons leave them out.
+const MAP_HINTS = new Set(['map-unnamed', 'map-consolidation']);
+const planted = (findings) => findings.filter((f) => !(f.severity === 'hint' && MAP_HINTS.has(f.code)));
 
 for (const [name, want] of Object.entries(PAIRS)) {
   const id = name.toUpperCase();
   test(`${id} defect (${want.name}): defect minus control is ${JSON.stringify(want.defect)}`, (t) => {
     const p = pair(t, name);
     assert.equal(p.defect.code, 0, show(p.defect));
-    assert.deepEqual(minus(p.defect.findings, p.control.findings), [...want.defect].sort(), both(p));
+    assert.deepEqual(minus(planted(p.defect.findings), planted(p.control.findings)), [...want.defect].sort(), both(p));
   });
   test(`${id} control (${want.name}): control minus defect is ${JSON.stringify(want.control)}`, (t) => {
     const p = pair(t, name);
     assert.equal(p.control.code, 0, show(p.control));
-    assert.deepEqual(minus(p.control.findings, p.defect.findings), [...want.control].sort(), both(p));
+    assert.deepEqual(minus(planted(p.control.findings), planted(p.defect.findings)), [...want.control].sort(), both(p));
   });
 }
 

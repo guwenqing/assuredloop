@@ -408,6 +408,46 @@ function withoutReview(text, r) {
   assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the review section comes right before the Read line:\n${show(r)}`);
   return ls.filter((_, i) => !at.includes(i)).join('\n');
 }
+// #68: al check prints the map of the change, which main did not print: one
+// block of lines right after the review block (or the list block when there
+// is none) and right before the Read line. Its first line is its one "map: "
+// line. Another command must have none. The map's two hints, map-unnamed and
+// map-consolidation, are new findings lines among the others, before the list.
+const MAP_LINE = /^(map: |map )/;
+const MAP_HINT = /^hint map-(unnamed|consolidation) /;
+function withoutMap(text, r) {
+  const ls = text.split('\n');
+  const at = ls.flatMap((l, i) => (MAP_LINE.test(l) ? [i] : []));
+  const hints = ls.flatMap((l, i) => (MAP_HINT.test(l) ? [i] : []));
+  if (r.args[0] !== 'check') {
+    assert.deepEqual([...at, ...hints], [], `no map and no map hint outside al check:\n${show(r)}`);
+    return { rest: text, map: [] };
+  }
+  if (at.length > 0) {
+    assert.equal(at.at(-1) - at[0] + 1, at.length, `the map is one block:\n${show(r)}`);
+    assert.equal(at.filter((i) => ls[i].startsWith('map: ')).length, 1, `one "map: " line:\n${show(r)}`);
+    assert.ok(ls[at[0]].startsWith('map: '), `the map starts with its "map: " line:\n${show(r)}`);
+    const before = ls[at[0] - 1] ?? '';
+    assert.ok(REVIEW_LINE.test(before) || LIST_LINE.test(before), `the map comes right after the review block or the list block:\n${show(r)}`);
+    assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the map comes right before the Read line:\n${show(r)}`);
+  }
+  const firstList = ls.findIndex((l) => LIST_LINE.test(l));
+  for (const i of hints) assert.ok(i < (firstList >= 0 ? firstList : ls.length), `a map hint is a findings line, before the list:\n${show(r)}`);
+  return { rest: ls.filter((_, i) => !at.includes(i) && !hints.includes(i)).join('\n'), map: at.map((i) => ls[i]), hints: hints.length };
+}
+// When the map's hints are the only hints and there is no not ok, the Next
+// line asks to deal with the hints, as for any hint; main's Next line then
+// differs only there.
+const HINT_NEXT = 'Next      deal with each hint, or say in the PR why it stays';
+function nextAsMain(out, expected, hints) {
+  const ls = out.split('\n');
+  if (hints === 0 || ls.some((l) => /^(hint|not ok) /.test(l))) return out;
+  const at = ls.indexOf(HINT_NEXT);
+  const want = expected.lines.find((l) => l.startsWith('Next '));
+  if (at < 0 || want === undefined) return out;
+  ls[at] = want;
+  return ls.join('\n');
+}
 // The text without the review block and the list block, and the list block.
 // When there is a list block, it must be one run of lines right before the
 // Read line, once the review block is out.
@@ -424,15 +464,19 @@ function withoutList(all, r) {
 // The run, compared with the expected exit code and text.
 // `added`: lines of findings that main did not print (#238 R3), matched by a
 // pattern; each matches one line, and the other lines are as main printed them.
-// The list of #58 is taken out first; an al check that is not refused must
-// have it, with its grouped line or its "no change selected" line.
+// The map of #68 and the list of #58 are taken out first; an al check that
+// is not refused must have the map's "map: " line and the list, with its
+// grouped line or its "no change selected" line.
 function sameAsMain(r, repos, expected, extra) {
   assert.equal(r.signal, null, show(r));
-  const { rest, list } = withoutList(named(r.stdout, repos, extra), r);
+  const { rest: unmapped, map, hints } = withoutMap(named(r.stdout, repos, extra), r);
+  const { rest, list } = withoutList(unmapped, r);
   if (r.args[0] === 'check' && expected.code !== 2) {
     assert.ok(list.some((l) => /^(list: no change selected: |\d+ further items in force: )/.test(l)), `the list of #58:\n${show(r)}`);
+    assert.ok(map.some((l) => l.startsWith('map: ')), `the map of #68:\n${show(r)}`);
   } else {
     assert.deepEqual(list, [], `no list outside al check:\n${show(r)}`);
+    assert.deepEqual(map, [], `no map outside al check:\n${show(r)}`);
   }
   let out = rest;
   for (const re of expected.added ?? []) {
@@ -440,6 +484,7 @@ function sameAsMain(r, repos, expected, extra) {
     assert.equal(found.length, 1, `one line ${re}:\n${show(r)}`);
     out = out.replace(`${found[0]}\n`, '');
   }
+  out = nextAsMain(out, expected, hints);
   assert.equal(out, expected.lines.join('\n') + '\n', show(r));
   assert.equal(r.code, expected.code, show(r));
 }

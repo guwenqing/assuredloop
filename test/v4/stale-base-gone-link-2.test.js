@@ -170,12 +170,15 @@ test('a gone holder: no stale-base for the binding of a deleted change spec para
   for (const b of CONTROLS) fires(r, b);
 });
 
-test('another link word to the same target: no stale-base for inv/SP-5 builds-on INV-13 once its marker says changes:INV-13; its changes binding still fires', (t) => {
+test('another link word to the same target: no stale-base for inv/SP-5 builds-on INV-13 once its marker says changes:INV-13; its changes binding is kept and, as the own branch changed INV-13, gives no stale-base (LD-61)', (t) => {
   const dir = goneAndChanged(t);
   const r = check(dir);
   for (const b of GONE.word) silent(r, b);
   oneBinding(record(dir, 'inv'), ['inv/SP-5', 'changes', 'INV-13']);
-  fires(r, ['inv/SP-5', 'changes', 'INV-13']);
+  // LD-61 (#68): INV-13 is changed on the branch of the request inv itself,
+  // and inv/SP-5 names it by changes. al index keeps the version that the
+  // change's own branch gave INV-13, so this own edit gives no stale-base.
+  assert.deepEqual(staleFor(r, ['inv/SP-5', 'changes', 'INV-13']), [], `no stale-base on the own edit of INV-13 (LD-61):\n${show(r)}`);
   for (const b of CONTROLS) fires(r, b);
 });
 
