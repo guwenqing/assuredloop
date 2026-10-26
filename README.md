@@ -343,12 +343,18 @@ central: {path: ../invoicer}    # in an output repo: the central repo
 phrases:                   # text for the review to look at; each match is a hint
   - the requester          # a phrase: ignoring case, across a line break too
   - {pattern: "Avery (asked|wants)"}   # a JavaScript regular expression
+items-out-of-reach:        # work items that the CI token cannot read
+  - acme/private-plans     # see "Items out of the CI token's reach"
 ```
 
 `al check` gives the hint `phrase` for each match of `phrases:` in the spec
 docs, the ADRs and the Markdown files of the open requests, but their
 `origin/` folders; with `--issues <folder>`, in the work items too. The list is empty by
 default. A bad entry or an invalid pattern stops `al check` with exit 2.
+
+`items-out-of-reach:` names the work items that the CI token cannot read
+(see "Hints from the linked work items"). A value that is not a list of
+texts that are not empty stops `al check` with exit 2.
 
 `.assuredloop/schema.yaml` holds the kinds and the link words, with a version.
 `al spec --add-ids` writes both files when they are absent.
@@ -468,8 +474,8 @@ example `PROJ-12`. Each finding is a hint, except that a closed item gives
 - `issue-not-sub`: the item is not a child of the request's own item, the
   item that `assuredloop-requests.json` in the folder names (below);
 - `phrase`: a phrase of `phrases:` matches;
-- `issue-unread`: a file in the folder is not valid JSON, or holds an entry
-  that is not an item.
+- `issue-unread`: a file in the folder is not valid JSON or YAML, is a
+  Markdown file that is not an item, or holds an entry that is not an item.
 - `issue-changed`: the item says something different from what it said
   when the change relied on it, or `al` cannot tell (below).
 
@@ -502,10 +508,12 @@ text now, and the moment of reliance that it covers. The hint comes back
 when the text changes again, or when a later sign-off becomes the moment of
 reliance.
 
-The folder holds `*.json` files. Each file holds one item, or a list of
-items. An item is the JSON that the GitHub CLI prints with
+The folder holds `*.json`, `*.yaml`, `*.yml` and `*.md` files. Every file
+of these kinds is read as items, a README.md too. A JSON or YAML file holds
+one item, or a list of items; a Markdown file holds one item. An item is
+the JSON that the GitHub CLI prints with
 `--json number,url,body,comments,parent,state`, so GitHub issues need no
-conversion:
+conversion. A YAML item has the same fields:
 
 | Field | What it is | Needed |
 |---|---|---|
@@ -536,6 +544,72 @@ An item of another tracker:
 {"ref": "PROJ-12", "repository": "PROJ", "body": "Build the export (ADR-3).",
  "comments": [{"body": "Done.", "isMinimized": false}], "parent": {"ref": "PROJ-1"}}
 ```
+
+An item in Markdown is plain text that a person or an AI writes with no
+tool:
+
+    URL: https://github.com/acme/invoicer/issues/31
+    State: OPEN
+    Parent: https://github.com/acme/invoicer/issues/30
+
+    Build the CSV export of invoices (ADR-3).
+
+    Design: docs/rfc/0018-export.md
+
+    ## Comment 1
+
+    The first PR is up.
+
+    ## Comment 2 (minimized)
+
+    An off-topic remark.
+
+- The header is the first lines, up to the first blank line, each
+  `<Key>: <value>`. The keys are `URL`, `Number`, `Repository`, `Ref`,
+  `State` and `Parent`, case ignored, and each gives the field of the same
+  name. `State` is `open` or `closed`. `Parent` is a URL, `#n`, `none` for
+  no parent, or another text, which is the parent's `ref`. With no
+  `Parent` line, the child check is not made.
+- The body goes from the header's blank line to the first comment. A
+  `Design:` line in it names the item's design.
+- Each comment starts at a line that is exactly `## Comment <k>` or
+  `## Comment <k> (minimized)`, outside fenced code. k counts from 1, in
+  order.
+- Blank lines at the start and the end of the body and of each comment are
+  dropped. So an item whose body or comment starts or ends with a blank line
+  has another kept text in Markdown than in JSON or YAML.
+- A Markdown file whose first line is not a header line, or that has no
+  `URL`, no `Number` with a `Repository`, and no `Ref`, is not an item: it
+  gets `issue-unread` with the reason.
+
+Two files may hold the same item, in any formats. The files are read in one
+name order. Where a task names the item by `#n`, `owner/repo#n`,
+`<name>#n` or a URL, the first copy is checked, and the other counts as an
+item that no task names. Where a task names it by its `ref`, each copy is
+checked.
+
+**Items out of the CI token's reach.** The token of a CI job often cannot
+read every item, for example the items of a private repository. Name those
+items in the committed config, and save the others:
+
+```yaml
+items-out-of-reach:      # work items that the CI token cannot read
+  - acme/private-plans   # every item of this repository
+  - acme/web#5           # one item, in a form of a task's ref
+  - PROJ-12
+```
+
+For a task's item that the list names and that is not in the folder,
+`al check --issues` gives no `issue-missing` and no `issue-changed`. In
+their place, it gives one line for all of them, with every task that names
+each one:
+
+    info issues-out-of-reach - - 2 items out of the CI token's reach (items-out-of-reach in .assuredloop/config.yaml) are not in <folder>, so they are not checked, and al cannot tell whether they changed since the change relied on them: acme/private-plans#4 (pay-run/T2), PROJ-12 (pay-run/T1)
+
+An item that the list names and that is in the folder is read as usual.
+The line names each item once, ignoring case. A task's `ref` that names no
+saved item, and that holds more than other trackers' keys of the list,
+keeps its `issue-missing`.
 
 The folder also says which item is each request's own item, in the file
 `assuredloop-requests.json`. `al` reads the own item from this file only,
