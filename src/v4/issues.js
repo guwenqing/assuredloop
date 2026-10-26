@@ -24,8 +24,8 @@
 // and that are not in the folder, get one info line in place of a hint each
 // (DES-117).
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
-import { recordPath } from './base.js';
+import { join, resolve } from 'node:path';
+import { recordPath, repoDir } from './base.js';
 import { parse as parseYaml } from 'yaml';
 import { citedMessage, supersededIn } from './blocks.js';
 import { git } from './git.js';
@@ -227,7 +227,7 @@ function namedRepos(top, config) {
   for (const o of outputRepos(top, config)) if (o.name) out.set(o.name, o.dir ? { dir: o.dir } : { unknown: o.unknown });
   const c = config.central;
   if (isMap(c) && typeof c.path === 'string' && c.path) {
-    const dir = isAbsolute(c.path) ? c.path : resolve(top, c.path);
+    const dir = repoDir(top, c.path);
     out.set('central', existsSync(dir) ? { dir } : { unknown: `no clone at ${c.path}` });
   }
   return out;
@@ -371,7 +371,8 @@ function outOfReachItems(state, entries, finder, items, missing) {
   return { hits, away };
 }
 
-export function issueHints(top, state, matchers, add, { folder, items, unread, owns }) {
+// `skip` takes the codes of the checks that did not run in full (LD-41).
+export function issueHints(top, state, matchers, add, { folder, items, unread, owns }, skip = () => {}) {
   const notKnown = [];
   const cited = supersededIn(state);
   const { named, missing: lost, tasked, finder } = taskItems(top, state, items);
@@ -425,8 +426,12 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
       for (const h of phraseHits(text, matchers)) add('hint', 'phrase', `${where}:${h.line}`, id, phraseMessage(h));
     }
     if (!own.repo) continue;
-    if (!it.repository) notKnown.push(`the issue-bare-ref check of ${it.key}: its repository is not known`);
+    if (!it.repository) {
+      skip('issue-bare-ref');
+      notKnown.push(`the issue-bare-ref check of ${it.key}: its repository is not known`);
+    }
   }
+  if (!own.repo) skip('issue-bare-ref');
   if (!own.repo) notKnown.push(`the request's own repository, for #n and the issue-bare-ref check: ${own.unknown}`);
 
   // Children (SP-10): once for each request and item. The own item is the one
@@ -467,6 +472,7 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
     const it = n.it;
     if (mine.keys.has(slug(it.key)) || (it.ref && mine.keys.has(slug(it.ref)))) continue;
     if (it.parent === undefined) {
+      skip('issue-not-sub');
       notKnown.push(`whether ${it.key} is a child of the own item of ${n.r.name}: the item has no parent field`);
       continue;
     }
@@ -477,6 +483,7 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
     // A parent's url names the own item when it is the own item's url or the value, or holds its ref.
     const url = isMap(p) && typeof p.url === 'string' && p.url ? p.url : null;
     if (p !== null && !parent.length && !url) {
+      skip('issue-not-sub');
       notKnown.push(`whether ${it.key} is a child of the own item of ${n.r.name}: its parent names no item`);
       continue;
     }
@@ -488,6 +495,7 @@ export function issueHints(top, state, matchers, add, { folder, items, unread, o
   // Once for each request with a task that has a ref, whether or not its items are in the folder.
   for (const r of tasked) {
     const why = ownItem(r).unknown;
+    if (why) skip('issue-not-sub');
     if (why) notKnown.push(`whether the items of ${r.name} are children of its own item: ${why}`);
   }
 

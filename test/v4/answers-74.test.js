@@ -39,6 +39,7 @@ import {
   project, read, req, show, write, writeConfig, INVOICES,
 } from './helpers/project.js';
 import { word } from './helpers/views.js';
+import { changeLines78 } from './helpers/as-78.js';
 
 const SPEC = 'specs/invoices.md';
 const ADR1 = 'specs/adr/0001-xlsx.md';
@@ -276,16 +277,18 @@ test('#74 al check: a removed paragraph is named at its text line at the base, i
   const at = `${SPEC}:${lineIn(INVOICES, T41)} at the base ${base}`;
   const r = ok(dir, ['check']);
   assert.ok(outLines(r).some((l) => l.startsWith(`not ok signoff-coverage ${at} INV-41 `)), `a finding at ${at}:\n${show(r)}`);
-  assert.ok(outLines(r).some((l) => new RegExp(`^${at.replace(/[.]/g, '\\.')} INV-41 removed$`, 'i').test(l)),
-    `the change line "${at} INV-41 removed":\n${show(r)}`);
+  // #78: the change line is a map paragraph line.
+  assert.ok(changeLines78(r.stdout).includes(`${at} INV-41 Removed`), `the change line "${at} INV-41 Removed":\n${show(r)}`);
 });
 
 test('#74 al check: the change line of a changed paragraph names its text line', (t) => {
   const dir = changedWorld(t);
   const r = ok(dir, ['check']);
   const at = place(dir, SPEC, 'An invoice MUST have at least two lines.');
-  assert.ok(outLines(r).some((l) => l.startsWith(`${at} INV-13 `)), `a change line that starts with "${at} INV-13 ":\n${show(r)}`);
-  assert.ok(!outLines(r).some((l) => l.startsWith(`${SPEC} INV-13 `)), `no change line without a line number:\n${show(r)}`);
+  // #78: the change line is a map paragraph line.
+  const changes = changeLines78(r.stdout);
+  assert.ok(changes.some((l) => l.startsWith(`${at} INV-13 `)), `a change line that starts with "${at} INV-13 ":\n${show(r)}`);
+  assert.ok(!changes.some((l) => l.startsWith(`${SPEC} INV-13 `)), `no change line without a line number:\n${show(r)}`);
 });
 
 // --- the list's open proposal

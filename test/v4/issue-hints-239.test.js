@@ -31,6 +31,7 @@ import { findings, invoicer, keys } from './helpers/invoicer.js';
 import {
   BIN, EPOCH, REPO, al, commitAll, doc, editRecord, git, move, newRequest, ok, read, recordPath, refused, show, write, writeYaml,
 } from './helpers/project.js';
+import { as78 } from './helpers/as-78.js';
 
 // A folder that holds only links to the tools that al needs (git, node),
 // so that no real gh can be on the PATH of a run, on any machine. A run's
@@ -340,8 +341,8 @@ const withoutDispositions = (stdout) => stdout.split('\n').filter((l) => !DISPOS
 const withoutPlaces = (stdout) => stdout.replace(/ · places: .*$/gm, '');
 function sameAsMainOutput(here, main, args) {
   assert.doesNotMatch(here.stdout, /^(not ok|hint|info) disposition(-pending)? /m, `al ${args.join(' ')}: no disposition finding:\n${here.stdout}`);
-  const hm = withoutMap(withoutPlaces(here.stdout));
-  const mm = withoutMap(withoutPlaces(withoutDispositions(main.stdout)));
+  const hm = withoutMap(withoutPlaces(as78(here.stdout)));
+  const mm = withoutMap(withoutPlaces(withoutDispositions(as78(main.stdout))));
   assert.ok(hm.map.length > 0, `al ${args.join(' ')}: the map of #68:\n${here.stdout}`);
   if (mm.map.length > 0) assert.deepEqual(hm.map, mm.map, `al ${args.join(' ')}: the same map as on main`);
   const h = withoutList(hm.rest);

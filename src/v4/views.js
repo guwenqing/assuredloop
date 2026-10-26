@@ -1,5 +1,5 @@
 // al context (T11; design.md 5, 8, 9 and 13, schema.md 5): where the project,
-// a request or a paragraph stands; the review view of a diff; the whole trace
+// a request or a paragraph stands; the whole trace
 // with --audit; any of them as of a v4 commit with --at. Views never write.
 import { LineCounter, parseDocument } from 'yaml';
 import { Fail, recordPath } from './base.js';
@@ -7,7 +7,6 @@ import { applicability, checks } from './checks.js';
 import { closeLine, closeLines } from './close.js';
 import { git, mergeBase, mergesOf } from './git.js';
 import { crossRepo, findCites, namedIds } from './repos.js';
-import { diffParagraphs } from './ids.js';
 import { loadResults } from './results.js';
 import {
   adrPlace, decisionLine, latestVersion, loadState, named, placeOf, placeOfTarget, qualify, reqLine, requestOf, resolve, signedBy, unknownBy,
@@ -614,74 +613,43 @@ function requirementView(state, t, full) {
   return { body, next: `al context ${t.req}` };
 }
 
-// The review view of a diff (design.md 13): each changed paragraph's text
-// beside its kind, its requirement and the baseline paragraphs it touches.
-function diffView(top, range, review) {
-  const m = /^(.*?)(\.\.\.?)(.*)$/.exec(range);
-  if (!m) throw new Fail(`--diff ${range}: give a range such as main...HEAD or A..B`, 'al context --diff main...HEAD --for review');
-  const head = m[3] || 'HEAD';
-  const from = m[1] || 'HEAD';
-  const base = m[2] === '...' ? git(top, ['merge-base', from, head], { allowFail: true }) : git(top, ['rev-parse', '--verify', '--quiet', `${from}^{commit}`], { allowFail: true });
-  const headSha = git(top, ['rev-parse', '--verify', '--quiet', `${head}^{commit}`], { allowFail: true });
-  if (!base || !headSha) throw new Fail(`--diff ${range}: not a range of commits in this clone`, 'al context --diff main...HEAD --for review');
-  const now = loadState(top, headSha);
-  const was = loadState(top, base);
-  const findings = review ? checks(top, { base }).findings : [];
-  // The ADRs with no source link, which the view marks where it names them (schema.md 5).
-  const unsourced = new Set([...now.adrs.values()].filter((a) => !a.head?.links.source.length).map((a) => a.id));
-  const marks = (message) => [...new Set(message.match(/\bADR-\d+\b/g) ?? [])].filter((id) => unsourced.has(id)).map((id) => `; ${id} has no source:`).join('');
-  const body = [];
-  for (const scope of new Set([...now.scopes.keys(), ...was.scopes.keys()])) {
-    const request = requestOf(scope);
-    const h = new Map((now.scopes.get(scope) ?? []).map((p) => [p.id, p]));
-    const b = new Map((was.scopes.get(scope) ?? []).map((p) => [p.id, p]));
-    for (const c of diffParagraphs(was.scopes.get(scope) ?? [], now.scopes.get(scope) ?? [])) {
-      const p = h.get(c.id) ?? b.get(c.id);
-      const kindChange = h.get(c.id) && b.get(c.id) && h.get(c.id).kind !== b.get(c.id).kind;
-      if (!c.changes.length && !kindChange) continue;
-      const who = named(request, c.id);
-      const change = [...c.changes, ...(kindChange ? [`kind ${b.get(c.id).kind} -> ${h.get(c.id).kind}`] : [])].join('+');
-      body.push(`${who} ${p.kind ?? 'no kind'} ${change} · ${h.get(c.id) ? placeOf(p) : `${placeOf(p)} at the base ${base.slice(0, 7)}`}`);
-      if (!review) continue;
-      body.push(...indent(p.text).map((l) => `  ${l}`));
-      for (const s of p.links.serves) {
-        const q = qualify(s, request);
-        const rq = q.req && now.requests.get(q.req);
-        const req = rq?.reqs.find((x) => x.id === q.id);
-        if (!req) { body.push(`  serves ${q.key}: not found`); continue; }
-        body.push(`  serves ${q.key} ${versionOf(rq, req)}: ${signState(now, rq, req)}`);
-        body.push(...indent(req.text.replace(/\n$/, '')).map((l) => `  ${l}`));
-      }
-      for (const [key, word] of [['buildsOn', 'builds on'], ['changes', 'changes'], ['removes', 'removes']]) {
-        for (const ref of p.links[key]) {
-          const id = ref.replace(/^central:/, '');
-          const target = was.spec.get(id) ?? now.spec.get(id);
-          body.push(`  ${word} ${id}${target ? ` (${target.kind ?? 'no kind'}):` : ': not found'}`);
-          if (target) body.push(...indent(target.text).map((l) => `  ${l}`));
-        }
-      }
-      if (!request) {
-        for (const a of now.adrs.values()) {
-          if ((a.head?.links.decides ?? []).includes(c.id) || p.links.governedBy.includes(a.id)) body.push(`  governed by ${a.id} (${a.status ?? 'no status'}${unsourced.has(a.id) ? '; no source:' : ''})`);
-        }
-      }
-      for (const f of findings.filter((x) => x.id === who && x.severity !== 'info')) body.push(`  ${findingLine(f)}${marks(f.message)}`);
+// What the review view showed under a changed paragraph, for al check --full
+// (LD-63): its text; each requirement that it serves, with its version, its
+// sign state and its text; the text at the base of each spec paragraph that
+// it builds on, changes or removes; and for a spec paragraph, each ADR that
+// decides it or that it names by governed-by, with its status.
+export function paragraphDetails(now, was, request, p) {
+  const out = [...indent(p.text)];
+  for (const s of p.links.serves) {
+    const q = qualify(s, request);
+    const rq = q.req && now.requests.get(q.req);
+    const req = rq?.reqs.find((x) => x.id === q.id);
+    if (!req) { out.push(`serves ${q.key}: not found`); continue; }
+    out.push(`serves ${q.key} ${versionOf(rq, req)}: ${signState(now, rq, req)}`, ...indent(req.text.replace(/\n$/, '')));
+  }
+  for (const [key, word] of [['buildsOn', 'builds on'], ['changes', 'changes'], ['removes', 'removes']]) {
+    for (const ref of p.links[key]) {
+      const id = ref.replace(/^central:/, '');
+      const target = was?.spec.get(id) ?? now.spec.get(id);
+      out.push(`${word} ${id}${target ? ` (${target.kind ?? 'no kind'}):` : ': not found'}`);
+      if (target) out.push(...indent(target.text));
     }
   }
-  if (!body.length) body.push('no paragraph changed in the range');
-  return {
-    body,
-    read: `${range} (base ${base.slice(0, 7)}, head ${headSha.slice(0, 7)})${review ? '; hints from the working tree' : ''}`,
-    next: review ? 'review each paragraph against its requirement and the baseline it touches' : `al context --diff ${range} --for review`,
-  };
+  if (!request) {
+    for (const a of now.adrs.values()) {
+      const unsourced = !a.head?.links.source.length;
+      if ((a.head?.links.decides ?? []).includes(p.id) || p.links.governedBy.includes(a.id)) out.push(`governed by ${a.id} (${a.status ?? 'no status'}${unsourced ? '; no source:' : ''})`);
+    }
+  }
+  return indent(out.join('\n'));
 }
 
 export function context({ top, args, opts }) {
   const [what] = args;
-  if (opts.for !== undefined && opts.for !== 'review') throw new Fail(`--for ${opts.for}: only --for review`, 'al context --diff main...HEAD --for review');
-  if (opts.diff !== undefined) {
-    const out = diffView(top, opts.diff, opts.for === 'review');
-    return { ...out, notKnown: ['whether each kind is right (the review judges that)', NOT_CHECKED] };
+  // The review view went into al check (LD-63); it still answers for one release (LD-9).
+  if (opts.diff !== undefined || opts.for !== undefined) {
+    throw new Fail('the review view is now al check: al check --full shows each changed paragraph with its text and links; al check --at <commit> answers for a past head',
+      'al check --full');
   }
   let rev = null;
   if (opts.at !== undefined) {

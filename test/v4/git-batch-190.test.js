@@ -19,6 +19,7 @@ import {
   project, write, writeYaml, commitAll, git as pgit, al, show, newRequest, tree, baseProject, writeConfig, doc, WORDS_FILE,
 } from './helpers/project.js';
 import { buildWorld, run as runSearch, show as showSearch } from './helpers/search.js';
+import { changeLines78, settled } from './helpers/as-78.js';
 
 const GIT_JS = fileURLToPath(new URL('../../src/v4/git.js', import.meta.url));
 
@@ -460,14 +461,15 @@ function checkRun(t, n) {
   const want = [];
   // A change line names the text line of the paragraph (#74).
   for (let i = 1; i <= n; i++) want.push(`${docName(i)}:7 D${i}-2 Changed`, `${docName(i)}:11 D${i}-3 New`);
-  const changeLines = outLines(r).filter((l) => l.startsWith('specs/'));
+  // #78: the change lines are map paragraph lines, and one ok line names each check that found nothing.
+  const changeLines = changeLines78(r.stdout);
   assert.deepEqual([...changeLines].sort(), [...want].sort(), show(r));
-  assert.ok(outLines(r).includes('ok: no marker lint'), show(r));
+  assert.ok(outLines(r).some((l) => l.startsWith('ok: nothing found by spec-root, no-id, no-kind, ')), show(r));
   assert.deepEqual(outLines(r).filter((l) => /^(not ok|hint) /.test(l)), [], show(r));
   assert.match(r.stdout, /^Read {6}working tree · base [0-9a-f]+ \(merge-base with main\)$/m, show(r));
   // The same output without the wrapper.
   const plain = al(dir, ['check']);
-  assert.equal(plain.stdout, r.stdout, 'the wrapper does not change the output');
+  assert.equal(settled(plain.stdout), settled(r.stdout), 'the wrapper does not change the output'); // #78: the first run writes the records
   assert.ok(calls.some((l) => l.includes('merge-base')), `the wrapper saw al's git:\n${calls.join('\n')}`);
   return { processes, calls };
 }
@@ -557,13 +559,13 @@ describe('al-v4 check and al-v4 context read the state of the base with about as
     assertOut(r, n);
     const plain = al(dir, args);
     assert.equal(plain.code, r.code, show(plain));
-    assert.equal(plain.stdout, r.stdout, 'the same output without the wrapper');
+    assert.equal(settled(plain.stdout), settled(r.stdout), 'the same output without the wrapper'); // #78: the first run writes the records
     return { processes, calls };
   }
 
   const assertCheck = (r) => {
     assert.equal(r.code, 0, show(r));
-    assert.ok(outLines(r).includes('ok: no marker lint'), show(r));
+    assert.ok(outLines(r).some((l) => l.startsWith('ok: nothing found by spec-root, no-id, no-kind, ')), show(r)); // #78
     assert.deepEqual(outLines(r).filter((l) => /^(not ok|hint) /.test(l)), [], show(r));
     assert.match(r.stdout, /^Read {6}working tree · base [0-9a-f]+ \(merge-base with main\)$/m, show(r));
   };
@@ -675,7 +677,7 @@ describe('on git 2.31: no cat-file -z, -Z or --batch-command', () => {
     // A change line names the text line of the paragraph (#74).
     const want = ['specs/reuse.md:3 G-9 New'];
     for (const [f, p] of ODD_DOCS) want.push(`${shownPath(f)}:7 ${p}-2 Changed`, `${shownPath(f)}:11 ${p}-3 New`);
-    const changeLines = outLines(now).filter((l) => l.startsWith('specs/'));
+    const changeLines = changeLines78(now.stdout); // #78: map paragraph lines
     assert.deepEqual([...changeLines].sort(), [...want].sort(), show(now));
     const usedAgain = outLines(now).filter((l) => l.startsWith('hint used-again ')); // #238 R2: a hint
     assert.equal(usedAgain.length, 1, show(now));
@@ -685,7 +687,7 @@ describe('on git 2.31: no cat-file -z, -Z or --batch-command', () => {
     const r = al(dir, ['check'], { env: { PATH: old.PATH } });
     assert.ok(old.calls().some((l) => l.includes('merge-base')), `the wrapper saw al's git:\n${old.calls().join('\n')}`);
     assert.equal(r.code, now.code, show(r));
-    assert.equal(r.stdout, now.stdout, `the same output on git 2.31:\n${show(r)}`);
+    assert.equal(settled(r.stdout), settled(now.stdout), `the same output on git 2.31:\n${show(r)}`); // #78: the first run writes the records
     assert.deepEqual(old.refused(), [], 'no cat-file call that git 2.31 refuses');
   });
 

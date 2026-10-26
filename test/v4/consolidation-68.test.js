@@ -165,9 +165,14 @@ test('#68 a judgement before al index is "not known: identity not kept"; after a
   const first = 'SP-1 complies: the link lives 24 hours, now in INV-41.';
   note(dir, judged(first, 'Item: "lives for 24 hours"', `Spec (INV-41): "${N41}"`));
 
-  let r = check(dir);
+  // #78: al check runs al index, so the state before al index is read with
+  // al check --at on a commit of the note; al check itself keeps the identity.
+  commitAll(dir, `${NAME}: the note`);
+  let r = check(dir, '--at', 'HEAD');
   assert.equal(consolidation(r, 'SP-1').fact, notKept(dir, first), show(r));
   consolidationHint(r, { ids: ['SP-1'], all: ['SP-1', 'SP-9'] });
+  r = check(dir);
+  assert.equal(consolidation(r, 'SP-1').fact, current(dir, first), show(r));
 
   index(dir);
   r = check(dir);

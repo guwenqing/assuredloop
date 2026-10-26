@@ -200,7 +200,19 @@ changes a named paragraph, `al` keeps that version in its own records; no
 person and no AI writes or reads it. When a branch adds a `changes` or
 `removes` link to a paragraph that it has already changed, before `al index`
 first binds the link, `al index` binds the paragraph's text at the base: the
-state is "changed since the link". A later edit of that paragraph by
+state is "changed since the link". `al index` keeps a fact "at a moment
+that is now" only for what the working tree adds against HEAD. For what
+HEAD already holds with no record, it takes the moment from the branch
+history: the earliest commit of base..HEAD that holds it. So a link that
+HEAD declares with no binding gets the holder's and the target's text at
+the first commit that declares it; a `changes` or `removes` link gets the
+target's text at the base of that commit; a requirement gets the version
+whose text it had there. The version that the branch gave a named
+paragraph is its text in the working tree when the tree changes it against
+HEAD; else its text at the latest commit of base..HEAD that is not a merge
+and that changed it. A merge commit gives none, because it can hold the
+edit of other work. Where the history cannot tell (a shallow clone), the
+link gets no binding and the fact stays not known. A later edit of that paragraph by
 other work gives the parallel-work hint of v4/R6, as today; the change's
 own consolidation does not. A `builds-on` link to that paragraph still
 gets the hint. A recorded judgement clears that hint and
@@ -362,9 +374,24 @@ says what to ask next only where that helps. `--full` shows everything;
 
 The record commands stay: `al new`, `al record`, `al spec` and
 `al conclude`. `al export` stays, to feed a team's own knowledge base.
-`al check` runs `al index`. Today's review view
-(`al context --diff <range> --for review`) becomes the list and the map of
-`al check`.
+`al check` runs `al index`, and names in one line each record file that it
+wrote, so that the author commits them with the change; each other line of
+`al index` shows as one line for each kind. An `al check` run does not change
+which requests are the change's own (LD-24). It names in a second line each
+record file that it wrote for a request that is not the change's own,
+because that record was not up to date; the author decides whether to
+commit it. `al check --at <commit>` reads
+the commit's spec, records and change from git, and writes nothing. Today's
+review view (`al context --diff <range> --for review`) becomes the list and
+the map of `al check`: the map names each paragraph that the branch added,
+changed, moved or removed, in `specs/`, the open change specs and the ADRs,
+with its place, its kind and its change, a change of its kind included.
+`al check --full` adds under each one its text, each requirement that it
+serves with its version, its sign state and its text, the text at the base
+of each paragraph that it builds on, changes or removes, and each ADR that
+governs it, with its status. A review of another range uses
+`al check --at <commit>` for a past head, and `git diff` for what changed
+since an earlier review.
 
 <!-- LD-19 plan -->
 
@@ -464,7 +491,9 @@ or cannot be read is reported as a limit. The skill tells the AI:
 <!-- LD-41 plan -->
 
 On an ordinary change `al` gives no hint; `al check` shows only the list of
-section 4a and the map. The coding agent reads the list at the start
+section 4a, the map and one line that names each check that ran and found nothing
+(`ok: nothing found by <code>, ...`). A check that a Not known line or a finding
+says did not run on all that it covers is not in that line. The coding agent reads the list at the start
 (skill step 1), and asks one search question for what is new and has no
 ID.
 
@@ -519,7 +548,12 @@ lines, supersede links and `specs/`. No new record.
   (LD-48), shown as "proposed by this change", apart from what already
   holds. The change's own request is an open request whose folder or
   record the change touches, or whose name a commit message of the branch
-  names. An unsigned requirement of it is not listed; the limits name it.
+  names. A change touches a request's record only in what `al new` and
+  `al record` write (the owner's words and sources, sign-offs, tasks,
+  decisions, close lines). What `al index` derives by itself (requirement
+  versions, bindings, judgement identities, kept item texts) does not make
+  a request the change's own. An unsigned requirement of it is not listed;
+  the limits name it.
 
 <!-- LD-48 data serves:R1 -->
 
@@ -587,7 +621,10 @@ item is in force.
 - Every other item in force, named by its ID and grouped, with exact
   counts: "N further items in force: U with no known scope: <IDs>; K with a
   scope that does not match this change: <IDs>". Their text is not shown;
-  `al check --full` shows it. No item is left out (context-all/R1). The
+  `al check --full` shows it. `al check --all`, the audit, shows each item
+  in force on its own line, an item that the change does not touch with
+  the basis `audit`, also when no change is selected. It gives no
+  judgement. No item is left out (context-all/R1). The
   search question of skill step 4.2 covers both groups. A scope that does
   not match is not proof that the item cannot apply: new behaviour can make
   an old scope incomplete.
@@ -715,11 +752,12 @@ reads the version only from the record as committed there: the version
 whose text is the judged text, or none. An identity with no recorded
 version is never current. An item of the own
 request's design documents (LD-48) is found as the list reads them. `al index` keeps the identity in the
-request's record, once for each judgement, and never writes it again;
-`al check` writes nothing. A judgement that is already committed when
+request's record, once for each judgement, and never writes it again.
+`al check` writes what `al index` writes; `al check --at` writes nothing. A judgement that is already committed when
 `al index` first sees it takes the identity of the earliest commit of the
-branch whose note holds it. When the history cannot tell, the judgement is
-"not known when judged", never current. A renewed review rewrites the
+branch whose note holds it. When the history cannot tell, for example
+because a shallow clone cuts it at that commit, the judgement is "not
+known when judged", never current. A renewed review rewrites the
 judgement, for example its reason, and the rewritten judgement gets a new
 identity. A judgement with no identity yet says "identity not kept: run al
 index". The item's state is one of: in force; proposed by this change;

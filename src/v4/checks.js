@@ -147,12 +147,16 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // line, the place of the problem.
   const markerOf = (p) => `${p.file}:${p.line}`;
   const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
+  // The checks that did not run in full, for the ok line (LD-41).
+  const skipped = new Set();
+  const skip = (...codes) => codes.forEach((c) => skipped.add(c));
   const promise = (k) => isPromise(now, k);
   const open = [...now.requests.values()].filter((r) => r.open);
   const { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered, unknown } = branchOf(top, now, was, base);
 
   // Sign-off coverage (design.md 6): a promise change with no signed requirement that covers it.
   for (const c of uncovered) add('not ok', 'signoff-coverage', c.head ?? c.base, c.name, `a ${(c.head ?? c.base).kind} paragraph is ${changeWord(c)} with no signed requirement that covers it`);
+  if (unknown.length) skip('signoff-coverage');
   for (const c of unknown) notKnown.push(`whether ${c.name} is covered by a signed requirement: the sign-off of ${[...new Set(c.unknown)].join(', ')} is not checked`);
 
   // The path claim (design.md 7), and the typo claim's words (design.md 6).
@@ -462,14 +466,14 @@ export function checks(top, { base, phrases = [], issues = null }) {
 
   // The rules that block (#238): unsigned requirements, record evidence,
   // unreadable records and citations of superseded ADRs.
-  notKnown.push(...recordBlocks(top, now, add));
+  notKnown.push(...recordBlocks(top, now, add, skip));
   supersededBlocks(top, now, add);
 
   // Phrases for the review (issue-hints R2), and with --issues <folder> the
   // hints from the work items that the caller saved (issue-hints R1); without
   // it, no item is read and nothing is added.
   phraseFindings(top, now, phrases, add);
-  if (issues) notKnown.push(...issueHints(top, now, phrases, add, issues));
+  if (issues) notKnown.push(...issueHints(top, now, phrases, add, issues, skip));
 
   // Results (design.md 9): whether each one applies to the current text. The
   // commits they ran at are looked up in one batch.
@@ -501,7 +505,8 @@ export function checks(top, { base, phrases = [], issues = null }) {
   const adopted = new Set();
   for (const [id, hashes] of captured) if (!notAdopted.has(id) && now.spec.has(id) && hashes.has(now.spec.get(id).sha256)) adopted.add(id);
 
-  return { findings, notKnown, adopted, now, was, changes };
+  if (base && !claim) skip('path-claim', ...(commits ? [] : ['no-claim']));
+  return { findings, notKnown, adopted, now, was, changes, skipped: [...skipped] };
 }
 
 // Whether a result applies (design.md 9): never "applies", only what is known.

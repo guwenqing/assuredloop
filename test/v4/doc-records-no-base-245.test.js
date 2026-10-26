@@ -9,6 +9,7 @@ import {
   al, commitAll, doc, docRecord, docRecordPath, git, index, newRequest, project, read, show, tree, write, writeConfig,
   writeYaml,
 } from './helpers/project.js';
+import { changeLines78 } from './helpers/as-78.js';
 
 const SPEC = 'specs/invoices.md';
 const CS = 'requests/inv/spec.md';
@@ -191,8 +192,8 @@ test('al check on a branch still names a changed paragraph, though the record ho
   index(dir);
   commitAll(dir, 'the change, indexed on the branch');
   const r = al(dir, ['check']);
-  const lines = r.stdout.split('\n');
-  // A change line names the text line of the paragraph (#74).
+  const lines = changeLines78(r.stdout);
+  // A change line names the text line of the paragraph (#74); it is a map paragraph line (#78).
   for (const line of ['specs/invoices.md:7 INV-2 Changed', 'specs/invoices.md:11 INV-4 New', 'specs/invoices.md:23 INV-5 Moved']) {
     assert.ok(lines.includes(line), `line ${JSON.stringify(line)} expected:\n${show(r)}`);
   }

@@ -2,7 +2,7 @@
 // request names and the record paths.
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync } from 'node:fs';
-import { dirname, isAbsolute, join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 // A refusal: exit 2, `al: <message>`, and nothing written.
 export class Fail extends Error {
@@ -24,6 +24,16 @@ export const isName = (s) => typeof s === 'string' && /^[a-z0-9][a-z0-9-]*$/.tes
 export const SCHEMA = 'assuredloop/1';
 export const recordPath = (name) => `.assuredloop/records/requests/${name}.yaml`;
 export const docRecordPath = (file) => `.assuredloop/records/${file}.yaml`;
+
+// The folder of a repo that config names by `path`. al check --at reads a
+// commit in a temporary worktree; a relative path still resolves from the
+// clone itself (LD-63), as `fromClone` sets it for that run.
+const clones = new Map();
+export const repoDir = (top, path) => (isAbsolute(path) ? path : resolve(clones.get(top) ?? top, path));
+export function fromClone(tree, top, run) {
+  clones.set(tree, top);
+  try { return run(); } finally { clones.delete(tree); }
+}
 
 // A path that stays inside the repo: relative, with no `..` part.
 export const inside = (path) => !isAbsolute(path) && !path.split(/[\\/]/).includes('..');

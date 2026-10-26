@@ -37,7 +37,9 @@ const placeLink = (top, path) => {
 // place is set) is no `not ok`: one info line per request names those files,
 // and what it leaves unknown is given back for the Not known line
 // (origin-elsewhere/R1).
-export function recordBlocks(top, state, add) {
+// `skip` takes the codes of the checks that did not run in full (LD-41).
+export function recordBlocks(top, state, add, skip = () => {}) {
+  const unread = () => skip('record-evidence', 'unsigned-requirement');
   const notKnown = [];
   // A record whose request has no request.md: nothing in it can be checked.
   const folder = '.assuredloop/records/requests';
@@ -46,16 +48,19 @@ export function recordBlocks(top, state, add) {
     records = readdirSync(join(top, folder), { withFileTypes: true }).filter((e) => e.name.endsWith('.yaml')).map((e) => e.name.slice(0, -5)).sort();
   } catch (e) {
     records = [];
+    if (e.code !== 'ENOENT') unread();
     if (e.code !== 'ENOENT') add('not ok', 'record-unreadable', folder, '-', `${folder} cannot be read (${e.code ?? e.message}), so no record in it is checked`);
   }
   for (const name of records.filter((n) => !state.requests.has(n))) {
     const at = recordPath(name);
+    unread();
     add('not ok', 'record-unreadable', at, name, `${at} has no request.md in requests/${name}/ or requests/archive/${name}/, so its requirements, sign-offs and evidence are not checked`);
   }
   for (const r of state.requests.values()) {
     const at = recordPath(r.name);
     const data = r.data;
     if (r.recordError) {
+      unread();
       add('not ok', 'record-unreadable', at, r.name, `${at} cannot be read (${r.recordError}), so its requirements, sign-offs and evidence are not checked; fix it by hand`);
       continue;
     }
@@ -107,6 +112,7 @@ export function recordBlocks(top, state, add) {
     if (unchecked.length) {
       const files = [...new Set(unchecked.map((e) => e.file))];
       add('info', 'originals-not-checked', at, r.name, `${unchecked[0].problem}: ${files.join(', ')}`);
+      skip('record-evidence');
       notKnown.push(`the original files of ${r.name}, not checked (${unchecked[0].problem}): ${files.join(', ')}`);
     }
 
@@ -140,6 +146,7 @@ export function recordBlocks(top, state, add) {
       if (covering.some((s) => why.get(s) === null)) continue;
       // A sign-off whose file is not checked is neither signed nor a not ok.
       if (covering.some((s) => why.get(s) === UNKNOWN)) {
+        skip('unsigned-requirement');
         notKnown.push(`whether ${r.name}/${v.id} is signed: the original file of its sign-off is not checked`);
         continue;
       }

@@ -170,50 +170,39 @@ test('adr-history: the accepted ADR-6 has no decides: and gets adr-links; the su
   assert.deepEqual(coded(r, 'adr-links', 'ADR-5'), [], show(r));
 });
 
-// --- 3. the review view marks an ADR with no source:
+// --- 3. al check --full marks an ADR with no source: (the review view before #78)
 
-const review = (t, name, arm) => view(invoicer(t, name, arm), ['context', '--diff', 'main...HEAD', '--for', 'review']);
+// #78 removed the review view; al check --full shows the governed line under
+// each changed paragraph. al check names the missing source: by its
+// adr-links hint (the next test), not by a mark on the adr-governs hint.
+const review = (t, name, arm) => view(invoicer(t, name, arm), ['check', '--full']);
 const GOVERNED = '  governed by ADR-4 (accepted)';
 const GOVERNED_NO_SOURCE = '  governed by ADR-4 (accepted; no source:)';
-// The hint names the text line of EXP-6 (#74).
-const HINT = '  hint adr-governs specs/exports.md:39 EXP-6 check that ADR-4 still holds';
-const HINT_NO_SOURCE = `${HINT}; ADR-4 has no source:`;
+// The map block: from its "map: " line to the Read line.
+const mapBlock = (ls) => ls.slice(ls.findIndex((l) => l.startsWith('map: ')), ls.findIndex((l) => l.startsWith('Read ')));
 
-test('review view, ADR-4 with no source: the governed line and the adr-governs line say so', (t) => {
+test('check --full, ADR-4 with no source: the governed line says so', (t) => {
   const r = review(t, 'adr-governs-nosource');
   const ls = lines(r);
   assert.ok(ls.includes(GOVERNED_NO_SOURCE), `the line ${JSON.stringify(GOVERNED_NO_SOURCE)}:\n${show(r)}`);
-  assert.ok(ls.includes(HINT_NO_SOURCE), `the line ${JSON.stringify(HINT_NO_SOURCE)}:\n${show(r)}`);
   assert.ok(!ls.includes(GOVERNED), show(r));
-  assert.ok(!ls.includes(HINT), show(r));
 });
 
-test('review view, ADR-4 with a source: link (adr-governs decided): both lines exactly as before, no "no source:"', (t) => {
+test('check --full, ADR-4 with a source: link (adr-governs decided): the governed line exactly as before, no "no source:"', (t) => {
   const r = review(t, 'adr-governs', 'decided');
   const ls = lines(r);
   assert.ok(ls.includes(GOVERNED), `the line ${JSON.stringify(GOVERNED)}:\n${show(r)}`);
-  assert.ok(ls.includes(HINT), `the line ${JSON.stringify(HINT)}:\n${show(r)}`);
   assert.deepEqual(ls.filter((l) => l.includes('no source:')), [], show(r));
   const marked = review(t, 'adr-governs-nosource');
   assert.ok(lines(marked).includes(GOVERNED_NO_SOURCE), show(marked));
 });
 
-// The marks are taken back from the governed line and from each hint line
-// that names ADR-4 (SCH-22 marks every hint that names an ADR with no
-// source:; since #11 R2 a holder-changed hint on EXP-6 names ADR-4 too).
-test('review view: nothing else is added; with the marks taken back (the governed line, each hint line that names ADR-4), the view equals the control view but for the Read line', (t) => {
+test('check --full: nothing else is added to the map; with the mark taken back from the governed line, the map equals the control map', (t) => {
   const marked = review(t, 'adr-governs-nosource');
   const plain = review(t, 'adr-governs', 'decided');
-  const ls = lines(marked);
-  assert.ok(ls.includes(GOVERNED_NO_SOURCE) && ls.includes(HINT_NO_SOURCE), show(marked));
-  const MARK = '; ADR-4 has no source:';
-  const back = (l) => {
-    if (l === GOVERNED_NO_SOURCE) return GOVERNED;
-    if (/^ {2}hint \S+ .*\bADR-4\b/.test(l) && l.endsWith(MARK)) return l.slice(0, -MARK.length);
-    return l;
-  };
-  const strip = (list) => list.filter((l) => !l.startsWith('Read '));
-  assert.deepEqual(strip(ls.map(back)), strip(lines(plain)), `${show(marked)}\n${show(plain)}`);
+  const ls = mapBlock(lines(marked));
+  assert.ok(ls.includes(GOVERNED_NO_SOURCE), show(marked));
+  assert.deepEqual(ls.map((l) => (l === GOVERNED_NO_SOURCE ? GOVERNED : l)), mapBlock(lines(plain)), `${show(marked)}\n${show(plain)}`);
 });
 
 test("al check in the same world: its adr-governs line has no '; ADR-4 has no source:' ending, and ADR-4 gets adr-links (no source:)", (t) => {

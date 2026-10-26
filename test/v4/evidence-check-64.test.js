@@ -278,11 +278,14 @@ test('#64 LD-28: an item version change (the judged item edited, the quote still
   }), show(r));
 });
 
+// #78: al check runs al index, so only al check --at <commit> reads a note
+// whose identity the records at that commit do not hold.
 test('#64 LD-28: a judgement with no al index run: "identity not kept: run al index", and the header counts it', (t) => {
   const dir = world(t);
   sourceCommit(dir);
   note(dir, judged(...J41_ITEMS));
-  const r = check(dir);
+  commitAll(dir, `${NAME}: the note, with no al index`);
+  const r = writesNothing(dir, ['check', '--at', 'HEAD']);
   assert.equal(headerLine(r), header({ n: 1, u: 1 }), show(r));
   assert.equal(judgement(r, 'INV-41'), line({
     id: 'INV-41', v: v12(dir, SPEC, 'INV-41'), verdict: 'complies', at: at(dir, J41),
@@ -324,8 +327,8 @@ test('#64 quotes: found across a line wrap, extra spaces and inner double quotes
       'Code (src/export.js): "EXPORT const ttl = 30;"'),
     judged(j.none, 'Code (src/export.js): "return message;"', 'Test: tests not examined'));
   const r = check(dir);
-  const u = 'identity not kept: run al index';
-  assert.equal(headerLine(r), header({ n: 5, u: 5 }), show(r));
+  const u = 'current'; // #78: al check keeps the identity
+  assert.equal(headerLine(r), header({ n: 5, c: 5 }), show(r));
   assert.deepEqual(judgementLines(r), [
     line({ id: 'INV-41', v: v12(dir, SPEC, 'INV-41'), verdict: 'complies', at: at(dir, j.wrap), identity: u, results: [
       'item quote found; item in force', 'code quote found (src/export.js)', 'code quote found (src/export.js)',
@@ -354,7 +357,7 @@ test('#64 an item that al cannot find: "item not found", version none', (t) => {
   const r = check(dir);
   assert.equal(judgement(r, 'INV-99'), line({
     id: 'INV-99', v: 'none', verdict: 'unclear', at: at(dir, first),
-    results: ['item not found', 'tests not examined'], identity: 'identity not kept: run al index',
+    results: ['item not found', 'tests not examined'], identity: 'current', // #78: al check keeps the identity
   }), show(r));
 });
 
@@ -372,7 +375,7 @@ test('#64 a removed guard quoted from the base: "code quote found (<path>, base)
   assert.equal(judgement(r, 'INV-41'), line({
     id: 'INV-41', v: v12(dir, SPEC, 'INV-41'), verdict: 'violates', at: at(dir, first),
     results: ['item quote found; item in force', 'code quote found (src/guard.js, base)', 'code quote not found (src/guard.js)', 'no test found'],
-    identity: 'identity not kept: run al index',
+    identity: 'current', // #78: al check keeps the identity
   }), show(r));
 });
 
@@ -385,7 +388,7 @@ test('#64 LD-44 a judgement of absence: "Test: no test found" and no Code line g
   const l = judgement(r, 'INV-13');
   assert.equal(l, line({
     id: 'INV-13', v: v12(dir, SPEC, 'INV-13'), verdict: 'violates', at: at(dir, first),
-    results: ['item quote found; item in force', 'no test found'], identity: 'identity not kept: run al index',
+    results: ['item quote found; item in force', 'no test found'], identity: 'current', // #78: al check keeps the identity
   }), show(r));
   assert.doesNotMatch(l, /not found \(/, show(r));
 });
@@ -415,7 +418,7 @@ test('#64 item states: approach is not in force, a superseded ADR is replaced, a
   ];
   note(dir, ...j.map(([, , first, quote]) => judged(first, `Item: "${quote}"`, 'Test: tests not examined')));
   const r = check(dir);
-  assert.equal(headerLine(r), header({ n: j.length, u: j.length }), show(r));
+  assert.equal(headerLine(r), header({ n: j.length, c: j.length }), show(r)); // #78: al check keeps the identities
   const ls = judgementLines(r);
   assert.equal(ls.length, j.length, show(r));
   const versions = {
@@ -427,7 +430,7 @@ test('#64 item states: approach is not in force, a superseded ADR is replaced, a
     const v = ls[i].slice(head.length).split(' ')[0];
     if (versions[id]) assert.equal(v, versions[id], `the version of ${id}:\n${show(r)}`);
     else assert.match(v, /^[0-9a-f]{12}$/, `the version of ${id}:\n${show(r)}`);
-    assert.equal(ls[i], line({ id, v, verdict, at: at(dir, first), results: [result, 'tests not examined'], identity: 'identity not kept: run al index' }), show(r));
+    assert.equal(ls[i], line({ id, v, verdict, at: at(dir, first), results: [result, 'tests not examined'], identity: 'current' }), show(r)); // #78: al check keeps the identity
   });
   // Guard of the fixture: pdf is not this change's own request.
   assert.deepEqual(out(r).filter((l) => l.startsWith(HEADER('pdf'))), [], show(r));
@@ -449,7 +452,7 @@ test("#64 item states: the own request's signed R1 (version v1) and its change s
   const r = check(dir);
   assert.deepEqual(judgementLines(r), j.map(([id, v, first, , result]) => line({
     id, v, verdict: first.split(' ')[1].replace(':', ''), at: at(dir, first), results: [result, 'tests not examined'],
-    identity: 'identity not kept: run al index',
+    identity: 'current', // #78: al check keeps the identity
   })), show(r));
   noAlComplies(r);
 });
@@ -552,7 +555,7 @@ test('#64 a top-level item not in the judgement form is shown as "judgement not 
     '',
   ].join('\n'));
   const r = check(dir);
-  assert.equal(headerLine(r), header({ n: 1, u: 1, r: 2 }), show(r));
+  assert.equal(headerLine(r), header({ n: 1, c: 1, r: 2 }), show(r)); // #78: al check keeps the identity
   const ls = judgementLines(r);
   assert.equal(ls.length, 3, show(r));
   assert.ok(ls[0].startsWith(ID('INV-41')), show(r));
@@ -616,17 +619,20 @@ test('#64 advisory: complies judgements on an unsigned requirement change keep t
   }
 });
 
-test('#64 al check writes nothing, with a judgement whose identity is not kept and with one whose identity is kept', (t) => {
+// #78: al check runs al index: it keeps a new judgement's identity once,
+// and then writes nothing; al check --at writes nothing.
+test('#64 al check keeps an identity once, then writes nothing; al check --at writes nothing', (t) => {
   const dir = world(t);
   sourceCommit(dir);
   note(dir, judged(...J41_ITEMS));
-  let r = writesNothing(dir, ['check']);
-  assert.ok(judgement(r, 'INV-41').endsWith(' · identity not kept: run al index'), show(r));
+  let r = check(dir);
+  assert.ok(judgement(r, 'INV-41').endsWith(' · current'), show(r));
   r = writesNothing(dir, ['check']);
-  assert.ok(judgement(r, 'INV-41').endsWith(' · identity not kept: run al index'), `check kept no identity:\n${show(r)}`);
+  assert.ok(judgement(r, 'INV-41').endsWith(' · current'), `the identity is kept once:\n${show(r)}`);
   index(dir);
   r = writesNothing(dir, ['check']);
   assert.ok(judgement(r, 'INV-41').endsWith(' · current'), show(r));
+  writesNothing(dir, ['check', '--at', 'HEAD']);
 });
 
 test('#64 the same output twice for the same state', (t) => {
@@ -687,9 +693,10 @@ test('#64 identity: the note is left out of the change: a second judgement and a
   const second = 'INV-13 violates: no code checks the line count.';
   write(dir, NOTE, `# Review of ${NAME}, round 2\n\nOther free text.\n\n${judged(...J41_ITEMS)}\n${judged(second, 'Item: "at least one line"', 'Test: no test found')}\n`);
   r = check(dir);
-  assert.equal(headerLine(r), header({ n: 2, c: 1, u: 1 }), show(r));
+  // #78: al check runs al index, so it keeps the second judgement's identity.
+  assert.equal(headerLine(r), header({ n: 2, c: 2 }), show(r));
   assert.ok(judgement(r, 'INV-41').endsWith(' · current'), `the edit of the note leaves the first judgement current:\n${show(r)}`);
-  assert.ok(judgement(r, 'INV-13').endsWith(' · identity not kept: run al index'), show(r));
+  assert.ok(judgement(r, 'INV-13').endsWith(' · current'), show(r));
 
   // A note of the other open request, then al index: both current.
   write(dir, 'requests/pdf/review.md', '# Review of pdf\n\nNothing judged yet.\n');
@@ -783,7 +790,7 @@ test('#64 review 3: an item of a named design document (LD-48) is proposed by th
   const r = check(dir);
   assert.equal(judgement(r, 'RFC-1'), line({
     id: 'RFC-1', v: sha(RFC_TEXT).slice(0, 12), verdict: 'complies', at: at(dir, first),
-    results: ['item quote found; item proposed by this change', 'tests not examined'], identity: 'identity not kept: run al index',
+    results: ['item quote found; item proposed by this change', 'tests not examined'], identity: 'current', // #78: al check keeps the identity
   }), show(r));
 });
 
@@ -797,7 +804,7 @@ test('#64 review 3: an item of a design document in an output repo, read at its 
   const r = check(dir);
   assert.equal(judgement(r, 'WEB-1'), line({
     id: 'WEB-1', v: sha(RFC_TEXT).slice(0, 12), verdict: 'complies', at: at(dir, first),
-    results: ['item quote found; item proposed by this change', 'tests not examined'], identity: 'identity not kept: run al index',
+    results: ['item quote found; item proposed by this change', 'tests not examined'], identity: 'current', // #78: al check keeps the identity
   }), show(r));
 });
 
@@ -814,8 +821,8 @@ test('#64 review 4: an ordered item and an indented top-level item are judgement
     loose, '',
   ].join('\n'));
   let r = check(dir);
-  assert.equal(headerLine(r), header({ n: 2, u: 2, r: 1 }), show(r));
-  const u = 'identity not kept: run al index';
+  assert.equal(headerLine(r), header({ n: 2, c: 2, r: 1 }), show(r));
+  const u = 'current'; // #78: al check keeps the identity
   const ls = judgementLines(r);
   assert.equal(ls.length, 3, show(r));
   assert.equal(ls[0], line({ id: 'INV-13', v: v12(dir, SPEC, 'INV-13'), verdict: 'violates', at: lineOf(dir, NOTE, indented),
@@ -827,7 +834,7 @@ test('#64 review 4: an ordered item and an indented top-level item are judgement
   // Control: "- X" with "  - Item:" reads Item as a sub-item of X.
   note(dir, judged(...J41_ITEMS));
   r = check(dir);
-  assert.equal(headerLine(r), header({ n: 1, u: 1 }), show(r));
+  assert.equal(headerLine(r), header({ n: 1, c: 1 }), show(r)); // #78: al check keeps the identity
   assert.ok(judgement(r, 'INV-41').includes(' · item quote found; item in force · '), show(r));
 });
 
@@ -875,8 +882,10 @@ test('#64 review 6: a requirement restored to its old text after its last al ind
   editFile(dir, md, 'as one CSV file.', 'as one CSV file per month.');
   index(dir);
   // Text A again, with no al index: the latest recorded version (v2) is not the current text.
+  // #78: al check runs al index, so the commit is read with al check --at.
   editFile(dir, md, 'as one CSV file per month.', 'as one CSV file.');
-  r = check(dir);
+  commitAll(dir, `${NAME}: R1 as it was`);
+  r = writesNothing(dir, ['check', '--at', 'HEAD']);
   let l = judgement(r, 'R1');
   const v = l.slice('judgement R1 version '.length).split(' ')[0];
   assert.notEqual(v, 'v1', `not v1:\n${show(r)}`);
@@ -920,8 +929,10 @@ test('#64 review 7: a requirement judged in a committed note whose record at tha
   assert.ok(judgement(r, 'R1').endsWith(` · stale: judged at ${s2.slice(0, 7)}`), `C (v3) is stale:\n${show(r)}`);
 
   // B again, with no al index: B is an older recorded version, not the latest.
+  // #78: al check runs al index, so the commit is read with al check --at.
   editFile(dir, md, C, B);
-  r = check(dir);
+  commitAll(dir, `${NAME}: R1 per month again`);
+  r = writesNothing(dir, ['check', '--at', 'HEAD']);
   l = judgement(r, 'R1');
   const v = l.slice('judgement R1 version '.length).split(' ')[0];
   assert.doesNotMatch(l, / · current$/, show(r));

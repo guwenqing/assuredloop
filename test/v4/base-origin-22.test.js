@@ -21,6 +21,7 @@ import {
   al, appendSection, baseProject, commitAll, editFile, git, index, newRequest, organized, project, record, req, show, write,
   writeConfig,
 } from './helpers/project.js';
+import { changeLines78, outsideOk } from './helpers/as-78.js';
 
 const SPEC = 'specs/invoices.md';
 const ADR = 'specs/adr/0003-signed-links.md';
@@ -67,8 +68,9 @@ const readLine = (base, ref) => new RegExp(`^Read {6}working tree · base ${base
 // Any Read line with a base, to show which ref it names.
 const READ_ANY = /^Read {6}working tree · base [0-9a-f]+ \(merge-base with (main|origin\/main)\)$/m;
 
-// The lines of a run's stdout that hold `part`.
-const linesWith = (r, part) => r.stdout.split('\n').filter((l) => l.includes(part));
+// The lines of a run's stdout that hold `part`, other than the ok line,
+// which names each check that found nothing (#78).
+const linesWith = (r, part) => outsideOk(r.stdout, part);
 
 function check(dir, ...args) {
   const r = al(dir, ['check', ...args]);
@@ -107,7 +109,8 @@ test('control: with no origin/main, the removed ID is a lost-id hint and a Remov
   const r = check(dir);
   assert.equal(linesWith(r, `hint lost-id ${SPEC}:`).filter((l) => l.includes('INV-41 was in specs/invoices.md at the base and is gone')).length, 1, show(r));
   // A removed paragraph is named at its text line at the base (#74).
-  assert.ok(r.stdout.split('\n').includes(`${SPEC}:15 at the base ${a.slice(0, 7)} INV-41 Removed`), show(r));
+  // #78: the change line is a map paragraph line.
+  assert.ok(changeLines78(r.stdout).includes(`${SPEC}:15 at the base ${a.slice(0, 7)} INV-41 Removed`), show(r));
   assert.match(r.stdout, readLine(a, 'main'), show(r));
 });
 

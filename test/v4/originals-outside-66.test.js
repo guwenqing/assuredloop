@@ -21,6 +21,7 @@ import {
   DAY, INVOICES, STAMP, WORDS_FILE, al, appendSection, assertSnapshot, commitAll, editRecord, editRequest, exists, git,
   organized, parseSnapshot, project, read, record, refused, req, sha, show, signedText, tree, write, writeConfig,
 } from './helpers/project.js';
+import { settled } from './helpers/as-78.js';
 
 const NAME = 'assuredloop';
 const REQ = 'inv';
@@ -707,7 +708,8 @@ test('origin-elsewhere/R1 no originals key (control, green today): a broken plac
   for (const args of [['check', '--strict'], ['context', REQ], ['conclude', REQ], ['export']]) {
     const a = runOk(dir, broken, args);
     const b = runOk(dir, empty, args);
-    assert.equal(a.stdout, b.stdout, `${args.join(' ')}: the same output:\n${show(a)}\n${show(b)}`);
+    // #78: the first al check writes the records, so those lines are left out.
+    assert.equal(settled(a.stdout), settled(b.stdout), `${args.join(' ')}: the same output:\n${show(a)}\n${show(b)}`);
     assert.doesNotMatch(a.stdout, /^not ok /m, show(a));
   }
   withMode(broken.placesFile, 0o000, () => runOk(dir, broken, ['check', '--strict']));

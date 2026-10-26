@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { makeRepo, addRequest, runV4, lines, show } from './helpers/repo.js';
+import { outsideOk } from './helpers/as-78.js';
 
 const CONFIG = '.assuredloop/config.yaml';
 const rootLine = (shown, reason) => `not ok spec-root ${CONFIG} - ${shown}/: ${reason}`;
@@ -216,7 +217,7 @@ describe('#218 controls: no spec-root line', () => {
       const r = runV4(repo.dir, ['check', ...args]);
       assert.equal(r.code, 0, show(r));
       assert.deepEqual(rootLines(r), [], show(r));
-      assert.ok(!r.stdout.includes('spec-root'), show(r));
+      assert.deepEqual(outsideOk(r.stdout, 'spec-root'), [], show(r)); // #78: the ok line names it
     }
   });
 
@@ -229,7 +230,7 @@ describe('#218 controls: no spec-root line', () => {
       const r = runV4(repo.dir, ['check', ...args]);
       assert.equal(r.code, 0, show(r));
       assert.deepEqual(rootLines(r), [], show(r));
-      assert.ok(!r.stdout.includes('spec-root'), show(r));
+      assert.deepEqual(outsideOk(r.stdout, 'spec-root'), [], show(r)); // #78: the ok line names it
     }
   });
 
@@ -243,7 +244,8 @@ describe('#218 controls: no spec-root line', () => {
         const r = runV4(repo.dir, ['check', ...args]);
         assert.equal(r.code, 0, show(r));
         assert.deepEqual(rootLines(r), [], show(r));
-        assert.ok(lines(r.stdout).includes('ok: no marker lint'), show(r));
+        // #78: one ok line names each check that found nothing.
+        assert.ok(lines(r.stdout).some((l) => l.startsWith('ok: nothing found by spec-root, no-id, no-kind, ')), show(r));
       }
     });
   }
@@ -255,7 +257,7 @@ describe('#218 controls: no spec-root line', () => {
     repo.commit('config with an outside root');
     const r = runV4(repo.dir, ['spec']);
     assert.equal(r.code, 0, show(r));
-    assert.ok(!r.stdout.includes('spec-root'), show(r));
+    assert.deepEqual(outsideOk(r.stdout, 'spec-root'), [], show(r)); // #78: the ok line names it
   });
 
   test('control: al index with root: ../outside still refuses: exit 2', (t) => {

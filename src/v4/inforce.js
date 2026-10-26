@@ -8,8 +8,11 @@
 // design. Every other item in force is named in the grouped line. No model,
 // no network, and the same output for the same state and options.
 import { lstatSync, readFileSync } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
+import { parse } from 'yaml';
 import { join, posix } from 'node:path';
 import { recordPath } from './base.js';
+import { INDEX_KEYS } from './records.js';
 import { fileAt, git } from './git.js';
 import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from './markers.js';
 import { taskItems } from './issues.js';
@@ -149,8 +152,28 @@ function itemsInForce(now) {
 // folder or their record, or a commit message of base..HEAD names them.
 export function ownRequests(top, now, base, paths = pathsOf(top, base).paths) {
   const messages = git(top, ['log', '--format=%B%x00', `${base}..HEAD`], { allowFail: true }) ?? '';
-  return [...now.requests.values()].filter((r) => r.open).filter((r) => [...paths].some((f) => f.startsWith(`${r.dir}/`) || f === recordPath(r.name))
+  return [...now.requests.values()].filter((r) => r.open)
+    .filter((r) => [...paths].some((f) => f.startsWith(`${r.dir}/`) || (f === recordPath(r.name) && recordTouched(top, base, r.name)))
     || word(r.name).test(messages)).sort((a, b) => (a.name < b.name ? -1 : 1));
+}
+
+// Whether the change touches a request's record in what al new and al record
+// write (LD-24). What al index derives by itself (INDEX_KEYS) is left out,
+// so an al check run, or its written record committed, makes no request
+// the change's own. A record that is not YAML is compared as text.
+function recordTouched(top, base, name) {
+  const path = recordPath(name);
+  const read = (text) => {
+    if (text == null) return {};
+    try {
+      const data = parse(text);
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return text;
+      return Object.fromEntries(Object.entries(data).filter(([k]) => !INDEX_KEYS.includes(k)));
+    } catch { return text; }
+  };
+  let now = null;
+  try { now = readFileSync(join(top, path), 'utf8'); } catch { /* deleted: compared as absent */ }
+  return !isDeepStrictEqual(read(fileAt(top, base, path)), read(now));
 }
 
 // The design lines of request.md (LD-48): `Design: <path>`, outside fenced code.
@@ -257,14 +280,28 @@ export function designPaths(top, now, own, issues) {
   return out;
 }
 
-// The list. Returns { body, findings, own, none }: the lines, the design-doc
-// hints, the change's own requests (none with no base, an empty change, or in
-// an output repo), and why no change is selected.
-export function changeInForce(top, { now, was, base, issues = null, full = false }) {
-  if (!base) return { body: ['list: no change selected: no base (no main branch, or no commit)'], findings: [], none: 'no base (no main branch, or no commit)' };
+// The line of an item in force, before its text.
+const inForceLine = (it, basis) => `in force ${it.id} ${basis} · ${it.file}:${it.line} · ${it.what}`;
+
+// The list. Returns { body, findings, own, none, skipped }: the lines, the
+// design-doc hints, the change's own requests (none with no base, an empty
+// change, or in an output repo), why no change is selected, and the list's
+// checks that did not run, for the ok line (LD-41).
+const LIST_CODES = ['design-doc', 'scope-no-file'];
+export function changeInForce(top, { now, was, base, issues = null, full = false, all: auditAll = false }) {
+  // --all, the audit (LD-18, LD-44): every item in force on its own line,
+  // also with no change selected. al gives no judgement; the review does.
+  const audit = (none) => {
+    const central = centralRepo(top, now.config);
+    if (central?.unknown) return [`list limits: the central repo cannot be read: ${central.unknown}, so no item in force is listed`];
+    return [`list: no change selected: ${none}; the audit shows every item in force`,
+      ...itemsInForce(central ? loadState(central.dir, central.sha) : now).map((it) => `${inForceLine(it, 'audit')}: ${it.text}`)];
+  };
+  const noBase = 'no base (no main branch, or no commit)';
+  if (!base) return { body: auditAll ? audit(noBase) : [`list: no change selected: ${noBase}`], findings: [], none: noBase, skipped: LIST_CODES };
   const change = changeOf(top, base);
   const empty = `nothing changed against the base ${base.slice(0, 7)}`;
-  if (change.empty) return { body: [`list: no change selected: ${empty}`], findings: [], none: empty };
+  if (change.empty) return { body: auditAll ? audit(empty) : [`list: no change selected: ${empty}`], findings: [], none: empty, skipped: LIST_CODES };
   const findings = [];
   const limits = [];
   // In an output repo, the items in force are the central repo's at its
@@ -272,7 +309,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   // matched here, and the change's own request is not read (LD-25, D3).
   const central = centralRepo(top, now.config);
   if (central?.unknown) {
-    return { body: [`list limits: the central repo cannot be read: ${central.unknown}, so no item in force is listed; the change's own request is not read in an output repo`], findings };
+    return { body: [`list limits: the central repo cannot be read: ${central.unknown}, so no item in force is listed; the change's own request is not read in an output repo`], findings, skipped: LIST_CODES };
   }
   const items = itemsInForce(central ? loadState(central.dir, central.sha) : now);
   if (central) {
@@ -351,13 +388,14 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
 
   const body = [];
   const grouped = [];
-  const show = (it, basis) => [`in force ${it.id} ${basis} · ${it.file}:${it.line} · ${it.what}`,
+  const show = (it, basis) => [inForceLine(it, basis),
     ...(it.adr && textChanged(it.adr) ? ['text changed, review open'] : []), ...(proposals.get(it.id) ?? [])].join(' · ') + `: ${it.text}`;
   for (const it of items) {
     const all = it.files.includes('**');
     const basis = [...(changed(it) ? ['changed by this change'] : []), ...(cites.has(it.id) ? [`cited (${[...cites.get(it.id).values()].join('; ')})`] : []),
       ...(scopeChanged(it) ? ['scope changed in this change'] : []), ...(!all && !central && matches(it.files, touched) ? ['by scope'] : []), ...(all ? ['all files'] : [])];
     if (basis.length) body.push(show(it, basis.join(', ')));
+    else if (auditAll) body.push(show(it, 'audit'));
     else grouped.push(it);
   }
 
@@ -407,8 +445,9 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   }
   body.push('list basis: changed by this change = the change edits the item; cited = a line that the change added or removed names the ID; '
     + 'scope changed in this change = the change edits its files: scope; by scope = its files: scope matches a file that the change touches; all files = its scope is files:**; '
-    + 'proposed = this change\'s own signed requirements and design, not in force; the grouped line names every other item in force');
+    + `proposed = this change's own signed requirements and design, not in force; ${auditAll ? 'audit = an item in force that the change does not touch, shown for the audit' : 'the grouped line names every other item in force'}`);
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
     + `al check --full shows the text of every item, al context <ID>${central ? ` --at ${central.sha.slice(0, 7)} in the central repo shows` : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
-  return { body, findings, own };
+  // In an output repo, no file scope is matched and no own request is read.
+  return { body, findings, own, skipped: central ? LIST_CODES : [] };
 }

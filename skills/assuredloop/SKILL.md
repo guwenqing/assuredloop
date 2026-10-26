@@ -39,7 +39,8 @@ way of working; this skill does not set it.
 The promise kinds are purpose, scope, rule, limit and definition. Work that
 grows changes its path: a small change that needs a design becomes path 2.
 
-4. Before you ask for review, run `al index`, then `al check`. A `not ok` is
+4. Before you ask for review, run `al check`, and commit the record files
+   that it names with the change. A `not ok` is
    one of the few exact rules: a promise change or a requirement version
    with no valid sign-off, changed record evidence, a citation of a
    superseded ADR, or a record that cannot be read. Fix each one. A hint is
@@ -135,7 +136,7 @@ The export link MUST expire 30 minutes after the email is sent.
    the owner.
 4. Edit the promise paragraphs in `specs/` directly. Each changed or new
    promise paragraph says `serves:<name>/R<n>` in its marker.
-5. Run `al index`, then `al check`. Claim `Tier: 1 — amends <ID>`. When the
+5. Run `al check`. Claim `Tier: 1 — amends <ID>`. When the
    PR is ready to merge, run `al conclude <name> --yes`: it writes the
    Outcome and moves the request to `requests/archive/<name>/`.
 
@@ -186,7 +187,7 @@ The export link MUST expire 30 minutes after the email is sent.
    the request: `serves:<name>/R<n>`. Remove each paragraph that a
    `removes:` names; removing a promise needs a signed requirement. Plan,
    step, migration, approach and note paragraphs stay with the change. Run
-   `al index`, then read the map in `al check`.
+   `al check`, and read its map.
 5. The review judges each piece in a consolidation judgement in
    `requests/<name>/review.md` (see the README). When a paragraph is not
    delivered, delete it from the change spec while the request is open, or
@@ -242,10 +243,10 @@ Run `al conclude <name> --yes` with the last part.
 
 ## The views
 
-- `al context --diff main...HEAD --for review`: each changed paragraph
-  beside its kind, its requirement and the baseline it touches.
+- `al check --full`: each changed paragraph with its kind, its text, its
+  requirement and the baseline paragraphs that it touches.
 - `al context <name> --audit`: the whole trace of a request. Add
   `--at <commit>` to any view for a past state.
 - `al spec`: every doc's IDs, display numbers and kinds.
-- Each output ends with `Read`, `Next` and `Not known`. Take `Not known` as
+- Each output ends with `Read`, `Next` (only when a step follows) and `Not known`. Take `Not known` as
   it is: the tool does not know it, and you do not either.
