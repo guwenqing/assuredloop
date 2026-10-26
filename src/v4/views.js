@@ -1,6 +1,7 @@
 // al context (T11; design.md 5, 8, 9 and 13, schema.md 5): where the project,
 // a request or a paragraph stands; the review view of a diff; the whole trace
 // with --audit; any of them as of a v4 commit with --at. Views never write.
+import { LineCounter, parseDocument } from 'yaml';
 import { Fail, recordPath } from './base.js';
 import { applicability, checks } from './checks.js';
 import { closeLine, closeLines } from './close.js';
@@ -52,9 +53,10 @@ function signSummary(state, r) {
 // The files that name each spec ID (cites, exact): every file outside the
 // spec root, requests/ and .assuredloop/, in the working tree or at `rev`,
 // found by the one cite finder (findCites, D17).
-function citesOf(state) {
+// With `errors`, the files that git could not read (findCites).
+function citesOf(state, errors = null) {
   const cites = new Map();
-  for (const { file, ids } of findCites(state.top, state.rev ?? null, { qualified: false, exclude: [state.root, 'requests', '.assuredloop', 'node_modules'] })) {
+  for (const { file, ids } of findCites(state.top, state.rev ?? null, { qualified: false, exclude: [state.root, 'requests', '.assuredloop', 'node_modules'], errors })) {
     for (const written of ids) {
       const id = written.replace(/^central:/, '');
       if (!cites.has(id)) cites.set(id, new Set());
@@ -136,7 +138,8 @@ const sectionOf = (p) => {
 
 // Coverage lines per section of the spec rules in `rules`, each rule with its checks.
 function coverage(state, rules, perRule) {
-  const cites = citesOf(state);
+  const unread = [];
+  const cites = citesOf(state, unread);
   const verifies = verifiesOf(state);
   const named = resultChecks(state);
   const cross = crossOf(state);
@@ -157,6 +160,7 @@ function coverage(state, rules, perRule) {
     }
   }
   if (!out.length) out.push(line('Coverage', 'no rule'));
+  if (unread.length) out.push(line('Coverage', `not known: ${unread.join('; ')}`));
   return out;
 }
 
@@ -251,6 +255,15 @@ function hintsNow(state) {
 
 // --- the views
 
+// The facts of the project view that only al's records hold: the sign-off
+// states, and the tiers that no request.md says (LD-47); a record that is not
+// there or cannot be read is not known.
+function projectRecords(open) {
+  const tiers = open.some((r) => /^Tier:\s*(\S+)/m.exec(r.md)?.[1] !== r.tier || !r.tier);
+  const unknown = open.filter((r) => r.recordError || !r.data).map((r) => `; not known: the record of ${r.name} (${r.recordError ?? 'it is not there'})`);
+  return line('Records', `only al's records in .assuredloop/records/requests/ hold ${tiers ? 'the tiers and ' : ''}the sign-off states above${unknown.join('')}`);
+}
+
 function projectView(state) {
   const body = [];
   const open = [...state.requests.values()].filter((r) => r.open);
@@ -259,7 +272,7 @@ function projectView(state) {
     body.push(line('Request', `${r.name} · ${tier} · ${signSummary(state, r)}${r.spike ? ' · a spike' : ''}`));
   }
   if (!open.length) body.push(line('Request', 'no open request'));
-  else body.push(line('Records', 'only al\'s records in .assuredloop/records/requests/ hold the tiers and the sign-off states above'));
+  else body.push(projectRecords(open));
   body.push(...coverage(state, [...state.spec.values()].filter((p) => p.kind === 'rule'), false));
   const hints = hintsNow(state);
   const findings = hints?.findings ?? null;
@@ -282,9 +295,15 @@ function requestView(state, r, audit) {
     body.push(line('Decision', `${d.id} · ${n ? `${r.dir}/request.md:${n}` : `no line in ${r.dir}/request.md`} (${d.source ?? 'no source'}): ${d.text ?? d.summary ?? ''}`));
   }
   const prFacts = taskPrs(state, r);
+  // A task is an entry of the record; its ref names a work item, which only
+  // al check --issues reads (LD-47).
+  const taskAt = entryLines(state, r, 'tasks');
   for (const t of list(r.data?.tasks)) {
     const prs = [].concat(t.prs ?? []).map((pr) => `${pr} ${prFacts(t.id, String(pr))}`);
-    body.push(line('Task', `${t.id} ${t.ref ?? ''}${t.delivers ? ` · delivers ${[].concat(t.delivers).join(', ')}` : ''}${prs.length ? ` · PRs: ${prs.join(', ')}` : ''}`));
+    const delivers = [].concat(t.delivers ?? []).map((x) => `${x} (${placeOfTarget(state, qualify(String(x), r.name)) ?? 'not found'})`);
+    const at = taskAt.get(String(t.id));
+    body.push(line('Task', `${t.id} (${at ? `${recordPath(r.name)}:${at}` : recordPath(r.name)})${t.ref ? ` ${t.ref} (a work item: al context does not read it)` : ''}`
+      + `${delivers.length ? ` · delivers ${delivers.join(', ')}` : ''}${prs.length ? ` · PRs: ${prs.join(', ')}` : ''}`));
   }
   const prs = prsFromGit(state, r.name);
   body.push(`PRs from git: ${prs.length ? prs.join(' · ') : 'none found'}`);
@@ -302,6 +321,22 @@ function requestView(state, r, audit) {
   }
   body.push(line('Not checked', NOT_CHECKED));
   return { body, next: !r.open ? `al context ${r.name} --audit` : `al conclude ${r.name}` };
+}
+
+// The line of each entry of list `key` in the record of request `r`, by
+// its id: the line where the entry starts.
+function entryLines(state, r, key) {
+  const out = new Map();
+  const text = state.get(recordPath(r.name));
+  if (typeof text !== 'string') return out;
+  const counter = new LineCounter();
+  const doc = parseDocument(text, { lineCounter: counter });
+  const seq = doc.get(key, true);
+  for (const item of seq?.items ?? []) {
+    const id = item?.get?.('id');
+    if (id != null && item.range && !out.has(String(id))) out.set(String(id), counter.linePos(item.range[0]).line);
+  }
+  return out;
 }
 
 // The facts of request `r` that only its record holds (LD-47): the
@@ -359,8 +394,9 @@ function auditLines(state, r) {
 // repo's (a spec ID only, `local`) and the output repos'.
 function checkLines(state, id, local) {
   const cross = crossOf(state);
-  const found = checksOf(id, local ? citesOf(state) : new Map(), verifiesOf(state), local ? resultChecks(state) : new Set(), cross);
-  const out = [line('Checks', showChecks(found))];
+  const unread = [];
+  const found = checksOf(id, local ? citesOf(state, unread) : new Map(), verifiesOf(state), local ? resultChecks(state) : new Set(), cross);
+  const out = [line('Checks', `${showChecks(found)}${unread.length ? ` · not known: ${unread.join('; ')}` : ''}`)];
   if (state.rev) return out;
   for (const res of loadResults(state.top)) {
     if (!found.checks.some((c) => !c.repo && c.file === res.check)) continue;
@@ -433,12 +469,17 @@ function idView(state, id, full) {
   const own = r ? new Set(r.paras.keys()) : new Set();
   const body = [line('Paragraph', `${p.displayNumber} · ${p.kind ?? 'no kind'} · ${placeOf(p)}`), ...indent(p.text)];
   body.push(line('Status', statusOf(state, p, t.req)));
+  const records = [];
   for (const s of p.links.serves) {
     const q = qualify(s, t.req);
     const rq = q.req && state.requests.get(q.req);
     const req = rq?.reqs.find((x) => x.id === q.id);
     body.push(line('Serves', req ? `${q.key} (${rq.dir}/request.md:${reqLine(rq, req.id)}) ${versionOf(rq, req)}: ${signState(state, rq, req)} (declared)` : `${q.key}: not found`));
+    if (req && !records.includes(recordPath(rq.name))) records.push(recordPath(rq.name));
   }
+  // The versions and sign-off states on the Serves lines are al's records' facts (LD-47).
+  if (records.length === 1) body.push(line('Records', `only al's record ${records[0]} holds the version and the sign-off state on the Serves lines`));
+  else if (records.length) body.push(line('Records', `only al's records ${records.join(', ')} hold the versions and the sign-off states on the Serves lines`));
   for (const [word, refs] of Object.entries(p.links)) {
     if (word === 'serves' || !refs.length) continue;
     body.push(line('Links', `${word} ${refs.map((ref) => `${ref} (${placeOfRef(state, ref, t.req, own)})`).join(', ')}`));
@@ -476,7 +517,9 @@ const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 function citedLines(state, ids, { counts = () => true, full = false } = {}) {
   const old = new Set(state.adrList.filter((a) => a.status === 'superseded').map((a) => a.file));
   const byFile = new Map();
-  for (const c of findCites(state.top, state.rev ?? null, { qualified: false, known: new Set(ids), exclude: ['.assuredloop', 'node_modules'] })) {
+  // A file that git cannot read may cite it: a limit, never "nowhere".
+  const unread = [];
+  for (const c of findCites(state.top, state.rev ?? null, { qualified: false, known: new Set(ids), exclude: ['.assuredloop', 'node_modules'], errors: unread })) {
     if (!counts(c)) continue;
     if (!byFile.has(c.file)) byFile.set(c.file, new Map());
     byFile.get(c.file).set(c.line, c.text);
@@ -490,7 +533,8 @@ function citedLines(state, ids, { counts = () => true, full = false } = {}) {
     out.push(line('Cited', `${past(file) ? 'historical' : 'current'} ${file}: ${at.length} line${at.length === 1 ? '' : 's'}: ${at.map(([n]) => n).join(', ')}`));
     if (full) out.push(...at.map(([n, text]) => `  ${file}:${n}: ${text}`));
   }
-  return out.length ? out : [line('Cited', 'nowhere')];
+  if (!out.length) out.push(line('Cited', unread.length ? 'nowhere in the files that were read' : 'nowhere'));
+  return [...out, ...unread.map((m) => line('Cited', `not known: ${m}`))];
 }
 
 // The paragraphs of the open requests whose links name `matches` (a key, as
@@ -528,7 +572,10 @@ function adrView(state, id, full) {
     line('Decides', decides.length ? decides.map(placed).join(', ') : 'nothing'),
     line('Linked', linkedTo(state, id)),
     openNaming(state, (k) => k === id || k.startsWith(`${id}-`)),
-    ...citedLines(state, [id, ...a.paragraphs.map((p) => p.id)], { full, counts: (c) => !state.adrList.some((x) => x.id === id && x.file === c.file) }),
+    // Its own file counts too, but for the marker lines of its own paragraphs.
+    ...citedLines(state, [id, ...a.paragraphs.map((p) => p.id)], {
+      full, counts: (c) => !state.adrList.some((x) => x.id === id && x.file === c.file && x.paragraphs.some((p) => p.line === c.line)),
+    }),
   ];
   return { body, next: 'al check' };
 }
