@@ -153,7 +153,7 @@ function requestItem(state, q, id, own, ctx) {
     if (!req) return null;
     // The line shows v<n> only while the latest recorded version is the
     // current text. The identity keeps the recorded version of this text: at
-    // a past commit, al index reads it from the record that it writes.
+    // a past commit, only from the record as committed there, or none.
     const versions = list(ctx.data(q)?.requirements).filter((e) => e?.id === id);
     const newest = (xs) => xs.reduce((a, e) => (Number(e.version) > Number(a?.version ?? 0) ? e : a), null);
     const latest = newest(versions);
@@ -313,7 +313,7 @@ export function keepJudgements(top, recs, config, issues = null) {
         if (at) {
           const then = loadState(top, at.commit);
           const thenConfig = settingsAt(top, at.commit).config;
-          const item = findItem(then, then.requests.get(r.name), j.id, context(top, thenConfig, issues, { rev: at.commit, data: ctx.data }));
+          const item = findItem(then, then.requests.get(r.name), j.id, context(top, thenConfig, issues, { rev: at.commit }));
           entry = {
             judgement: j.hash, item: j.id, version: item?.key ?? null, head: at.commit,
             repos: changeIdentity(top, baseOf(top, at.commit)?.commit ?? base, thenConfig, at.commit),
