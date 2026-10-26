@@ -17,7 +17,7 @@ import { loadItems, taskItems } from './issues.js';
 import { keepItems } from './kept-items.js';
 import { keepJudgements } from './evidence.js';
 import { keepOwnEdits } from './map.js';
-import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
+import { INDEX_KEYS, YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
 // The marker links that get a binding, by the parser's key; `for` (a task) has no text to bind.
 const LINK_WORDS = {
@@ -197,8 +197,6 @@ export function targetOf(t, state) {
   return p ? { sha: p.sha256 } : null;
 }
 
-// The lists of a request record that al index adds to.
-const LISTS = ['requirements', 'bindings', 'reviewed', 'items'];
 const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
 const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
@@ -313,7 +311,7 @@ export function index({ top, cwd, opts }) {
     if (!rec) { notes.push(`no record: requests/${n} has no ${recordPath(n)}`); continue; }
     // A list that al index adds to and that is not a list: the record is
     // not read, and al check reports it (#78: al check runs al index).
-    const bad = LISTS.find((k) => rec.data[k] != null && !Array.isArray(rec.data[k]));
+    const bad = INDEX_KEYS.find((k) => rec.data[k] != null && !Array.isArray(rec.data[k]));
     if (bad) { notes.push(`not read: ${rec.path} is not a valid record: its ${bad} is not a list`); continue; }
     rec.changed = addVersions(rec, requirements(read(top, `requests/${n}/request.md`) ?? '')).length > 0;
     recs.set(n, rec);
@@ -498,7 +496,7 @@ export function index({ top, cwd, opts }) {
     if (old !== null) {
       let data = null;
       try { data = CONFLICT.test(old) ? null : parse(old); } catch { data = null; }
-      if (data && typeof data === 'object') hints = new Map((data.paragraphs ?? []).filter((p) => p?.id && p.hint).map((p) => [p.id, p.hint]));
+      if (data && typeof data === 'object' && Array.isArray(data.paragraphs ?? [])) hints = new Map((data.paragraphs ?? []).filter((p) => p?.id && p.hint).map((p) => [p.id, p.hint]));
       else body.push(`hints dropped: ${path} could not be read, so it was rebuilt with no hints`);
     }
     const status = d.adr ? d.text.split('\n').find((l) => l.trim())?.match(/^Status:\s*([a-z]+)/i)?.[1].toLowerCase() : undefined;
