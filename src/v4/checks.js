@@ -143,6 +143,9 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // paragraph that is only at the base says so.
   const here = new Set([...now.scopes.values()].flat().concat(now.adrList.flatMap((a) => a.paragraphs)));
   const at = (p) => (!p ? '-' : here.has(p) ? placeOf(p) : `${placeOf(p)} at the base ${base.slice(0, 7)}`);
+  // A finding about what a marker holds (a link, a task) names the marker
+  // line, the place of the problem.
+  const markerOf = (p) => `${p.file}:${p.line}`;
   const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
   const promise = (k) => isPromise(now, k);
   const open = [...now.requests.values()].filter((r) => r.open);
@@ -272,8 +275,8 @@ export function checks(top, { base, phrases = [], issues = null }) {
         if (t.cross || resolve(now, t)) continue;
         const who = named(r?.name ?? null, p.id);
         if (word === 'removes' && !t.req && !now.spec.has(t.id) && r) continue; // its own removal, done
-        if (!t.req && removerOf(t.id)) add('hint', 'target-removed', p, who, `${ref}: target removed by ${removerOf(t.id)}; align this link`);
-        else add('hint', 'unresolved-link', p, who, `${ref}: no such ID${adr ? ` (in ${adr.id})` : ''}`);
+        if (!t.req && removerOf(t.id)) add('hint', 'target-removed', markerOf(p), who, `${ref}: target removed by ${removerOf(t.id)}; align this link`);
+        else add('hint', 'unresolved-link', markerOf(p), who, `${ref}: no such ID${adr ? ` (in ${adr.id})` : ''}`);
       }
     }
   }
@@ -300,7 +303,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
       for (const k of new Set(p.links.serves.map(key))) {
         const ids = promises.get(k);
         if (!ids || ids.some((id) => linked.has(`${r.name}/${id}`))) continue;
-        add('hint', 'design-link', p, `${r.name}/${p.id}`, `serves ${k}, but links to none of its promise paragraphs in this change spec (${ids.join(', ')}): which promise does it keep?`);
+        add('hint', 'design-link', markerOf(p), `${r.name}/${p.id}`, `serves ${k}, but links to none of its promise paragraphs in this change spec (${ids.join(', ')}): which promise does it keep?`);
       }
     }
   }
@@ -317,7 +320,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
       const slash = t.indexOf('/');
       const [name, id] = slash > 0 ? [t.slice(0, slash), t.slice(slash + 1)] : [r.name, t];
       if (tasksOf(now.requests.get(name)).some((x) => String(x?.id) === id)) continue;
-      add('hint', 'unknown-task', p, `${r.name}/${p.id}`, `for:${ref}: no task ${id} in the record of ${name}`);
+      add('hint', 'unknown-task', markerOf(p), `${r.name}/${p.id}`, `for:${ref}: no task ${id} in the record of ${name}`);
     }
   }
 
@@ -432,7 +435,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   for (const a of now.adrList) {
     if (!['proposed', 'accepted'].includes(a.status)) continue;
     const missing = ['source', 'decides'].filter((w) => !a.head?.links[w].length);
-    if (missing.length) add('hint', 'adr-links', a.head ?? a.file, a.id, `${a.id} has ${missing.map((w) => `no ${w}:`).join(' and ')}; add the links to its marker`);
+    if (missing.length) add('hint', 'adr-links', a.head ? markerOf(a.head) : a.file, a.id, `${a.id} has ${missing.map((w) => `no ${w}:`).join(' and ')}; add the links to its marker`);
   }
   for (const a of now.adrList) {
     // ADR-n-k, a paragraph of ADR-n, names ADR-n (schema.md 5), once each.
