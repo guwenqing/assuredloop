@@ -71,10 +71,3 @@ export function write(top, path, text) {
   writeFileSync(join(top, path), text);
   return true;
 }
-
-// The first file name free in `dir`: `<base>.md`, else `<base>-2.md`...
-export function freeName(top, dir, base) {
-  let file = `${base}.md`;
-  for (let n = 2; existsSync(join(top, dir, file)); n++) file = `${base}-${n}.md`;
-  return file;
-}

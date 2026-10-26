@@ -118,7 +118,11 @@ async function main(argv) {
       throw new Fail(e.message, 'fix the file and run it again');
     }
     // A machine stream (the export's JSONL, search --json) is written as it is.
-    if (out.raw !== undefined) process.stdout.write(out.raw);
+    if (out.raw !== undefined) {
+      process.stdout.write(out.raw);
+      // What the stream leaves out, on stderr, so the stream stays as it is.
+      if (out.stderr?.length) process.stderr.write(out.stderr.map(shown).join('\n') + '\n');
+    }
     else print(out.body, out.read ?? read, out.next, out.notKnown ?? []);
     return out.exit ?? 0;
   } catch (e) {
