@@ -1,0 +1,36 @@
+# Review: original files outside the repo
+
+## Consolidation
+
+- OE-4 complies: the config key, now in schema.md.
+  - Item (OE-4): "The committed config says that the project keeps its original files outside,"
+  - Spec (SCH-39): "The committed config says that the project keeps its original files outside,"
+- OE-5, OE-6 and OE-18 complies: the places file, what a broken setting does, and the options not taken, now in section 10.
+  - Item (OE-5): "Every clone on the machine finds the"
+  - Item (OE-6): "places file that cannot be read or is not valid YAML, and a line that is"
+  - Item (OE-18): "session launch must set it); a git-ignored file in each clone (each new"
+  - Spec (DES-120): "Every clone on the machine finds the same folder, with no setup in the"
+  - Spec (DES-121): "places file that cannot be read or is not valid YAML, and a line that is"
+  - Spec (DES-122): "session launch must set it); a git-ignored file in each clone (each new"
+- OE-8 and OE-19 complies: one reader with three results, and the repo copy first, now in the record evidence rule. "Even when" became "also when", with the same meaning.
+  - Item (OE-8): "the project keeps its files outside, the file is not in the"
+  - Item (OE-19): "even when the place holds a good copy"
+  - Spec (DES-90): "- not checked: the project keeps its files outside, the file is not in the"
+  - Spec (DES-127): "also when the place holds a good copy"
+- OE-9 complies: a file that is not checked gives an info line and no `not ok`, after the record evidence rule, and its sign-off is not counted as signed, in the sign-off rule.
+  - Item (OE-9): "`not ok`, so `al check --strict` passes where the files cannot be reached,"
+  - Spec (DES-127): "`not ok`, so `al check --strict` passes where the files cannot be reached,"
+  - Spec (DES-126): "never counted as signed"
+- OE-11, OE-20 and OE-12 complies: how the three writers write a file outside, and how a source path is recorded, now in section 10.
+  - Item (OE-11): "file there only if it does not exist yet. If another clone wrote it"
+  - Item (OE-20): "folder, named by no record. That is no false record. A project that keeps"
+  - Item (OE-12): "before a file name is made from the value. The full source stays in the"
+  - Spec (DES-123): "file there only if it does not exist yet. If another clone wrote it"
+  - Spec (DES-128): "folder, named by no record. That is no false record. A project that keeps"
+  - Spec (DES-124): "before a file name is made from the value. The full source stays in the"
+- OE-14 complies: `al conclude` checks each original file again, now in the close rule.
+  - Item (OE-14): "of section 2, in the preview and with `--yes`. It refuses while one is not"
+  - Spec (DES-37): "in the preview and with `--yes`. It refuses while one is not checked or"
+- OE-15 complies: the export gives no row for a file kept outside and names it, now in the export.
+  - Item (OE-15): "no row, and the export does not read the folder. Each such file is named,"
+  - Spec (DES-61): "export does not read the folder. The rows of a selected commit still come"
