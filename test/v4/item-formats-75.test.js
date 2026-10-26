@@ -1007,6 +1007,35 @@ describe('D: items-out-of-reach in .assuredloop/config.yaml', () => {
     });
   }
 
+  // 1, exact: a key K of the list is out of reach for a task when the ref
+  // holds K as a whole word and no item is found for K by today's rule (the
+  // ref holds the item's ref as a whole word, case-sensitive).
+  test('DES-117 (1), exact: an item with ref "proj-12" saved, a task ref "PROJ-12", PROJ-12 in the list: no issue-missing and no issue-changed, the line for 1 item names PROJ-12 with inv/T1; proj-12 counts as an item that no task names (controls: no setting; the item with ref "PROJ-12")', (t) => {
+    const w = world(t, { tasks: [{ id: 'T1', ref: 'PROJ-12' }] });
+    const noTask = /1 item in \.\.\/items that no task names/;
+    const checkedLine = (c) => `info issues - - checked ${c} items for the tasks of the open requests, from ${FOLDER}`;
+    save(w, { 'p.json': { ref: 'proj-12', body: 'The export.' } });
+    const control = checked(w, ...ISSUES);
+    const about = aboutTasks(control, [`${NAME}/T1`]);
+    assert.ok(about.some((f) => f.code === 'issue-missing'), `control: issue-missing, proj-12 is not found for PROJ-12:\n${show(control)}`);
+    assert.ok(about.some((f) => f.code === 'issue-changed'), `control: issue-changed:\n${show(control)}`);
+    assert.match(notKnown(control), noTask, show(control));
+    assert.deepEqual(reachLines(control), [], show(control));
+    setReach(w, ['PROJ-12']);
+    const r = checked(w, ...ISSUES);
+    assert.deepEqual(aboutTasks(r, [`${NAME}/T1`]).map((f) => f.line), [], `no issue-missing and no issue-changed for inv/T1:\n${show(r)}`);
+    const line = reachLine(r);
+    assert.ok(line.startsWith(`${REACH_PREFIX}1 item`), show(r));
+    assert.ok(line.includes(`PROJ-12 (${NAME}/T1)`), `the line names PROJ-12 with inv/T1:\n${show(r)}`);
+    assert.match(notKnown(r), noTask, `proj-12 still counts as an item that no task names:\n${show(r)}`);
+    // The second control: the item with ref PROJ-12 is found and read as usual.
+    save(w, { 'p.json': { ref: 'PROJ-12', body: 'The export.' } });
+    const found = checked(w, ...ISSUES);
+    assert.ok(found.stdout.split('\n').includes(checkedLine(1)), `checked 1 items:\n${show(found)}`);
+    assert.deepEqual(coded(found, 'issue-missing'), [], show(found));
+    assert.deepEqual(reachLines(found), [], show(found));
+  });
+
   // 3. Items are grouped ignoring case; the line shows the item in the form of
   //    the first task that names it, and lists every task.
   test('DES-117 (3): T1 "Acme/Web#5" and T2 "acme/web#5", acme/web in the list, not saved: "1 item", named once as Acme/Web#5, with inv/T1 and inv/T2 (control: no setting)', (t) => {
