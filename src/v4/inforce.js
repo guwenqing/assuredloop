@@ -257,14 +257,26 @@ export function designPaths(top, now, own, issues) {
   return out;
 }
 
+// The line of an item in force, before its text.
+const inForceLine = (it, basis) => `in force ${it.id} ${basis} · ${it.file}:${it.line} · ${it.what}`;
+
 // The list. Returns { body, findings, own, none }: the lines, the design-doc
 // hints, the change's own requests (none with no base, an empty change, or in
 // an output repo), and why no change is selected.
-export function changeInForce(top, { now, was, base, issues = null, full = false }) {
-  if (!base) return { body: ['list: no change selected: no base (no main branch, or no commit)'], findings: [], none: 'no base (no main branch, or no commit)' };
+export function changeInForce(top, { now, was, base, issues = null, full = false, all: auditAll = false }) {
+  // --all, the audit (LD-18, LD-44): every item in force on its own line,
+  // also with no change selected. al gives no judgement; the review does.
+  const audit = (none) => {
+    const central = centralRepo(top, now.config);
+    if (central?.unknown) return [`list limits: the central repo cannot be read: ${central.unknown}, so no item in force is listed`];
+    return [`list: no change selected: ${none}; the audit shows every item in force`,
+      ...itemsInForce(central ? loadState(central.dir, central.sha) : now).map((it) => `${inForceLine(it, 'audit')}: ${it.text}`)];
+  };
+  const noBase = 'no base (no main branch, or no commit)';
+  if (!base) return { body: auditAll ? audit(noBase) : [`list: no change selected: ${noBase}`], findings: [], none: noBase };
   const change = changeOf(top, base);
   const empty = `nothing changed against the base ${base.slice(0, 7)}`;
-  if (change.empty) return { body: [`list: no change selected: ${empty}`], findings: [], none: empty };
+  if (change.empty) return { body: auditAll ? audit(empty) : [`list: no change selected: ${empty}`], findings: [], none: empty };
   const findings = [];
   const limits = [];
   // In an output repo, the items in force are the central repo's at its
@@ -351,13 +363,14 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
 
   const body = [];
   const grouped = [];
-  const show = (it, basis) => [`in force ${it.id} ${basis} · ${it.file}:${it.line} · ${it.what}`,
+  const show = (it, basis) => [inForceLine(it, basis),
     ...(it.adr && textChanged(it.adr) ? ['text changed, review open'] : []), ...(proposals.get(it.id) ?? [])].join(' · ') + `: ${it.text}`;
   for (const it of items) {
     const all = it.files.includes('**');
     const basis = [...(changed(it) ? ['changed by this change'] : []), ...(cites.has(it.id) ? [`cited (${[...cites.get(it.id).values()].join('; ')})`] : []),
       ...(scopeChanged(it) ? ['scope changed in this change'] : []), ...(!all && !central && matches(it.files, touched) ? ['by scope'] : []), ...(all ? ['all files'] : [])];
     if (basis.length) body.push(show(it, basis.join(', ')));
+    else if (auditAll) body.push(show(it, 'audit'));
     else grouped.push(it);
   }
 
@@ -407,7 +420,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
   }
   body.push('list basis: changed by this change = the change edits the item; cited = a line that the change added or removed names the ID; '
     + 'scope changed in this change = the change edits its files: scope; by scope = its files: scope matches a file that the change touches; all files = its scope is files:**; '
-    + 'proposed = this change\'s own signed requirements and design, not in force; the grouped line names every other item in force');
+    + `proposed = this change's own signed requirements and design, not in force; ${auditAll ? 'audit = an item in force that the change does not touch, shown for the audit' : 'the grouped line names every other item in force'}`);
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
     + `al check --full shows the text of every item, al context <ID>${central ? ` --at ${central.sha.slice(0, 7)} in the central repo shows` : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
   return { body, findings, own };

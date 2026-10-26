@@ -1,6 +1,8 @@
 // The git reads of v4: the base of a branch, and files at a commit, read in
 // one batch git process.
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 
 // Trimmed stdout of `git -C top <args>`; with allowFail, null when git fails.
 export function git(top, args, { allowFail = false } = {}) {
@@ -164,4 +166,17 @@ export function mergeOf(dir, commit, n) {
     if (sp > 0 && (merge.test(subject) || squash.test(subject))) return line.slice(0, sp);
   }
   return null;
+}
+
+// The commits at which a shallow clone's history is cut (git's shallow
+// file): their parents are not in the clone, so what such a commit holds may
+// come from a commit that is not there. Empty for a full clone.
+export function shallowCommits(top) {
+  const path = git(top, ['rev-parse', '--git-path', 'shallow'], { allowFail: true });
+  if (!path) return new Set();
+  try {
+    return new Set(readFileSync(isAbsolute(path) ? path : join(top, path), 'utf8').split('\n').filter(Boolean));
+  } catch {
+    return new Set();
+  }
 }

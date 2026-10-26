@@ -30,7 +30,7 @@ const COMMANDS = {
   },
   index: { run: index, positionals: 0, options: { align: { type: 'string' }, issues: { type: 'string' } } },
   spec: { run: spec, positionals: (o) => (o['add-ids'] === undefined ? Infinity : 0), options: { 'add-ids': { type: 'string' }, prefix: { type: 'string' }, yes: { type: 'boolean' } } },
-  check: { run: check, positionals: 0, options: { strict: { type: 'boolean' }, issues: { type: 'string' }, full: { type: 'boolean' } } },
+  check: { run: check, positionals: 0, options: { strict: { type: 'boolean' }, issues: { type: 'string' }, full: { type: 'boolean' }, at: { type: 'string' }, all: { type: 'boolean' } } },
   export: { run: exportCommand, positionals: 0, options: { at: { type: 'string' }, out: { type: 'string' }, yes: { type: 'boolean' } } },
   search: {
     run: search,
@@ -47,8 +47,9 @@ const USAGE = `al <${Object.keys(COMMANDS).join('|')}|--version> [options]`;
 const line = (label, text) => `${label.padEnd(10)}${text}`;
 // Every output line is one line: control characters but a tab show as \xNN.
 const shown = (l) => String(l).replace(/[\x00-\x08\x0a-\x0c\x0e-\x1f\x7f-\x9f]|\r(?!$)/g, (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`);
+// A Next line only where the answer names a step (LD-18).
 const print = (body, read, next, notKnown) => process.stdout.write(
-  [...body, line('Read', read), line('Next', next), line('Not known', notKnown.join('; ') || 'nothing beyond what is shown')].map(shown).join('\n') + '\n');
+  [...body, line('Read', read), ...(next ? [line('Next', next)] : []), line('Not known', notKnown.join('; ') || 'nothing beyond what is shown')].map(shown).join('\n') + '\n');
 
 function topLevel(cwd) {
   try {
