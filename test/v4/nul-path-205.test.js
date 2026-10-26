@@ -151,12 +151,46 @@ function withoutReview(lines, r) {
   assert.match(lines[at.at(-1) + 1] ?? '', /^Read /, `the review section comes right before the Read line:\n${show(r)}`);
   return lines.filter((_, i) => !at.includes(i));
 }
-// The lines without the review block and the list block. al check must have
-// the list block (with its grouped line or its "no change selected" line),
-// as one run of lines right before the Read line, once the review block is
-// out; another command must have none.
-function withoutList(all, r) {
-  const lines = withoutReview(all, r);
+// #68: al check prints the map of the change, which main did not print: one
+// block of lines right after the review block (or the list block when there
+// is none) and right before the Read line. Its first line is its one "map: "
+// line. Another command must have none. The map's two hints, map-unnamed and
+// map-consolidation, are new findings lines among the others, before the list.
+const MAP_LINE = /^(map: |map )/;
+const MAP_HINT = /^hint map-(unnamed|consolidation) /;
+function withoutMap(lines, r, pinned) {
+  const at = lines.flatMap((l, i) => (MAP_LINE.test(l) ? [i] : []));
+  const hints = lines.flatMap((l, i) => (MAP_HINT.test(l) ? [i] : []));
+  if (r.args[0] !== 'check') {
+    assert.deepEqual([...at, ...hints], [], `no map and no map hint outside al check:\n${show(r)}`);
+    return lines;
+  }
+  assert.equal(at.filter((i) => lines[i].startsWith('map: ')).length, 1, `one "map: " line:\n${show(r)}`);
+  assert.ok(lines[at[0]].startsWith('map: '), `the map starts with its "map: " line:\n${show(r)}`);
+  assert.equal(at.at(-1) - at[0] + 1, at.length, `the map is one block:\n${show(r)}`);
+  const before = lines[at[0] - 1] ?? '';
+  assert.ok(REVIEW_LINE.test(before) || LIST_LINE.test(before), `the map comes right after the review block or the list block:\n${show(r)}`);
+  assert.match(lines[at.at(-1) + 1] ?? '', /^Read /, `the map comes right before the Read line:\n${show(r)}`);
+  const firstList = lines.findIndex((l) => LIST_LINE.test(l));
+  for (const i of hints) assert.ok(i < firstList, `a map hint is a findings line, before the list:\n${show(r)}`);
+  const rest = lines.filter((_, i) => !at.includes(i) && !hints.includes(i));
+  // When the map's hints are the only hints and there is no not ok, the Next
+  // line asks to deal with the hints, as for any hint; main's Next line then
+  // differs only there.
+  if (hints.length > 0 && pinned && !rest.some((l) => /^(hint|not ok) /.test(l))) {
+    const at2 = rest.indexOf('Next      deal with each hint, or say in the PR why it stays');
+    const want = pinned.lines.find((l) => l.startsWith('Next '));
+    if (at2 >= 0 && want !== undefined) rest[at2] = want;
+  }
+  return rest;
+}
+// The lines without the map, the review block and the list block. al check
+// must have the list block (with its grouped line or its "no change
+// selected" line), as one run of lines right before the Read line, once the
+// map and the review block are out; another command must have none.
+// `pinned`: main's output, for the Next line (see withoutMap).
+function withoutList(all, r, pinned) {
+  const lines = withoutReview(withoutMap(all, r, pinned), r);
   const at = lines.flatMap((l, i) => (LIST_LINE.test(l) ? [i] : []));
   if (r.args[0] !== 'check') {
     assert.deepEqual(at, [], `no list outside al check:\n${show(r)}`);
@@ -283,7 +317,7 @@ describe('a result in an output repo whose declared input holds a NUL', () => {
     test(`${label} control: the clean results and every other line as on main`, (t) => {
       const { w, repos, extra } = nulWorld(t);
       const r = al(w.central, args);
-      const got = withoutList(linesOf(named(r.stdout, repos, extra)), r).filter((l) => !isNulLine(l));
+      const got = withoutList(linesOf(named(r.stdout, repos, extra)), r, PINNED[label]).filter((l) => !isNulLine(l));
       assert.deepEqual({ code: r.code, lines: got }, PINNED[label], show(r));
     });
   }
@@ -304,6 +338,6 @@ test("the central repo's own result with a NUL in an input: applicability unknow
   writeYaml(dir, '.assuredloop/results/nul.yaml', result('test/invoices.test.js\0'));
   commitAll(dir, 'Record two results\n\nTier: 0 — results');
   const r = al(dir, ['check']);
-  const got = withoutList(linesOf(named(r.stdout, { central: dir }, { [dir]: '<dir>' })), r);
+  const got = withoutList(linesOf(named(r.stdout, { central: dir }, { [dir]: '<dir>' })), r, PINNED.central);
   assert.deepEqual({ code: r.code, lines: got }, PINNED.central, show(r));
 });
