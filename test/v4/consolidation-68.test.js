@@ -45,7 +45,7 @@
 // src/.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { commitAll, editFile, editRecord, exists, git, index, write } from './helpers/project.js';
+import { commitAll, doc, editFile, editRecord, exists, git, index, write, writeConfig } from './helpers/project.js';
 import { conclude } from './helpers/views.js';
 import {
   CS, NAME, SPEC, T13, T41, addSpec, assertSpec, check, consolidationHint, editSpec, entries, entry, judged,
@@ -354,4 +354,48 @@ test('#68 a judgement that names two spec paragraphs, both rewritten: the stale 
   const m = /^stale: (.+) changed since it was judged \(/.exec(e.fact);
   assert.ok(m, `a stale fact:\n${e.line}\n${show(r)}`);
   assert.deepEqual(m[1].split(', ').sort(), ['INV-41', 'INV-42'], `both changed IDs are named:\n${e.line}\n${show(r)}`);
+});
+
+// =====================================================================
+// Three cases from the review of PR 70
+
+test('#68 one bare ID in two scopes: the change paragraph SP-1 judged with a Spec line on the spec paragraph SP-1 of specs/sharing.md: after al index, current, and no map-consolidation hint', (t) => {
+  const SHARING = 'specs/sharing.md';
+  const S1 = 'A shared link MUST expire.';
+  const S1b = 'A shared export link MUST expire 24 hours after it is created.';
+  const dir = world(t, [['SP-1 rule serves:R1', 'A shared export link lives for 24 hours.'], PLAN], {
+    // A second spec doc whose prefix is SP, so a spec paragraph SP-1 exists.
+    onMain: (d) => {
+      writeConfig(d, [{ file: SPEC, prefix: 'INV' }, { file: SHARING, prefix: 'SP' }]);
+      write(d, SHARING, doc([['SP-1 rule', S1]]));
+    },
+  });
+  editFile(dir, SHARING, `<!-- SP-1 rule -->\n\n${S1}`, `<!-- SP-1 rule serves:share/R1 -->\n\n${S1b}`);
+  const first = 'SP-1 complies: the link rule is now SP-1 of specs/sharing.md.';
+  note(dir, judged(first, 'Item: "lives for 24 hours"', 'Spec (SP-1): "MUST expire 24 hours after it is created"'));
+  index(dir);
+  commitAll(dir, `${NAME}: SP-1 of specs/sharing.md, and the review`);
+  const r = check(dir);
+  assert.equal(consolidation(r, 'SP-1').fact, current(dir, first), `no edit since al index, so current:\n${show(r)}`);
+  noConsolidationHint(r);
+});
+
+test('#68 a named item quote in a one-item judgement: Item (SP-2) under "SP-1 complies" is "item quote not checked (SP-2): not an item of this judgement", with "no item quote" for SP-1; a bare Item line still checks', (t) => {
+  const dir = world(t, [
+    ['SP-1 rule serves:R1', 'A shared export link lives for 24 hours.'],
+    ['SP-2 rule serves:R1', 'The email carries only the link.'],
+    PLAN,
+  ]);
+  const named = 'SP-1 complies: the link lives 24 hours.';
+  const bare = 'SP-2 complies: the email holds only the link.';
+  note(dir,
+    judged(named, 'Item (SP-2): "lives for 24 hours"', 'Test: tests not examined'),
+    judged(bare, 'Item: "carries only the link"', 'Test: tests not examined'));
+  const r = check(dir);
+  const ps = parts(judgementAt(r, dir, named));
+  assert.ok(ps.includes('item quote not checked (SP-2): not an item of this judgement'), `the quote names another item:\n${show(r)}`);
+  assert.ok(ps.includes('no item quote; item proposed by this change'), `SP-1 has no item quote of its own:\n${show(r)}`);
+  assert.deepEqual(ps.filter((p) => p.startsWith('item quote found')), [], `no "item quote found" for a quote of another item:\n${show(r)}`);
+  // Control: a bare Item line is checked against the judgement's own item.
+  assert.ok(parts(judgementAt(r, dir, bare)).includes('item quote found; item proposed by this change'), show(r));
 });
