@@ -330,9 +330,14 @@ function withoutMap(stdout) {
 // the list of #58 is there (its grouped line or its "no change selected"
 // line), and, once main prints a list too, it is the same list. The map of
 // #68 is taken out first.
+// #72 (LD-58) removed the disposition findings; a main from before #72
+// still prints them, so they are taken out of main's output.
+const DISPOSITION_LINE = /^(not ok|hint|info) disposition(-pending)? /;
+const withoutDispositions = (stdout) => stdout.split('\n').filter((l) => !DISPOSITION_LINE.test(l)).join('\n');
 function sameAsMainOutput(here, main, args) {
+  assert.doesNotMatch(here.stdout, /^(not ok|hint|info) disposition(-pending)? /m, `al ${args.join(' ')}: no disposition finding:\n${here.stdout}`);
   const hm = withoutMap(here.stdout);
-  const mm = withoutMap(main.stdout);
+  const mm = withoutMap(withoutDispositions(main.stdout));
   assert.ok(hm.map.length > 0, `al ${args.join(' ')}: the map of #68:\n${here.stdout}`);
   if (mm.map.length > 0) assert.deepEqual(hm.map, mm.map, `al ${args.join(' ')}: the same map as on main`);
   const h = withoutList(hm.rest);

@@ -564,6 +564,8 @@ function sharedOutput(t, { archive }) {
   index(dir);
   if (archive) {
     ok(dir, ['record', 'other', 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+    // #72: the close rule asks a declared link for R1; a close line says where it is met.
+    ok(dir, ['record', 'other', 'close', '--on', 'R1', '--reason', 'The shared output meets it; no lasting paragraph.', '--yes']);
     index(dir);
     ok(dir, ['conclude', 'other', '--yes']);
   }
@@ -599,6 +601,11 @@ for (const archive of [false, true]) {
 }
 
 // --- a superseded disposition loses its evidence
+//
+// #72 (LD-58, LD-9): al no longer checks dispositions. An old record that
+// holds one stays readable: al check gives no disposition finding, and
+// al context --audit shows it as "recorded; not checked". The removal of the
+// later paragraph's changes: binding is reported as before.
 
 // main: config, specs/invoices.md. Branch feature: the request first, its
 // SP-1 incorporated as INV-70; then the request second, whose SP-1
@@ -630,28 +637,25 @@ function superseded(t) {
   return dir;
 }
 
-const dispositionHints = (r) => r.findings.filter((f) => f.code === 'disposition' && f.id === 'first/SP-1');
+const dispositionFindings = (r) => r.findings.filter((f) => f.code === 'disposition' || f.code === 'disposition-pending');
+const RECORDED = /^Disp\.\s+first\/SP-1\b.*\bsuperseded INV-70\b.*\bby second\/SP-1: recorded; not checked$/m;
 
-test('R1: a superseded disposition whose later paragraph dropped its changes: link shows "not valid" once al index removed that binding: a disposition hint, and "not valid" in al context --audit', (t) => {
+test('R1: an old superseded disposition whose later paragraph drops its changes: link: al index removes that binding; no disposition finding, and al context --audit shows it as "recorded; not checked", before and after', (t) => {
   const dir = superseded(t);
-  // Before: valid.
   let r = check(dir);
-  assert.deepEqual(dispositionHints(r), [], `the control: first/SP-1 superseded is valid:\n${show(r)}`);
+  assert.deepEqual(dispositionFindings(r), [], show(r));
   let audit = ok(dir, ['context', 'first', '--audit']);
-  assert.match(audit.stdout, /^ {2}SP-1 rule superseded INV-70 by second\/SP-1 · valid/m, show(audit));
+  assert.match(audit.stdout, RECORDED, show(audit));
   // second/SP-1 drops changes:INV-70.
   editFile(dir, 'requests/second/spec.md', '<!-- SP-1 rule serves:R1 changes:INV-70 -->', '<!-- SP-1 rule serves:R1 -->');
   const ix = index(dir);
   noBinding(record(dir, 'second'), ['second/SP-1', 'changes', 'INV-70'], 'its link is gone');
   reportsRemoved(ix, ['second/SP-1', 'changes', 'INV-70']);
   r = check(dir);
-  const found = dispositionHints(r);
-  assert.equal(found.length, 1, `one disposition hint on first/SP-1:\n${show(r)}`);
-  assert.equal(found[0].severity, 'hint', show(r));
-  assert.match(found[0].msg, /not valid/, show(r));
+  assert.deepEqual(dispositionFindings(r), [], show(r));
   assert.equal(r.code, 0, show(r));
   audit = ok(dir, ['context', 'first', '--audit']);
-  assert.match(audit.stdout, /^ {2}SP-1 rule superseded INV-70 by second\/SP-1 · not valid/m, show(audit));
+  assert.match(audit.stdout, RECORDED, show(audit));
 });
 
 // ============================================================================

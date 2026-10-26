@@ -92,7 +92,7 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
   `ref` names, instead of in the change spec.
 - **Records** in `.assuredloop/records/`, committed to git: one per request
   (its sources, requirement versions, sign-offs, decisions, tasks, the
-  bindings of its links and the dispositions of its paragraphs) and one per
+  bindings of its links and its close lines) and one per
   doc (fields that `al index` can always rebuild). `al` writes every hash and
   every derived field.
 - **Bindings.** When a link is first indexed, `al index` records the hash of
@@ -107,9 +107,11 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
   marker declares a link any more, `al index` removes its binding, in the
   open and the archived records, and names it in its output. Git history
   keeps it.
-- **Consolidation is by hand.** A PR copies a change paragraph into `specs/`
-  word for word, and records its disposition: `incorporated`, `removed`,
-  `superseded` or `abandoned`. No command writes the spec.
+- **Consolidation is by judgement.** A PR brings each piece of a change into
+  `specs/` in its own words: it may rewrite, split or join paragraphs, so
+  that the spec reads as the current system. No command writes the spec,
+  and `al` does not compare the two texts. The review judges each piece in
+  a consolidation judgement, and `al check` shows it as current or stale.
 
 ## Paths
 
@@ -132,9 +134,28 @@ a hint, for example "path 0, but a rule paragraph is changed with no typo
 claim". It checks the labels, not their meaning.
 
 **The close rule.** `al conclude <name>` refuses while a promise change has
-no sign-off, a spike's current question is not signed, a change paragraph
-with a baseline effect has no valid disposition for its current version, or
-an original file of the request is not checked or does not match its record.
+no sign-off, a spike's current question is not signed, or an original file
+of the request is not checked or does not match its record. On paths 2 and
+3 it also refuses while:
+
+- a signed requirement of the request's current version has no declared
+  paragraph link: no paragraph of `specs/` says `serves:<name>/R<n>`, and no
+  accepted ADR says `decides:<name>/R<n>`;
+- a change paragraph says `changes:<ID>`, and that spec paragraph is
+  unchanged since the link (or the link has no binding yet: run `al index`);
+- a change paragraph says `removes:<ID>`, and that paragraph is still in
+  `specs/`.
+
+A close line clears the last three for what it names: one sentence that you
+record with `al record <name> close --on <ID> --reason <sentence>`. On a
+change paragraph, it says why the paragraph is not delivered. On a
+requirement, it says where the requirement is met when no lasting paragraph
+links to it, for example an existing design reused or a one-time migration.
+`al` keeps the version of what the line names and of each spec paragraph
+that its reason names. When one of them changes, `al conclude` shows the
+line as stale, and it clears nothing until you record it again. A close line
+never replaces a sign-off. A review judgement never clears a refusal, and a
+missing or stale consolidation judgement is shown and never refuses.
 
 ## The commands
 
@@ -149,6 +170,9 @@ an original file of the request is not checked or does not match its record.
 - `al record <name> judgement --hint issue-changed --on <item> --reason <why>
   --issues <folder>`: record that the change of a work item was read; see
   "Hints from the linked work items".
+- `al record <name> close --on <ID> --reason <sentence>`: a close line, on a
+  change paragraph that is not delivered or on a requirement that is met
+  where no lasting paragraph links to it; see "The close rule".
 - `al spec`: every doc's IDs, display numbers and kinds.
   `al spec --add-ids <file> [--prefix <P>]`: give each unmarked paragraph the
   next free ID.
@@ -625,8 +649,8 @@ itself (2, then 1, then 0), and says which level answered and why.
 
 - The default query is the current system: the spec text at the selected
   commit. `--change <name>` adds that request's open change spec, its
-  sources and its evidence. `--history` adds removed, abandoned and replaced
-  text, marked as history.
+  sources and its evidence. `--history` adds removed and replaced text,
+  marked as history.
 - `--id <ID>` finds one paragraph by its exact ID, never through search.
   `--level <0|1|2>` asks for a lower level; `--at <commit>` another commit.
 - Each hit shows its role (`baseline`, `proposal`, `spike`, `source`,
@@ -739,7 +763,7 @@ A request record that cannot be read (`record-unreadable`) and a spec root
 that cannot be read (`spec-root`) are `not ok` too. Every other finding is a
 hint in every mode, `--strict` included: the marker and ID lints, the path
 claim, a link that does not resolve, an ADR's changed text or missing links,
-an invalid disposition, and the rest. `--strict` changes only the exit code:
+the map's hints, and the rest. `--strict` changes only the exit code:
 it is 1 when a `not ok` prints.
 
 `al check` gives the hint "promise kind?" (`promise-kind`) for a paragraph
@@ -753,9 +777,9 @@ it applies a promise, for example a flow step that keeps a rule, give it
 
 | The tool checks | The skill asks | The owner decides |
 |---|---|---|
-| `al conclude` refuses on its three conditions (see "The close rule") | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
+| `al conclude` refuses on its conditions (see "The close rule") | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
 | `not ok`: sign-off coverage of promise changes, unsigned requirement versions, changed record evidence, citations of superseded ADRs and their status lines, and records or a spec root that cannot be read | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
-| hints for the review: IDs missing, used twice, lost or used again; kinds and links; links that do not resolve; path and typo claims; dispositions and exact equality; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task; matches of the configured phrases; with `--issues <folder>`, the hints from the linked work items | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
+| hints for the review: IDs missing, used twice, lost or used again; kinds and links; links that do not resolve; path and typo claims; a spec paragraph changed with no change paragraph that names it, and a change paragraph with no current consolidation judgement; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task; matches of the configured phrases; with `--issues <folder>`, the hints from the linked work items | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
 | `check --strict` exits 1 on a `not ok`, when a project opts in | | |
 
 `al` checks that declarations are well formed and that references resolve.

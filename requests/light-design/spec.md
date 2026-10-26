@@ -154,7 +154,7 @@ data, flow, choice), `approach`, `explain` (rationale, example, open),
 group, so no file changes. A paragraph still has a kind (v4/R2); the list
 is shorter.
 
-<!-- LD-55 plan -->
+<!-- LD-55 plan changes:DES-29 -->
 
 Consolidation. The AI brings the change into `specs/` by its own judgement,
 when a piece is ready: in the PR with its code, or in a later PR, part by
@@ -239,7 +239,7 @@ judgement names it; a `builds-on` link alone does not. This holds for a
 paragraph that the branch added, too. `al conclude` shows them again before
 it closes, and they never refuse (R2).
 
-<!-- LD-57 plan -->
+<!-- LD-57 plan changes:DES-34,DES-37 -->
 
 The close rule, by path. A spike closes as today (DES-44): its current
 question is signed, its answer names the question version, and its change
@@ -256,18 +256,24 @@ abandoned unsigned. Paths 0, 1 and 1d close as today. On paths 2 and 3,
    (LD-49); only `al conclude` refuses on it;
 3. a change paragraph names a spec paragraph by `changes`, and that
    paragraph is unchanged since the link (LD-61); or it names one by
-   `removes`, and that paragraph is still in `specs/`.
+   `removes`, and that paragraph is still in `specs/`. A `changes` link
+   that has no binding yet refuses until `al index` binds it, because `al`
+   cannot tell. In the central repo, `removes:central:X` names its own X, as
+   for every reader of `removes` (DES-69).
 
 <!-- LD-62 plan -->
 
 A close line clears items 2 and 3: one sentence that the author records
-with `al record`. For item 3, it names the change paragraph as not
+with `al record <name> close --on <ID> --reason <sentence>`, kept in the
+request record only. For item 3, it names the change paragraph as not
 delivered, with the reason. For item 2, it names where the requirement is
 met when no lasting paragraph links to it: an existing design reused, or a
 one-time task such as a migration. `al` keeps, by itself, the versions of
 what the line names: the change paragraph or the requirement, and the spec
-paragraphs that its reason names. The line clears only while they keep
-those versions. When one of them changes, `al conclude` names the line as
+paragraphs that its reason names. These are the words of the reason in the
+ID form that are paragraphs of `specs/`; another word of that form is shown
+as not a paragraph of `specs/`, and not kept. The latest line for an ID
+counts. The line clears only while they keep those versions. When one of them changes, `al conclude` names the line as
 stale, and it clears nothing until the author records it again. A close
 line is the author's declaration, shown with its basis. It is not a
 judgement of LD-12, and the review reads it. Nothing else refuses: a missing or stale consolidation judgement is shown
@@ -278,15 +284,28 @@ request is never checked again against today's spec (as today). Items 2 and
 3 and the consolidation judgements keep the two promises of v4/R5: every
 signed requirement is served, and nothing applied is dropped in silence.
 
-<!-- LD-58 plan -->
+<!-- LD-58 plan serves:light-resign/R5 removes:DES-30,DES-31,DES-32,DES-33,DES-35,DES-36 changes:DES-5,DES-22,DES-26,DES-38,DES-44,DES-58,DES-61,DES-62,DES-72,SCH-15,SCH-28,SCH-32,SCH-35 -->
 
 This change removes from today's design (`specs/design.md`, section 5): the
 dispositions and their table, the exact-text rule, the wording decisions,
 and the close rule that asks for a disposition for each change paragraph.
 In section 4, `changes <ID>` becomes a reference with no replacement text,
-and `al index --align` gives way to the recorded judgement of LD-12. Typo
+and `al index --align` gives way to the recorded judgement of LD-12 when
+that is built; until then it stays. Typo
 claims stay, on path 0. Old records that hold dispositions or wording
-decisions stay readable, and `al` no longer checks them (LD-9).
+decisions stay readable, and `al` no longer checks them (LD-9): `al context
+<name> --audit` shows them as recorded. An abandoned disposition no longer
+excuses an unsigned promise paragraph; the author deletes a paragraph that
+is not delivered from the open change spec (delete-in-change-spec/R1). The
+near-match hint takes the Spec lines of a consolidation judgement as links
+of the change paragraphs that the same judgement names, where it took a
+disposition's spec before. The adoption entries (`source: adoption`, DES-38,
+DES-39) are the adopted baseline, not dispositions, and stay.
+
+<!-- LD-67 plan -->
+
+An old `removed` disposition still names the request that removed an ID in
+the hint on a link to it, so that fact is not lost (LD-9).
 
 <!-- LD-16 plan -->
 

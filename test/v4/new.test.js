@@ -33,7 +33,6 @@ test('new writes the snapshot, request.md and the record, with the tier as a str
     decisions: [],
     tasks: [],
     bindings: [],
-    dispositions: [],
   });
 });
 

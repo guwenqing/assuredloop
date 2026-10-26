@@ -107,6 +107,9 @@ function world(t, { originals = true, sign = true, origin = true } = {}) {
   const out = [runOk(dir, A, ['new', REQ, '--from', '-'], WORDS)];
   appendSection(dir, REQ, SECTION);
   if (sign) out.push(runOk(dir, A, ['record', REQ, 'signoff', ...SIGN, '--yes']));
+  // #72: the close rule asks a declared link for each signed requirement; a
+  // close line says where R1 is met, so conclude tests only the originals.
+  if (sign) out.push(runOk(dir, A, ['record', REQ, 'close', '--on', 'R1', '--reason', 'A one-time setup meets it; no lasting paragraph.', '--yes']));
   if (origin) out.push(runOk(dir, A, ['record', REQ, 'origin', '--url', URL1, '--from', '-', '--yes'], MORE));
   commitAll(dir, 'request inv');
   const rec = record(dir, REQ);
@@ -696,6 +699,8 @@ test('origin-elsewhere/R1 no originals key (control, green today): a broken plac
   runOk(dir, broken, ['new', REQ, '--from', '-'], WORDS);
   appendSection(dir, REQ, SECTION);
   runOk(dir, broken, ['record', REQ, 'signoff', ...SIGN, '--yes']);
+  // #72: a close line on R1, as in world().
+  runOk(dir, broken, ['record', REQ, 'close', '--on', 'R1', '--reason', 'A one-time setup meets it; no lasting paragraph.', '--yes']);
   runOk(dir, broken, ['record', REQ, 'origin', '--url', URL1, '--from', '-', '--yes'], MORE);
   assert.equal(repoOrigin(dir).length, 3, 'the originals are in the repo');
   commitAll(dir, 'request inv');

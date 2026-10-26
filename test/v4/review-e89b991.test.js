@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { invoicer } from './helpers/invoicer.js';
 import { blobSha, commit, rev, world } from './helpers/cross-repo.js';
-import { git, read, readYaml, write, writeYaml } from './helpers/project.js';
+import { al, git, read, readYaml, write, writeYaml } from './helpers/project.js';
 import { conclude, has, hasNot, show, view, word } from './helpers/views.js';
 
 const s7 = (sha) => sha.slice(0, 7);
@@ -31,8 +31,13 @@ test('1: INV-99 (marker "<!--   INV-99   limit   -->") removed on main earlier, 
   refusesNaming(conclude(dir, 'drop-spaced'), 'drop-spaced/SP-1');
 });
 
+// #72: R1 is met by the removal alone, so no paragraph serves it; a close
+// line on it says so, as the close rule asks.
 test('1 control: the same removal merged earlier with R1 signed would conclude', (t) => {
-  wouldConclude(conclude(invoicer(t, 'remove-spaced-merged-signed'), 'drop-spaced'), 'drop-spaced');
+  const dir = invoicer(t, 'remove-spaced-merged-signed');
+  const c = al(dir, ['record', 'drop-spaced', 'close', '--on', 'R1', '--reason', 'Met by the removal of INV-99.', '--yes']);
+  assert.equal(c.code, 0, show(c));
+  wouldConclude(conclude(dir, 'drop-spaced'), 'drop-spaced');
 });
 
 test('1: the same removal on the closing branch itself, R1 unsigned: conclude refuses on drop-spaced/SP-1', (t) => {
@@ -41,14 +46,8 @@ test('1: the same removal on the closing branch itself, R1 unsigned: conclude re
 
 // --- 2. an owner decision to drop work with no kept effect (design.md 6)
 
-test('2: a decision to drop SP-2, whose text never entered specs/: valid, no kept effect claimed, conclude would conclude', (t) => {
-  const dir = invoicer(t, 'abandon-decided-dropped');
-  const r = view(dir, ['context', 'csv-bom']);
-  const line = has(r, word('SP-2'), /abandoned/);
-  assert.doesNotMatch(line, /not valid/, show(r));
-  hasNot(r, word('SP-2'), /\bkeeps?\b|\bkept\b/i);
-  wouldConclude(conclude(dir, 'csv-bom'), 'csv-bom');
-});
+// #72 (LD-58) removed the abandoned exemption, so the test that a dropped
+// SP-2 with no kept effect concludes unsigned is gone; the control stays.
 
 test('2 control: the same decision while SP-2\'s text is in specs/ (EXP-9) and R1 is unsigned: conclude refuses', (t) => {
   refusesNaming(conclude(invoicer(t, 'abandon-decided-kept'), 'csv-bom'), 'csv-bom/SP-2');

@@ -1,60 +1,27 @@
-// al-v4 check on dispositions beyond D06 and D14 (#179, task T10; design.md 5):
-// states of the invoicer world (test/v4/fixtures/invoicer/cases/cr-*.yaml).
-// An invalid disposition is a hint, and not ok under --strict; a source
-// version with no disposition yet (pending) is no finding.
+// Old records that hold dispositions and wording decisions (#179, task T10;
+// #72, LD-58 and LD-9). #72 removed the dispositions, their validity and the
+// wording decisions from al: an old record that holds them stays readable,
+// and al check no longer checks them. The states of the invoicer world that
+// hold such records (test/v4/fixtures/invoicer/cases/cr-*.yaml) give no
+// finding with the code `disposition` or `disposition-pending`, plain or
+// --strict.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { check, invoicer } from './helpers/invoicer.js';
-import { HEX64, readYaml, show } from './helpers/project.js';
+import { show } from './helpers/project.js';
 
 const run = (t, name, ...args) => {
   const dir = invoicer(t, name);
   return { dir, ...check(dir, ...args) };
 };
-// The disposition findings that count: hint, or not ok under --strict.
-const invalid = (r) => r.findings.filter((f) => f.code === 'disposition' && f.severity !== 'info');
+const dispositionFindings = (r) => r.findings.filter((f) => f.code === 'disposition' || f.code === 'disposition-pending');
 
-test('cr-wording: a recorded wording decision makes the reworded EXP-10 valid; --strict exits 0', (t) => {
-  const r = run(t, 'cr-wording');
-  const d3 = readYaml(r.dir, '.assuredloop/records/requests/invoice-exports.yaml').decisions.find((d) => d.id === 'D3');
-  assert.match(String(d3?.wording?.source_sha256), HEX64, `index fills D3's wording hashes:\n${JSON.stringify(d3)}`);
-  assert.match(String(d3?.wording?.target_sha256), HEX64, `index fills D3's wording hashes:\n${JSON.stringify(d3)}`);
-  assert.deepEqual(invalid(r), [], show(r));
-  const strict = run(t, 'cr-wording', '--strict');
-  assert.equal(strict.code, 0, show(strict));
-});
-
-test('cr-revert: an unexplained revert of INV-11 makes SP-2\'s incorporated disposition invalid', (t) => {
-  const r = run(t, 'cr-revert');
-  assert.equal(r.code, 0, show(r));
-  assert.deepEqual(invalid(r).map((f) => `${f.severity} ${f.id}`), ['hint reminder-emails/SP-2'], show(r));
-  // #238 R2: an invalid disposition stays a hint under --strict, and alone it leaves the exit 0.
-  const strict = run(t, 'cr-revert', '--strict');
-  assert.equal(strict.code, 0, show(strict));
-  assert.deepEqual(invalid(strict).map((f) => `${f.severity} ${f.id}`), ['hint reminder-emails/SP-2'], show(strict));
-});
-
-test('cr-supersede: SP-6 superseded by link-refresh/SP-2, which incorporated EXP-4: valid', (t) => {
-  const r = run(t, 'cr-supersede');
-  assert.deepEqual(invalid(r), [], show(r));
-});
-
-test('cr-chain: the chain A→B→C that ends in a removal is valid', (t) => {
-  const r = run(t, 'cr-chain');
-  assert.deepEqual(invalid(r), [], show(r));
-  const strict = run(t, 'cr-chain', '--strict');
-  assert.deepEqual(invalid(strict), [], show(strict));
-});
-
-test('cr-abandon: SP-7 abandoned after its revert, SP-10 to SP-12 never applied: valid', (t) => {
-  const r = run(t, 'cr-abandon');
-  assert.deepEqual(invalid(r), [], show(r));
-});
-
-test('cr-45: SP-6 edited after its incorporation has no disposition for its new version: pending, no finding', (t) => {
-  const r = run(t, 'cr-45');
-  assert.equal(r.code, 0, show(r));
-  assert.deepEqual(invalid(r), [], show(r));
-  const strict = run(t, 'cr-45', '--strict');
-  assert.deepEqual(invalid(strict), [], show(strict));
-});
+for (const name of ['cr-wording', 'cr-revert', 'cr-supersede', 'cr-chain', 'cr-abandon', 'cr-45']) {
+  test(`${name}: an old record with dispositions reads with no disposition finding, plain and --strict`, (t) => {
+    const r = run(t, name);
+    assert.equal(r.code, 0, show(r));
+    assert.deepEqual(dispositionFindings(r), [], show(r));
+    const strict = run(t, name, '--strict');
+    assert.deepEqual(dispositionFindings(strict), [], show(strict));
+  });
+}

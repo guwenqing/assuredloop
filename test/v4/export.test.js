@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  commitAll, doc, editRecord, git, hashOf, index, newRequest, project, read, record, appendSection, organized, req, write,
+  commitAll, doc, git, index, newRequest, project, read, record, appendSection, organized, req, write,
   writeConfig,
 } from './helpers/project.js';
 import {
@@ -157,16 +157,6 @@ test('export: an open change spec gives proposal rows, with request-qualified ID
   assert.deepEqual(sp3.builds_on, ['reminder-emails/SP-2'], 'an ID of its own spec is <request>/SP-n');
   assert.equal(sp3.role, 'proposal');
   assert.equal(sp3.kind, 'flow');
-});
-
-test('export: a change paragraph whose current version is abandoned or superseded is history, kept as change', () => {
-  const { rows: ROWS } = get();
-  for (const id of ['reminder-emails/SP-4', 'reminder-emails/SP-5']) {
-    const r = oneRow(ROWS, id);
-    assert.equal(r.role, 'history', id);
-    assert.equal(r.source_type, 'change', id);
-    assert.equal(r.superseded_by, null, `${id}: its text is still in the file`);
-  }
 });
 
 test('export: a spike: its change spec gives spike rows, its question is a source row', () => {
@@ -353,7 +343,9 @@ test('export: a text that comes back after a change keeps its first version numb
   assert.equal(new Set(exp2.map((r) => r.version)).size, exp2.length);
 });
 
-test('export: a disposition closes one source version: an edited paragraph is proposal again, its old version history', (t) => {
+// #72 (LD-58): a disposition no longer closes a source version; the
+// versions of an edited change paragraph still number by its text history.
+test('export: an edited change paragraph: its old version is history, its current version a proposal', (t) => {
   const dir = project(t);
   writeConfig(dir, [{ file: SPEC, prefix: 'EXP' }], { repo: 'acme' });
   write(dir, SPEC, doc([['EXP-1 rule', 'A user MUST be able to export.']]));
@@ -361,10 +353,8 @@ test('export: a disposition closes one source version: an edited paragraph is pr
   newRequest(dir, 'faxes', 'Fax the invoices.\n', ['--tier', '2']);
   const CS = 'requests/faxes/spec.md';
   write(dir, CS, doc([['SP-1 note', '# Faxes'], ['SP-2 rule', 'Invoices MAY be sent by fax.']]));
-  editRecord(dir, 'faxes', (rec) => { rec.dispositions = [{ source: 'faxes/SP-2', disposition: 'abandoned', reason: 'never applied' }]; });
   index(dir);
-  assert.equal(record(dir, 'faxes').dispositions[0].source_sha256, hashOf(dir, CS, 'SP-2'), 'index filled the source hash');
-  commitAll(dir, 'abandoned');
+  commitAll(dir, 'the first version');
   write(dir, CS, doc([['SP-1 note', '# Faxes'], ['SP-2 rule', 'Invoices MAY be sent by fax, on request.']]));
   index(dir);
   commitAll(dir, 'edited after the disposition');

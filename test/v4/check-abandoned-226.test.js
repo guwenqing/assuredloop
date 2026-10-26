@@ -1,26 +1,22 @@
-// al check --strict and a request with no kept effect (#226; design.md DES-42:
-// "A request with no kept effect may be abandoned without a sign-off.").
-// The sign-off coverage of al check skips a change-spec paragraph whose
-// current version has a valid `abandoned` disposition with no kept effect,
-// the same exception that al conclude uses. One function serves both commands
-// (#217), so for the request's own paragraphs the IDs of check's
-// `not ok signoff-coverage` lines equal the IDs on conclude's sign-off
-// `refused:` line. A paragraph abandoned while an owner decision keeps its
-// effect, or abandoned with a disposition that is not valid, still needs a
-// signed requirement.
+// al check --strict and conclude on a request whose promise paragraph is not
+// signed (#226, #217): one function serves both commands, so for the
+// request's own paragraphs the IDs of check's `not ok signoff-coverage`
+// lines equal the IDs on conclude's sign-off `refused:` line.
+//
+// #72 (LD-58) removed the dispositions, and with them the exemption of a
+// paragraph validly abandoned with no kept effect. An old record that still
+// says `abandoned` is readable, and the paragraph needs a signed requirement
+// like any other.
 //
 // States of the invoicer world: abandon-unsigned.yaml (arms abandoned and
-// incorporated), and states built in this file from them (see each test).
+// incorporated).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { check, invoicer } from './helpers/invoicer.js';
-import { al, commitAll, editRecord, exists, index, ok, read, write } from './helpers/project.js';
 import { conclude, show, word } from './helpers/views.js';
 
 const NAME = 'csv-bom';
 const SP2 = `${NAME}/SP-2`;
-const SPEC = `requests/${NAME}/spec.md`;
-const CLAIM = `Tier: 2 — ${NAME}`;
 const COVERAGE = 'a promise change with no signed requirement that covers it: ';
 
 // The not ok lines of al check --strict, and the IDs of its signoff-coverage findings.
@@ -47,14 +43,9 @@ function agree(dir) {
   return { c, k };
 }
 
-// Both commands need coverage on SP-2. With `judged`, the state is as meant:
-// conclude's "no valid disposition" refusal judges SP-2's current version so.
-const needsCoverage = (dir, judged, id = SP2) => {
+// Both commands need coverage on SP-2.
+const needsCoverage = (dir, id = SP2) => {
   const { c, k } = agree(dir);
-  if (judged) {
-    assert.ok(k.refused.some((l) => l.startsWith('refused: no valid disposition') && l.includes(`${SP2} (${judged}`)),
-      `conclude judges ${SP2}: ${judged}:\n${show(k)}`);
-  }
   assert.equal(c.r.code, 1, show(c.r));
   assert.ok(c.ids.includes(id), `check --strict reports signoff-coverage on ${id}:\n${show(c.r)}`);
   assert.equal(k.code, 1, show(k));
@@ -62,102 +53,14 @@ const needsCoverage = (dir, judged, id = SP2) => {
   assert.ok(refusedIds(k).some((x) => word(id).test(x)), `conclude's sign-off refusal names ${id}:\n${show(k)}`);
 };
 
-// A change to the branch's state: the record edit, then al index and a commit.
-function reindex(dir, message) {
-  index(dir);
-  commitAll(dir, `${message}\n\n${CLAIM}`);
-}
+// --- 1. the issue's case, after #72: SP-2 with an old abandoned disposition, R1 not signed
 
-const setDisposition = (dir, set) => editRecord(dir, NAME, (rec) => {
-  const d = (rec.dispositions ?? []).filter((x) => x.source === SP2).at(-1);
-  assert.ok(d, `${NAME} has a disposition for ${SP2}`);
-  Object.assign(d, set);
-});
-
-// --- 1. the issue's case: SP-2 validly abandoned, its text never in specs/, R1 not signed
-
-// #238 R3: csv-bom's record lists R1 with no sign-off, so check gives
-// not ok unsigned-requirement csv-bom/R1, open or archived. It is the only
-// not ok line, and it alone makes --strict exit 1.
-const ONLY_UNSIGNED = [`not ok unsigned-requirement ${NAME}/R1`];
-const notOkKeys = (c) => [...new Set(c.notOk.map((f) => `not ok ${f.code} ${f.id}`))].sort();
-
-test('1: SP-2 validly abandoned with no kept effect: check --strict has no signoff-coverage on it while the request is open', (t) => {
-  const dir = invoicer(t, 'abandon-unsigned', 'abandoned');
-  const c = strict(dir);
-  assert.deepEqual(c.ids, [], `no signoff-coverage finding:\n${show(c.r)}`);
-  assert.deepEqual(notOkKeys(c), ONLY_UNSIGNED, show(c.r));
-  assert.equal(c.r.code, 1, show(c.r));
-  const { k } = agree(dir);
-  // A guard: conclude would conclude, as it does before #226.
-  assert.equal(k.code, 0, show(k));
-  assert.deepEqual(k.refused, [], show(k));
-  assert.match(k.stdout, new RegExp(`^Would conclude ${NAME}: `, 'm'), show(k));
-});
-
-test('1: after al conclude csv-bom --yes, and again after the archive move is committed, check --strict has no not ok but unsigned-requirement csv-bom/R1', (t) => {
-  const dir = invoicer(t, 'abandon-unsigned', 'abandoned');
-  const closed = al(dir, ['conclude', NAME, '--yes']);
-  assert.equal(closed.code, 0, show(closed));
-  assert.ok(exists(dir, `requests/archive/${NAME}/spec.md`), 'the request is archived');
-  const before = strict(dir);
-  commitAll(dir, `Close ${NAME}\n\nTier: 2 — ${NAME}; closes the request`);
-  const after = strict(dir);
-  const runs = { before: before.r, after: after.r };
-  assert.deepEqual({ before: notOkKeys(before), after: notOkKeys(after) }, { before: ONLY_UNSIGNED, after: ONLY_UNSIGNED },
-    `no other not ok before or after the commit:\n${show(before.r)}\n${show(after.r)}`);
-  for (const [when, r] of Object.entries(runs)) assert.equal(r.code, 1, `${when} the commit:\n${show(r)}`);
+test('1: SP-2 with an old abandoned disposition and no sign-off: check reports signoff-coverage on SP-2 and conclude refuses naming it (#72: no exemption)', (t) => {
+  needsCoverage(invoicer(t, 'abandon-unsigned', 'abandoned'));
 });
 
 // --- 2. control: the same rule incorporated as EXP-9, no sign-off
 
 test('2 control: SP-2 incorporated with no sign-off: check reports signoff-coverage on SP-2 and conclude refuses naming it', (t) => {
   needsCoverage(invoicer(t, 'abandon-unsigned', 'incorporated'));
-});
-
-// --- 3. an owner decision keeps the effect: still needs a signed requirement
-
-// Built from abandon-unsigned, arm incorporated (SP-2 new on the branch, its
-// text in specs/ as EXP-9, R1 not signed): the owner's decision D1, and SP-2's
-// disposition set to abandoned by D1, as abandon-decided-kept.yaml does on
-// main. The effect is kept, so the paragraph still needs coverage.
-test('3: SP-2 abandoned while the owner decision D1 keeps its effect (EXP-9): check and conclude still need coverage on SP-2', (t) => {
-  const dir = invoicer(t, 'abandon-unsigned', 'incorporated');
-  ok(dir, ['record', NAME, 'decision', '--source', 'owner', '--text', 'Do not deliver the byte order mark. The draft was never applied.', '--yes']);
-  setDisposition(dir, { disposition: 'abandoned', decision: 'D1' });
-  reindex(dir, 'Drop the byte order mark by D1');
-  assert.ok(read(dir, 'specs/exports.md').includes('<!-- EXP-9 rule'), 'the effect is in specs/');
-  needsCoverage(dir, 'abandoned, not valid: D1 keeps a promise');
-});
-
-// --- 4. an abandoned disposition that is not valid: still needs coverage
-
-test('4: SP-2 abandoned naming the decision D9, which is not in the record: still needs coverage', (t) => {
-  const dir = invoicer(t, 'abandon-unsigned', 'abandoned');
-  setDisposition(dir, { decision: 'D9' });
-  reindex(dir, 'Name D9');
-  needsCoverage(dir, 'abandoned, not valid: D9 is not in the record');
-});
-
-test('4: SP-2 abandoned with no decision while its text is in specs/ as EXP-9: still needs coverage', (t) => {
-  const dir = invoicer(t, 'abandon-unsigned', 'incorporated');
-  editRecord(dir, NAME, (rec) => {
-    const d = (rec.dispositions ?? []).filter((x) => x.source === SP2).at(-1);
-    assert.ok(d, `${NAME} has a disposition for ${SP2}`);
-    d.disposition = 'abandoned';
-    delete d.spec;
-    delete d.spec_sha256;
-  });
-  reindex(dir, 'Abandon SP-2 with no decision');
-  needsCoverage(dir, 'abandoned, not valid:');
-});
-
-test('4: SP-2 changed after its abandoned disposition: its current version has none, and still needs coverage', (t) => {
-  const dir = invoicer(t, 'abandon-unsigned', 'abandoned');
-  const from = 'Every CSV export MUST start with a byte order mark.';
-  const text = read(dir, SPEC);
-  assert.equal(text.split(from).length, 2, text);
-  write(dir, SPEC, text.replace(from, 'Every CSV export MUST start with a UTF-8 byte order mark.'));
-  reindex(dir, 'Say UTF-8 in SP-2');
-  needsCoverage(dir, 'none');
 });
