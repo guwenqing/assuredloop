@@ -555,6 +555,11 @@ describe('B: an item in a .md file gives the same result as the same item in JSO
     ['a comment number that is not the next one (1, then 3)', 'skip.md', `URL: ${ghUrl(OWN, 47)}\n\nBuild it.\n\n## Comment 1\n\nOne.\n\n## Comment 3\n\nThree.\n`, /comment/i],
     ['a first comment numbered 2', 'two.md', `URL: ${ghUrl(OWN, 48)}\n\nBuild it.\n\n## Comment 2\n\nTwo.\n`, /comment/i],
     ['a README.md with no header', 'README.md', '# Items\n\nThe items of the invoicer, saved for al.\n', null],
+    // The names of inherited JavaScript object properties are other keys too.
+    ['a header line with the key Constructor', 'constructor.md', `URL: ${ghUrl(OWN, 49)}\nConstructor: x\n\nBuild it.\n`, /constructor/i],
+    ['a header line with the key toString', 'tostring.md', `URL: ${ghUrl(OWN, 50)}\ntoString: x\n\nBuild it.\n`, /tostring/i],
+    ['a header line with the key __proto__', 'proto.md', `URL: ${ghUrl(OWN, 51)}\n__proto__: x\n\nBuild it.\n`, /__proto__/],
+    ['a header line with the key hasOwnProperty', 'hasown.md', `URL: ${ghUrl(OWN, 52)}\nhasOwnProperty: x\n\nBuild it.\n`, /hasownproperty/i],
   ];
   for (const [what, file, text, word] of NOT_ITEMS) {
     test(`not an item, ${what}: issue-unread at ${FOLDER}/${file}, "not read:" with the reason; the JSON item beside it is read`, (t) => {
@@ -997,6 +1002,23 @@ describe('D: items-out-of-reach in .assuredloop/config.yaml', () => {
     assert.equal(line.split(/#5(?!\d)/).length - 1, 1, `the item is named once:\n${show(r)}`);
     assert.deepEqual(aboutTasks(r, [`${NAME}/T1`, `${NAME}/T2`]).map((f) => f.line), [], show(r));
   });
+
+  // The key with null, or with no value: not a list of non-empty texts.
+  // The config is written as text, so that the line is exactly as shown.
+  const CONFIG_HEAD = `docs:\n  - file: ${SPEC}\n    prefix: INV\n`;
+  for (const [what, line] of [['an explicit null', 'items-out-of-reach: null'], ['the key with no value', 'items-out-of-reach:']]) {
+    test(`a value that is not a list of non-empty texts (${what}: "${line}"): al check stops with exit 2, with and without --issues (control: no items-out-of-reach key gives exit 0)`, (t) => {
+      const w = world(t);
+      save(w, { 'a.json': own(31) });
+      write(w.dir, CONFIG, CONFIG_HEAD);
+      for (const args of [ISSUES, []]) checked(w, ...args);
+      write(w.dir, CONFIG, `${CONFIG_HEAD}${line}\n`);
+      for (const args of [ISSUES, []]) {
+        refused(w.dir, ['check', ...args], { env: w.gh.env });
+        assert.deepEqual(w.gh.calls(), []);
+      }
+    });
+  }
 
   const BAD = [['a text', 'acme/web'], ['a number in the list', [42]], ['an empty text in the list', ['acme/web', '']], ['a list in the list', [['acme/web']]], ['a mapping', { repo: 'acme/web' }]];
   for (const [what, value] of BAD) {
