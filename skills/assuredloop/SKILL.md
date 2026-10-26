@@ -1,252 +1,154 @@
 ---
 name: assuredloop
 description: >-
-  Keeping the records of a change with AssuredLoop's `al` (v4): the owner's
-  words, the signed requirement, the change spec, the hidden paragraph
-  markers in the spec, the decisions and the close lines. Use in a project
-  whose AGENTS.md names AssuredLoop, before work that changes the spec, and
-  whenever you need to know where a request stands.
+  Keeping a change on what governs it with AssuredLoop's `al` (v4). Use in a
+  project whose AGENTS.md names AssuredLoop: at the start of a task, before
+  review, and when you need to know where a request stands.
 ---
-# AssuredLoop v4
+# AssuredLoop
 
-`al` keeps the records of what was asked, decided, changed and delivered,
-and gives the review hints. The review decides. It refuses only in
-`al conclude`. How and when you design, test and review is your project's
-way of working; this skill does not set it.
+`al` keeps the records and gives hints. The review decides. Only
+`al conclude` refuses.
 
-## Start here, on every path
+## 1. At the start of a task
 
-1. Run `al context`. For each spec paragraph that your work touches, run
-   `al context <ID>`. For an open request, run `al context <name>`. Each one
-   shows the requirement, the open changes, the ADRs and the checks of what
-   it names. Read those paragraphs and records, not the whole spec.
-2. To find a paragraph by its words, run `al search <words>`. Add
-   `--change <name>` for one request's open text, and `--history` for removed
-   and replaced text. In a central repo, a hit from an output repo shows
-   `<repo>:<path>` and the lines that name a central ID.
-3. Choose the path from the table. Then read "Markers" and the section of
-   your path only.
+Run `al check`. Read the requirement, the change spec and the items that its
+list shows in force. For an item whose status or history matters, run
+`al context <ID>`. For an open request, `al context <name>` says where it
+stands and what comes next.
+
+## 2. Writing a change spec
+
+Write the change's design as one readable document, `requests/<name>/spec.md`.
+Name the requirement that each part serves, and the spec paragraphs that it
+builds on, changes or removes. Copy no spec text, and write no "from A to B".
+
+Each paragraph has a hidden marker line before it, with a blank line on each
+side: `<!-- SP-4 rule serves:R2 builds-on:INV-12 -->`. Kinds: promise
+(purpose, scope, rule, limit, definition), design (component, interface, data,
+flow, choice, approach), informative (rationale, example, open), note,
+change-only (plan, step, migration). Links: serves, builds-on, changes,
+removes, explains, illustrates, resolved-by, governed-by, for; an ADR's heading
+takes decides, source and supersedes. `files:<glob>,<glob>` sets a file scope.
+A promise or design paragraph needs a link. In `specs/`, write
+`serves:<name>/R<n>`. Write a new paragraph with no marker, run
+`al spec --add-ids <file> --yes`, then write its kind and links. Keep a marker
+with its paragraph. Never renumber an ID, and never use one again.
+
+## 3. Consolidating
+
+When a piece is ready, and before the change closes, bring it into `specs/` by
+your own judgement. Write `specs/` as the current system, and honor what is in
+force. Rewrite, split or join paragraphs where that reads better. Write no
+Was/Now text. Promise, design and informative paragraphs go into `specs/`;
+approach, change-only and note paragraphs stay with the change. Then run
+`al check`, and read its map.
+
+## 4. Reviewing
+
+Start from the change's behaviour, not only from the IDs written. Write the
+judgements in `requests/<name>/review.md`.
+
+1. Read the diff, the task, and the list and the map of `al check`.
+2. Ask one search question about the changed behaviour: "which requirement or
+   decision governs <behaviour>?". Use `al search <words>`, or grep when search
+   is off. Written IDs can be incomplete or wrong. An empty result never means
+   that you found every governing item.
+3. Write a judgement, with its evidence, for each item that applies to the
+   change, conflicts with it, or that you are not sure of, however you found
+   it. Write no routine judgement for an item that does not apply.
+4. For a design in the change: check that it answers the request's organized
+   requirement. Name each part that serves no requirement.
+5. For the consolidation: check that `specs/` now says what the change decided,
+   with nothing lost and nothing added that the change did not decide. Write
+   one consolidation judgement for each piece.
+6. For the changed behaviour, find the test assertions that check it, by search
+   or grep, whether or not a test names an ID or changed. Read each assertion:
+   a test's name is not a check. When you found none, or read none, say so as
+   unknown. A code quote never stands for a test.
+7. For the changed behaviour, find the user documents that describe it, changed
+   or not, and compare them with what was decided. A document that you did not
+   read stays unknown.
+8. Judge a "fix" claim: does the change alter behaviour that a requirement
+   covers? Then it is not path 0.
+9. Run `al check` again. Stop when the search question and the lookups find
+   nothing more that applies. An empty lookup alone does not mean that nothing
+   applies.
+
+A judgement, then a consolidation judgement, which names the spec paragraphs
+that hold the piece now:
+
+```markdown
+- INV-41 complies: the link expires 30 minutes after the email.
+  - Item: "MUST expire 30 minutes after the email is sent"
+  - Code (src/export.js): "export const ttl = 30;"
+  - Test (test/export.test.js): "assert.equal(ttl, 30)"
+- SP-3 complies: a link that lives 24 hours, now in INV-41.
+  - Item (SP-3): "A shared export link lives for 24 hours"
+  - Spec (INV-41): "The export link MUST expire 24 hours after it is created."
+```
+
+The verdict is complies, violates, unclear or not applicable. Quote word for
+word. `Test: no test found` and `Test: tests not examined` are the unknowns.
+Add `, base` after a path to quote the base.
+
+## 5. A large spec, or other words
+
+When the spec is large, or the task's words are not the spec's words, search
+first: `al search <words>`, or grep when search is off. Then read the files
+that it names.
+
+## 6. In every answer
+
+- Support each material claim, with its meaning, its state and its version,
+  from the project's own text. Cite the file and line, with an `al` ID beside
+  it only as a label.
+- Keep apart project evidence, declared links, inferences, facts held only in
+  `al`'s records, and what is unknown. What a `Not known` line names is unknown
+  to you too.
+- Report `al`'s own output (a hint, a `Tier:` line, a "not checked" line) as
+  `al`'s output. Check a hint in the project's files before you state it.
+- "`al` found no hint" does not mean "the change has no misalignment".
+
+## 7. An audit, only on request
+
+Run `al check --all`. Write a judgement for every item in force, "not
+applicable" included.
+
+## What differs by path
+
+Choose the path. Work that grows changes its path.
 
 | Path | When | Records | Owner's sign-off |
 |---|---|---|---|
-| 0 | No promise changes: a fix that restores what the spec says, or a typo in any paragraph. | none | no |
-| 1 | One or a few promise paragraphs change. | a short request; no change spec | yes |
-| 1d | Only names or wording of design paragraphs change. | a short request; no change spec | no |
+| 0 | No promise changes: a fix that restores what the spec says, or a typo. | none | no |
+| 1 | One or a few promise paragraphs change. | a short request; edit `specs/` directly | yes |
+| 1d | Only names or wording of design paragraphs change. | a short request; edit `specs/` directly | no |
 | 2 | A real design, in one or a few PRs. | a request and a change spec | if a promise changes, or the request has an R<n> |
-| 3 | A big change, delivered in parts over time. | as path 2, part by part | as path 2 |
+| 3 | A big change, in parts over time. | as path 2, part by part | as path 2 |
 | S | It is not clear yet what to build. | a request with a question | yes, on the question |
 
-The promise kinds are purpose, scope, rule, limit and definition. Work that
-grows changes its path: a small change that needs a design becomes path 2.
-
-4. Before you ask for review, run `al check`, and commit the record files
-   that it names with the change. A `not ok` is
-   one of the few exact rules: a promise change or a requirement version
-   with no valid sign-off, changed record evidence, a citation of a
-   superseded ADR, or a record that cannot be read. Fix each one. A hint is
-   for the review, not a verdict: deal with it, or say in the PR why it
-   stays. A finding has the same severity with or without `--strict`.
-5. Put the claim in a commit message and in the PR, for example
-   `Tier: 1 — amends INV-10`. `al check` reads the newest `Tier:` line of the
-   branch.
-
-If `al` says no place is set for the original files, add the line it names.
-
-## Markers
-
-Each paragraph in `specs/` and in a `requests/<name>/spec.md` has a hidden
-marker on its own line before it, with a blank line before and after it:
-
-```markdown
-<!-- INV-41 rule serves:invoice-exports/R2 builds-on:INV-12 -->
-
-The export link MUST expire 30 minutes after the email is sent.
-```
-
-- When you edit a marked paragraph, keep its marker line and the blank lines
-  around it. Keep the ID when you move the paragraph. Never renumber an ID,
-  and never use one again.
-- In an open request's change spec, you may delete a paragraph with its
-  marker. Its ID is retired and never used again. `al check` gives a hint
-  that names the deletion; when it is on purpose, nothing more is needed. In
-  `specs/`, a removal needs `removes:<ID>` in a change spec: a lost ID there
-  gets a hint that asks for it.
-- For a new paragraph, write the text with no marker. Then run
-  `al spec --add-ids <file> --yes`: it gives each unmarked paragraph the next
-  free ID. Then write the kind and the links into each new marker.
-- The kinds: promise (purpose, scope, rule, limit, definition); design
-  (component, interface, data, flow, choice); approach (how one change is
-  built; it stays with the change); informative (rationale, example, open);
-  note (headings and connecting text); change-only (plan, step, migration).
-- The links: `serves:R<n>` in a change spec, `serves:<request>/R<n>` in
-  `specs/`; `builds-on:<ID>`, `changes:<ID>`, `removes:<ID>`;
-  `explains:<ID>`, `illustrates:<ID>`, `resolved-by:<ID>`,
-  `governed-by:<ADR>`; `for:<task>`. A promise, design or approach paragraph
-  needs at least one link. In `specs/`, the ID of a change spec paragraph
-  names its request: `invoice-exports/SP-12`.
-- An ADR in `specs/adr/` has one marker on its heading: `ADR-<n>`, its kind,
-  and its `decides:`, `source:` and `supersedes:` links. `al check` gives a
-  hint for each proposed or accepted ADR with no `source:` or no
-  `decides:`.
-- Any text may be rewritten in other words when its meaning stays the same,
-  an accepted or superseded ADR's text too. Write a new ADR that supersedes
-  it only when the decision changes, in whole or in part. `al check` gives a
-  hint on a changed ADR: check that its decision is unchanged. After the
-  rewrite, run `al index --align <ID>` for each paragraph that links to it.
-- When an ADR is superseded, set its first line to
-  `Status: superseded by ADR-<m>`, and put `supersedes:ADR-<n>` in the marker
-  of ADR-m. When several ADRs supersede it, name each one:
-  `Status: superseded by ADR-11, ADR-12`. Where a spec paragraph, an open
-  request or a proposed or accepted ADR names ADR-n, name an ADR that
-  supersedes it beside it: in the same marker for a link, in the same
-  paragraph for a word. Else `al check` gives `not ok`.
-- `al` writes every hash and every derived field. Do not write them by hand.
-
-## Path 0: a fix
-
-1. Change the code, or the spec text that has the error.
-2. Write no request. Claim one of:
-   - `Tier: 0 — restores INV-41` when the work makes the code do what the
-     spec says;
-   - `Tier: 0 — typo in INV-3` when you fix a typo in a spec paragraph. Name
-     each paragraph: `Tier: 0 — typo in INV-3, EXP-4`.
-3. `al check` shows each changed word. It marks a change to a normative
-   word, a negation, a number or a quantifier as "meaning-sensitive". The
-   review decides whether the meaning stays the same.
-
-## Path 1: a small promise change
-
-1. `al new <name> --tier 1 --from -`, with the owner's words on standard
-   input. The name is permanent.
-2. In `requests/<name>/request.md`, add the organized requirement, in plain
-   words that the owner reads:
-
-   ```markdown
-   ## Organized requirement
-
-   <!-- R1 from:<the snapshot file in origin/> -->
-
-   ### R1 <a short title>
-   <one requirement, with MUST, SHOULD or MAY>
-   ```
-
-3. Run `al index`. Show the requirement to the owner with
-   `al record <name> signoff --source <where> --words "<their words>"`. Only
-   on the owner's own yes, run the same command with `--yes`. Do not sign for
-   the owner.
-4. Edit the promise paragraphs in `specs/` directly. Each changed or new
-   promise paragraph says `serves:<name>/R<n>` in its marker.
-5. Run `al check`. Claim `Tier: 1 — amends <ID>`. When the
-   PR is ready to merge, run `al conclude <name> --yes`: it writes the
-   Outcome and moves the request to `requests/archive/<name>/`.
-
-## Path 1d: a small design correction
-
-1. `al new <name> --tier 1d --from -`, with a one-line note of where the
-   correction comes from.
-2. Change only names or wording of design paragraphs in `specs/`. Add or
-   remove no paragraph. You may reword an ADR when its decision stays; a
-   changed decision is a new ADR that supersedes it.
-3. Claim `Tier: 1d — <what changes>`. `al check` gives a hint when the PR
-   touches a promise paragraph, or adds or removes a design paragraph. No
-   sign-off is needed.
-4. Run `al conclude <name> --yes` with the PR.
-
-## Path 2: a big change
-
-1. `al new <name> --tier 2 --from -`. Write the organized requirement as in
-   path 1, with `Out:` and `Assumed:` lines where they help. Draft freely;
-   deliver with the owner's sign-off or after it. Each R<n> needs the
-   owner's sign-off, also when the change touches no promise kind: until it
-   is signed, `al check` gives `not ok unsigned-requirement`. For a
-   design-only change, which needs no sign-off, write the organized section
-   with no `### R<n>`: a short note of what the design changes and why.
-2. Write the design in `requests/<name>/spec.md`, the change spec: the
-   promises this change adds or changes, its design, its plan. The order
-   of the paragraphs is free. The recommended order is one section per
-   topic. Each section has the promise paragraph first, then the design
-   that keeps it, with its rationale and examples, then its open points.
-   Cross-cutting design and decisions follow. Run
-   `al spec --add-ids requests/<name>/spec.md --yes` for the IDs (SP-1,
-   SP-2…), then write the kinds and links. A paragraph that relies on a spec
-   paragraph says `builds-on:<ID>`. One that replaces it says `changes:<ID>`.
-   One that removes it says `removes:<ID>`. Never copy the old text. A
-   design or approach paragraph that keeps a promise paragraph of this
-   change spec says `builds-on:SP-n`. `al check` gives a hint when it serves
-   a requirement and links to none of that requirement's promise
-   paragraphs here.
-3. Snapshot each later word of the owner that you rely on:
-   `al record <name> origin --url <where> --from - --yes`. Record each later
-   decision: `al record <name> decision --source <who> --text "<it>" --yes`.
-4. Consolidate by judgement, in the PR with the code or later: bring each
-   piece of a kind that goes into `specs/` (promise, the lasting design
-   kinds, rationale, example, open) into `specs/`, in the words that make
-   the spec read as the current system. You may rewrite, split or join
-   paragraphs; write no Was/Now text. Give a new paragraph a spec ID
-   (`al spec --add-ids`), its kind, and its links. In `specs/`, a link names
-   the request: `serves:<name>/R<n>`. Remove each paragraph that a
-   `removes:` names; removing a promise needs a signed requirement. Plan,
-   step, migration, approach and note paragraphs stay with the change. Run
-   `al check`, and read its map.
-5. The review judges each piece in a consolidation judgement in
-   `requests/<name>/review.md` (see the README). When a paragraph is not
-   delivered, delete it from the change spec while the request is open, or
-   record why: `al record <name> close --on SP-n --reason "<one sentence>" --yes`.
-   When a signed requirement is met where no lasting paragraph links to it
-   (an existing design reused, a one-time migration), record where:
-   `al record <name> close --on R<n> --reason "<one sentence>" --yes`. Name
-   the spec paragraphs that the reason relies on by their IDs: `al` keeps
-   their versions, and the line goes stale when one changes.
-6. When `al check` says a paragraph you build on changed, check your change
-   against the new text, then run `al index --align <name>/SP-n`.
-7. Close with `al conclude <name> --yes`. It refuses while a promise change
-   is not signed, a signed requirement has no declared paragraph link, a
-   `changes:` target is unchanged since the link, or a `removes:` target is
-   still in `specs/`, unless a current close line names it. Run
-   `al conclude <name>` first: the preview lists each reason.
-
-## Path 3: an epic
-
-As path 2, in parts. Each part consolidates the paragraphs it delivers in
-its own PR. Tasks are optional: where the
-project uses them, list them in the record as
-`tasks: [{id: T2, ref: "issue #34", delivers: [R3]}]`, and name the task in
-the commit messages of its PRs. Plan, step and migration paragraphs may live
-in the tracker issue that the task's `ref` names, instead of in the change
-spec. `al` never contacts a tracker: save the items in a folder (the README
-has the format and the `gh` commands), and `al check --issues <folder>`
-gives hints on them: an item missing from the folder, a superseded ADR
-named without its successor, a bare `#n` in another repository's item, an
-item that is not a child of the request's own item, the phrases of
-`phrases:` in `.assuredloop/config.yaml`, and an item whose text changed
-since the change relied on it. Run `al index --issues <folder>` in the
-commit that names an item, and after a sign-off, before the commit that
-records it: then `al` keeps the item's text by itself. When `al check --issues` gives
-`issue-changed`, read the item, and record that you read it:
-`al record <name> judgement --hint issue-changed --on <item> --reason <why> --issues <folder> --yes`.
-Run `al conclude <name> --yes` with the last part.
-
-## Path S: a spike
-
-1. `al new <name> --tier S --from -`. In `request.md`, write
-   `## Organized question` with `<!-- Q1 -->` and `### Q1 <title>`.
-2. The owner signs the question, as in path 1, step 3.
-3. The change spec holds the candidates and the experiments. It is never
-   consolidated.
-4. Write the findings in the request folder. Open them with the answer, and
-   name the question version that it answers, for example "Answer to Q1
-   version 1: …". Change no spec text.
-5. Run `al conclude <name> --yes`. A spike may end with no follow-up. An
-   answer may also inform work that is already open. Only separately
-   authorized work needs a new request; say in its `request.md` that it
-   follows the spike: `Follows: <name>`.
-
-## The views
-
-- `al check --full`: each changed paragraph with its kind, its text, its
-  requirement and the baseline paragraphs that it touches.
-- `al context <name> --audit`: the whole trace of a request. Add
-  `--at <commit>` to any view for a past state.
-- `al spec`: every doc's IDs, display numbers and kinds.
-- Each output ends with `Read`, `Next` (only when a step follows) and `Not known`. Take `Not known` as
-  it is: the tool does not know it, and you do not either.
+- Claim the path in a commit message and in the PR: `Tier: 0 — restores INV-41`,
+  `Tier: 0 — typo in INV-3`, `Tier: 1 — amends INV-10`. `al check` reads the
+  newest `Tier:` line.
+- Start a request: `al new <name> --tier <1|1d|2|3|S> --from -`, with the
+  owner's words on standard input. In `request.md`, write each requirement as
+  `<!-- R1 from:<snapshot> -->`, `### R1 <title>`, and one sentence with MUST,
+  SHOULD or MAY. A spike writes `## Organized question`, `<!-- Q1 -->` and
+  `### Q1 <title>`.
+- `al record <name> signoff --source <where> --words "<their words>"` shows
+  what the owner signs. Only on the owner's own yes, run
+  `al record <name> signoff --source <where> --words "<their words>" --yes`.
+- Record each later word of the owner that you rely on, and each decision:
+  `al record <name> origin --url <where> --from - --yes`,
+  `al record <name> decision --source <who> --text "<it>" --yes`.
+- Path 3: save the tasks' work items in a folder, and run
+  `al check --issues <folder>`.
+- A spike's change spec is never consolidated. Open its findings with the
+  answer and the question version: "Answer to Q1 version 1: …".
+- Delete a change paragraph that you will not deliver while the request is
+  open, or run `al record <name> close --on SP-<n> --reason "<why>" --yes`. For
+  a signed requirement met where no lasting paragraph links to it, run
+  `al record <name> close --on R<n> --reason "<where>" --yes`.
+- Close with `al conclude <name> --yes`: with the PR, or on path 3 with the
+  last part.

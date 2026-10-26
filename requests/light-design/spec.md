@@ -409,7 +409,11 @@ are. `al context <ID> --full` adds the text of each citing line.
 <!-- LD-20 plan -->
 
 The skill guides the judgements. It stays short, because the AI reads it
-on every task. Its steps:
+on every task. After its steps, one short section names what differs by
+path: the records, the owner's sign-off, the close lines and `al conclude`.
+It leaves out what a hint or an answer of `al` already says when it is
+needed. It names each `al` option beside its command, so that a code test
+can check that `al` accepts each one. Its steps:
 
 1. At the start of a task: run `al check` for the list of what is in force
    (section 4a). Read the requirement, the change spec and the listed
