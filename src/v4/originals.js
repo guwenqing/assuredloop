@@ -157,15 +157,19 @@ export function originals(top, rev, get, config) {
 }
 
 // The result of every original file that request r's record names, for al
-// conclude: [{ file, status, problem }]. An entry with no file or no sha256
-// is failed, as in record-evidence.
+// conclude: [{ file, status, problem }]. A list that is not a list, and an
+// entry with no file or no sha256, are failed, as in the record checks.
 export function requestOriginals(state, r) {
   const data = r.data ?? {};
-  const list = (x) => (Array.isArray(x) ? x : []);
   const ok = (x) => x && typeof x.file === 'string' && x.file && typeof x.sha256 === 'string' && x.sha256;
   const one = (x, signedOnly, what) => (ok(x) ? { file: x.file, ...state.originals.check(r, x.file, x.sha256, signedOnly) }
     : { file: typeof x?.file === 'string' && x.file ? x.file : '-', status: 'failed', problem: `a ${what} entry with no file or no sha256` });
-  return [...list(data.sources).map((s) => one(s, false, 'sources')), ...list(data.signoff).map((s) => one(s, true, 'sign-off'))];
+  const each = (key, signedOnly, what) => {
+    const xs = data[key] ?? [];
+    if (!Array.isArray(xs)) return [{ file: key, status: 'failed', problem: `${key}: is not a list, so its files cannot be checked` }];
+    return xs.map((x) => one(x, signedOnly, what));
+  };
+  return [...each('sources', false, 'sources'), ...each('signoff', true, 'sign-off')];
 }
 
 // --- writing
