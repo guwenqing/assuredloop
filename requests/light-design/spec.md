@@ -300,7 +300,9 @@ is not delivered from the open change spec (delete-in-change-spec/R1). The
 near-match hint takes the Spec lines of a consolidation judgement as links
 of the change paragraphs that the same judgement names, where it took a
 disposition's spec before. The adoption entries (`source: adoption`, DES-38,
-DES-39) are the adopted baseline, not dispositions, and stay.
+DES-39) are the adopted baseline, not dispositions, and stay. An old
+`removed` disposition still names the request that removed an ID in the
+hint on a link to it, so that fact is not lost.
 
 <!-- LD-16 plan -->
 

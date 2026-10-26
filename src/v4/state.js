@@ -128,10 +128,11 @@ export function loadState(top, rev = null) {
       get recordError() { dataOf(); return error; },
       get tier() { return tierOf(); },
       get spike() { return tierOf() === 'S' || /^##\s+Organized question\s*$/m.test(md); },
-      // Whether the record's text can hold the adoption entries, so that a
-      // reader parses only those records. YAML writes a word another way only
-      // through an escape in a double-quoted string, so a record with a
-      // backslash always counts.
+      // Whether the record's text names `x`, so that a reader parses only the
+      // records that can hold what it looks for; mayAdopt for the adoption
+      // entries. YAML writes a word another way only through an escape in a
+      // double-quoted string, so a record with a backslash always counts.
+      mentions: (x) => typeof text === 'string' && (text.includes(x) || text.includes('\\')),
       mayAdopt: typeof text === 'string' && (text.includes('adoption') || text.includes('\\')),
       reqs: requirements(md), paras: new Map(paras.map((p) => [p.id, p])), framedBy,
     });
