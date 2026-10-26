@@ -47,7 +47,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  al, appendSection, commitAll, doc, git, index, newRequest, ok, organized, read, req, write, writesNothing,
+  al, appendSection, commitAll, doc, git, index, newRequest, ok, organized, read, req, write, writeConfig, writesNothing,
 } from './helpers/project.js';
 import {
   CS, NAME, NOTE, SPEC, T12, T13, T41, addSpec, assertSpec, base7, check, claim, editSpec, entries, entry, headerLine,
@@ -403,4 +403,54 @@ test('#68 no change selected: "nothing changed against the base <7>" on a branch
   git(lone, 'branch', '-m', 'main', 'trunk');
   r = check(lone);
   noMap(r, 'map: no change selected: no base (no main branch, or no commit)');
+});
+
+// =====================================================================
+// A central repo's own `central:` links (DES-69: a repo whose config lists
+// outputs is the central repo, and `central:X` there means its own X)
+
+// The link entry of holder, verb and id; the target may be named as id or
+// as central:id.
+function linkEither(r, holder, verb, id) {
+  const ids = [`${holder} ${verb} ${id}`, `${holder} ${verb} central:${id}`];
+  const found = entries(r).filter((e) => e.kind === 'link' && ids.includes(e.id));
+  assert.equal(found.length, 1, `one map link entry for ${ids.join(' or ')}:\n${show(r)}`);
+  return found[0];
+}
+
+test('#68 central links in the central repo: changes:central:INV-41 and removes:central:INV-13 have link lines and name their spec lines; builds-on:central:INV-12 names its spec line and leaves it unnamed', (t) => {
+  const dir = world(t, [
+    ['SP-1 rule serves:R1 changes:central:INV-41', 'A shared export link lives for 24 hours.'],
+    ['SP-3 limit serves:R1 removes:central:INV-13', 'An invoice may have no line now.'],
+    ['SP-4 data serves:R1 builds-on:central:INV-12', 'An export names the currency of each invoice.'],
+    SP2,
+  ], {
+    // The config lists an output repo (its clone is absent), so this repo is
+    // the central repo.
+    onMain: (d) => writeConfig(d, [{ file: SPEC, prefix: 'INV' }], {
+      repo: 'invoicer', outputs: [{ name: 'invoicer-web', path: '../al-v4-68-no-such-clone' }],
+    }),
+  });
+  const base = git(dir, 'merge-base', 'main', 'HEAD');
+  editSpec(dir, 'INV-41', 'rule', T41, N41);
+  removeSpec(dir, 'INV-13', T13);
+  editSpec(dir, 'INV-12', 'data', T12, 'An invoice has a number, a customer, a currency, lines, a total and a paid date.', { serves: null });
+  index(dir);
+  commitAll(dir, `${NAME}: INV-41, INV-13 and INV-12`);
+  const r = check(dir);
+  assert.equal(mapHead(r), headerLine(dir, NAME), show(r));
+
+  const changes = linkEither(r, 'share/SP-1', 'changes', 'INV-41');
+  placed(r, changes, places(dir, CS, 'SP-1'));
+  assert.equal(changes.fact, 'changed since the link', show(r));
+  assertSpec(r, 'INV-41', { what: 'changed', refs: ['share/SP-1 changes'], at: places(dir, SPEC, 'INV-41') });
+  noUnnamedHint(r, 'INV-41');
+
+  assert.equal(linkEither(r, 'share/SP-3', 'removes', 'INV-13').fact, 'removed', show(r));
+  assertSpec(r, 'INV-13', { what: 'removed', refs: ['share/SP-3 removes'], at: places(dir, SPEC, 'INV-13', base) });
+  noUnnamedHint(r, 'INV-13');
+
+  assertSpec(r, 'INV-12', { what: 'changed', refs: ['share/SP-4 builds-on'], at: places(dir, SPEC, 'INV-12') });
+  unnamedHint(r, 'INV-12', places(dir, SPEC, 'INV-12'));
+  assert.deepEqual(entries(r).filter((e) => e.kind === 'link' && e.id.startsWith('share/SP-4 ')), [], `a builds-on link has no link line:\n${show(r)}`);
 });
