@@ -59,7 +59,7 @@ paragraphs:
     display: OE-20 (3:2, in 3. Writing)
   - id: OE-12
     kind: data
-    text_sha256: b1ccbd2575f02adc2072440acc4b271be075f4c37fb5c4498f5183a38aab1dfe
+    text_sha256: 25e4dfb2841f875fba42c9b19180f9b2e5b025eaaf25337ea0efc8e00f91ef87
     display: OE-12 (3:3, in 3. Writing)
   - id: OE-13
     kind: note
