@@ -281,11 +281,14 @@ function one(r, code, file, at, severity = 'hint') {
 // The same result: the same exit code, and the same output, line for line,
 // once each file name of the first run is changed to the file name of the
 // second run ([from, to] pairs).
+// al check runs al index (#78): the first run writes the records and keeps
+// the items' texts, so its `records:` and `index kept:` lines are left out.
 function assertSame(first, second, renames = [], what = '') {
-  let text = first.stdout;
+  const checked = (out) => out.split('\n').filter((l) => !/^(records|index kept): /.test(l)).join('\n');
+  let text = checked(first.stdout);
   for (const [from, to] of renames) text = text.split(from).join(to);
   assert.equal(second.code, first.code, `${what}: the same exit code\n${show(first)}\n${show(second)}`);
-  assert.equal(second.stdout, text, `${what}: the same output as the JSON control\n--- the JSON control\n${show(first)}\n--- this run\n${show(second)}`);
+  assert.equal(checked(second.stdout), text, `${what}: the same output as the JSON control\n--- the JSON control\n${show(first)}\n--- this run\n${show(second)}`);
 }
 
 // The unread finding at <folder>/<file>: a hint, ID -, "not read: <reason>".
@@ -854,7 +857,8 @@ describe('D: items-out-of-reach in .assuredloop/config.yaml', () => {
     one(r, 'issue-missing', 'acme/web#9');
     one(r, 'issue-superseded', 'zeta/plans#6', 1);
     // The rest of the output is the control's, but the lines about those tasks and the one line.
-    const rest = (x) => x.stdout.split('\n').filter((l) => !l.startsWith('info issues-out-of-reach ') && !l.startsWith('Not known')
+    // al check runs al index (#78): the first run writes the records.
+    const rest = (x) => x.stdout.split('\n').filter((l) => !l.startsWith('info issues-out-of-reach ') && !l.startsWith('Not known') && !/^(records|index kept): /.test(l)
       && !(findings(l)[0] && ['issue-missing', 'issue-changed'].includes(findings(l)[0].code) && OUT.includes(findings(l)[0].id)));
     assert.deepEqual(rest(r), rest(control), show(r));
   });

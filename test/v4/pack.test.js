@@ -100,7 +100,7 @@ before(() => {
 after(() => { if (scratch) rmSync(scratch, { recursive: true, force: true }); });
 
 // The installed al (the link npm put in <prefix>/bin) run with `args` in
-// `cwd`: exit 0, ending with Next then Not known; its stdout.
+// `cwd`: exit 0, ending with Not known, after Next when a step follows (#78); its stdout.
 function al(cwd, ...args) {
   const bin = join(prefix, 'bin', 'al');
   assert.ok(existsSync(bin), `npm install --global should put al in ${join(prefix, 'bin')}`);
@@ -108,7 +108,8 @@ function al(cwd, ...args) {
   assert.equal(r.code, 0, `the installed al ${args.join(' ')} should exit 0:\n${r.both}`);
   const ls = lines(r.stdout);
   assert.ok(ls.length >= 2, `al ${args.join(' ')}: output too short:\n${r.both}`);
-  assert.match(ls.at(-2), /^Next\b/, `second last line should start with Next:\n${r.stdout}`);
+  const next = ls.findIndex((l) => /^Next\b/.test(l));
+  if (next >= 0) assert.equal(next, ls.length - 2, `second last line should start with Next:\n${r.stdout}`);
   assert.match(ls.at(-1), /^Not known\b/, `last line should start with Not known:\n${r.stdout}`);
   return r.stdout;
 }

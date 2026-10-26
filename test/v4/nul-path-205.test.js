@@ -10,6 +10,7 @@ import { readObjects, filesAt, fileAt, blobAt } from '../../src/v4/git.js';
 import { makeRepo } from './helpers/repo.js';
 import { blobSha, centralConfig, commit, world, worldOutputs, ZIP_V1 } from './helpers/cross-repo.js';
 import { al, baseProject, commitAll, git, sha, show, write, writeYaml } from './helpers/project.js';
+import { as78 } from './helpers/as-78.js';
 
 // --- the readers
 
@@ -223,6 +224,9 @@ function nulWorld(t) {
   return { w, repos: { central: w.central, web: w.web, worker: w.worker }, extra: { [w.root]: '<root>' } };
 }
 
+// #78: al check's own changes are taken out of both outputs (see helpers/as-78.js).
+const for78 = (r, ls) => (r.args[0] === 'check' ? as78(ls.join('\n')).split('\n') : ls);
+
 const isNulLine = (l) => /results\/[st]-nul\.yaml /.test(l);
 
 // The result lines of s-nul and t-nul that the contract wants, with the
@@ -321,7 +325,7 @@ describe('a result in an output repo whose declared input holds a NUL', () => {
       const { w, repos, extra } = nulWorld(t);
       const r = al(w.central, args);
       const got = withoutList(linesOf(named(r.stdout, repos, extra)), r, PINNED[label]).filter((l) => !isNulLine(l));
-      assert.deepEqual({ code: r.code, lines: got }, PINNED[label], show(r));
+      assert.deepEqual({ code: r.code, lines: for78(r, got) }, { ...PINNED[label], lines: for78(r, PINNED[label].lines) }, show(r));
     });
   }
 });
@@ -342,5 +346,5 @@ test("the central repo's own result with a NUL in an input: applicability unknow
   commitAll(dir, 'Record two results\n\nTier: 0 — results');
   const r = al(dir, ['check']);
   const got = withoutList(linesOf(named(r.stdout, { central: dir }, { [dir]: '<dir>' })), r, PINNED.central);
-  assert.deepEqual({ code: r.code, lines: got }, PINNED.central, show(r));
+  assert.deepEqual({ code: r.code, lines: for78(r, got) }, { ...PINNED.central, lines: for78(r, PINNED.central.lines) }, show(r));
 });

@@ -147,9 +147,13 @@ test('#68 the link and the edit in one commit before the first al index: "not kn
   write(dir, CS, doc([SP1, SP2]));
   editSpec(dir, 'INV-41', 'rule', T41, N41);
   commitAll(dir, claim(NAME));
-  let r = check(dir);
+  // #78: al check runs al index, so the state before al index is read with al check --at.
+  let r = check(dir, '--at', 'HEAD');
   assert.equal(mapHead(r), headerLine(dir, NAME), show(r));
   assert.equal(link(r, 'share/SP-1', 'changes', 'INV-41').fact, 'not known: the link has no binding (run al index)', show(r));
+  // #78: al check binds the link from the history: the base text too.
+  r = check(dir);
+  assert.equal(link(r, 'share/SP-1', 'changes', 'INV-41').fact, 'changed since the link', `al check binds the base text, not the edited text:\n${show(r)}`);
   index(dir);
   r = check(dir);
   assert.equal(link(r, 'share/SP-1', 'changes', 'INV-41').fact, 'changed since the link', `al index binds the base text, not the edited text:\n${show(r)}`);
@@ -328,6 +332,8 @@ test('#68 no exit code change: al check --strict exits 0 with both map hints and
   assert.deepEqual(mapHints(plain), mapHints(strict), show(plain));
   // With a note that holds a judgement, too.
   note(dir, judged('SP-1 complies: the link lives 24 hours.', 'Item: "lives for 24 hours"', `Spec (INV-41): "${N41}"`));
+  // #78: al check keeps the identity of the new judgement once, then writes nothing.
+  check(dir);
   writesNothing(dir, ['check']);
   const again = al(dir, ['check', '--strict']);
   assert.equal(again.code, 0, show(again));
@@ -354,7 +360,8 @@ const NO_OWN = "map: no open change of path 2 or 3 is this change's own";
 
 function noMap(r, reason) {
   assert.equal(mapHead(r), reason, show(r));
-  assert.deepEqual(mapLines(r), [reason], `only the one-line reason:\n${show(r)}`);
+  // #78: the map lists the changed paragraphs, also with no own request.
+  assert.deepEqual(mapLines(r).filter((l) => !l.startsWith('map paragraph ')), [reason], `only the one-line reason:\n${show(r)}`);
   assert.deepEqual(mapHints(r), [], `no map hint:\n${show(r)}`);
 }
 
