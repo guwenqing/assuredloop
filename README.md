@@ -43,7 +43,7 @@ The package carries the skill, at
 the project's AGENTS.md:
 
 ```
-AssuredLoop keeps this project's requests and spec: before work that changes the spec, read <dir>/skills/assuredloop/SKILL.md and run `al context`.
+AssuredLoop keeps this project's requests and spec: at the start of each task, read <dir>/skills/assuredloop/SKILL.md and run `al check`.
 ```
 
 In a shared repo whose contributors install `al` in different places, copy
@@ -115,7 +115,8 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
 
 ## Paths
 
-The user picks the path. The skill has the steps of each path.
+The user picks the path. The skill has the steps of a change, the review
+steps among them, and one short section on what differs by path.
 
 | Path | When | Records | Sign-off | Closes when |
 |---|---|---|---|---|
@@ -868,6 +869,7 @@ it applies a promise, for example a flow step that keeps a rule, give it
 | `al conclude` refuses on its conditions (see "The close rule") | write the owner's words and the organized requirement, and ask for the sign-off | what is wanted, by signing the organized requirement |
 | `not ok`: sign-off coverage of promise changes, unsigned requirement versions, changed record evidence, citations of superseded ADRs and their status lines, and records or a spec root that cannot be read | choose the path, and state it in a commit message and the PR | whether a changed requirement is signed again |
 | hints for the review: IDs missing, used twice, lost or used again; kinds and links; links that do not resolve; path and typo claims; a spec paragraph changed with no change paragraph that names it, and a change paragraph with no current consolidation judgement; stale bindings; overlapping changes; ADR text changes; a proposed or accepted ADR with no `source:` or no `decides:`; result applicability; a design paragraph that links to none of its requirement's promise paragraphs in its change spec; a `for:` that names no task; matches of the configured phrases; with `--issues <folder>`, the hints from the linked work items | record each later decision, with its source | decisions whose source is the owner, such as dropping or keeping work |
+| | review from the changed behaviour: one search question, a judgement for each item that applies, the consolidation, the tests and the user documents; say what is unknown | |
 | `check --strict` exits 1 on a `not ok`, when a project opts in | | |
 
 `al` checks that declarations are well formed and that references resolve.
