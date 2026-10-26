@@ -16,6 +16,7 @@ import { requirements } from './request-md.js';
 import { outputRepos } from './repos.js';
 import { loadItems, taskItems } from './issues.js';
 import { keepItems } from './kept-items.js';
+import { keepJudgements } from './evidence.js';
 import { YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
 // The marker links that get a binding, by the parser's key; `for` (a task) has no text to bind.
@@ -320,6 +321,8 @@ export function index({ top, cwd, opts }) {
     for (const m of missing) notes.push(`not kept: ${m.r.name}/${m.task} ${m.written}: ${m.key ? `no item in ${issues.folder} is ${m.key}` : m.unknown ?? 'it names no item'}`);
     for (const u of issues.unread) notes.push(`item file not read: ${u.file}: ${u.why}`);
   }
+  // The identity of each review judgement that has none (light-design R2).
+  body.push(...keepJudgements(top, recs, loaded, issues));
   const repos = new Map(outputRepos(top, loaded).filter((r) => r.name).map((r) => [r.name, r]));
   const links = linksOf(top, now, config, true, repos);
   const atBase = new Set(base ? linksOf(top, loadState(top, base, config, names), config, false).map(tripleKey) : []);

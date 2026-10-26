@@ -391,9 +391,28 @@ function named(stdout, repos, extra = {}) {
 // #58: al check prints the list of what is in force, which main did not
 // print: one block of lines after the findings, right before the Read line.
 const LIST_LINE = /^(list: |list basis: |list limits: |in force |proposed |\d+ further items in force: )/;
-// The text without the list block, and the block. When there is a block, it
-// must be one run of lines right before the Read line.
-function withoutList(text, r) {
+// #64: al check prints the review section of each own request, which main
+// did not print: one block of lines right after the list block and right
+// before the Read line. Another command must have none.
+const REVIEW_LINE = /^(review note |judgement )/;
+function withoutReview(text, r) {
+  const ls = text.split('\n');
+  const at = ls.flatMap((l, i) => (REVIEW_LINE.test(l) ? [i] : []));
+  if (r.args[0] !== 'check') {
+    assert.deepEqual(at, [], `no review section outside al check:\n${show(r)}`);
+    return text;
+  }
+  if (at.length === 0) return text;
+  assert.equal(at.at(-1) - at[0] + 1, at.length, `the review section is one block:\n${show(r)}`);
+  assert.match(ls[at[0] - 1] ?? '', LIST_LINE, `the review section comes right after the list block:\n${show(r)}`);
+  assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the review section comes right before the Read line:\n${show(r)}`);
+  return ls.filter((_, i) => !at.includes(i)).join('\n');
+}
+// The text without the review block and the list block, and the list block.
+// When there is a list block, it must be one run of lines right before the
+// Read line, once the review block is out.
+function withoutList(all, r) {
+  const text = withoutReview(all, r);
   const ls = text.split('\n');
   const at = ls.flatMap((l, i) => (LIST_LINE.test(l) ? [i] : []));
   if (at.length === 0) return { rest: text, list: [] };

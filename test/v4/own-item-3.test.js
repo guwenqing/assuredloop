@@ -492,12 +492,30 @@ function withoutList(stdout) {
   assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the list comes right before the Read line:\n${stdout}`);
   return { rest: ls.filter((_, i) => !at.includes(i)).join('\n'), list: at.map((i) => ls[i]) };
 }
+// #64: al check prints the review section of each own request, which main
+// did not print: one block of lines right after the list block and right
+// before the Read line.
+const REVIEW_LINE = /^(review note |judgement )/;
+// The output without the review block, and the block.
+function withoutReview(stdout) {
+  const ls = stdout.split('\n');
+  const at = ls.flatMap((l, i) => (REVIEW_LINE.test(l) ? [i] : []));
+  if (at.length === 0) return { rest: stdout, review: [] };
+  assert.equal(at.at(-1) - at[0] + 1, at.length, `the review section is one block:\n${stdout}`);
+  assert.match(ls[at[0] - 1] ?? '', LIST_LINE, `the review section comes right after the list block:\n${stdout}`);
+  assert.match(ls[at.at(-1) + 1] ?? '', /^Read /, `the review section comes right before the Read line:\n${stdout}`);
+  return { rest: ls.filter((_, i) => !at.includes(i)).join('\n'), review: at.map((i) => ls[i]) };
+}
 // Every line that main printed, in the same order, and the same exit code;
 // the list of #58 is there (its grouped line or its "no change selected"
-// line), and, once main prints a list too, it is the same list.
+// line), and, once main prints a list too, it is the same list. The review
+// section of #64 is taken out first; once main prints one too, it is the same.
 function sameAsMainOutput(here, main, args) {
-  const h = withoutList(here.stdout);
-  const m = withoutList(main.stdout);
+  const hr = withoutReview(here.stdout);
+  const mr = withoutReview(main.stdout);
+  if (mr.review.length > 0) assert.deepEqual(hr.review, mr.review, `al ${args.join(' ')}: the same review section as on main`);
+  const h = withoutList(hr.rest);
+  const m = withoutList(mr.rest);
   assert.equal(h.rest, m.rest, `al ${args.join(' ')}: the same output as on main, but the list of #58`);
   assert.ok(h.list.some((l) => /^(list: no change selected: |\d+ further items in force: )/.test(l)), `al ${args.join(' ')}: the list of #58:\n${here.stdout}`);
   if (m.list.length > 0) assert.deepEqual(h.list, m.list, `al ${args.join(' ')}: the same list as on main`);

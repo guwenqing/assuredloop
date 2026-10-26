@@ -23,6 +23,9 @@ const designKind = (state, kind) => !!kind && ['promise', 'design'].includes(gro
 const adrNumber = (id) => Number(id.slice('ADR-'.length));
 const word = (name) => new RegExp(`(?<![\\w-])${name.replace(/[-]/g, '\\-')}(?![\\w-])`);
 const unref = (ref) => String(ref).replace(/^central:/, '');
+// The review notes of the open requests (LD-27), as a git glob.
+export const REVIEW_NOTES = 'requests/*/review.md';
+export const isReviewNote = (path) => /^requests\/(?!archive\/)[^/]+\/review\.md$/.test(path);
 
 // A glob of a file scope (LD-26) as a regex: `**` any number of folders,
 // `*` within one folder name, `?` one character.
@@ -72,17 +75,26 @@ const headerPath = (rest) => {
   return p === '/dev/null' ? null : p.slice(2);
 };
 
-// The selected change: the paths it touches (all of them, .assuredloop/
-// included, for the own requests), and each line it adds or removes outside
-// .assuredloop/, as { file, line, text, removed }.
-function changeOf(top, base) {
+// The paths that the selected change touches: all of them, .assuredloop/
+// and the review notes included, for the own requests; and the untracked ones.
+function pathsOf(top, base) {
   const run = (args) => git(top, ['-c', 'core.quotePath=false', ...args], { allowFail: true }) ?? '';
   const paths = new Set(run(['diff', '--name-only', '-z', '--no-renames', '--no-relative', base, '--']).split('\0').filter(Boolean));
   const untracked = run(['ls-files', '-z', '--others', '--exclude-standard', '--', '.']).split('\0').filter(Boolean);
   for (const f of untracked) paths.add(f);
+  return { paths, untracked };
+}
+
+// The selected change: its paths (pathsOf), and each line it adds or removes
+// outside .assuredloop/ and the review notes, as { file, line, text, removed }.
+// A review note is the review's output, not part of the change, so an ID in
+// it is no citation (LD-25, LD-28).
+function changeOf(top, base) {
+  const run = (args) => git(top, ['-c', 'core.quotePath=false', ...args], { allowFail: true }) ?? '';
+  const { paths, untracked } = pathsOf(top, base);
   const lines = [];
   const diff = run(['diff', '-U0', '-M', '--no-color', '--no-ext-diff', '--no-textconv', '--no-relative', '--src-prefix=a/', '--dst-prefix=b/',
-    base, '--', '.', ':(exclude).assuredloop']);
+    base, '--', '.', ':(exclude).assuredloop', `:(exclude,glob)${REVIEW_NOTES}`]);
   let from = null;
   let to = null;
   let hunk = false;
@@ -101,7 +113,7 @@ function changeOf(top, base) {
     if (l.startsWith('-')) lines.push({ file: from, line: o++, text: l.slice(1), removed: true });
     else if (l.startsWith('+')) lines.push({ file: to, line: n++, text: l.slice(1), removed: false });
   }
-  for (const file of untracked.filter((f) => !f.startsWith('.assuredloop/'))) {
+  for (const file of untracked.filter((f) => !f.startsWith('.assuredloop/') && !isReviewNote(f))) {
     let text;
     try {
       text = readFileSync(join(top, file), 'utf8');
@@ -135,7 +147,7 @@ function itemsInForce(now) {
 
 // The open requests that are this change's own: the change touches their
 // folder or their record, or a commit message of base..HEAD names them.
-function ownRequests(top, now, base, paths) {
+export function ownRequests(top, now, base, paths = pathsOf(top, base).paths) {
   const messages = git(top, ['log', '--format=%B%x00', `${base}..HEAD`], { allowFail: true }) ?? '';
   return [...now.requests.values()].filter((r) => r.open).filter((r) => [...paths].some((f) => f.startsWith(`${r.dir}/`) || f === recordPath(r.name))
     || word(r.name).test(messages)).sort((a, b) => (a.name < b.name ? -1 : 1));
@@ -159,9 +171,12 @@ function designLines(md) {
 }
 
 // A design document of this repo, or `<repo>:<path>` of an output repo at its
-// selected commit (git only): { lines } for the list, { hint } when it is
-// missing or cannot be read, or { info } when the output repo is unknown.
-function designDoc(top, now, path, source, repos) {
+// selected commit (git only): { text, clean, shown, adr, paras }, with its
+// paragraphs (an ADR's own); { hint } when it is missing or cannot be read,
+// or { info } when the output repo is unknown. With `rev`, a document of
+// this repo is read at that commit. The list and the evidence check (C8)
+// read a change's design documents with it.
+export function readDesign(top, now, path, repos, rev = null) {
   const m = /^([A-Za-z0-9][\w.-]*):(.*)$/.exec(path);
   const rel = m ? m[2] : path;
   if (!rel || posix.isAbsolute(rel) || rel.split('/').includes('..')) return { hint: 'cannot be read' };
@@ -172,6 +187,9 @@ function designDoc(top, now, path, source, repos) {
     if (!repo) return { hint: `cannot be read: ${m[1]} is not an output repo in the config` };
     if (repo.unknown) return { info: `unknown: ${repo.unknown}` };
     text = fileAt(repo.dir, repo.sha, clean);
+    if (text == null) return { hint: 'is missing' };
+  } else if (rev) {
+    text = fileAt(top, rev, clean);
     if (text == null) return { hint: 'is missing' };
   } else {
     let stat;
@@ -188,10 +206,18 @@ function designDoc(top, now, path, source, repos) {
     }
   }
   const shown = m ? `${m[1]}:${clean}` : clean;
-  const head = `proposed ${path} design document · ${source}`;
   const adr = !m && ADR_FILE.test(posix.basename(clean)) && posix.dirname(clean) === `${now.root}/adr` ? now.adrList.find((a) => a.file === clean) : null;
+  return { text, clean, shown, adr, paras: adr ? adr.paragraphs : parseMarkdown(text, clean, { kinds: now.kinds }).paragraphs };
+}
+
+// The lines of a design document for the list, or its { hint } or { info }.
+function designDoc(top, now, path, source, repos) {
+  const d = readDesign(top, now, path, repos);
+  if (d.text === undefined) return d;
+  const { text, clean, shown, adr, paras } = d;
+  const head = `proposed ${path} design document · ${source}`;
+  const design = paras.filter((p) => designKind(now, p.kind));
   if (adr) {
-    const design = adr.paragraphs.filter((p) => designKind(now, p.kind));
     return {
       lines: [`${head} · ${adr.id} ${adr.status ?? 'with no known status'} · an ADR; ${design.length} design paragraphs`,
         ...design.map((p) => `proposed ${p.id} design paragraph · ${clean}:${textLine(text, p)} · ${p.kind}: ${oneLine(p.text)}`)],
@@ -199,16 +225,41 @@ function designDoc(top, now, path, source, repos) {
   }
   const status = /^Status:[ \t]*(.*?)\s*$/m.exec(lf(text).split('\n')[0] ?? '')?.[1];
   const state = status ? `Status: ${status}` : 'state unknown';
-  const paras = parseMarkdown(text, clean, { kinds: now.kinds }).paragraphs;
   if (!paras.length) return { lines: [`${head} · ${state} · no markers: supporting evidence`] };
-  const design = paras.filter((p) => designKind(now, p.kind));
   return {
     lines: [`${head} · ${state} · ${design.length} design paragraphs`,
       ...design.map((p) => `proposed ${p.id} design paragraph · ${shown}:${textLine(text, p)} · ${p.kind}: ${oneLine(p.text)}`)],
   };
 }
 
-// The list. Returns { body, findings }: the lines, and the design-doc hints.
+// The design paths of the open requests `names` (LD-48, D2): the design lines
+// of each request.md; with --issues, the field design (one path or a list) and
+// the design lines of each saved work item that a task of one of them names.
+// Each as { path, r, source, where, item }, or { bad, it } for a design field
+// that is not a path or a list of paths; item is set for a work item's.
+export function designPaths(top, now, own, issues) {
+  const out = [];
+  for (const r of own) {
+    for (const d of designLines(r.md)) out.push({ path: d.path, r, source: `design line ${r.dir}/request.md:${d.line}`, where: `${r.dir}/request.md:${d.line}` });
+  }
+  const ownNames = new Set(own.map((r) => r.name));
+  const named = issues && own.length ? taskItems(top, now, issues.items).named.filter((n) => ownNames.has(n.r.name)) : [];
+  const seen = new Set();
+  for (const { r, it } of named) {
+    if (seen.has(it)) continue;
+    seen.add(it);
+    for (const path of it.design === undefined ? [] : [].concat(it.design)) {
+      if (typeof path !== 'string' || !path) out.push({ bad: true, item: true, it });
+      else out.push({ path, r, item: true, source: `design of work item ${it.key} (${it.file})`, where: it.file });
+    }
+    for (const d of designLines(it.body)) out.push({ path: d.path, r, item: true, source: `design line in work item ${it.key} (${it.file})`, where: it.file });
+  }
+  return out;
+}
+
+// The list. Returns { body, findings, own }: the lines, the design-doc hints,
+// and the change's own requests (none with no base, an empty change, or in an
+// output repo).
 export function changeInForce(top, { now, was, base, issues = null, full = false }) {
   if (!base) return { body: ['list: no change selected: no base (no main branch, or no commit)'], findings: [] };
   const change = changeOf(top, base);
@@ -318,6 +369,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     if (got.info) findings.push({ severity: 'info', code: 'output-repo', where, id: path, message: got.info });
     return got.lines ?? [];
   };
+  const designs = designPaths(top, now, own, issues);
   for (const r of own) {
     const lines = lf(r.md).split('\n');
     for (const q of r.reqs) {
@@ -331,24 +383,12 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     for (const p of r.paras.values()) {
       if (designKind(now, p.kind)) body.push(`proposed ${r.name}/${p.id} change spec · ${r.specFile}:${textLine(specText, p)} · ${p.kind}: ${oneLine(p.text)}`);
     }
-    for (const d of designLines(r.md)) {
-      const where = `${r.dir}/request.md:${d.line}`;
-      body.push(...designShown(d.path, `design line ${where}`, where));
-    }
+    for (const d of designs.filter((x) => x.r === r && !x.item)) body.push(...designShown(d.path, d.source, d.where));
   }
-  // With --issues: the field design (one path or a list) of each saved work
-  // item that a task of the change's own request names (LD-48, D2).
-  const named = issues && own.length ? taskItems(top, now, issues.items).named.filter((n) => ownNames.has(n.r.name)).map((n) => n.it) : [];
-  for (const it of new Set(named)) {
-    const paths = it.design === undefined ? [] : [].concat(it.design);
-    for (const path of paths) {
-      if (typeof path !== 'string' || !path) {
-        findings.push({ severity: 'hint', code: 'design-doc', where: it.file, id: '-', message: `the design field of ${it.key} is not a path or a list of paths, so it cannot be read` });
-        continue;
-      }
-      body.push(...designShown(path, `design of work item ${it.key} (${it.file})`, it.file));
-    }
-    for (const d of designLines(it.body)) body.push(...designShown(d.path, `design line in work item ${it.key} (${it.file})`, it.file));
+  // The designs of the saved work items that a task of an own request names (LD-48, D2).
+  for (const d of designs.filter((x) => x.item)) {
+    if (d.bad) findings.push({ severity: 'hint', code: 'design-doc', where: d.it.file, id: '-', message: `the design field of ${d.it.key} is not a path or a list of paths, so it cannot be read` });
+    else body.push(...designShown(d.path, d.source, d.where));
   }
   if (!own.length && !central) limits.unshift('no open request is this change\'s own (none of its files changed, and no commit message names one)');
   if (!issues) limits.push('the design field of work items is read only with --issues <folder>');
@@ -365,5 +405,5 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     + 'proposed = this change\'s own signed requirements and design, not in force; the grouped line names every other item in force');
   body.push(`list limits: an item that is not shown in full may still apply, so ask which requirement or decision governs the changed behaviour; `
     + `al check --full shows the text of every item, al context <ID>${central ? ` --at ${central.sha.slice(0, 7)} in the central repo shows` : ''} one item${limits.length ? `; ${limits.join('; ')}` : ''}`);
-  return { body, findings };
+  return { body, findings, own };
 }
