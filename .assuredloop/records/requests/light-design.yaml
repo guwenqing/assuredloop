@@ -136,3 +136,4 @@ own_edits:
   - { paragraph: DES-118, sha256: f87e7d74abbcdf7aa69c0b4048e044275777e9fc158fe4f168b8d9728f1071d8, kept: 2026-10-26T09:00Z }
   - { paragraph: SCH-40, sha256: 53563512fe2c39d87ef964bd5c1a562777fc4e384590b9343e4e249834bf07e4, kept: 2026-10-26T09:00Z }
   - { paragraph: DES-117, sha256: 556d2feccfdf5e797e19b4774b70c5bd045b0cc14c36b9a0f0d3c4382c49b147, kept: 2026-10-26T09:54Z }
+  - { paragraph: DES-117, sha256: 3cdb816ce9bee264c5ed073492b8f83826f9ef2560e1a054ee0140bf2ef4fa84, kept: 2026-10-26T10:03Z }

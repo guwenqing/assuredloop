@@ -996,8 +996,8 @@ tracker's key in the list is out of reach for each task whose `ref` holds
 it as a whole word, when no item in the folder has it as its `ref`, also
 when the same `ref` names another item that is in the folder. A task whose
 `ref` names no item in the folder keeps its `issue-missing` and its
-`issue-changed`, unless its `ref` holds nothing but other trackers' keys
-of the list, white space and punctuation. An item that the list names and that is in the folder
+`issue-changed`, unless its `ref` holds one or more other trackers' keys
+of the list, and nothing else but white space and punctuation. An item that the list names and that is in the folder
 is read as usual. A value that is not a list of texts that are not empty
 stops `al check` with exit 2.
 

@@ -334,7 +334,7 @@ export function outOfReach(config) {
 // its repository `owner/repo`, by a form of SP-8, or, for another tracker,
 // by a key that a task's ref holds as a whole word while no item of the
 // folder has it as its ref. A ref that names no saved item gets no hint only
-// when it holds nothing but such keys.
+// when it holds one or more such keys and nothing else.
 function outOfReachItems(state, entries, finder, items, missing) {
   const repos = new Set();
   const keys = new Set();
@@ -351,8 +351,10 @@ function outOfReachItems(state, entries, finder, items, missing) {
     if (!w.length) others.push(e);
   }
   const saved = new Set(items.map((it) => it.ref).filter(Boolean).map(slug));
-  // The ref holds nothing but other trackers' keys of the list, each of which the line names.
-  const only = (ref) => !/[\p{L}\p{N}]/u.test(others.reduce((t, k) => t.replace(wordRe(k, 'g'), ' '), String(ref)));
+  // The ref holds one or more other trackers' keys of the list, each of which
+  // the line names, and nothing else but white space and punctuation.
+  const only = (ref) => others.some((k) => holds(String(ref), k))
+    && !/[\p{L}\p{N}]/u.test(others.reduce((t, k) => t.replace(wordRe(k, 'g'), ' '), String(ref)));
   const away = (m) => (m.none ? only(m.written)
     : texts.has(slug(m.written)) || (m.key && (keys.has(slug(m.key)) || repos.has(slug(m.key).replace(/#\d+$/, '')))));
   const hits = [];
