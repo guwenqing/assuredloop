@@ -26,6 +26,8 @@
 //      Replaces  old/R5 (<place>), last signed version 1 (only al's record .assuredloop/records/requests/old.yaml holds this)
 //      Replaces  old/R5 (<place>), never signed
 //      Replaces  x/R9: not found
+//    `al context spike/Q1`, a question whose marker has replaces:old/R5:
+//      Replaces  old/R5: on a question, so no replacement
 // 3. The list of `al check`: an own request's signed requirement whose
 //    replacement holds is shown as
 //      replaced old/R5 signed requirement · <place> · replaced by new/R5 (<place>), version 1: signed in S1 (only al's record .assuredloop/records/requests/new.yaml holds this): <new title>: <new text>
@@ -48,10 +50,17 @@
 //    a spec ID); `replaces:new/R1 names a requirement of its own request: a
 //    new version there is a change of its text, not a replaces: link` (also a
 //    bare `replaces:R1`); `new/R5 replaces old/R5, and so does other/R2: keep
-//    one replaces: link` on each marker.
+//    one replaces: link` on each marker. Only a requirement replaces a
+//    requirement: a `replaces:` token on a question's marker (for example
+//    `<!-- Q1 replaces:old/R5 -->` of a signed spike/Q1) is a mistake, never
+//    a replacement: `hint replaces-link <marker place> spike/Q1
+//    replaces:old/R5 is on a question: only a requirement R<n> replaces a
+//    requirement`; old/R5 gets no Replaced line and no status segment, the
+//    list shows it as today, and INV-39 gets no serves-replaced hint.
 // 6. `al context <old request> --audit`: for each of its replaced
-//    requirements, `Replaced  R5 by new/R5 (<place>), version 1: <sign
-//    state>; <words>` (same words as 1).
+//    requirements,
+//      Replaced  R5 (<place of old/R5>) by new/R5 (<place>), version 1: <sign state>; <words> (only al's record .assuredloop/records/requests/new.yaml holds the version and the sign-off state)
+//    (the same words as 1).
 //
 // A hint line of `al check` is `hint <code> <where> <id> <message>`,
 // optionally followed by ` · places: ...`. No model and no network.
@@ -83,6 +92,9 @@ const NEW_ONE_LINE = `${NEW_TITLE}: ${NEW_BODY}`;
 const NEW_R1 = { block: '<!-- R1 -->\n\n### R1 Header names\nThe header line MUST name each column.\n' };
 const OTHER_R2 = { block: '<!-- R2 replaces:old/R5 -->\n\n### R2 Yearly CSV\nA user MUST be able to download one year as one CSV file.\n' };
 const SPIKE_Q1 = { block: '<!-- Q1 -->\n\n### Q1 Signed links\nCan a signed link replace the token table?\n' };
+const SPIKE_MD = 'requests/spike/request.md';
+const SPIKE_Q1_HEAD = '### Q1 Header line';
+const SPIKE_Q1_BODY = 'Does a monthly CSV file need a header line?';
 const T39 = 'An export MUST be one CSV file per month.';
 const SIGN = ['--source', 'owner', '--words', 'Yes, sign it', '--yes'];
 
@@ -133,10 +145,11 @@ function archive(dir, name) {
 // replaces old/R5, signed; with touchOld, a new file in requests/old/, so old
 // is an own request of the change. With outside, the branch sets
 // `originals: {outside: assuredloop}`, the new request is made by a worker
-// with the place, and w.env is a worker with no place.
+// with the place, and w.env is a worker with no place. With question, the
+// branch also adds the request spike whose Q1 has that marker, signed.
 function world(t, {
   marker = 'R5 replaces:old/R5', archived = true, oldSigned = true, sign = true, touchOld = false, outside = false,
-  newR1 = false, other = false, spike = false,
+  newR1 = false, other = false, spike = false, question = null,
 } = {}) {
   const ws = outside ? workers(t) : { withPlace: {}, noPlace: {} };
   const dir = baseProject(t, { branch: null });
@@ -168,6 +181,12 @@ function world(t, {
     appendSection(dir, 'other', organized([OTHER_R2]));
     run(dir, ['index'], env);
     run(dir, ['record', 'other', 'signoff', ...SIGN], env);
+  }
+  if (question) {
+    run(dir, ['new', 'spike', '--from', '-'], env, 'The owner asks about monthly CSV files.\n');
+    appendSection(dir, 'spike', organized([{ block: `<!-- ${question} -->\n\n${SPIKE_Q1_HEAD}\n${SPIKE_Q1_BODY}\n` }]));
+    run(dir, ['index'], env);
+    run(dir, ['record', 'spike', 'signoff', ...SIGN], env);
   }
   run(dir, ['index'], env);
   return { dir, env: ws.noPlace, oldMd: archived ? OLD_ARCH : OLD_OPEN };
@@ -514,18 +533,63 @@ test('#82 al check: new/R5 and other/R2 both replace old/R5: a hint replaces-lin
   assert.ok(replaced.some((l) => l.startsWith(`Replaced  by other/R2 (${place(w.dir, OTHER_MD, '### R2 Yearly CSV')}), version 1: signed in S1; `)), show(r));
 });
 
+// --- 5. a replaces: token on a question's marker
+
+const ON_QUESTION = 'replaces:old/R5 is on a question: only a requirement R<n> replaces a requirement';
+const Q_MARKER = 'Q1 replaces:old/R5';
+
+test('#82 al check: replaces:old/R5 on the marker of the signed question spike/Q1: hint replaces-link on that marker, never not ok', (t) => {
+  const w = world(t, { marker: 'R5', question: Q_MARKER });
+  const { plain, strict } = exitCodesAsBefore(w);
+  const where = markerPlace(w, SPIKE_MD, Q_MARKER);
+  oneHint(plain, 'replaces-link', where, 'spike/Q1', ON_QUESTION);
+  oneHint(strict, 'replaces-link', where, 'spike/Q1', ON_QUESTION);
+  assert.deepEqual(notOkLines(plain), [], `no not ok in this fixture:\n${show(plain)}`);
+  assert.equal(strict.code, 0, show(strict));
+});
+
+test('#82 a question that names replaces:old/R5 replaces nothing: al context old/R5 has no Replaced line and no status segment, and INV-39 gets no serves-replaced hint', (t) => {
+  const w = world(t, { marker: 'R5', question: Q_MARKER });
+  const q = context(w, 'spike/Q1');
+  assert.ok(allLabelled(q, 'Requirement ').concat(allLabelled(q, 'Question ')).some((l) => l.includes(' · signed in S1 · ')),
+    `the fixture: spike/Q1 is signed in S1:\n${show(q)}`);
+  const r = context(w, 'old/R5');
+  assert.equal(labelled(r, 'Requirement '), reqLine(w, 'old/R5', 'signed in S1', '', OLD_ARCH, OLD_HEAD, OLD_ONE_LINE), show(r));
+  assert.deepEqual(allLabelled(r, 'Replaced  '), [], show(r));
+  const c = check(w);
+  assert.deepEqual(hintLines(c, 'serves-replaced'), [], show(c));
+  const a = context(w, 'old', '--audit');
+  assert.deepEqual(allLabelled(a, 'Replaced  '), [], show(a));
+});
+
+test('#82 a question that names replaces:old/R5: the list shows old/R5 as today, and no "replaced" line', (t) => {
+  const w = world(t, { marker: 'R5', question: Q_MARKER, archived: false, touchOld: true });
+  const r = check(w);
+  assert.deepEqual(listLine(r, 'proposed old/R5 '),
+    [`proposed old/R5 signed requirement · ${place(w.dir, OLD_OPEN, OLD_HEAD)} · signed in S1 (only al's record ${OLD_REC} holds this): ${OLD_ONE_LINE}`], show(r));
+  assert.deepEqual(listLine(r, 'replaced '), [], show(r));
+});
+
+test('#82 al context spike/Q1 with replaces:old/R5 on its marker: "Replaces  old/R5: on a question, so no replacement"', (t) => {
+  const w = world(t, { marker: 'R5', question: Q_MARKER });
+  const r = context(w, 'spike/Q1');
+  assert.equal(labelled(r, 'Replaces  '), 'Replaces  old/R5: on a question, so no replacement', show(r));
+});
+
 // --- 6. the full trace
 
 test('#82 al context old --audit: the trace names R5 as replaced by new/R5, with its place, version and sign state', (t) => {
   const w = world(t);
   const r = context(w, 'old', '--audit');
-  assert.equal(labelled(r, 'Replaced  '), `Replaced  R5 by new/R5 (${newPlace(w)}), version 1: signed in S1; ${HOLDS}`, show(r));
+  assert.equal(labelled(r, 'Replaced  '),
+    `Replaced  R5 (${oldPlace(w)}) by new/R5 (${newPlace(w)}), version 1: signed in S1; ${HOLDS} ${NEW_NOTE}`, show(r));
 });
 
 test('#82 al context old --audit with new/R5 not signed: the trace names a proposed replacement', (t) => {
   const w = world(t, { sign: false });
   const r = context(w, 'old', '--audit');
-  assert.equal(labelled(r, 'Replaced  '), `Replaced  R5 by new/R5 (${newPlace(w)}), version 1: not signed; ${PROPOSED}`, show(r));
+  assert.equal(labelled(r, 'Replaced  '),
+    `Replaced  R5 (${oldPlace(w)}) by new/R5 (${newPlace(w)}), version 1: not signed; ${PROPOSED} ${NEW_NOTE}`, show(r));
 });
 
 test('#82 control: al context old --audit with no replaces: link: no Replaced line', (t) => {
