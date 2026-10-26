@@ -4,3 +4,4 @@ root: specs
 docs:
   - {file: specs/design.md, prefix: DES}
   - {file: specs/schema.md, prefix: SCH}
+originals: {outside: assuredloop}

@@ -1,0 +1,83 @@
+schema: assuredloop/1
+file: requests/origin-elsewhere/spec.md
+paragraphs:
+  - id: OE-1
+    kind: note
+    text_sha256: e38ec7556f94e21c295a6bcf07570a2e5c173ad53d7a19fd3b3f591118ae5e60
+    display: "OE-1 (0, Original files outside the repo: the change spec)"
+  - id: OE-2
+    kind: note
+    text_sha256: aa4ee40b3211e0ba90396ec7037952f8ac540e82d11a4c4facc75237e74f742b
+    display: "OE-2 (0:1, in Original files outside the repo: the change spec)"
+  - id: OE-3
+    kind: note
+    text_sha256: 0a51202d37e394252738e6ca121d46245288ff5c817000ac0789b605f37d6d50
+    display: OE-3 (1, 1. Where the files are)
+  - id: OE-4
+    kind: data
+    text_sha256: 351ca48465170156ea577488bc1bd428dd01a09458d31dec9b7ce882479ccc9d
+    display: OE-4 (1:1, in 1. Where the files are)
+  - id: OE-5
+    kind: data
+    text_sha256: fb51fc0ea5f3fcb30995500e7ca194463140f2e9d8c4d2033949de1b15b671a6
+    display: OE-5 (1:2, in 1. Where the files are)
+  - id: OE-6
+    kind: choice
+    text_sha256: 8d866f559a8f390bd6a2c49302579e192e20e90d236a399eef868392751977ac
+    display: OE-6 (1:3, in 1. Where the files are)
+  - id: OE-18
+    kind: rationale
+    text_sha256: 66c6e4ca231941a6465acb429f229166fbd475b0f85b9fe259e6e47a8ab4bfea
+    display: OE-18 (1:4, in 1. Where the files are)
+  - id: OE-7
+    kind: note
+    text_sha256: 445b31835e598e4dbc42558855d818e94e92117b8d4328f07120f87f2b59ea8c
+    display: "OE-7 (2, 2. Reading: one result for each file)"
+  - id: OE-8
+    kind: rule
+    text_sha256: c6b6374033d23c7c5f91e94fb9c6198fe492669dd898a59a5e885ba9cd2de0f6
+    display: "OE-8 (2:1, in 2. Reading: one result for each file)"
+  - id: OE-19
+    kind: rule
+    text_sha256: 1a4d0bde7474e1d858f60343922780b7918a81d9d6d7e8807dd8a155822a325c
+    display: "OE-19 (2:2, in 2. Reading: one result for each file)"
+  - id: OE-9
+    kind: rule
+    text_sha256: 8c248f8201925804bdcd9ca14d0f4ff6c45ef15f53eb9a198ee253f591de4a4b
+    display: "OE-9 (2:3, in 2. Reading: one result for each file)"
+  - id: OE-10
+    kind: note
+    text_sha256: 4895957d12c52cbce8d657f88e3b2c369e50aee336fac258e27320d70d164672
+    display: OE-10 (3, 3. Writing)
+  - id: OE-11
+    kind: rule
+    text_sha256: 05f7a64c77ebad781b79de1eb2d0d0fac427c9c969af7e64672aca654fde22b7
+    display: OE-11 (3:1, in 3. Writing)
+  - id: OE-20
+    kind: rule
+    text_sha256: 0d2ab37e7771082b9de9ffd52425d5f1700ce675172b7d7f2ed8e797b8f3ce89
+    display: OE-20 (3:2, in 3. Writing)
+  - id: OE-12
+    kind: data
+    text_sha256: b1ccbd2575f02adc2072440acc4b271be075f4c37fb5c4498f5183a38aab1dfe
+    display: OE-12 (3:3, in 3. Writing)
+  - id: OE-13
+    kind: note
+    text_sha256: 23c21c29c46619932403038a6794381d5cfbc4fe13e946b5149396e4870e045b
+    display: OE-13 (4, 4. Concluding and export)
+  - id: OE-14
+    kind: rule
+    text_sha256: 494080a086218cf9b0f5b0912aa0ade430ccc602433fde795a4eff580f7b9572
+    display: OE-14 (4:1, in 4. Concluding and export)
+  - id: OE-15
+    kind: interface
+    text_sha256: f3b8c889e8157672b6299b818f767664e9ab16c1264fe776860a6f642a7a4f8d
+    display: OE-15 (4:2, in 4. Concluding and export)
+  - id: OE-16
+    kind: note
+    text_sha256: a4d4be1ddbf57617807197710145e9cca11d0532b3adb700f7f37ded63bf449b
+    display: OE-16 (5, 5. Docs and tests)
+  - id: OE-17
+    kind: plan
+    text_sha256: cc1191c91d2bde61fe9349366585ea08d04554ccd89616bbacae251029b2a7b6
+    display: OE-17 (5:1, in 5. Docs and tests)
