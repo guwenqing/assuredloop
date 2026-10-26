@@ -12,14 +12,14 @@
 // Each finding is { severity, code, where, id, message }, as in checks.js.
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { read, recordPath, sha256 } from './base.js';
-import { SIGNED } from './snapshot.js';
+import { read, recordPath } from './base.js';
 import { SPEC, adrId, linkedDocs, rootNotOk } from './scope.js';
 
 const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const text = (x) => typeof x === 'string' && x.length > 0;
 const whole = (x) => Number.isInteger(x) && x > 0;
 const REQ = /^[RQ]\d+$/;
+const UNKNOWN = 'its original file is not checked';
 const SYMLINK = 'it is a symlink, and al does not read through a symlink';
 // A symlink that stands for a current place: to a Markdown file, or to a
 // folder (its type is read from the link, nothing through it).
@@ -32,34 +32,13 @@ const placeLink = (top, path) => {
   }
 };
 
-// The bytes of a snapshot after its separator line, as al new and al record
-// hashed them: the first line that is `---` (or `--- signed text ---`), or
-// only `--- signed text ---` for a sign-off. Null when there is none.
-function snapshotText(bytes, signedOnly) {
-  const seps = signedOnly ? [`\n${SIGNED}\n`] : ['\n---\n', `\n${SIGNED}\n`];
-  const at = seps.map((s) => [bytes.indexOf(s), s]).filter(([i]) => i >= 0).sort((a, b) => a[0] - b[0])[0];
-  return at ? bytes.subarray(at[0] + at[1].length) : null;
-}
-
-// What a record's file name in origin/ gives: { hash } of its snapshot text,
-// or { problem } that says why it has none.
-function evidence(top, r, file, signedOnly) {
-  const name = String(file).replace(/^origin\//, '');
-  if (!/^[^/\\]+$/.test(name) || name === '.' || name === '..') return { problem: `${file} is not a file in ${r.dir}/origin/` };
-  let bytes;
-  try {
-    bytes = read(top, `${r.dir}/origin/${name}`, null);
-  } catch (e) {
-    return { problem: `${r.dir}/origin/${name} cannot be read: ${e.message}` };
-  }
-  if (bytes === null) return { problem: `${r.dir}/origin/${name} is missing` };
-  const t = snapshotText(bytes, signedOnly);
-  if (t === null) return { problem: `${r.dir}/origin/${name} has no ${signedOnly ? `"${SIGNED}"` : '"---"'} line, so its text cannot be read` };
-  return { hash: sha256(t) };
-}
-
-// R3, R4 and the unreadable record, for each request with a record, open or archived.
+// R3, R4 and the unreadable record, for each request with a record, open or
+// archived. An original file that is kept outside and not checked here (no
+// place is set) is no `not ok`: one info line per request names those files,
+// and what it leaves unknown is given back for the Not known line
+// (origin-elsewhere/R1).
 export function recordBlocks(top, state, add) {
+  const notKnown = [];
   // A record whose request has no request.md: nothing in it can be checked.
   const folder = '.assuredloop/records/requests';
   let records = [];
@@ -84,6 +63,14 @@ export function recordBlocks(top, state, add) {
     const bad = (code, where, id, message) => add('not ok', code, where, `${r.name}/${id}`, message);
 
     // R4: each origin file under sources:, and each sign-off file.
+    const unchecked = [];
+    const evidence = (file, sha, signedOnly, id) => {
+      const e = state.originals.check(r, file, sha, signedOnly);
+      const changed = id ? `${e.name} changed: its signed text no longer has the sha256 of ${id}` : `${e.name} changed: its text no longer has the sha256 that the record lists`;
+      if (e.status === 'failed') bad('record-evidence', at, file, e.changed ? changed : e.problem);
+      if (e.status === 'not checked') unchecked.push(e);
+      return e;
+    };
     const sources = data.sources ?? [];
     if (!Array.isArray(sources)) bad('record-evidence', at, 'sources', 'sources: is not a list, so its files cannot be checked');
     for (const s of Array.isArray(sources) ? sources : []) {
@@ -91,9 +78,7 @@ export function recordBlocks(top, state, add) {
         bad('record-evidence', at, isMap(s) && text(s.file) ? s.file : '-', 'a sources entry with no file or no sha256');
         continue;
       }
-      const e = evidence(top, r, s.file, false);
-      if (e.problem) bad('record-evidence', at, s.file, e.problem);
-      else if (e.hash !== s.sha256) bad('record-evidence', at, s.file, `${r.dir}/origin/${s.file.replace(/^origin\//, '')} changed: its text no longer has the sha256 that the record lists`);
+      evidence(s.file, s.sha256, false);
     }
     const signoffs = data.signoff ?? [];
     if (!Array.isArray(signoffs)) bad('unsigned-requirement', at, 'signoff', 'signoff: is not a list, so no sign-off can be read');
@@ -106,19 +91,23 @@ export function recordBlocks(top, state, add) {
         bad('unsigned-requirement', at, id, 'a sign-off entry that cannot be read: it needs id, file, sha256 and a covers list');
         continue;
       }
-      const e = evidence(top, r, s.file, true);
-      if (e.problem) bad('record-evidence', at, s.file, e.problem);
-      else if (e.hash !== s.sha256) bad('record-evidence', at, s.file, `${r.dir}/origin/${s.file.replace(/^origin\//, '')} changed: its signed text no longer has the sha256 of ${s.id}`);
+      const e = evidence(s.file, s.sha256, true, s.id);
       const covers = s.covers.filter((c) => isMap(c) && text(c.id) && whole(c.version) && text(c.sha256));
       if (covers.length < s.covers.length) {
         bad('unsigned-requirement', at, s.id, `${s.id} has a covers entry that cannot be read: it needs id, a whole version above 0 and sha256`);
         continue;
       }
-      const problem = e.problem ? `its file: ${e.problem}`
-        : e.hash !== s.sha256 ? 'its file\'s signed text does not have its sha256'
-          : !(text(s.signed) && !Number.isNaN(Date.parse(s.signed))) ? 'it does not record when it was signed'
-            : !text(s.words) ? 'it does not record the signer\'s words' : null;
+      // Its other conditions are checked in every state of its file.
+      const problem = e.status === 'failed' ? (e.changed ? 'its file\'s signed text does not have its sha256' : `its file: ${e.problem}`)
+        : !(text(s.signed) && !Number.isNaN(Date.parse(s.signed))) ? 'it does not record when it was signed'
+          : !text(s.words) ? 'it does not record the signer\'s words'
+            : e.status === 'not checked' ? UNKNOWN : null;
       why.set(s, problem);
+    }
+    if (unchecked.length) {
+      const files = [...new Set(unchecked.map((e) => e.file))];
+      add('info', 'originals-not-checked', at, r.name, `${unchecked[0].problem}: ${files.join(', ')}`);
+      notKnown.push(`the original files of ${r.name}, not checked (${unchecked[0].problem}): ${files.join(', ')}`);
     }
 
     // R3: only a request whose record has requirements:.
@@ -149,12 +138,18 @@ export function recordBlocks(top, state, add) {
       if (shown.has(v.id)) continue;
       const covering = [...why.keys()].filter((s) => s.covers.some((c) => c.id === v.id && c.version === v.version && c.sha256 === v.sha256));
       if (covering.some((s) => why.get(s) === null)) continue;
+      // A sign-off whose file is not checked is neither signed nor a not ok.
+      if (covering.some((s) => why.get(s) === UNKNOWN)) {
+        notKnown.push(`whether ${r.name}/${v.id} is signed: the original file of its sign-off is not checked`);
+        continue;
+      }
       const reason = covering.length
         ? covering.map((s) => `${s.id} covers it, but is not valid: ${why.get(s)}`).join('; ')
         : `no sign-off covers version ${v.version} with its sha256`;
       bad('unsigned-requirement', md, v.id, `${v.id} version ${v.version} is not signed: ${reason}; ${next}`);
     }
   }
+  return notKnown;
 }
 
 // The ADRs that each ADR supersedes, directly: those its marker names in

@@ -13,6 +13,7 @@ import { branchOf } from './checks.js';
 import { judgeRequest } from './dispositions.js';
 import { baseOf, git } from './git.js';
 import { openRecord, recordText } from './records.js';
+import { requestOriginals } from './originals.js';
 import { isPromise, loadState, qualify, servesSigned } from './state.js';
 import { signState } from './views.js';
 
@@ -23,6 +24,10 @@ const NOT_KNOWN = ['whether the code, tests and documents do what the paragraphs
 // `branch` holds the branch's promise changes that no signed requirement covers.
 function reasons(state, r, branch) {
   const out = [];
+  // Each original file of the request is checked again: a request closes only
+  // with every one verified (origin-elsewhere/R1).
+  const files = requestOriginals(state, r).filter((f) => f.status !== 'verified');
+  if (files.length) out.push(`an original file of ${r.name} is not checked or does not match its record: ${files.map((f) => `${f.file} (${f.status}: ${f.problem})`).join(', ')}`);
   if (r.spike) {
     if (branch.length) out.push(`a promise change with no signed requirement that covers it: ${branch.map((c) => c.name).join(', ')}`);
     if (!r.reqs.length) out.push(`the spike has no organized question to sign in ${r.dir}/request.md`);
@@ -100,7 +105,9 @@ export function conclude({ top, args, opts }) {
   if (!r.open) throw new Fail(`${name} is already archived (requests/archive/${name}); an archived request is not concluded again`, `al context ${name}`);
   const found = baseOf(top);
   const base = found?.commit ?? null;
-  const branch = base ? branchOf(top, state, loadState(top, base), base).uncovered : [];
+  // A promise change whose sign-off cannot be checked here is not counted as signed.
+  const promises = base ? branchOf(top, state, loadState(top, base), base) : null;
+  const branch = promises ? [...promises.uncovered, ...promises.unknown] : [];
   const read = base ? `working tree · base ${base.slice(0, 7)} (merge-base with ${found.ref})` : 'working tree · no base';
   const notKnown = base ? NOT_KNOWN : ['the promise changes of the branch: no base (no main branch, or no commit)', ...NOT_KNOWN];
   const { out, judged } = reasons(state, r, branch);
