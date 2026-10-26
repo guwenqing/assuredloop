@@ -322,6 +322,13 @@ A link to another repo uses a qualified ID: `central:INV-41`,
   what anyone wrote there. Ordinary indexing never advances a binding; only
   `al index --align <ID>` does.
 
+<!-- SCH-39 data serves:origin-elsewhere/R1 -->
+
+The committed config says that the project keeps its original files outside,
+by a name, not by a path: `originals: {outside: <name>}` in
+`.assuredloop/config.yaml`. With no `originals` key, the files are in the
+repo, as today, and `al` reads no other setting for them.
+
 <!-- SCH-29 note -->
 
 ## 8. A worked example as records

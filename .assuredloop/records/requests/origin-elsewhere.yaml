@@ -50,4 +50,6 @@ bindings:
   - { holder: origin-elsewhere/OE-20, link: builds-on, target: origin-elsewhere/OE-11, holder_sha256: 0d2ab37e7771082b9de9ffd52425d5f1700ce675172b7d7f2ed8e797b8f3ce89, target_sha256: 05f7a64c77ebad781b79de1eb2d0d0fac427c9c969af7e64672aca654fde22b7 }
   - { holder: origin-elsewhere/OE-12, link: builds-on, target: origin-elsewhere/OE-11, holder_sha256: b1ccbd2575f02adc2072440acc4b271be075f4c37fb5c4498f5183a38aab1dfe, target_sha256: 05f7a64c77ebad781b79de1eb2d0d0fac427c9c969af7e64672aca654fde22b7 }
   - { holder: origin-elsewhere/OE-15, link: builds-on, target: origin-elsewhere/OE-8, holder_sha256: f3b8c889e8157672b6299b818f767664e9ab16c1264fe776860a6f642a7a4f8d, target_sha256: c6b6374033d23c7c5f91e94fb9c6198fe492669dd898a59a5e885ba9cd2de0f6 }
-dispositions: []
+  - { holder: SCH-39, link: serves, target: origin-elsewhere/R1, holder_sha256: 351ca48465170156ea577488bc1bd428dd01a09458d31dec9b7ce882479ccc9d, target_sha256: 4b567d7c36ffc3ba3ba24e4c2a2e54bc4a176b11dec635d0ee1b0d57097c2f43, target_version: 1 }
+dispositions:
+  - { source: origin-elsewhere/OE-4, disposition: incorporated, spec: SCH-39, source_sha256: 351ca48465170156ea577488bc1bd428dd01a09458d31dec9b7ce882479ccc9d, spec_sha256: 351ca48465170156ea577488bc1bd428dd01a09458d31dec9b7ce882479ccc9d }

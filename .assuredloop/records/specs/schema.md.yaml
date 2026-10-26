@@ -117,6 +117,10 @@ paragraphs:
     kind: data
     text_sha256: 1ad9803ff82547ff0c012a4ecf76d9d1526cd7048884aedb4f71c7bc7dd56197
     display: SCH-28 (7:1, in 7. Where the model lives)
+  - id: SCH-39
+    kind: data
+    text_sha256: 351ca48465170156ea577488bc1bd428dd01a09458d31dec9b7ce882479ccc9d
+    display: SCH-39 (7:2, in 7. Where the model lives)
   - id: SCH-29
     kind: note
     text_sha256: e0fca82db6f459936a572a0a1e03ea567a94238c0985e2b6652bc73c46e542da
