@@ -150,6 +150,8 @@ export function entries(r) {
   const list = [];
   for (const line of mapLines(r)) {
     if (line.startsWith('map: ')) continue;
+    // #78: the map also names each changed paragraph; check-map-78.test.js reads those lines.
+    if (line.startsWith('map paragraph ')) continue;
     const g = GROUP.exec(line);
     if (g) {
       const [, kind, n, noun, fact, items] = g;

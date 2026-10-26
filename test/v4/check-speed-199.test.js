@@ -26,6 +26,7 @@ import { makeRepo } from './helpers/repo.js';
 import { blobSha, centralConfig, commit, world, worldOutputs } from './helpers/cross-repo.js';
 import { invoicer } from './helpers/invoicer.js';
 import { al, baseProject, commitAll, git, move, read, readYaml, sha, show, write, writeYaml } from './helpers/project.js';
+import { as78, settled } from './helpers/as-78.js';
 
 const GIT_JS = fileURLToPath(new URL('../../src/v4/git.js', import.meta.url));
 const { commitOf, mergeOf } = gitjs;
@@ -485,7 +486,9 @@ function sameAsMain(r, repos, expected, extra) {
     out = out.replace(`${found[0]}\n`, '');
   }
   out = nextAsMain(out, expected, hints);
-  assert.equal(out, expected.lines.join('\n') + '\n', show(r));
+  // #78: see helpers/as-78.js.
+  const as = r.args[0] === 'check' && expected.code !== 2 ? as78 : (x) => x;
+  assert.equal(as(out), as(expected.lines.join('\n') + '\n'), show(r));
   assert.equal(r.code, expected.code, show(r));
 }
 
@@ -1136,7 +1139,7 @@ describe('al-v4 check reads no links of the output repos; al-v4 context still do
     assert.ok(calls.some((c) => c.dir === w.worker), `check reads the worker's results:\n${listed(calls)}`);
     assert.deepEqual(calls.filter((c) => c.cmd === 'grep' || c.cmd === 'log'), [], `no git grep or git log in an output repo:\n${listed(calls)}`);
     const plain = al(w.central, ['check']);
-    assert.equal(plain.stdout, r.stdout, 'the same output without the wrapper');
+    assert.equal(settled(plain.stdout), settled(r.stdout), 'the same output without the wrapper');
   });
 
   test('context invoice-exports starts git grep and git log in the output repos', (t) => {
@@ -1198,7 +1201,7 @@ function countRun(t, w, args, assertOut) {
   assertOut(r);
   const plain = al(w.central, args);
   assert.equal(plain.code, r.code, show(plain));
-  assert.equal(plain.stdout, r.stdout, 'the same output without the wrapper');
+  assert.equal(settled(plain.stdout), settled(r.stdout), 'the same output without the wrapper');
   return { processes, calls };
 }
 
@@ -1239,7 +1242,7 @@ function ownCheckRun(t, dir, n) {
   for (const l of results) assert.match(l, /: declared inputs unchanged since [0-9a-f]{7}\b/, show(r));
   const plain = al(dir, ['check']);
   assert.equal(plain.code, r.code, show(plain));
-  assert.equal(plain.stdout, r.stdout, 'the same output without the wrapper');
+  assert.equal(settled(plain.stdout), settled(r.stdout), 'the same output without the wrapper');
   return { processes, calls, r };
 }
 

@@ -26,6 +26,7 @@ import { findings, keys } from './helpers/invoicer.js';
 import {
   BIN, EPOCH, REPO, al, commitAll, doc, editRecord, git, move, newRequest, ok, show, write, writeYaml,
 } from './helpers/project.js';
+import { as78, settled } from './helpers/as-78.js';
 
 const NAME = 'inv';
 const OWN = 'acme/invoicer';
@@ -363,7 +364,7 @@ describe('#3 (SP-9, SP-10): the file of own items is not read as an item', () =>
     assert.deepEqual(notSub(alone), [`${OWN}#32 ${NAME}/T2`], show(alone));
     ownItems(w, { nosuch: ghUrl(OWN, 8), [NAME]: OWN_ITEM, old: ghUrl(OWN, 9) });
     const r = checked(w, ...ISSUES);
-    assert.equal(r.stdout, alone.stdout, `the keys nosuch and old change nothing:\n${show(r)}\n${show(alone)}`);
+    assert.equal(settled(r.stdout), settled(alone.stdout), `the keys nosuch and old change nothing:\n${show(r)}\n${show(alone)}`);
     assert.deepEqual(coded(r, 'issue-unread'), [], show(r));
     assert.ok(!notKnown(r).includes('nosuch'), show(r));
   });
@@ -537,8 +538,8 @@ function withoutMap(stdout) {
 // both outputs.
 const withoutPlaces = (stdout) => stdout.replace(/ · places: .*$/gm, '');
 function sameAsMainOutput(here, main, args) {
-  const hm = withoutMap(withoutPlaces(here.stdout));
-  const mm = withoutMap(withoutPlaces(main.stdout));
+  const hm = withoutMap(withoutPlaces(as78(here.stdout)));
+  const mm = withoutMap(withoutPlaces(as78(main.stdout)));
   assert.ok(hm.map.length > 0, `al ${args.join(' ')}: the map of #68:\n${here.stdout}`);
   if (mm.map.length > 0) assert.deepEqual(hm.map, mm.map, `al ${args.join(' ')}: the same map as on main`);
   const hr = withoutReview(hm.rest);
@@ -573,7 +574,7 @@ describe('#3 (SP-5): without --issues, al check gives the output of main, with a
     const without = runBin(BIN, w.dir, ['check']);
     ownItems(w, { [NAME]: OWN_ITEM });
     const withFile = runBin(BIN, w.dir, ['check']);
-    assert.equal(withFile.stdout, without.stdout);
+    assert.equal(settled(withFile.stdout), settled(without.stdout)); // #78: the first run writes the records
     assert.equal(withFile.code, without.code);
   });
 });

@@ -31,9 +31,10 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  al, appendSection, baseProject, commitAll, doc, editFile, editRecord, exists, git, move, newRequest, ok, organized,
+  al, appendSection, baseProject, commitAll, doc, editFile, editRecord, exists, git, index, move, newRequest, ok, organized,
   project, read, req, show, write, writeConfig, INVOICES,
 } from './helpers/project.js';
+import { settled } from './helpers/as-78.js';
 
 const SPEC = 'specs/invoices.md';
 const ADR3_FILE = 'specs/adr/0003-signed-links.md';
@@ -377,6 +378,9 @@ test('#58 another open request names an item by changes: or removes:: "open prop
       ['SP-1 rule serves:R2 changes:INV-13', 'An invoice MUST have at least two lines.'],
       ['SP-2 rule serves:R2 removes:INV-41', 'The export link never expires.'],
     ]));
+    // #78: main holds pdf's record as al check keeps it; else al check
+    // writes it in this change, and pdf becomes a request of this change.
+    index(d);
   });
   write(dir, 'src/export.js', '// INV-13 INV-41 INV-12\n// pdf/SP-1 pdf/SP-2 pdf/R2\n');
   commitAll(dir, 'export');
@@ -748,7 +752,8 @@ test('#58 R1: the same change, project state and options give the same output, b
   const a = check(dir);
   const b = check(dir);
   grouped(a);
-  assert.equal(b.stdout, a.stdout, `two runs differ:\n${show(a)}\n${show(b)}`);
+  // #78: the first run writes the records; the second writes nothing.
+  assert.equal(settled(b.stdout), settled(a.stdout), `two runs differ:\n${show(a)}\n${show(b)}`);
   const fa = check(dir, '--full');
   const fb = check(dir, '--full');
   assert.equal(fb.stdout, fa.stdout, `two --full runs differ:\n${show(fa)}\n${show(fb)}`);
