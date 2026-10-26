@@ -832,3 +832,65 @@ test('#72 near-match (d): the judgement of (b), then INV-50 edited a little: the
   assert.match(entry(r, 'consolidation', `${NAME}/SP-1`).fact, /^stale: /, `the judgement is stale:\n${show(r)}`);
   assert.deepEqual(nearMatches(r, 'SP-1'), [], `no near-match on SP-1:\n${show(r)}`);
 });
+
+// =====================================================================
+// Review of PR #73: a close line on a requirement keeps its version; an
+// archived request's close line is not checked again.
+
+test('#72 close on R1 refuses (exit 2, al: , nothing written) while R1\'s current text has no version in the record, and says to run al index first; after al index it is taken', (t) => {
+  const dir = unlinked(t);
+  editRequest(dir, NAME, 'MUST live for 24 hours', 'MUST live for 48 hours');
+  for (const yes of [[], ['--yes']]) {
+    const r = refused(dir, closeArgs('R1', 'The existing export design meets it.', ...yes));
+    assert.match(r.stdout, /^al: .*\bal index\b/m, `the message says to run al index first:\n${show(r)}`);
+  }
+  index(dir);
+  addedLine(writesNothing(dir, closeArgs('R1', 'The existing export design meets it.')), 'C1', 'R1', 'The existing export design meets it.');
+});
+
+test('#72 a close line on R1 keeps R1\'s version: R1 changed (version 2, signed), then put back to its first text (version 3, signed): C1 is stale and names R1, and item 2 refuses on R1 again; control: no change, C1 current', (t) => {
+  const dir = unlinked(t);
+  const reason = 'The existing export design meets it.';
+  closeLineAdd(dir, 'C1', 'R1', reason);
+  save(dir, `${NAME}: C1`);
+  // Control: R1 unchanged, so C1 is current and clears item 2.
+  closeLine(context(dir), { cid: 'C1', on: 'R1', reason, state: 'current' });
+  wouldClose(dir);
+  for (const [from, to, words] of [['MUST live for 24 hours', 'MUST live for 48 hours', 'Yes, 48 hours'], ['MUST live for 48 hours', 'MUST live for 24 hours', 'Back to 24 hours']]) {
+    editRequest(dir, NAME, from, to);
+    index(dir);
+    ok(dir, ['record', NAME, 'signoff', '--source', 'owner', '--words', words, '--yes']);
+    save(dir, `${NAME}: R1 changed and signed`);
+  }
+  const runs = refuses(dir, [[requirement(NAME, 'R1'), 'no declared paragraph link']]);
+  for (const r of [...runs, context(dir)]) {
+    const { rest } = closeLine(r, { cid: 'C1', on: 'R1', reason, state: 'stale' });
+    assert.ok(occurrences(rest, 'R1') >= 2, `the stale line names R1 as changed:\n${rest}\n${show(r)}`);
+  }
+  closeLineAdd(dir, 'C2', 'R1', reason);
+  save(dir, `${NAME}: C2`);
+  closeLine(wouldClose(dir), { cid: 'C2', on: 'R1', reason, state: 'current' });
+});
+
+// The close line of an archived request in a view: "recorded", neither
+// current nor stale, and no ask to record it again.
+function recordedLine(r, cid, on, reason) {
+  const found = closeLinesOf(r, cid).filter((l) => word(on).test(l) && l.includes(reason));
+  assert.equal(found.length, 1, `one close line with ${cid}, ${on} and the reason:\n${show(r)}`);
+  const rest = found[0].replace(reason, '');
+  assert.match(rest, /\brecorded\b/, `${cid} is recorded:\n${found[0]}\n${show(r)}`);
+  assert.doesNotMatch(rest, /\b(current|stale|again)\b/, `${cid} is not checked again:\n${found[0]}\n${show(r)}`);
+}
+
+test('#72 an archived request is never checked again: C1 on SP-1 naming INV-12, concluded and committed; al context share shows C1 as recorded, before and after a later edit of INV-12', (t) => {
+  const dir = openLinks(t, [['SP-1 rule serves:R1 changes:INV-41', 'A shared export link lives for 24 hours.'], PLAN]);
+  const reason = 'Not delivered: INV-12 already holds what it meant.';
+  closeLineAdd(dir, 'C1', 'SP-1', reason);
+  save(dir, `${NAME}: C1`);
+  closes(dir);
+  commitAll(dir, `${NAME}: concluded\n\nTier: 2 — ${NAME}; closes the request`);
+  recordedLine(context(dir), 'C1', 'SP-1', reason);
+  editSpec(dir, 'INV-12', 'data', T12, 'An invoice has a number, a customer, a currency, lines, a total and a paid date.');
+  save(dir, 'Later work: INV-12 gets a currency');
+  recordedLine(context(dir), 'C1', 'SP-1', reason);
+});
