@@ -175,7 +175,7 @@ paragraphs:
     display: DES-45 (6:6, in 6. Sign-off)
   - id: DES-119
     kind: rule
-    text_sha256: 3d14fcb22eedc8b85401d9fdb61007e81f29286994160fd7a150fbdfaf9a88f1
+    text_sha256: b7bf37ae78258de9c8a2a045944352f1ef63cb9ec93d63771ea3ba35fea88921
     display: DES-119 (6:7, in 6. Sign-off)
   - id: DES-46
     kind: note

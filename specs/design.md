@@ -629,8 +629,9 @@ request only.
 - A paragraph of `specs/` that serves the replaced requirement and not the
   new one gets the hint `serves-replaced`, until it serves the new one or no
   longer serves the old one.
-- A link to no requirement of another request, a link inside one request,
-  and two requirements that replace one are hints (`replaces-link`).
+- A link on a question, a link to no requirement of another request, a link
+  inside one request, and two requirements that replace one are hints
+  (`replaces-link`).
 
 <!-- DES-46 note -->
 

@@ -355,7 +355,8 @@ function auditLines(state, r) {
   // Each requirement of it that a requirement of another request replaces (LD-68).
   for (const q of r.reqs) {
     for (const l of replacersOf(state, `${r.name}/${q.id}`)) {
-      out.push(line('Replaced', `${q.id} by ${l.key} (${l.r.dir}/request.md:${reqLine(l.r, l.q.id)}), ${versionOf(l.r, l.q)}: ${signState(state, l.r, l.q)}; ${replaceWords(l)}`));
+      out.push(line('Replaced', `${q.id} (${r.dir}/request.md:${reqLine(r, q.id)}) by ${l.key} (${l.r.dir}/request.md:${reqLine(l.r, l.q.id)}), ${versionOf(l.r, l.q)}: `
+        + `${signState(state, l.r, l.q)}; ${replaceWords(l)} (only al's record ${recordPath(l.r.name)} holds the version and the sign-off state)`));
     }
   }
   for (const s of list(data.signoff)) {
@@ -624,6 +625,7 @@ function requirementView(state, t, full) {
 // names, its place and its last signed version; else why it is no
 // replacement, as the hint replaces-link says.
 function replacesLine(l) {
+  if (l.question) return `${l.ref}: on a question, so no replacement`;
   if (!l.target) return l.own ? `${l.ref}: a requirement of its own request, so no replacement` : `${l.ref}: not found`;
   const { r, q } = l.target;
   const last = list(r.data?.signoff).map((s) => list(s?.covers).find((c) => c?.id === q.id)).filter(Boolean).at(-1);
