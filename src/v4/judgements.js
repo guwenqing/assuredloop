@@ -7,6 +7,7 @@
 // (indexer.js), so the versions are kept once. A judgement never clears a
 // `not ok`: it is shown on its line.
 import { read, sha256 } from './base.js';
+import { blocksOf, lf } from './markers.js';
 import { namedIds } from './repos.js';
 import { qualify, resolve } from './state.js';
 import { CHANGED } from './kept-items.js';
@@ -32,12 +33,14 @@ function shaOf(state, id, request) {
   return got?.sha ?? null;
 }
 
-// The text of the block of lines at `line` of `file`: the paragraph there,
-// up to its first blank line.
+// The text of the block that starts at `line` of `file`, as the marker
+// parser reads it: up to the next block or marker, a list after a blank line
+// included.
 function blockAt(state, file, line) {
-  const lines = String(read(state.top, file) ?? '').replace(/\r\n?/g, '\n').split('\n').slice(line - 1);
-  const end = lines.findIndex((l) => !l.trim());
-  return (end < 0 ? lines : lines.slice(0, end)).join('\n');
+  const lines = lf(String(read(state.top, file) ?? '')).split('\n');
+  const { blocks, markers } = blocksOf(lines);
+  const next = [...blocks.map((b) => b.first), ...markers].filter((i) => i > line - 1);
+  return lines.slice(line - 1, next.length ? Math.min(...next) : lines.length).join('\n').trimEnd();
 }
 
 // The versions that a judgement on finding `f` keeps. For adr-changed, the
@@ -93,6 +96,7 @@ export function judgementPass(state) {
     .flatMap((r) => list(r.data?.judgements).filter((j) => isMap(j) && j.id != null && typeof j.hint === 'string' && !OWN_FORM.has(j.hint) && j.on != null)
       .map((j) => ({ r, j })));
   const cleared = new Map();
+  const stale = new Set();
   const codes = new Set();
   const apply = (findings) => findings.flatMap((f) => {
     const mine = entries.filter(({ j }) => j.hint === f.code && names(f, j.on));
@@ -105,10 +109,12 @@ export function judgementPass(state) {
       codes.add(f.code);
       return [];
     }
+    stale.add(`${last.r.name}/${last.j.id}`);
     return [{ ...f, message: `${f.message}; the judgement ${last.r.name}/${last.j.id} (${day(last.j)}) is stale: ${changedSince(state, last.j, f)} changed since it` }];
   });
   const judged = (bindings = new Map()) => {
-    const all = new Map(cleared);
+    // A judgement that is stale on any of its hints is not current.
+    const all = new Map([...cleared].filter(([k]) => !stale.has(k)));
     for (const [k, v] of bindings) {
       if (v.hinted) continue;
       all.set(k, v);
