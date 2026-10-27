@@ -57,8 +57,10 @@ async function embedAll(embed, texts) {
 
 // A level-2 object: `model` names it in al's output, and `key` (default
 // `model`) in the stored vectors; `embed(texts)` gives one vector per text.
-// `queryPrefix` is put before a query, `rowPrefix` before each row.
-function createLevel2({ model, key = model, embed, queryPrefix = '', rowPrefix = '' }) {
+// `queryPrefix` is put before a query, `rowPrefix` before each row. With
+// `embedQuery(text)`, a query is embedded by it instead (the llama.cpp rows,
+// whose embedder puts its own prefixes).
+export function createLevel2({ model, key = model, embed, embedQuery = null, queryPrefix = '', rowPrefix = '' }) {
   if (typeof model !== 'string' || !model) throw new Error('createLevel2 needs a model name');
   if (typeof embed !== 'function') throw new Error('createLevel2 needs an embed function');
   return {
@@ -94,7 +96,7 @@ function createLevel2({ model, key = model, embed, queryPrefix = '', rowPrefix =
     // A plain scan of the stored vectors: no vector database is needed at
     // this size (design.md 11).
     async rank({ dir, query, keys, k }) {
-      const [q] = await embedAll(embed, [`${queryPrefix}${query}`]);
+      const [q] = embedQuery ? [unit(await embedQuery(query))] : await embedAll(embed, [`${queryPrefix}${query}`]);
       const db = await open(dir);
       try {
         const wanted = new Set(keys);
@@ -134,6 +136,29 @@ export function findLibrary(top) {
 // a text of more than MAX ids keeps its first MAX - 1 ids and its last one.
 const MAX = 512;
 
+// The library at `path`, set for the measured `row`: its model repo pinned by
+// its commit. Before the library fetches the model, al writes the download
+// size to standard error. The transformers.js rerankers load it here too.
+export async function loadLibrary(path, row) {
+  // The path is the library's require entry; its exports may come as a default.
+  const imported = await import(pathToFileURL(path).href);
+  const mod = imported.pipeline || imported.AutoTokenizer ? imported : imported.default ?? imported;
+  const { env } = mod;
+  if (!env) throw new Error(`${path} has no env`);
+  // The library's pipeline() looks for some files at revision main,
+  // whatever its revision option says, and so asks the network on each
+  // load (#39). So the revision goes into every remote URL instead, and
+  // into the cache folder, as the cache's keys do not name it.
+  env.remotePathTemplate = `{model}/resolve/${row.commit}/`;
+  if (basename(env.cacheDir) !== row.commit) env.cacheDir = join(env.cacheDir, row.commit);
+  // The library keeps a file at <cacheDir>/<model repo>/<file>.
+  if (row.files.some(([file]) => !existsSync(join(env.cacheDir, ...row.repo.split('/'), ...file.split('/'))))) {
+    const mb = Math.round(row.files.reduce((s, [, bytes]) => s + bytes, 0) / 1e6);
+    process.stderr.write(`al: fetching the model ${row.name} (${mb} MB), once\n`);
+  }
+  return mod;
+}
+
 // Level 2 with the library at `path` and the measured `row`, whose model is
 // pinned by its commit and loaded with the row's precision and device. The
 // library is imported at the first embed. Before it fetches the model, al
@@ -145,24 +170,10 @@ export function level2(path, row) {
   let Tensor = null;
   async function load() {
     try {
-      // The path is the library's require entry; its exports may come as a default.
-      const mod = await import(pathToFileURL(path).href);
-      const pipeline = mod.pipeline ?? mod.default?.pipeline;
-      const env = mod.env ?? mod.default?.env;
-      Tensor = mod.Tensor ?? mod.default?.Tensor;
-      if (typeof pipeline !== 'function') throw new Error(`${path} has no pipeline function`);
-      // The library's pipeline() looks for some files at revision main,
-      // whatever its revision option says, and so asks the network on each
-      // load (#39). So the revision goes into every remote URL instead, and
-      // into the cache folder, as the cache's keys do not name it.
-      env.remotePathTemplate = `{model}/resolve/${row.commit}/`;
-      if (basename(env.cacheDir) !== row.commit) env.cacheDir = join(env.cacheDir, row.commit);
-      // The library keeps a file at <cacheDir>/<model repo>/<file>.
-      if (row.files.some(([file]) => !existsSync(join(env.cacheDir, ...row.repo.split('/'), ...file.split('/'))))) {
-        const mb = Math.round(row.files.reduce((s, [, bytes]) => s + bytes, 0) / 1e6);
-        process.stderr.write(`al: fetching the model ${row.name} (${mb} MB), once\n`);
-      }
-      extractor = await pipeline('feature-extraction', row.repo, { dtype: precision, device: runtime.slice('tjs-'.length) });
+      const mod = await loadLibrary(path, row);
+      Tensor = mod.Tensor;
+      if (typeof mod.pipeline !== 'function') throw new Error(`${path} has no pipeline function`);
+      extractor = await mod.pipeline('feature-extraction', row.repo, { dtype: precision, device: runtime.slice('tjs-'.length) });
     } catch (e) {
       throw new Error(`the model ${row.repo} did not load: ${e.message ?? e}`);
     }
