@@ -105,6 +105,9 @@ export function conclude({ top, args, opts }) {
   const r = state.requests.get(name);
   if (!r) throw new Fail(`no request named ${name}`, 'al context lists the open requests');
   if (!r.open) throw new Fail(`${name} is already archived (requests/archive/${name}); an archived request is not concluded again`, `al context ${name}`);
+  // A record that cannot be read refuses first: the reasons below need it (DES-37).
+  const rec = openRecord(top, name);
+  if (!rec) throw new Fail(`${name} has no record .assuredloop/records/requests/${name}.yaml`, 'a v4 request is made with al new');
   const found = baseOf(top);
   const base = found?.commit ?? null;
   // A promise change whose sign-off cannot be checked here is not counted as signed.
@@ -132,8 +135,6 @@ export function conclude({ top, args, opts }) {
   const target = `requests/archive/${name}`;
   if (exists(top, target)) throw new Fail(`${target} already exists; a request name is never reused`, `al context ${name}`);
   // The preview refuses for each reason that --yes refuses (#241).
-  const rec = openRecord(top, name);
-  if (!rec) throw new Fail(`${name} has no record .assuredloop/records/requests/${name}.yaml`, 'a v4 request is made with al new');
   guard(top, [`${r.dir}/request.md`, `${target}/request.md`, rec.path]);
   if (statSync(join(top, dirname(target)), { throwIfNoEntry: false })?.isDirectory() === false) {
     throw new Fail(`${dirname(target)} is not a folder; nothing was written`, `make ${dirname(target)} a folder, then al conclude ${name} again`);
