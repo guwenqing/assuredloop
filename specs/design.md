@@ -2069,8 +2069,9 @@ lines, supersede links and `specs/`. No record is added for it.
 
 <!-- DES-139 data serves:light-design/R1 builds-on:DES-138 -->
 
-**The change's own request** is an open request whose folder or record the
-change touches, or whose name a commit message of base..HEAD names. A change
+**The change's own request** is an open request, or one that the branch
+concludes, whose folder or record the change touches, or whose name a commit
+message of base..HEAD names. A change
 touches a request's record only in what `al index` does not derive, such as
 the owner's words and sources, sign-offs, tasks, decisions, close lines and
 judgements. What `al index` derives by itself (requirement versions,
