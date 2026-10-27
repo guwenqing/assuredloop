@@ -143,7 +143,9 @@ export function judgementPass(state, was = null) {
   // on a pair of hint code and --on counts (DES-163); a binding judgement
   // counts for each binding that names it; issue-changed keeps its own form.
   const stateOf = (bindings = new Map()) => (r, j) => {
-    if (!checked(r)) return 'recorded; not checked: the request is archived';
+    // al check gives no binding hint for an archived request, so its binding
+    // judgements are not checked either (DES-164).
+    if (!checked(r) || (!r.open && BINDING_HINTS.includes(j.hint))) return 'recorded; not checked: the request is archived';
     if (typeof j.hint !== 'string' || j.on == null) return 'not checked: the entry has no hint code or no --on';
     if (j.hint === CHANGED) return itemState(r, j);
     const key = `${r.name}/${j.id}`;
