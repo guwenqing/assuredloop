@@ -170,7 +170,7 @@ function checkAll(args) {
   // An adopted paragraph needs no link while its text is the captured text (D16).
   const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/'))).map((l) => ({ ...l, severity: 'hint' }));
   // The findings before any judgement, for al record <name> judgement (#88).
-  if (args.raw) return { state: t10.now, findings: [...shown.map((l) => ({ ...l, where: `${l.file}:${l.line}` })), ...t10.findings] };
+  if (args.raw) return { state: t10.now, findings: [...shown.map((l) => ({ ...l, where: `${l.file}:${l.line}` })), ...t10.findings], judgedBindings: t10.judgedBindings };
   // A hint clears by a recorded judgement while its versions are those of
   // now, and the current judgements are one line (LD-12, #88).
   const pass = judgementPass(t10.now);
