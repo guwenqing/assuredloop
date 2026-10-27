@@ -905,8 +905,9 @@ new version. level2-peer/R1 stays as signed: its level 1 is `local` word
 search, and its level 2 is `local` with a model. v4/R1, R2, R6, R8, R9 and
 R12 stay as signed. The owner signed the new versions of v4/R5 and
 context-all/R1 on 2026-10-25. They are light-resign/R5 and light-resign/R1,
-because `al` does not edit an archived request. The other three items below
-still wait for the owner.
+because `al` does not edit an archived request. The owner signed the new
+version of hints-and-blocks/R1 on 2026-10-27. It is adr-rewrite/R1. The
+other two items below still wait for the owner.
 
 | Requirement | The new version says, in short |
 |---|---|
