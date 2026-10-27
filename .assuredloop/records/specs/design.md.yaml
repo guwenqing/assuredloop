@@ -439,7 +439,7 @@ paragraphs:
     display: DES-166 (11:10, in 11. Search and the export)
   - id: DES-66
     kind: rule
-    text_sha256: b347e54910a8925a436604fc92b9e098d1941ab056c9057c2da56a11a5eed66a
+    text_sha256: 87f3d1ce1cede746cf007728064dac686246813351da0817cbca864ec0e01e85
     display: DES-66 (11:11, in 11. Search and the export)
   - id: DES-67
     kind: note
