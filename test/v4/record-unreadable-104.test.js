@@ -14,6 +14,8 @@
 // - al record and al conclude, with and without --yes: for an open request,
 //   exit 2 and "al: <path> is not a valid record: <reason>"; for an archived
 //   request, the refusal for an archived request. Nothing is written.
+// - al conclude refuses an unreadable record before its sign-off and promise
+//   reasons: exit 2, the same "al:" line, and no "refused:" line.
 // - al context: exit 0; it names the record and the reason, as it does now.
 //
 // The worlds: a small project (one request made by al new, open, or
@@ -200,6 +202,40 @@ describe('#104 al record and al conclude refuse a record whose data cannot be ma
         if (kase === ALIASES) sameAsSyntax(t, archived, runs, b.reason, commands);
       });
     }
+  }
+});
+
+// The architect's decision for #104: al conclude refuses first when the
+// request's record cannot be read, right after the check for an archived
+// request and before its sign-off and promise reasons, which al works out
+// without the record. The open request invoice-exports of the invoicer world
+// has such reasons: with a good record, al conclude refuses it with a
+// "refused:" line.
+describe('#104 al conclude refuses an unreadable record before its other refusal reasons', () => {
+  const world = WORLDS[2];
+  const REFUSED = /^refused: /m;
+
+  test(`control: ${world.label}, its record good: al conclude, with and without --yes, refuses with a "refused:" line and names no record`, (t) => {
+    const { dir, name } = world.make(t);
+    for (const args of concludeCommands({ name })) {
+      const r = al(dir, args);
+      assert.equal(r.code, 1, show(r));
+      assert.match(r.stdout, REFUSED, show(r));
+      assert.doesNotMatch(r.stdout, /is not a valid record/, show(r));
+    }
+  });
+
+  for (const kase of CASES) {
+    test(`${world.label}, ${kase.label}: al conclude <name>, with and without --yes, exits 2 with "al: <path> is not a valid record: <reason>", no "refused:" line, and writes nothing`, (t) => {
+      const b = broken(t, world, kase);
+      const runs = refusedRuns(b, concludeCommands);
+      const refusal = `al: ${b.path} is not a valid record: ${b.reason}`;
+      for (const r of runs) {
+        assert.equal(lines(r)[0], refusal, `the refusal "${refusal}":\n${show(r)}`);
+        assert.doesNotMatch(r.stdout, REFUSED, `no "refused:" line:\n${show(r)}`);
+      }
+      if (kase === ALIASES) sameAsSyntax(t, world, runs, b.reason, concludeCommands);
+    });
   }
 });
 
