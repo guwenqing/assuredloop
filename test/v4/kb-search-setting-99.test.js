@@ -28,8 +28,8 @@ import {
 const SEARCH_LINE = 'Search    no choice is set: al search searches nothing until .assuredloop/config.yaml sets search (LD-64)';
 const OWN_CHOICE = "Choice    own: the team's knowledge base, an MCP server or a skill; al export gives it al's rows; al does not search";
 const LOCAL_CHOICE = /^Choice    local: word search \(SQLite FTS5\); no download; first index about \d+ s \(estimate from the measured word-index speed\); recall@10 0\.335 \[0\.25-0\.42\]$/;
-const MODEL_CHOICE = /^Choice    local with a model: word search and one row of the measured table; the (\d+) rows that fit this computer:$/;
-const NOT_FIT = /^Not fit   (\d+) rows need more than this computer has: \S/;
+const MODEL_CHOICE = /^Choice    local with a model: word search and one row of the measured table; the (\d+) rows? that fits? this computer:$/;
+const NOT_FIT = /^Not fit   (\d+) rows? needs? more than this computer has: \S/;
 const NOT_YET_LINE = /^Not yet   26 rows this version cannot run yet \(#100: the llama\.cpp runtime and reranking\): \S/;
 const EXCLUDED_LINE = /^Excluded  5 rows: \S/;
 const NONE_CHOICE = 'Choice    none: no search; the agent reads the files (grep)';
@@ -97,6 +97,11 @@ function fitRule(o, rowsByName, pc) {
     }
   }
   if (o.notFit === null) assert.ok(RUNNABLE.every((r) => fitNames.includes(r)), 'no Not fit line only when every row fits');
+  else {
+    const m = o.notFit.line.match(NOT_FIT);
+    assert.ok(m, `the Not fit line in the documented form:\n${o.notFit.line}`);
+    assert.equal(Number(m[1]), RUNNABLE.filter((r) => rowsByName.get(r)?.state === 'not-fit').length, 'the count of the rows that do not fit');
+  }
 }
 
 // --- no setting
