@@ -749,7 +749,7 @@ The checks never use search.
 |---|---|
 | `search: {own: <name>}` | Your team's knowledge base, an MCP server or a skill: `al search` names it and says to ask it. `al export` gives it `al`'s rows. |
 | `search: local` | Word search (level 1): a local full-text index (SQLite FTS5, BM25), with the ID in its own exact column. Needs Node 24 or newer (`node:sqlite`). |
-| `search: {local: <row>}` | Word search and one row of the measured table (level 2): word and vector results are fused. Needs the library `@huggingface/transformers` 4.3.1, in the project or beside `al`. |
+| `search: {local: <row>}` | Word search and one row of the measured table (level 2): for an embedding row, word and vector results are fused; for a reranker row, the reranker reorders the word-search top 30. A `tjs-*` row needs the library `@huggingface/transformers` 4.3.1, in the project or beside `al`. A `llama-*` row needs llama.cpp's `llama-server` on PATH (measured: release b11624), on macOS arm64. |
 | `search: none` | No search: `al search` says so. Read the files (grep). |
 
 - The measured table holds each model, precision and runtime that was
@@ -757,18 +757,20 @@ The checks never use search.
   `bge-small-en-v1.5 q8 tjs-cpu`. With no setting, `al search <words>` names
   every row: the rows that fit this computer, each with its download,
   memory, first index time, time for each search, recall@10 and gain over
-  word search with their intervals; then the rows that do not fit, the rows
-  that this version cannot run yet (#100), and the excluded rows, each with
-  its reason. `--full` shows every row in full, and `--json` gives them all.
+  word search with their intervals; then the rows that do not fit and the
+  excluded rows, each with its reason. A `llama-*` row does not fit off
+  macOS arm64, where it was not measured. `--full` shows every row in
+  full, and `--json` gives them all.
 - The recommendation comes from code with no model: of the rows that this
-  `al` runs and that fit, those with a gain whose interval is above zero,
-  then the smallest download within 0.05 of the best recall. When no row is
-  left, it recommends `local`. The figures come from one Mac and 50
-  questions from one repo; the Limits line says so.
-- A wrong setting, a row that is not in the table, a row that this version
-  cannot run yet and an excluded row are refused (exit 2). A row that does
-  not fit this computer still runs, and a `Not known` line says what it
-  needs.
+  `al` runs and that fit, those with a gain whose interval is above zero
+  and a measured time of at most 10 s for each search, then the smallest
+  download within 0.05 of the best recall. When no row is left, it
+  recommends `local`. When the 10 s bound removes the row that it would
+  recommend, it names that row, its gain and its time. The figures come
+  from one Mac and 50 questions from one repo; the Limits line says so.
+- A wrong setting, a row that is not in the table and an excluded row are
+  refused (exit 2). A row that does not fit this computer still runs, and
+  a `Not known` line says what it needs.
 - The default query is the current system: the spec text at the selected
   commit. `--change <name>` adds that request's open change spec, its
   sources and its evidence. `--history` adds removed and replaced text,
@@ -795,9 +797,17 @@ The checks never use search.
 - Level 2 runs the model of the row on this computer, pinned by its commit.
   Before the first download, `al` writes the row and its size to standard
   error. The model download is the only data that leaves the machine. `al`
-  itself makes no network call. Without the library, `al search` answers at
-  level 1, and a `Not known` line says how to add it. Only `al search` loads
-  the library.
+  itself makes no network call. Without the row's runtime, `al search`
+  answers at level 1, and a `Not known` line says how to add it. Only
+  `al search` loads the library or starts `llama-server`.
+- For a `llama-*` row, `al` starts one `llama-server` on 127.0.0.1 for each
+  `al search`, with the measured arguments, and stops it after. The model
+  file is fetched by `llama-server` into its own place (`LLAMA_CACHE`, else
+  `~/Library/Caches/llama.cpp`). `al` checks the file's size on every run
+  and its SHA-256 once; a file that differs gives word search, and the
+  `Fallback` line says what was expected and found. Another build of
+  llama.cpp still runs, and a `Not known` line says that its figures may
+  differ.
 
 ## One central repo, and output repos
 

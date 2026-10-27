@@ -4,8 +4,10 @@
 // the measured table is level 2. Level 0 scans the export; level 1 is a
 // SQLite FTS5 index of it (BM25) with the ID in its own exact column, and one
 // row for each file of each selected repo; level 2 fuses level 1 with the
-// ranking of level2.js (reciprocal rank fusion), which needs the optional peer
-// dependency @huggingface/transformers.
+// ranking of an embedding row (reciprocal rank fusion), or reorders the word
+// top 30 by a reranker row (rerank.js). A row runs in the optional peer
+// dependency @huggingface/transformers (level2.js) or in llama.cpp's
+// llama-server, found on PATH (llama.js).
 import { mkdirSync, rmSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { parse } from 'yaml';
@@ -14,6 +16,8 @@ import { git } from './git.js';
 import { createHash } from 'node:crypto';
 import { exportRows, exported, firstParents, newHistory, resolveCommit, sectionAt, selectedRepos, treeOf } from './export.js';
 import { noChoice, noSearch, readSetting, rowFit } from './search-setting.js';
+import { FAMILY, POOLING, isLlama } from './models.js';
+import { llamaHead, llamaYesNo, rerank, tjsHead, tjsYesNo } from './rerank.js';
 
 // The chunk rule and the tokenizer: a change to either rebuilds the index.
 const MANIFEST = { schema: 'assuredloop-search/2', chunk: 'one paragraph version; header: file title, heading path, kind, ID; one row for each file: its path and kind', tokenizer: 'porter unicode61' };
@@ -40,13 +44,60 @@ async function sqlite() {
   }
 }
 
-// Level 2 with `row` when its library is installed, or null with the reason.
-// level2.js is loaded only here, and the library only at its first embed.
-async function level2(top, row) {
-  const { findLibrary, level2: create, LIBRARY, INSTALL } = await import('./level2.js');
+// Level 2 with `row` when its runtime is here, or the reason (and how to add
+// the runtime) when it is not. `l2.run(fn)` calls fn with the row's tool: an
+// embedder (refresh, rank) or, for a reranker row, a score function; for a
+// llama.cpp row, while its llama-server runs (llama.js), which stops after.
+// level2.js and llama.js are loaded only here, and the library only at its
+// first use. A fetch line is written to standard error and kept in `lines`.
+async function level2(top, row, lines) {
+  const [name, precision] = row.name.split(' ');
+  if (isLlama(row)) {
+    const L = await import('./llama.js');
+    const away = L.notOffered(process);
+    if (away) return { reason: away };
+    const server = L.findServer();
+    if (!server.path) return { reason: server.reason, install: `level 2: llama-server is not on PATH; ${server.install}` };
+    const opts = {
+      server, ngl: row.name.endsWith(' llama-cpu') ? 0 : 99,
+      model: { name: row.name, repo: row.repo, commit: row.commit, file: row.files[0][0], bytes: row.files[0][1], sha256: row.sha256 },
+      onFetch: (line) => { process.stderr.write(`${line}\n`); lines.push(line); },
+    };
+    // A present file is checked by the record of al's checks, in its index
+    // folder; a file that llama-server fetched and that was found right is recorded.
+    const dir = indexDir(top);
+    const serve = async (more, fn) => {
+      await L.checkPresent({ model: opts.model, dir });
+      return L.withServer({ ...opts, ...more }, async (srv) => {
+        if (srv.fetched) L.recordFetched({ model: opts.model, dir });
+        return fn(srv);
+      });
+    };
+    if (row.rerank) {
+      return { note: server.note, l2: { model: row.name, rerank: true, run: (fn) => serve({ kind: row.head ? 'rerank' : 'yesno' }, (srv) => fn((row.head ? llamaHead : llamaYesNo)(srv))) } };
+    }
+    const { createLevel2 } = await import('./level2.js');
+    const family = FAMILY[name];
+    return {
+      note: server.note,
+      l2: {
+        model: row.name,
+        run: (fn) => serve({ kind: 'embed', pooling: POOLING[family] }, (srv) => {
+          const e = L.llamaEmbedding(srv, family);
+          return fn(createLevel2({ model: row.name, key: `${row.name}@${row.commit}`, embed: e.docs, embedQuery: e.query }));
+        }),
+      },
+    };
+  }
+  const { findLibrary, level2: create, loadLibrary, LIBRARY, INSTALL } = await import('./level2.js');
   const path = findLibrary(top);
   if (!path) return { reason: `level 2 is not installed: no ${LIBRARY} in the project or beside al`, install: `level 2: ${LIBRARY} is not installed; to add level 2, run ${INSTALL}` };
-  return { l2: create(path, row) };
+  if (row.rerank) {
+    const score = (lib) => (row.head ? tjsHead : tjsYesNo)(lib, { repo: row.repo, revision: row.commit, dtype: precision });
+    return { l2: { model: row.name, rerank: true, run: async (fn) => fn(score(await loadLibrary(path, row))) } };
+  }
+  const l2 = create(path, row);
+  return { l2: { model: row.name, run: (fn) => fn(l2) } };
 }
 
 // What a file is, from its path alone (LD-33): test, doc, config, code or other.
@@ -374,9 +425,11 @@ export async function search({ top, args, opts }) {
   let level = want;
   let found2 = null;
   let lite = null;
+  const fetched = [];
   if (level === 2) {
-    found2 = await level2(top, setting.row);
-    if (!found2.l2) { falls.push(found2.reason); notKnown.push(found2.install); level = 1; }
+    found2 = await level2(top, setting.row, fetched);
+    if (!found2.l2) { falls.push(found2.reason); if (found2.install) notKnown.push(found2.install); level = 1; }
+    if (found2.note) notKnown.push(found2.note);
     // Every choice works: a row that does not fit this computer still runs, and says so.
     const fit = rowFit(top, setting.row, commit);
     if (fit) notKnown.push(fit);
@@ -414,17 +467,20 @@ export async function search({ top, args, opts }) {
       let ranked = wordHits(db, q, ws, level === 2 ? DEEP : limit);
       if (level === 2) model = found2.l2.model ?? 'an unnamed model';
       if (level === 2 && ws.length) {
-        const l2 = found2.l2;
         try {
-          const cur = db.prepare('SELECT key, row FROM current').all().map((x) => ({ key: x.key, r: JSON.parse(x.row) }));
-          const embed = cur.filter((x) => x.r.role === 'baseline' || x.r.role === 'proposal');
-          // The hash is of the whole embedded text, header and hints included, so a renamed heading embeds again.
-          const texts = embed.map((x) => [chunk(x.r), x.r.hints?.summary ?? '', ...(x.r.hints?.tags ?? [])].filter(Boolean).join('\n'));
-          await l2.refresh({ dir, rows: embed.map((x, i) => ({ key: x.key, sha256: createHash('sha256').update(texts[i]).digest('hex'), text: texts[i] })) });
-          const keys = embed.filter((x) => inScope(x.r, q)).map((x) => x.key);
-          const vec = keys.length ? await l2.rank({ dir, query: words, keys, k: DEEP }) : [];
-          const byKey = new Map([...ranked.map((r) => [keyOf(r), r]), ...embed.map((x) => [x.key, x.r])]);
-          ranked = fuseInPlace(ranked, vec.filter((k) => byKey.has(k)), new Set(keys), byKey);
+          ranked = await found2.l2.run(async (tool) => {
+            // A reranker row: the word-search top 30, in the reranker's order.
+            if (found2.l2.rerank) return (await rerank(words, ranked.map((r) => ({ r, text: chunk(r) })), tool)).map((h) => h.r);
+            const cur = db.prepare('SELECT key, row FROM current').all().map((x) => ({ key: x.key, r: JSON.parse(x.row) }));
+            const embed = cur.filter((x) => x.r.role === 'baseline' || x.r.role === 'proposal');
+            // The hash is of the whole embedded text, header and hints included, so a renamed heading embeds again.
+            const texts = embed.map((x) => [chunk(x.r), x.r.hints?.summary ?? '', ...(x.r.hints?.tags ?? [])].filter(Boolean).join('\n'));
+            await tool.refresh({ dir, rows: embed.map((x, i) => ({ key: x.key, sha256: createHash('sha256').update(texts[i]).digest('hex'), text: texts[i] })) });
+            const keys = embed.filter((x) => inScope(x.r, q)).map((x) => x.key);
+            const vec = keys.length ? await tool.rank({ dir, query: words, keys, k: DEEP }) : [];
+            const byKey = new Map([...ranked.map((r) => [keyOf(r), r]), ...embed.map((x) => [x.key, x.r])]);
+            return fuseInPlace(ranked, vec.filter((k) => byKey.has(k)), new Set(keys), byKey);
+          });
         } catch (e) {
           if (e instanceof Fail) throw e;
           falls.push(`level 2 failed: ${String(e.message ?? e).split('\n')[0]}`);
@@ -445,7 +501,7 @@ export async function search({ top, args, opts }) {
     }
   }
 
-  const levelText = level === 2 ? `2 (hybrid: full text and ${model})` : LEVEL_TEXT[level];
+  const levelText = level !== 2 ? LEVEL_TEXT[level] : found2.l2.rerank ? `2 (full text, reranked by ${model})` : `2 (hybrid: full text and ${model})`;
   const fallback = falls.length && want > level ? falls.join('; ') : null;
   const out = hits.map((h, i) => {
     if (h.role === 'file') return { rank: i + 1, exact: false, role: 'file', repo: h.repo, path: h.path, kind: h.kind, commit: h.commit };
@@ -458,6 +514,7 @@ export async function search({ top, args, opts }) {
   }
   const body = [`Level     ${levelText}`];
   if (fallback) body.push(`Fallback  ${fallback}`);
+  body.push(...fetched);
   body.push(`Query     ${scope} at ${short(commit)}`);
   if (repos.length > 1) body.push(`Repos     ${repos.map((r) => (r.commit ? `${r.name}@${short(r.commit)}` : `${r.name} unknown`)).join(' ')}`);
   if (indexLine) body.push(`Index     ${indexLine}`);

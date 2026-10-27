@@ -11,12 +11,12 @@ import { Fail } from './base.js';
 import { git } from './git.js';
 import { embedText, selectedRepos, treeOf } from './export.js';
 import { loadConfig } from './config.js';
-import { ROWS, WORDS, runs } from './models.js';
+import { ROWS, WORDS, isLlama } from './models.js';
+import { notOffered } from './llama.js';
 
 const FILE = '.assuredloop/config.yaml';
 const FORMS = 'give none, local, {local: <row>} or {own: <name>}';
 const GPU_RUNTIMES = ['tjs-webgpu', 'tjs-coreml', 'llama-metal'];
-const NOT_YET = '#100: the llama.cpp runtime and reranking';
 
 // Sizes in MB and GB of 10^6 and 10^9 bytes.
 const mb = (bytes) => Math.round(bytes / 1e6);
@@ -32,7 +32,7 @@ const runtimeOf = (row) => row.name.split(' ')[2];
 
 // The setting as the working tree's config gives it: null (no setting),
 // { use: 'none' }, { use: 'local', row: null | <row> } or { use: 'own', name }.
-// A wrong form, or a row that this version does not run, is refused.
+// A wrong form, a name that is no row, or an excluded row is refused.
 export function readSetting(top) {
   const value = loadConfig(top).search;
   if (value === undefined || value === null) return null;
@@ -45,10 +45,9 @@ export function readSetting(top) {
   if (keys[0] === 'own') return { use: 'own', name: value.own.trim() };
   const name = value.local;
   const row = ROWS.find((r) => r.name === name);
-  const runnable = ROWS.filter(runs).map((r) => r.name).join(', ');
+  const runnable = ROWS.filter((r) => !r.excluded).map((r) => r.name).join(', ');
   if (!row) throw new Fail(`${FILE}: search: {local: ${name}} names no measured row; the rows this version runs: ${runnable}`, 'name one of them, or remove the line and run al search for the choices');
   if (row.excluded) throw new Fail(`${FILE}: search: {local: ${name}}: ${name} is excluded: ${row.excluded}`, `name one of the rows this version runs: ${runnable}`);
-  if (!runs(row)) throw new Fail(`${FILE}: search: {local: ${name}}: this version cannot run ${name} yet (${NOT_YET})`, `name one of the rows this version runs: ${runnable}`);
   return { use: 'local', row };
 }
 
@@ -75,8 +74,11 @@ export function computer(top, fts5) {
   return { memory: availableMemory(), disk: Number(s.bavail) * Number(s.bsize), gpu: process.platform === 'darwin' && process.arch === 'arm64', fts5 };
 }
 
-// What does not fit of a row on `pc`, for `paragraphs` to embed: [] when it fits.
+// What does not fit of a row on `pc`, for `paragraphs` to embed: [] when it
+// fits. A llama.cpp row off macOS arm64 is not offered, for that reason alone.
 function misfit(row, pc, paragraphs) {
+  const away = isLlama(row) && notOffered(process);
+  if (away) return [away];
   const out = [];
   const disk = download(row) + 4 * (row.dim ?? 0) * paragraphs;
   if (pc.memory < peak(row) + 1e9) out.push(`memory ${gb(peak(row))} GB + 1 GB`);
@@ -86,7 +88,9 @@ function misfit(row, pc, paragraphs) {
 }
 
 // The Not known item of a set row that does not fit this computer, or null.
+// A llama.cpp row that is not offered here is not run (search.js says why).
 export function rowFit(top, row, commit) {
+  if (isLlama(row) && notOffered(process)) return null;
   const pc = computer(top, null);
   const { paragraphs } = embedText(top, commit);
   if (!misfit(row, pc, paragraphs).length) return null;
@@ -105,8 +109,9 @@ function projectOf(top, commit) {
 // One row's figures in a line.
 function figures(row, project) {
   const index = row.rerank ? 'no index' : `first index about ${Math.round(project.tokens / row.tokensPerSecond)} s`;
-  return [`download ${mb(download(row))} MB`, `memory ${gb(peak(row))} GB`, index, `${row.ms} ms a search`,
-    `recall@10 ${recallText(row.recall)}${row.rerank ? ' (word search, then the reranker)' : ''}`, `gain ${gainText(row.gain)}`,
+  return [`download ${mb(download(row))} MB`, `memory ${gb(peak(row))} GB`, index, row.ms === null ? 'time of a search not measured' : `${row.ms} ms a search`,
+    row.recall === null ? 'recall@10 not measured' : `recall@10 ${recallText(row.recall)}${row.rerank ? ' (word search, then the reranker)' : ''}`,
+    row.gain === null ? 'gain not measured' : `gain ${gainText(row.gain)}`,
     `published: ${row.published}`].join(' · ');
 }
 
@@ -135,19 +140,28 @@ function withReasons(rows, reasonOf) {
 }
 
 // The recommendation (the rule of design.md 11): of the rows that this al
-// runs and that fit, those whose gain has its interval above zero; of those
-// within 0.05 of the best recall, the smallest download; else word search.
+// runs and that fit, those whose gain has its interval above zero; of those,
+// the rows whose measured time for one search is at most 10 s (the bound of
+// `al check` at 1,000 requests); of those within 0.05 of the best recall, the
+// smallest download; else word search. When the bound removes the row that
+// the rule would pick without it, the reason names that row (`capped`).
+const CAP_MS = 10_000;
+function pick(rows) {
+  if (!rows.length) return null;
+  const best = Math.max(...rows.map((r) => r.recall[0]));
+  return rows.filter((r) => r.recall[0] >= best - 0.05).sort((a, b) => download(a) - download(b))[0];
+}
 function recommend(states, pc) {
-  const good = states.filter((s) => s.state === 'fits' && s.row.gain[1] > 0);
-  const later = states.filter((s) => s.state === 'not-yet' && s.row.gain[1] > 0).length;
+  const good = states.filter((s) => s.state === 'fits' && s.row.gain[1] > 0).map((s) => s.row);
+  const row = pick(good.filter((r) => r.ms !== null && r.ms <= CAP_MS));
+  const without = pick(good);
+  const capped = without && without !== row ? without : null;
+  const clause = capped ? `; ${capped.name} gains ${signed(capped.gain[0])} but takes about ${Math.round(capped.ms / 1000)} s for each search` : '';
   const noFts = pc.fts5 ? '' : '; this computer has no node:sqlite with FTS5, so word search scans the export (level 0)';
-  if (!good.length) {
-    const more = later ? `; ${later} rows that this version cannot run yet have one (al search --full)` : '';
-    return { choice: 'local', row: null, reason: `of the rows that this al can run and that fit this computer, none has a gain whose interval is above zero${more}${noFts}` };
+  if (!row) {
+    return { choice: 'local', row: null, capped: capped?.name ?? null, reason: `of the rows that this al can run and that fit this computer, none ${capped ? 'that takes at most 10 s for each search ' : ''}has a gain whose interval is above zero${clause}${noFts}` };
   }
-  const best = Math.max(...good.map((s) => s.row.recall[0]));
-  const pick = good.filter((s) => s.row.recall[0] >= best - 0.05).sort((a, b) => download(a.row) - download(b.row))[0].row;
-  return { choice: 'local', row: pick.name, reason: `gain ${gainText(pick.gain)} over word search; the smallest download within 0.05 of the best recall among the rows that fit${noFts}` };
+  return { choice: 'local', row: row.name, capped: capped?.name ?? null, reason: `gain ${gainText(row.gain)} over word search; the smallest download within 0.05 of the best recall among the rows that fit and take at most 10 s for each search${clause}${noFts}` };
 }
 
 // `al search` with no setting: the choices and the recommendation; no search.
@@ -156,7 +170,6 @@ export function noChoice({ top, commit, opts, fts5 }) {
   const project = projectOf(top, commit);
   const states = ROWS.map((row) => {
     if (row.excluded) return { row, state: 'excluded', reason: row.excluded };
-    if (!runs(row)) return { row, state: 'not-yet', reason: `this version cannot run it yet (${NOT_YET})` };
     const miss = misfit(row, pc, project.paragraphs);
     return miss.length ? { row, state: 'not-fit', reason: miss.join(', ') } : { row, state: 'fits', reason: null };
   });
@@ -199,7 +212,6 @@ export function noChoice({ top, commit, opts, fts5 }) {
     `Choice    local with a model: word search and one row of the measured table; the ${plural(fits.length, 'row that fits', 'rows that fit')} this computer:`,
     ...fits.map((s) => `          ${s.row.name}: ${figures(s.row, project)}`),
     ...rest('not-fit', `Not fit   ${plural(of('not-fit').length, 'row needs', 'rows need')} more than this computer has`, true),
-    ...rest('not-yet', `Not yet   ${of('not-yet').length} rows this version cannot run yet (${NOT_YET})`, false),
     ...rest('excluded', `Excluded  ${of('excluded').length} rows`, true),
     'Choice    none: no search; the agent reads the files (grep)',
     `Limits    ${limits.join('; ')}`,

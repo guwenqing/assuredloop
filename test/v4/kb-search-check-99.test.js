@@ -3,8 +3,9 @@
 // sign-off readable, and gives the same facts in al check before and after";
 // the issue's "the checks unchanged by the setting").
 // - al check and al check --strict give the same exit code and output with
-//   no setting, none, local, a row, own, a wrong form, an unknown row, a row
-//   this version cannot run yet, and an excluded row.
+//   no setting, none, local, a row, own, a wrong form, an unknown row, a
+//   llama.cpp row (#99: a row this version could not run yet; #100 runs it),
+//   and an excluded row.
 // - An upgrade from 4.0.0 with no setting: a project made by al 4.0.0 (the
 //   tag v4.0.0, from git archive) gives the same al check and al check
 //   --strict with this al, and its request stays readable (al context).
@@ -53,7 +54,7 @@ const SETTINGS = [
   ['a list (a wrong form)', ['local']],
   ['a map with another key (a wrong form)', { remote: 'team-kb' }],
   ['an unknown row', { local: 'all-minilm-l6-v2 fp32 tjs-cpu' }],
-  ['a row this version cannot run yet', { local: 'qwen3-embedding-4b q8_0 llama-metal' }],
+  ['a llama.cpp row (#100: no longer a row this version cannot run)', { local: 'qwen3-embedding-4b q8_0 llama-metal' }],
   ['an excluded row', { local: 'qwen3-embedding-0.6b q8 tjs-cpu' }],
 ];
 
