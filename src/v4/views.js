@@ -5,7 +5,7 @@ import { LineCounter, parseDocument } from 'yaml';
 import { Fail, recordPath } from './base.js';
 import { applicability, checks } from './checks.js';
 import { closeLine, closeLines } from './close.js';
-import { git, mergeBase, mergesOf } from './git.js';
+import { fileAt, git, mergeBase, mergesOf } from './git.js';
 import { crossRepo, findCites, namedIds } from './repos.js';
 import { loadResults } from './results.js';
 import {
@@ -250,7 +250,7 @@ function hintsNow(state) {
   if (state.rev) return null;
   const base = mergeBase(state.top);
   const t = checks(state.top, { base });
-  const findings = judgementPass(t.now).apply(t.findings);
+  const findings = judgementPass(t.now, t.was).apply(t.findings);
   return { findings, line: (f) => findingLine(f, placesOf(t.now, t.was, base, f)) };
 }
 
@@ -404,6 +404,13 @@ function auditLines(state, r) {
   return out;
 }
 
+// Whether request `name` is archived at the merge base, or there is no base:
+// then al check does not check its judgements (#107).
+function archivedAtBase(top, name) {
+  const base = mergeBase(top);
+  return base === null || fileAt(top, base, `requests/archive/${name}/request.md`) != null;
+}
+
 // Each judgement of request `r`, with its line in the record, and its state
 // as al check gives it now (DES-163, DES-130, #91).
 function judgementLines(state, r) {
@@ -411,11 +418,11 @@ function judgementLines(state, r) {
   if (!js.length) return [];
   let stateOf;
   if (state.rev) stateOf = () => 'not known at --at: al check reads the working tree only';
-  else if (!r.open) stateOf = () => 'recorded; not checked: the request is archived';
+  else if (!r.open && archivedAtBase(state.top, r.name)) stateOf = () => 'recorded; not checked: the request is archived';
   else {
     try {
       const now = findingsNow({ top: state.top, opts: {} });
-      const pass = judgementPass(now.state);
+      const pass = judgementPass(now.state, now.was);
       pass.apply(now.findings);
       stateOf = pass.stateOf(now.judgedBindings);
     } catch (e) {
