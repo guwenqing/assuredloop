@@ -15,7 +15,9 @@
 //    a. al parses the text of each request record as YAML at most once
 //       (parse and parseDocument together, in the main thread and in each
 //       worker thread);
-//    b. the number of parseDocument calls does not grow;
+//    b. the parses of a YAML text that al has already parsed (parse and
+//       parseDocument together, in all threads, less one for each distinct
+//       text) do not grow;
 //    c. the number of git processes does not grow.
 // 3. A cache, if any, gives what no cache gives: two runs give the same
 //    output, and a run after a new commit or a change in the working tree
@@ -49,7 +51,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { invoicer } from './helpers/invoicer.js';
@@ -58,16 +60,24 @@ import { BIN, EPOCH, REPO, commitAll, git, move, read, write } from './helpers/p
 import { GENERATE, cleanEnv as scaleEnv } from './helpers/scale.js';
 import { Repo, closeRequest, entriesOf } from '../../scale/world.js';
 
-// The size of the scale world at which al may parse the records in worker
-// threads (test 4). Change it when the size at which al starts to use workers
-// is known.
-const WORKER_WORLD = { requests: 200, outputs: 2, paragraphs: 5, open: 2 };
+// al parses the records in worker threads when the request records of the
+// working tree (.assuredloop/records/requests/*.yaml) hold more than this
+// many characters in all, and the machine has at least 2 cores; then with
+// min(4, cores - 1) workers.
+const WORKER_CHARS = 1_000_000;
+// The scale world of test 4: the smallest world of scale/generate.js that was
+// found whose request records are clearly above WORKER_CHARS (about 1.9
+// million characters after al index). Few requests with long change specs
+// build faster than many short ones.
+const WORKER_WORLD = { requests: 20, outputs: 2, paragraphs: 350, open: 2 };
+// How far above WORKER_CHARS the world of test 4 must be.
+const WORKER_MARGIN = 1.5;
 // The scale worlds of test 2: 5 and 60 concluded requests, and 2 open ones.
 const FEW = 5;
 const MANY = 60;
 const costWorld = (concluded) => ({ requests: concluded + 2, outputs: 1, paragraphs: 5, open: 2 });
-// How many more parseDocument calls or git processes a run with MANY may make
-// than a run with FEW.
+// How many more git processes, or parses of a text already parsed, a run with
+// MANY may make than a run with FEW.
 const SLACK = 3;
 
 const RECORDS = '.assuredloop/records/requests/';
@@ -808,7 +818,7 @@ async function measured(key) {
     assert.ok(calls.length > 0, 'the hook saw the YAML calls of al');
     const gitCalls = counter.calls();
     assert.ok(gitCalls.some((l) => l.includes('merge-base')), `the wrapper saw the git of al:\n${gitCalls.join('\n')}`);
-    runs.push({ calls, gitCalls, parseDocument: calls.filter((c) => c.fn === 'parseDocument').length, ...parsedTwice(calls, texts) });
+    runs.push({ calls, gitCalls, distinct: new Set(calls.map((c) => c.sha)).size, ...parsedTwice(calls, texts) });
   }
   return { dir, concluded, texts, runs };
 }
@@ -830,15 +840,22 @@ describe('the cost of al check does not grow with the concluded requests', { tim
     });
   }
 
-  test(`b: the number of parseDocument calls is about the same for ${MANY} concluded requests as for ${FEW}`, async (t) => {
+  test(`b: the YAML parses of a text already parsed are about as many for ${MANY} concluded requests as for ${FEW}`, async (t) => {
     const few = await measure('few');
     const many = await measure('many');
+    // The parses of all YAML texts (parse and parseDocument, in all threads),
+    // less one for each distinct text: the parses that parse a text again.
+    const again = (run) => run.calls.length - run.distinct;
+    const what = (m, run) => {
+      const byFn = (fn) => run.calls.filter((c) => c.fn === fn).length;
+      return `${run.calls.length} parses (parse ${byFn('parse')}, parseDocument ${byFn('parseDocument')}) of ${run.distinct} distinct texts with ${m.concluded} concluded requests`;
+    };
     for (let i = 0; i < 2; i++) {
-      const a = few.runs[i].parseDocument;
-      const b = many.runs[i].parseDocument;
-      t.diagnostic(`run ${i + 1}: parseDocument calls: ${a} with ${few.concluded} concluded requests, ${b} with ${many.concluded}`);
+      const a = again(few.runs[i]);
+      const b = again(many.runs[i]);
+      t.diagnostic(`run ${i + 1}: ${what(few, few.runs[i])}; ${what(many, many.runs[i])}`);
       assert.ok(b <= a + SLACK,
-        `run ${i + 1}: parseDocument calls: ${a} with ${few.concluded} concluded requests, ${b} with ${many.concluded} (at most ${a + SLACK} allowed)`);
+        `run ${i + 1}: parses of a text already parsed: ${a} with ${few.concluded} concluded requests, ${b} with ${many.concluded} (at most ${a + SLACK} allowed)\n${what(few, few.runs[i])}\n${what(many, many.runs[i])}`);
     }
   });
 
@@ -923,10 +940,21 @@ describe('a cache gives what no cache gives', () => {
 
 // --- 4. With worker threads and without them
 
-describe(`al check gives the same with worker threads and without them (scale world of ${WORKER_WORLD.requests} requests)`, { timeout: 240_000 }, () => {
-  test('the same exit code, stdout, stderr and written files; with workers, each record is parsed at most once', async () => {
+// The characters of the request records in the working tree, in all.
+function recordChars(dir) {
+  return git(dir, 'ls-files', '-co', '--exclude-standard', '--', RECORDS).split('\n')
+    .filter((f) => /^\.assuredloop\/records\/requests\/[^/]+\.yaml$/.test(f))
+    .reduce((n, f) => n + read(dir, f).length, 0);
+}
+
+describe(`al check gives the same with worker threads and without them (scale world of ${WORKER_WORLD.requests} requests, ${WORKER_WORLD.paragraphs} paragraphs)`, { timeout: 240_000 }, () => {
+  test('the same exit code, stdout, stderr and written files; with workers, workers are made and each record is parsed at most once', async (t) => {
     const { dir } = await scaleWorld('workers');
     const texts = recordTexts(dir);
+    const chars = recordChars(dir);
+    t.diagnostic(`the request records hold ${chars} characters`);
+    assert.ok(chars >= WORKER_CHARS * WORKER_MARGIN,
+      `the request records hold ${chars} characters: at least ${WORKER_CHARS * WORKER_MARGIN} are needed, so that al uses workers`);
     const run = (workers) => {
       reset(dir);
       const hook = yamlHook({ workers });
@@ -943,6 +971,15 @@ describe(`al check gives the same with worker threads and without them (scale wo
       assert.equal(off.r.stdout, on.r.stdout, `the stdout when ${label}`);
       assert.equal(off.r.stderr, on.r.stderr, `the stderr when ${label}`);
       assert.deepEqual(off.written, on.written, `the written files when ${label}`);
+    }
+    const cores = availableParallelism();
+    const made = on.hook.workers().length;
+    t.diagnostic(`${made} workers made, on ${cores} cores`);
+    if (cores >= 2) {
+      assert.ok(made >= 1, `al made no worker thread for ${chars} characters of records on ${cores} cores`);
+      assert.ok(made <= Math.min(4, cores - 1), `al made ${made} worker threads on ${cores} cores: at most min(4, cores - 1)`);
+    } else {
+      t.diagnostic(`one core only: al makes no worker, so the count of workers is not checked`);
     }
     const { twice, parsed } = parsedTwice(on.hook.calls(), texts);
     assert.ok(twice.length === 0,
