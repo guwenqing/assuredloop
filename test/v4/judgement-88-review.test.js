@@ -76,6 +76,19 @@ describe('a hint whose ID is "-": --on is its path', () => {
     assert.ok(f.msg.startsWith('a paragraph with no ID marker, after INV-12'), `the hint is on the new paragraph, after INV-12:\n${f.line}\n${show(r)}`);
   });
 
+  test('no-id on an unmarked block of a text and a list after a blank line: one hint for the block; judged by path; an edit of one list item only brings the hint back, and it names inv/J1 as stale', (t) => {
+    const dir = world(t);
+    write(dir, SPEC, `${read(dir, SPEC)}\nSome text.\n\n- item one\n- item two\n`);
+    let r = check(dir);
+    one(noIds(r), r, `one no-id on ${SPEC} for the block`);
+    judge(dir, 'no-id', SPEC, WHY);
+    r = check(dir);
+    none(noIds(r), r, `no-id on ${SPEC} after the judgement`);
+    editFile(dir, SPEC, '- item two', '- item two, edited');
+    r = check(dir);
+    namesStale(one(noIds(r), r, `no-id on ${SPEC} after the edit of a list item`), r, 1);
+  });
+
   test('no-id: a move of the judged unmarked paragraph (from after INV-60 to after INV-12), its text kept, keeps it cleared', (t) => {
     const dir = judged(t);
     editFile(dir, SPEC, `\n${STRAY}\n`, '');
@@ -147,6 +160,23 @@ describe('two accepted ADR files with one number: a judgement on ADR-3 holds for
       r = check(dir);
       namesStale(one(at(r, again), r, `adr-changed at ${again} after its second edit`), r, 1);
       none(at(r, other), r, `adr-changed at ${other}, which did not change again`);
+    });
+  }
+
+  for (const again of [A, B]) {
+    test(`both files are rewritten and judged by J1; a second edit of ${again.split('/').pop()} only: "info judged" no longer lists J1, which is stale on one of its hints`, (t) => {
+      const dir = twoFiles(t);
+      rewrite(dir, A, 0, 1);
+      rewrite(dir, B, 0, 1);
+      judge(dir, 'adr-changed', 'ADR-3', WHY);
+      let r = check(dir);
+      none(coded(r, 'adr-changed', 'ADR-3'), r, 'adr-changed on ADR-3 after the judgement');
+      assert.ok(listsJ1(r), `info judged lists J1:\n${show(r)}`);
+
+      rewrite(dir, again, 1, 2);
+      r = check(dir);
+      namesStale(one(at(r, again), r, `adr-changed at ${again} after its second edit`), r, 1);
+      assert.ok(!listsJ1(r), `info judged no longer lists J1:\n${show(r)}`);
     });
   }
 });
