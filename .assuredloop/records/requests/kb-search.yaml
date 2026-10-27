@@ -1,0 +1,29 @@
+schema: assuredloop/1
+request: kb-search
+tier: "1"
+status: open
+sources:
+  - file: 2026-10-27-owner-words.md
+    kind: owner-words
+    sha256: a810f4a6f20b2323facb83139f98c514649dab647ff315920acf52c661ced172
+    taken: 2026-10-27T15:33Z
+requirements:
+  - id: R10
+    version: 1
+    sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da
+    title: Search from the user's own knowledge base, a local one, or none
+signoff:
+  - id: S1
+    file: 2026-10-27-signoff.md
+    sha256: e3e6ca2803cfd5c1451a1f051e374fe1970a73d5fca08d2b31ba1c5191da6c90
+    signed: 2026-10-27T15:33Z
+    source: owner chat with the architect, 2026-10-27 about 15:32Z
+    words: Yes
+    presented: 2026-10-27 about 11:25Z, the text in full, as assuredloop-v4/R10 version 2; asked again about 15:32Z
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R10, version: 1, sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da }
+decisions: []
+tasks: []
+bindings:
+  - { holder: kb-search/R10, link: from, target: kb-search/2026-10-27-owner-words.md, holder_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_sha256: a810f4a6f20b2323facb83139f98c514649dab647ff315920acf52c661ced172 }
