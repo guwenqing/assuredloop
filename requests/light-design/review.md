@@ -23,7 +23,7 @@ this change is built.
 - LD-11 complies: each thing is judged by its own time, now the rationale beside C7 in section 8.
   - Item (LD-11): "Judge each thing by its own time."
   - Spec (DES-131): "each thing is judged by its own time."
-- LD-22 complies: C7, now in section 8, with the judgement that clears the hint. LD-22 was amended before this judgement: the judgement keeps the hash of the item's text, as src/v4/commands.js writes it. The other hints now take the general judgement of LD-12 (DES-163), and DES-130 says so; issue-changed keeps its own form in src/v4/kept-items.js.
+- LD-22 complies: C7, now in section 8, with the judgement that clears the hint. LD-22 was amended before this judgement: the judgement keeps the hash of the item's text, as src/v4/commands.js writes it. The other hints now take the general judgement of LD-12 (DES-163), and DES-130 says so; issue-changed keeps its own form in src/v4/kept-items.js, which this change does not alter.
   - Item (LD-22): "keeps the hash of the item's text with the judgement"
   - Item (LD-22): "The text at that sign-off is the one that counts, else the text at the"
   - Item (LD-22): "The other hints take the general judgement of LD-12"
@@ -31,7 +31,7 @@ this change is built.
   - Spec (DES-130): "The text at that sign-off"
   - Spec (DES-130): "The other hints take the judgement of section 3."
   - Code (src/v4/kept-items.js): "A moment that is past is never kept."
-- LD-12 complies: a hint clears by a fix, or by a recorded one-line judgement with its reason, now DES-163 in section 3. The ADR part is in SCH-22, and the move of a binding is in DES-26. `al index --align` is removed, and it refuses (src/v4/indexer.js). A judgement on a `not ok` is shown on its line and clears nothing (src/v4/judgements.js). On a change paragraph's `changes` or `removes` link, a judgement keeps the link-time version that the map and `al conclude` read (DES-160), and a hint with no ID keeps the text of its paragraph, so a move keeps it current.
+- LD-12 complies: a hint clears by a fix, or by a recorded one-line judgement with its reason, now DES-163 in section 3. The ADR part is in SCH-22, and the move of a binding is in DES-26. `al index --align` is removed, and it refuses (src/v4/indexer.js). A judgement on a `not ok` is shown on its line and clears nothing (src/v4/judgements.js). On a change paragraph's `changes` or `removes` link, a judgement keeps the link-time version that the map and `al conclude` read (DES-160), and a hint with no ID keeps the text of its paragraph, so a move keeps it current. A `stale-base` judgement there keeps the target that it judged; `stale-base` compares with it only, and a later judgement keeps it.
   - Item (LD-12): "Every hint can be cleared: by a fix, or by a one-line judgement with its reason, which `al` records."
   - Item (LD-12): "A judgement on them is shown, and changes neither `--strict` nor `conclude`."
   - Item (LD-12): "A move makes no binding and no judgement stale, and an ID-only edit makes no binding stale"

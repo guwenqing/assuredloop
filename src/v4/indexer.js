@@ -556,6 +556,7 @@ function bindNow(top, { bind, recs, links, atBase, held, now, then, base }) {
     if (l.commit) entry.commit = l.commit;
     entry.judgement = bind.entry.id;
     if (linked && old && bind.entry.hint === 'stale-base') entry.judged_target_sha256 = target.sha;
+    else if (linked && old?.judged_target_sha256) entry.judged_target_sha256 = old.judged_target_sha256;
     done.push({ name, link: l.link, target: l.target, holder: l.holder, ...(past ? { at: past.commit } : {}), ...(atTheBase ? { base } : {}) });
     const node = rec.doc.createNode(entry);
     node.flow = true;
