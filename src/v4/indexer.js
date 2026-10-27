@@ -8,7 +8,7 @@ import { accessSync, constants, lstatSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { parseOnce } from './yaml-once.js';
-import { parseMarkdown } from './markers.js';
+import { parseMarkdownOnce } from './markers.js';
 import { baseOf, git, mergeBase, fileAt, filesAt, blobAt, shallowCommits } from './git.js';
 import { loadConfig } from './config.js';
 import { ADR_FILE, SPEC, adrId, docsInScope, symlinkOn } from './scope.js';
@@ -88,7 +88,7 @@ export function loadState(top, at, config, names) {
   const docs = [];
   for (const { file, request, text, adr: isAdr } of files) {
     if (text === null || text === undefined) continue;
-    const paragraphs = parseMarkdown(text, file).paragraphs.filter((p) => p.id);
+    const paragraphs = parseMarkdownOnce(text, file).paragraphs.filter((p) => p.id);
     docs.push({ file, request, text, adr: Boolean(isAdr), paragraphs, ids: new Set(paragraphs.map((p) => p.id)) });
   }
   // Each request's files are read and parsed when a reader first asks for
@@ -109,7 +109,7 @@ export function loadState(top, at, config, names) {
       let paras = open ? docs.find((d) => d.request === n)?.paragraphs : null;
       if (!open) {
         const text = get(`requests/archive/${n}/spec.md`);
-        paras = text === null ? [] : parseMarkdown(text, `requests/archive/${n}/spec.md`).paragraphs.filter((p) => p.id);
+        paras = text === null ? [] : parseMarkdownOnce(text, `requests/archive/${n}/spec.md`).paragraphs.filter((p) => p.id);
       }
       return new Map((paras ?? []).map((p) => [p.id, p]));
     });
