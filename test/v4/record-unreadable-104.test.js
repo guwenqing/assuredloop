@@ -15,7 +15,10 @@
 //   exit 2 and "al: <path> is not a valid record: <reason>"; for an archived
 //   request, the refusal for an archived request. Nothing is written.
 // - al conclude refuses an unreadable record before its sign-off and promise
-//   reasons: exit 2, the same "al:" line, and no "refused:" line.
+//   reasons: exit 2, the same "al:" line, and no "refused:" line. So does a
+//   record that is missing, or whose path is a folder, with the refusal
+//   "al: <name> has no record <path>" that al gives today when nothing else
+//   refuses first.
 // - al context: exit 0; it names the record and the reason, as it does now.
 //
 // The worlds: a small project (one request made by al new, open, or
@@ -27,7 +30,7 @@
 // reads src/. No model and no network.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseDocument } from 'yaml';
 import { invoicer } from './helpers/invoicer.js';
@@ -235,6 +238,38 @@ describe('#104 al conclude refuses an unreadable record before its other refusal
         assert.doesNotMatch(r.stdout, REFUSED, `no "refused:" line:\n${show(r)}`);
       }
       if (kase === ALIASES) sameAsSyntax(t, world, runs, b.reason, concludeCommands);
+    });
+  }
+
+  // A record that is missing, or a folder at its path. The expected stdout is
+  // what al conclude prints today for the request of the small project, which
+  // has no other refusal reason (the reference test below).
+  const NO_RECORD = [
+    { label: 'the record is missing', make: (dir, path) => rmSync(join(dir, path)) },
+    { label: 'a folder stands at the record path', make: (dir, path) => { rmSync(join(dir, path)); mkdirSync(join(dir, path)); } },
+  ];
+  const noRecordStdout = (name) => [
+    `al: ${name} has no record ${recordPath(name)}`,
+    'Read      working tree',
+    'Next      a v4 request is made with al new',
+    'Not known nothing was written',
+    '',
+  ].join('\n');
+
+  for (const gone of NO_RECORD) {
+    test(`reference: ${WORLDS[0].label}, ${gone.label}: al conclude, with and without --yes, exits 2 with "al: <name> has no record <path>" and writes nothing`, (t) => {
+      const { dir, name } = WORLDS[0].make(t);
+      gone.make(dir, recordPath(name));
+      for (const r of refusedRuns({ dir, name }, concludeCommands)) assert.equal(r.stdout, noRecordStdout(name), show(r));
+    });
+
+    test(`${world.label}, ${gone.label}: al conclude <name>, with and without --yes, exits 2 with "al: <name> has no record <path>", no "refused:" line, and writes nothing`, (t) => {
+      const { dir, name } = world.make(t);
+      gone.make(dir, recordPath(name));
+      for (const r of refusedRuns({ dir, name }, concludeCommands)) {
+        assert.doesNotMatch(r.stdout, REFUSED, `no "refused:" line:\n${show(r)}`);
+        assert.equal(r.stdout, noRecordStdout(name), show(r));
+      }
     });
   }
 });
