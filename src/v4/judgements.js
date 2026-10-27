@@ -10,7 +10,7 @@ import { read, sha256 } from './base.js';
 import { blocksOf, lf } from './markers.js';
 import { namedIds } from './repos.js';
 import { qualify, resolve } from './state.js';
-import { CHANGED } from './kept-items.js';
+import { CHANGED, itemState } from './kept-items.js';
 
 // The hints whose judgement moves a binding.
 export const BINDING_HINTS = ['stale-base', 'holder-changed', 'binding-unknown'];
@@ -90,28 +90,37 @@ const day = (j) => String(j.recorded ?? '').slice(0, 10);
 // out, a stale judgement named on its hint, and a judgement on a `not ok`
 // shown on its line; judged(bindings) is the message of the one line of the
 // current judgements, those of the binding hints included, or null; `codes`
-// are the codes of the hints that a judgement cleared.
+// are the codes of the hints that a judgement cleared; stateOf(bindings) is
+// the state of each judgement, as these give it, for the full trace (#91).
 export function judgementPass(state) {
   const entries = [...state.requests.values()].filter((r) => r.open)
     .flatMap((r) => list(r.data?.judgements).filter((j) => isMap(j) && j.id != null && typeof j.hint === 'string' && !OWN_FORM.has(j.hint) && j.on != null)
       .map((j) => ({ r, j })))
     .sort((a, b) => String(a.j.recorded ?? '').localeCompare(String(b.j.recorded ?? '')));
   const cleared = new Map();
-  const stale = new Set();
+  // What changed since each stale judgement, and the judgements shown on a not ok.
+  const stale = new Map();
+  const notOk = new Set();
   const codes = new Set();
   const apply = (findings) => findings.flatMap((f) => {
     // Only the newest judgement on a pair of hint code and --on counts; an
     // older one is history (DES-163).
     const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on));
     if (!last || f.severity === 'info') return [f];
-    if (f.severity === 'not ok') return [{ ...f, message: `${f.message} · judgement ${last.r.name}/${last.j.id} is shown; it does not clear a not ok` }];
-    if (changedSince(state, last.j, f) === null) {
-      cleared.set(`${last.r.name}/${last.j.id}`, last);
+    const key = `${last.r.name}/${last.j.id}`;
+    if (f.severity === 'not ok') {
+      notOk.add(key);
+      return [{ ...f, message: `${f.message} · judgement ${key} is shown; it does not clear a not ok` }];
+    }
+    const what = changedSince(state, last.j, f);
+    if (what === null) {
+      cleared.set(key, last);
       codes.add(f.code);
       return [];
     }
-    stale.add(`${last.r.name}/${last.j.id}`);
-    return [{ ...f, message: `${f.message}; the judgement ${last.r.name}/${last.j.id} (${day(last.j)}) is stale: ${changedSince(state, last.j, f)} changed since it` }];
+    if (!stale.has(key)) stale.set(key, new Set());
+    stale.get(key).add(what);
+    return [{ ...f, message: `${f.message}; the judgement ${key} (${day(last.j)}) is stale: ${what} changed since it` }];
   });
   const judged = (bindings = new Map()) => {
     // A judgement that is stale on any of its hints is not current.
@@ -126,5 +135,26 @@ export function judgementPass(state) {
     return [...all.values()].sort((a, b) => a.r.name.localeCompare(b.r.name) || n(a.j) - n(b.j))
       .map(({ r, j }) => `${r.name}/${j.id} ${j.hint} ${j.on}: ${j.reason}`).join('; ');
   };
-  return { apply, judged, codes };
+  // After apply: the state of judgement `j` of request `r`. Only the newest
+  // on a pair of hint code and --on counts (DES-163); a binding judgement
+  // counts for each binding that names it; issue-changed keeps its own form.
+  const stateOf = (bindings = new Map()) => (r, j) => {
+    if (!r.open) return 'recorded; not checked: the request is archived';
+    if (typeof j.hint !== 'string' || j.on == null) return 'not checked: the entry has no hint code or no --on';
+    if (j.hint === CHANGED) return itemState(r, j);
+    const key = `${r.name}/${j.id}`;
+    if (BINDING_HINTS.includes(j.hint)) {
+      const b = bindings.get(key);
+      if (!b) return 'history: no binding names it now';
+      return b.hinted ? `stale: ${[...b.whats].join(', ')} changed since it` : 'current';
+    }
+    const at = entries.findIndex((e) => e.r.name === r.name && String(e.j.id) === String(j.id));
+    const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && String(e.j.on) === String(j.on));
+    if (newer) return `history: ${newer.r.name}/${newer.j.id} is newer on the same hint and ID`;
+    if (stale.has(key)) return `stale: ${[...stale.get(key)].join(', ')} changed since it`;
+    if (cleared.has(key)) return 'current';
+    if (notOk.has(key)) return 'shown on a not ok; it does not clear a not ok';
+    return `no hint now: al check gives no ${j.hint} hint on ${j.on}`;
+  };
+  return { apply, judged, codes, stateOf };
 }
