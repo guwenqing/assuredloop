@@ -106,7 +106,8 @@ When `.assuredloop/config.yaml` has no `search` line, set it up once:
    or a skill). If it has one, write `search: {own: <name>}`.
 2. Else run `al search <words>`. Show the user its choices, its
    recommendation and its limits. Write the user's choice: `search: local`,
-   `search: {local: <row>}` or `search: none`. Add `--full` to see every row.
+   `search: {local: <row>}` or `search: none`. To see every row, run
+   `al search <words> --full`.
 3. Commit the line, so that every agent and CI read the same choice.
 
 ## 6. In every answer
