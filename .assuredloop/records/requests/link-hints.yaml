@@ -27,3 +27,9 @@ decisions: []
 tasks: []
 bindings:
   - { holder: link-hints/R1, link: from, target: link-hints/2026-10-27-owner-words.md, holder_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_sha256: da6143f1b30b5f360c790e323d5a53cba7b27c32c557574ace5faffbc07adb05 }
+  - { holder: DES-16, link: serves, target: link-hints/R1, holder_sha256: 334cd5b4a1d3526f6bd662ac014f6d6a18a0ed82f0133d090497d3bcbee2bdbe, target_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_version: 1 }
+  - { holder: DES-22, link: serves, target: link-hints/R1, holder_sha256: a8e1cb19a9c02e08d1b13b35635b46e80c7f023261b06b5acacbffe1b0938fc2, target_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_version: 1 }
+  - { holder: DES-165, link: serves, target: link-hints/R1, holder_sha256: 4743bf7ab6ab5cf1291f6b8011139a7e1d97c860d89cb93f5a504567f3e5133d, target_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_version: 1 }
+  - { holder: DES-165, link: builds-on, target: DES-22, holder_sha256: 4743bf7ab6ab5cf1291f6b8011139a7e1d97c860d89cb93f5a504567f3e5133d, target_sha256: a8e1cb19a9c02e08d1b13b35635b46e80c7f023261b06b5acacbffe1b0938fc2 }
+  - { holder: DES-165, link: builds-on, target: DES-37, holder_sha256: 4743bf7ab6ab5cf1291f6b8011139a7e1d97c860d89cb93f5a504567f3e5133d, target_sha256: 3c48a72fe4999189cc6374c4439187890e181600deba3a007f71d7ddf2b1ecc6 }
+  - { holder: DES-26, link: serves, target: link-hints/R1, holder_sha256: d7270345348b9ef0cc634da8067f78e56398ee6112990df98c6ff91cfb590cb2, target_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_version: 1 }
