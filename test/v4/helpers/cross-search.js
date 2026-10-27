@@ -47,7 +47,9 @@ const RECORD = '.assuredloop/records/requests/invoice-exports.yaml';
 
 // The world with the commits above. Returns world(t) with `shas.ext`:
 // { C1, C2, X1 } and `shas.web.result` (the commit that added the web result).
-export function searchWorld(t) {
+// `search` (#99): the search setting of the central config, committed in X1;
+// `local` (word search) unless the test names another; null for none.
+export function searchWorld(t, { search = 'local' } = {}) {
   const w = world(t);
   write(w.web, 'src/reminders.js', WEB_REMINDERS);
   write(w.web, 'src/old-note.js', OLD_NOTE);
@@ -65,6 +67,10 @@ export function searchWorld(t) {
   const rec = readYaml(w.central, RECORD);
   rec.outputs = [...rec.outputs, { repo: 'invoicer-web', file: 'config/link.json', implements: ['central:EXP-4'] }];
   writeYaml(w.central, RECORD, rec);
+  if (search !== null) {
+    const cfg = readYaml(w.central, '.assuredloop/config.yaml');
+    writeYaml(w.central, '.assuredloop/config.yaml', { ...cfg, search });
+  }
   const X1 = commit(w.central, 'Add the link check, the user guide, and declare config/link.json');
 
   const result = addedAt(w.web, '.assuredloop/results/export-link-test.yaml');

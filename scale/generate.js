@@ -90,7 +90,7 @@ export function generate(o) {
   writeSetup(central.dir);
   central.touched.add('.assuredloop/schema.yaml');
   central.write('.assuredloop/config.yaml', [
-    '# AssuredLoop settings (design.md 2, schema.md 7).', 'schema: assuredloop/1', 'root: specs', 'docs: []',
+    '# AssuredLoop settings (design.md 2, schema.md 7).', 'schema: assuredloop/1', 'root: specs', 'docs: []', 'search: local',
     ...(outs.length ? ['outputs:', ...outs.map((r) => `  - {name: ${r.name}, path: ../${r.name}}`)] : ['outputs: []']), ''].join('\n'));
   central.write('README.md', '# The central repo\n\nThe spec, the requests and the records of the scale world (T15).\n');
   const next = new Map();

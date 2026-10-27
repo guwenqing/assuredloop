@@ -19,7 +19,7 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
-  LEVEL2_LINE, REPO, TRANSFORMERS, netAttempts, netGuard, runOk, search, show, smallRepo,
+  LEVEL2_LINE, REPO, TRANSFORMERS, WITH_MODEL, netAttempts, netGuard, runOk, search, show, smallRepo,
 } from './helpers/search.js';
 
 const TEN_MINUTES = 600_000;
@@ -38,7 +38,7 @@ test('level 2 with the real model: al search answers at level 2 and finds the pa
   timeout: TEN_MINUTES,
 }, (t) => {
   assert.ok(installed, `${TRANSFORMERS} does not resolve from the repo top, and AL_REQUIRE_REAL_MODEL=1 asks for the real model`);
-  const { dir } = smallRepo(t);
+  const { dir } = smallRepo(t, { search: WITH_MODEL }); // #99: level 2 needs the setting to name the row
   assert.ok(!existsSync(join(dir, 'node_modules')), 'the fixture: the project has no node_modules, so al uses the library beside itself');
 
   const out = search(dir, ['how', 'long', 'does', 'the', 'emailed', 'download', 'URL', 'keep', 'working'], { timeout: TEN_MINUTES });

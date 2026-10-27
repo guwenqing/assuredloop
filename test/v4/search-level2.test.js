@@ -5,13 +5,16 @@
 // @huggingface/transformers that the test writes into the test repo's
 // node_modules (helpers/search.js, standIn). These tests need no model and
 // run in CI.
+// #99 (kb-search/R10): level 2 answers only when the `search` setting names a
+// row, here {local: bge-small-en-v1.5 q8 tjs-cpu} (smallRepo and buildWorld
+// set it when the stand-in is installed); `local` is level 1.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { commitAll, doc, project, write, writeConfig } from './helpers/project.js';
 import {
-  A_TEXT, LEVEL2_LINE, MODEL, QUERY_PREFIX, REVISION, SMALL_SP2, SMALL_SPEC, besideAl, buildWorld, callsOf, clearLog,
+  A_TEXT, LEVEL2_LINE, MODEL, QUERY_PREFIX, REVISION, SMALL_SP2, SMALL_SPEC, WITH_MODEL, besideAl, buildWorld, callsOf, clearLog,
   embedded, exportRows, indexFile, installEmbedder, runOk, search, show, smallRepo,
 } from './helpers/search.js';
 
@@ -21,7 +24,7 @@ const has = (out, want) => assert.ok(idRoles(out).includes(want), `${want} in:\n
 // True when some text given to the embedder holds `text`.
 const sent = (log, text) => embedded(log).some((x) => x.includes(text));
 
-test('level 2 answers when @huggingface/transformers is in the project; the Level line names al\'s model and its revision', (t) => {
+test('#99 with search: {local: bge-small-en-v1.5 q8 tjs-cpu} and @huggingface/transformers in the project, level 2 answers; the Level line names the row', (t) => {
   const { dir } = smallRepo(t, { embedder: {} });
   const out = search(dir, ['export', 'link']);
   assert.equal(out.level, 2);
@@ -42,7 +45,7 @@ test('level 2 answers when @huggingface/transformers is in the project; the Leve
 test('level 2 calls the library as pinned: pipeline once per process, with the model, its revision (in the options or in env) and q8; the extractor with cls pooling and normalize, at most 32 texts at a time', (t) => {
   const dir = project(t);
   write(dir, '.gitignore', 'node_modules/\n');
-  writeConfig(dir, [{ file: 'specs/many.md', prefix: 'MNY' }], { repo: 'acme' });
+  writeConfig(dir, [{ file: 'specs/many.md', prefix: 'MNY' }], { repo: 'acme', search: WITH_MODEL });
   // 70 paragraphs, so the rows need more than two batches of 32.
   const paras = [['MNY-1 note', '# Many rules']];
   for (let i = 2; i <= 71; i += 1) paras.push([`MNY-${i} rule`, `Rule number ${i}: the invoice link of batch ${i} MUST expire.`]);
@@ -214,7 +217,7 @@ test('fallback 2 -> 1: no @huggingface/transformers in the project (and none bes
     t.skip('@huggingface/transformers resolves beside bin/al.js, so "not installed" cannot be shown here');
     return;
   }
-  const { dir } = smallRepo(t);
+  const { dir } = smallRepo(t, { search: WITH_MODEL });
   const out = search(dir, ['export', 'link']);
   assert.equal(out.level, 1);
   assert.ok(typeof out.fallback === 'string' && out.fallback.length > 0, 'it says why');
