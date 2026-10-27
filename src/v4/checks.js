@@ -359,8 +359,8 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // Bindings whose target changed since they were bound (design.md 4, 6).
   // A hint clears by a judgement, which moves the binding to now and names
   // itself in it (#88); when a side changes again, the hint names it as
-  // stale. `judgedBindings`: each such judgement, and whether a binding that
-  // names it gives a hint now.
+  // stale. `judgedBindings`: each such judgement, whether a binding that
+  // names it gives a hint now, and what changed since it (#91).
   let declared = null;
   let alignable = null;
   const judgedBindings = new Map();
@@ -370,13 +370,16 @@ export function checks(top, { base, phrases = [], issues = null }) {
       if (!b?.target || !b.holder || !b.target_sha256) continue;
       const j = b.judgement != null ? judgements.get(String(b.judgement)) : undefined;
       const key = j && `${r.name}/${j.id}`;
-      if (j && !judgedBindings.has(key)) judgedBindings.set(key, { r, j, hinted: false });
+      if (j && !judgedBindings.has(key)) judgedBindings.set(key, { r, j, hinted: false, whats: new Set() });
       const next = (code) => `then al record ${r.name} judgement --hint ${code} --on ${b.holder} --reason <why>`;
       // A binding hint: the record that holds it, and the judgement that it names as stale.
       const hint = (code, p, message, what) => {
         add('hint', code, p, b.holder, j ? `${message}; the judgement ${key} (${String(j.recorded ?? '').slice(0, 10)}) is stale: ${what} changed since it` : message);
         findings.at(-1).binding = { request: r.name, holder: String(b.holder), link: b.link, target: String(b.target) };
-        if (j) judgedBindings.get(key).hinted = true;
+        if (j) {
+          judgedBindings.get(key).hinted = true;
+          judgedBindings.get(key).whats.add(what);
+        }
       };
       // A holder paragraph whose text changed since the link was bound
       // (removed-links/R2, #11). Output files and requirements are not

@@ -1780,6 +1780,58 @@ commit it. Each other line of `al index` shows as one line for each kind. An
 - An answer gives a `Next` line only when it names a step that follows from
   the answer's facts.
 
+<!-- DES-164 interface serves:assuredloop-v4/R9,light-resign/R1 builds-on:DES-72 -->
+
+**The full trace.** `al context <name> --audit` adds the whole trace of a
+request to the answer of `al context <name>`, after its coverage lines.
+Each entry of the request's record has a line of its own, so that none is
+left out. Under `--audit`, the `Records` line also names the bindings and
+the judgements when the record holds them, because only `al`'s record holds
+these facts. The `Hints` section of `al context`, with or without
+`--audit`, shows the hints that `al check` gives after its judgements
+(DES-163). The lines of the trace, in this order:
+- `Source`: each source of the owner's words, with its file, its hash, and
+  when and where it was taken.
+- `Version`: each requirement version, with its hash.
+- `Replaced`: each requirement of the request that a requirement of another
+  request replaces (DES-129).
+- `Sign-off`: each sign-off, with its file, its hash and the versions that
+  it covers.
+- `Output`: each output file and each ID that it claims to implement,
+  verify or document. It is a claim, and the trace does not show it as
+  proven.
+- `Binding`: each binding, with its holder, link and target, both hashes,
+  and `judged target <hash>` and `judgement J<n>` where the record holds
+  them. Its state is bound, stale, target not found, or cross-repo. The
+  state compares the target with `judged_target_sha256` when the record
+  holds it, else with `target_sha256`, as `stale-base` does. So a binding
+  that a judgement cleared is not shown as stale. For a `changes` or
+  `removes` link of a change paragraph, the map and `al conclude` still read
+  `target_sha256` (DES-160), so "bound" there does not say that the target
+  is unchanged since the change linked it.
+- `Judgement`: each entry of the record's `judgements:`, in record order,
+  with its ID, hint code, `--on`, when it was recorded, its line in the
+  record, its state and its reason. The state is the one that `al check`
+  gives (DES-163, DES-130): current; stale, with what changed since it;
+  history, with the newer judgement on the same hint code and `--on`; shown
+  on a `not ok`, which it does not clear; or no hint now, when `al check`
+  gives no such hint. A judgement that is stale on one of its hints is
+  stale, as on the `info judged` line, and each thing that changed is named
+  once. A binding judgement is current while no binding that names it gives
+  a hint, and history when no binding names it. For
+  `issue-changed`, `al context` does not read the items. So the newest
+  judgement at the moment of reliance says that it is not known whether the
+  item changed, and names `al check --issues <folder>`. It is stale when a
+  later sign-off became the moment of reliance, and history when a newer
+  one covers the same item and moment. The judgements of an archived
+  request are recorded and not checked. At `--at`, their state is not
+  known. An entry with no hint code or no `--on` is not checked.
+- `Disp.`: each disposition of an old record, as recorded; `al` no longer
+  checks it (DES-136).
+- `Close`: each close line of the record, with what it names.
+- `Result`: each result file, with its outcome and whether it applies; not
+  at `--at`.
+
 <!-- DES-133 interface serves:light-resign/R1,assuredloop-v4/R9 builds-on:DES-72 -->
 
 **`al context <ID>`.** The ID may name a paragraph, a requirement or an ADR

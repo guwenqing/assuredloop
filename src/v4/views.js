@@ -13,10 +13,13 @@ import {
   versionOf,
 } from './state.js';
 import { isCentral } from './indexer.js';
+import { findingsNow } from './check.js';
+import { judgementPass } from './judgements.js';
 import { LINK_WORDS, groupOf } from './markers.js';
 
 export const line = (label, text) => `${label.length < 10 ? label.padEnd(10) : `${label} `}${text}`;
 const list = (x) => (Array.isArray(x) ? x : []);
+const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const short = (h) => (h ? String(h).slice(0, 12) : 'none');
 const indent = (text) => text.split('\n').map((l) => `  ${l}`);
 
@@ -238,13 +241,15 @@ export function placesOf(now, was, base, f) {
   return parts.length ? ` · places: ${[...new Set(parts)].join(', ')}` : '';
 }
 
-// The findings of al check on the working tree, and each one's line with
-// the places of its IDs; null at --at.
+// The findings of al check on the working tree, after its judgements
+// (DES-163, #91), and each one's line with the places of its IDs; null at
+// --at.
 function hintsNow(state) {
   if (state.rev) return null;
   const base = mergeBase(state.top);
   const t = checks(state.top, { base });
-  return { findings: t.findings, line: (f) => findingLine(f, placesOf(t.now, t.was, base, f)) };
+  const findings = judgementPass(t.now).apply(t.findings);
+  return { findings, line: (f) => findingLine(f, placesOf(t.now, t.was, base, f)) };
 }
 
 // --- the views
@@ -281,7 +286,7 @@ function projectView(state) {
 function requestView(state, r, audit) {
   const body = [];
   body.push(line('Request', `${r.name} · ${r.tier ? `tier ${r.tier}` : 'no tier'} · ${r.open ? 'open' : 'archived'}${r.spike ? ' · a spike' : ''} · ${r.dir}`));
-  body.push(recordsLine(r));
+  body.push(recordsLine(r, audit));
   for (const q of r.reqs) body.push(`  ${q.id} ${versionOf(r, q)} (${q.title}) · ${r.dir}/request.md:${reqLine(r, q.id)}: ${signState(state, r, q)}`);
   if (!r.reqs.length) body.push('  no organized requirement yet');
   for (const d of list(r.data?.decisions)) {
@@ -335,13 +340,15 @@ function entryLines(state, r, key) {
 
 // The facts of request `r` that only its record holds (LD-47): the
 // sign-offs, the requirement versions, the tasks and the close lines, and
-// the tier when request.md has no Tier: line that says it.
-function recordsLine(r) {
+// the tier when request.md has no Tier: line that says it; with --audit, the
+// bindings and the judgements too (#91).
+function recordsLine(r, audit = false) {
   const tier = /^Tier:\s*(\S+)/m.exec(r.md)?.[1];
   if (r.recordError || !r.data) return line('Records', `al's record ${recordPath(r.name)} cannot be read (${r.recordError ?? 'it is not there'}), so its sign-offs, versions, tasks and close lines are not known`);
   const has = (key) => list(r.data[key]).length > 0;
   const facts = [...(tier && tier === r.tier ? [] : ['the tier']), ...(has('signoff') ? ['the sign-offs'] : []), ...(has('requirements') ? ['the requirement versions'] : []),
-    ...(has('tasks') ? ['the tasks'] : []), ...(has('closes') ? ['the close lines'] : [])];
+    ...(has('tasks') ? ['the tasks'] : []), ...(has('closes') ? ['the close lines'] : []),
+    ...(audit && has('bindings') ? ['the bindings'] : []), ...(audit && has('judgements') ? ['the judgements'] : [])];
   if (!facts.length) return line('Records', `al's record ${recordPath(r.name)} holds no sign-off, task or close line`);
   return line('Records', `only al's record ${recordPath(r.name)} holds ${facts.length > 1 ? `${facts.slice(0, -1).join(', ')} and ${facts.at(-1)}` : facts[0]} below`);
 }
@@ -375,10 +382,14 @@ function auditLines(state, r) {
     if (t.cross) st = 'cross-repo, not read here';
     else {
       const cur = resolve(state, t);
-      st = !cur ? 'target not found' : !b.target_sha256 || cur.sha === b.target_sha256 ? 'bound' : 'stale';
+      // A judged target counts, as for stale-base (#88, #91).
+      const judged = b.judged_target_sha256 ?? b.target_sha256;
+      st = !cur ? 'target not found' : !judged || cur.sha === judged ? 'bound' : 'stale';
     }
-    out.push(line('Binding', `${b?.holder} ${b?.link} ${b?.target}${b?.target_version ? ` version ${b.target_version}` : ''} target ${short(b?.target_sha256)} holder ${short(b?.holder_sha256)}: ${st}`));
+    out.push(line('Binding', `${b?.holder} ${b?.link} ${b?.target}${b?.target_version ? ` version ${b.target_version}` : ''} target ${short(b?.target_sha256)} holder ${short(b?.holder_sha256)}`
+      + `${b?.judged_target_sha256 != null ? ` judged target ${short(b.judged_target_sha256)}` : ''}${b?.judgement != null ? ` judgement ${b.judgement}` : ''}: ${st}`));
   }
+  out.push(...judgementLines(state, r));
   // Old records may hold dispositions: they stay readable, and al no longer checks them (LD-58).
   for (const d of list(data.dispositions)) {
     const st = d?.source === 'adoption' ? 'adoption' : 'recorded; not checked';
@@ -389,6 +400,30 @@ function auditLines(state, r) {
   }
   if (!state.rev) for (const res of loadResults(state.top)) out.push(line('Result', `${res.file} ${res.check ?? ''} ${res.outcome ?? ''}: ${res.problems.length ? `not valid: ${res.problems.join('; ')}` : applicability(state.top, res)}`));
   return out;
+}
+
+// Each judgement of request `r`, with its line in the record, and its state
+// as al check gives it now (DES-163, DES-130, #91).
+function judgementLines(state, r) {
+  const js = list(r.data?.judgements);
+  if (!js.length) return [];
+  let stateOf;
+  if (state.rev) stateOf = () => 'not known at --at: al check reads the working tree only';
+  else if (!r.open) stateOf = () => 'recorded; not checked: the request is archived';
+  else {
+    try {
+      const now = findingsNow({ top: state.top, opts: {} });
+      const pass = judgementPass(now.state);
+      pass.apply(now.findings);
+      stateOf = pass.stateOf(now.judgedBindings);
+    } catch (e) {
+      if (!(e instanceof Fail)) throw e;
+      stateOf = () => `not known: al check refuses: ${e.message}`;
+    }
+  }
+  const at = entryLines(state, r, 'judgements');
+  return js.map((j) => line('Judgement', `${j?.id ?? '-'} ${j?.hint ?? '-'} ${j?.on ?? '-'} recorded ${j?.recorded ?? 'unknown'} `
+    + `(${recordPath(r.name)}${at.has(String(j?.id)) ? `:${at.get(String(j?.id))}` : ''}): ${isMap(j) ? stateOf(r, j) : 'not checked: the entry has no hint code or no --on'}; reason: ${j?.reason ?? ''}`));
 }
 
 // The Checks line of a paragraph and the Result lines of its checks: this
