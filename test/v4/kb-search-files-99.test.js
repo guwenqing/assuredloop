@@ -8,8 +8,9 @@
 // - The text hit: `<n>. file <path> <kind> @<commit 12>`, and
 //   `<n>. file <repo>:<path> <kind> @<commit 12>` for an output repo. In
 //   --json the hit has role `file`, its kind, its repo and its path.
-// - File rows are in the default query, never in history, never in
-//   `al export`, and only in word search: the model does not embed them.
+// - File rows are in the default query and in a history query (never as
+//   history rows), never in `al export`, and only in word search: the model
+//   does not embed them.
 // Built from the issue and the public interface only; nothing here reads src/.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -99,6 +100,34 @@ test('#99 file rows are the files at the selected commit: in the default query, 
   fileHit(search(dir, ['zebra', '--at', B], { level: 1 }), 'notes/zebra-notes.txt');
   assert.deepEqual(files(search(dir, ['zebra', '--at', A], { level: 1 })), [], 'not at A, before it was added');
 });
+
+// #99, second round (DES-64: "A history query adds `history` rows, never
+// shown as current promises. A `file` row is never history."): --history
+// adds history rows to the default query, so a file that git tracks at the
+// selected commit is still found, with role file, as without --history.
+const noRank = (h) => { const { rank: _r, ...x } = h; return x; };
+for (const level of [1, 2]) {
+  test(`#99 a history query keeps the current file rows (level ${level}): --history still finds a tracked file, with role file, never history`, (t) => {
+    const { dir } = repo(t, level === 2 ? WITH_MODEL : 'local');
+    if (level === 2) installEmbedder(dir, { log: join(dir, '.git', 'embed-test.log') });
+    write(dir, 'src/walrus.js', 'export const walrus = 1;\n');
+    commitAll(dir, 'B: a walrus module');
+    const opts = level === 2 ? {} : { level: 1 };
+    const plain = search(dir, ['walrus'], opts);
+    assert.equal(plain.level, level, `level ${level} answered (fallback: ${plain.fallback})`);
+    const want = fileHit(plain, 'src/walrus.js');
+    const hist = search(dir, ['walrus', '--history'], opts);
+    assert.equal(hist.level, level, `level ${level} answered with --history (fallback: ${hist.fallback})`);
+    const got = fileHit(hist, 'src/walrus.js');
+    assert.equal(got.role, 'file');
+    assert.equal(got.kind, 'code');
+    assert.deepEqual(noRank(got), noRank(want), 'the same file hit as without --history');
+    const asHistory = hist.hits.filter((h) => h.role === 'history' && (h.path === 'src/walrus.js' || h.id === 'src/walrus.js'));
+    assert.deepEqual(asHistory, [], 'a file row is never history');
+    const r = runOk(dir, ['search', 'walrus', '--history', ...(level === 2 ? [] : ['--level', '1'])]);
+    assert.ok(/^\s*\d+\. file src\/walrus\.js code @[0-9a-f]{12}\s*$/m.test(r.stdout), `the file line with --history:\n${show(r)}`);
+  });
+}
 
 test('#99 file rows are in the local index only: level 0 (a scan of the export) has none', (t) => {
   const { dir } = repo(t);
