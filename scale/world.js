@@ -191,6 +191,11 @@ export function recordText(data) {
 }
 
 const binding = (holder, link, target, holderSha, targetSha, extra = {}) => ({ holder, link, target, holder_sha256: holderSha, target_sha256: targetSha, ...extra });
+const tripleOf = (b) => `${b.holder}\t${b.link}\t${b.target}`;
+
+// The records of each repo that hold each binding of a spec paragraph, by
+// its holder, link and target, so that a later close can remove it.
+const HELD = new WeakMap();
 
 // --- A request -----------------------------------------------------------------
 
@@ -334,6 +339,27 @@ export function closeRequest(repo, { name, file, ms, nextId, outputs = [] }) {
       }
     }
   }
+  // al index on the branch also removes each binding whose link no marker
+  // declares any more (removed-links/R1): a link of a spec paragraph that
+  // this change rewrote or removed, from the records that hold it. So main is
+  // as al leaves it.
+  const LINKS = { serves: 'serves', buildsOn: 'builds-on' };
+  const declared = (es) => new Set(es.flatMap((e) => Object.entries(e.links).flatMap(([k, ts]) => (LINKS[k] ? ts.map((t) => tripleOf({ holder: e.id, link: LINKS[k], target: t })) : []))));
+  const declaredNow = declared([...now.values()]);
+  if (!HELD.has(repo)) HELD.set(repo, new Map());
+  const held = HELD.get(repo);
+  const gone = new Map();
+  for (const k of declared(before)) {
+    if (declaredNow.has(k)) continue;
+    for (const n of held.get(k) ?? []) gone.set(n, [...(gone.get(n) ?? []), k]);
+    held.delete(k);
+  }
+  for (const [n, ks] of [...gone].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    const rec = parse(repo.read(recordPath(n)));
+    rec.bindings = rec.bindings.filter((b) => !ks.includes(tripleOf(b)));
+    repo.write(recordPath(n), recordText(rec));
+  }
+  for (const b of bindings) if (!b.holder.includes('/')) held.set(tripleOf(b), new Set([...(held.get(tripleOf(b)) ?? []), name]));
   data.bindings.push(...bindings);
   data.dispositions.push(...dispositions);
   data.status = 'concluded';
