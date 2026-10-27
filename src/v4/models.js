@@ -1,6 +1,6 @@
 // The measured table of `al search` (kb-search/R10, design.md 11): each model,
 // precision and runtime measured for issue #28 on one Mac, 2026-10-21 to
-// 2026-10-23, on 50 questions from one repo. No figure here comes from a run
+// 2026-10-23, on 50 questions from one repo. No row's figure comes from a run
 // of this code. A row is named `<model> <precision> <runtime>`.
 //
 // Each row: the model repo and its pinned commit; the model files with their
@@ -16,7 +16,7 @@
 // estimated tokens of the scale run's central repo (1,000 requests and 20
 // repos; bytes / 4, as `al search` estimates them) over the time of its full
 // word index on that Mac.
-export const WORDS = { recall: [0.335, 0.25, 0.42], tokensPerSecond: 42000 };
+export const WORDS = { recall: [0.335, 0.25, 0.42], tokensPerSecond: 36900 };
 
 // The rows that this version runs: transformers.js (`tjs-*`). Every other row
 // that is not excluded needs the llama.cpp runtime or reranking (#100).

@@ -1688,7 +1688,7 @@ the Metal GPU and the CPU) and the reranker rows. A row is named
 - Each row keeps its figures: the model files with their bytes, the peak
   memory, the index speed, the time of one search, recall@10 with its 95%
   interval, the gain over word search with its interval, and a published
-  score where there is one. No figure comes from a run of `al`.
+  score where there is one. No figure of a row comes from a run of `al`.
 - A row is in one state: it runs in this version and fits this computer;
   it runs and does not fit; this version cannot run it yet (the llama.cpp
   runtime and reranking, #100); or it is excluded, with the reason that the
