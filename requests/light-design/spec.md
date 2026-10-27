@@ -882,8 +882,9 @@ choices holds the rules chosen for the build (#99).
 2. `local`: word search alone, or word search with one row of the measured
    table that the user names (DES-166): a model, a precision and a runtime
    measured for the offer, each with its figures and its published score.
-   `al` downloads the chosen model on first use, and first writes its
-   download size to standard error. Without the model library, `al search`
+   The model's library downloads the chosen model on first use; before it,
+   `al` writes the row and its download size to standard error. Without the
+   model library, `al search`
    answers with word search and says how to add it.
 3. `none`: no search; the skill tells the AI to grep.
 
