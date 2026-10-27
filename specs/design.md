@@ -333,6 +333,8 @@ decides a hint, and its decision is recorded where the next review finds it.
   `info judged - - <request>/J<n> <code> <ID>: <reason>; …`. A judgement
   that is stale on one of its hints is not current, and the line leaves it
   out.
+- For each pair of hint code and `--on`, only the newest judgement counts.
+  An older one is history: it clears nothing, and no line names it.
 - A judgement on `stale-base` or `holder-changed` moves each binding of that
   holder that has the hint, in the record of `<name>`, to the versions of now
   (section 4). The binding names its judgement (`judgement: J<n>`), so the

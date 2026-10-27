@@ -91,7 +91,7 @@ paragraphs:
     display: DES-22 (3:11, in 3. IDs, kinds and links)
   - id: DES-163
     kind: rule
-    text_sha256: 9260d52a6754c81c99102e85f4aefb0f9bd21fb2d58934f666452a43bf3f4f0c
+    text_sha256: 4c438d6878062b0f721855717c5cd131c311d848d8c144c4a1248deec3f434ba
     display: DES-163 (3:12, in 3. IDs, kinds and links)
   - id: DES-81
     kind: choice
