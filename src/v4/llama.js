@@ -6,7 +6,7 @@
 // server for a search and stops it after, also after a failure.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { accessSync, constants, createReadStream, statSync } from 'node:fs';
+import { accessSync, constants, createReadStream, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { delimiter, join } from 'node:path';
 import { INSTRUCTION } from './rerank.js';
@@ -66,6 +66,45 @@ function sha256Of(path) {
     const h = createHash('sha256');
     createReadStream(path).on('error', fail).on('data', (b) => h.update(b)).on('end', () => ok(h.digest('hex')));
   });
+}
+
+// The record of the model files that al hashed, in <dir>/model-checks.json
+// (dir is al's index folder): { <place>: { size, mtimeMs, sha256 } }.
+function writeCheck(dir, place, entry) {
+  const file = join(dir, 'model-checks.json');
+  let record = {};
+  try { record = JSON.parse(readFileSync(file, 'utf8')); } catch { /* none yet */ }
+  record[place] = entry;
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(file, `${JSON.stringify(record, null, 1)}\n`);
+}
+const readCheck = (dir, place) => { try { return JSON.parse(readFileSync(join(dir, 'model-checks.json'), 'utf8'))[place] ?? null; } catch { return null; } };
+
+// Checks a present model file against its pinned SHA-256 before a server
+// uses it. A file with no entry in the record, or with another size or
+// modification time, is hashed once and recorded. Throws when the SHA-256
+// differs; does nothing for an absent file or one of another size
+// (withServer fetches or refuses it).
+export async function checkPresent({ model, dir, env = process.env }) {
+  const place = modelPlace(model.file, env);
+  let st;
+  try { st = statSync(place); } catch { return; }
+  if (st.size !== model.bytes) return;
+  const entry = readCheck(dir, place);
+  let found = entry?.size === st.size && entry?.mtimeMs === st.mtimeMs ? entry.sha256 : null;
+  if (!found) {
+    found = await sha256Of(place);
+    writeCheck(dir, place, { size: st.size, mtimeMs: st.mtimeMs, sha256: found });
+  }
+  if (found !== model.sha256) throw new Error(`${model.file} at ${place}: SHA-256 ${found}, expected ${model.sha256}`);
+}
+
+// Records a file that withServer fetched and found right, so that the next
+// run does not hash it again.
+export function recordFetched({ model, dir, env = process.env }) {
+  const place = modelPlace(model.file, env);
+  const st = statSync(place);
+  writeCheck(dir, place, { size: st.size, mtimeMs: st.mtimeMs, sha256: model.sha256 });
 }
 
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));

@@ -63,8 +63,18 @@ async function level2(top, row, lines) {
       model: { name: row.name, repo: row.repo, commit: row.commit, file: row.files[0][0], bytes: row.files[0][1], sha256: row.sha256 },
       onFetch: (line) => { process.stderr.write(`${line}\n`); lines.push(line); },
     };
+    // A present file is checked by the record of al's checks, in its index
+    // folder; a file that llama-server fetched and that was found right is recorded.
+    const dir = indexDir(top);
+    const serve = async (more, fn) => {
+      await L.checkPresent({ model: opts.model, dir });
+      return L.withServer({ ...opts, ...more }, async (srv) => {
+        if (srv.fetched) L.recordFetched({ model: opts.model, dir });
+        return fn(srv);
+      });
+    };
     if (row.rerank) {
-      return { note: server.note, l2: { model: row.name, rerank: true, run: (fn) => L.withServer({ ...opts, kind: row.head ? 'rerank' : 'yesno' }, (srv) => fn((row.head ? llamaHead : llamaYesNo)(srv))) } };
+      return { note: server.note, l2: { model: row.name, rerank: true, run: (fn) => serve({ kind: row.head ? 'rerank' : 'yesno' }, (srv) => fn((row.head ? llamaHead : llamaYesNo)(srv))) } };
     }
     const { createLevel2 } = await import('./level2.js');
     const family = FAMILY[name];
@@ -72,7 +82,7 @@ async function level2(top, row, lines) {
       note: server.note,
       l2: {
         model: row.name,
-        run: (fn) => L.withServer({ ...opts, kind: 'embed', pooling: POOLING[family] }, (srv) => {
+        run: (fn) => serve({ kind: 'embed', pooling: POOLING[family] }, (srv) => {
           const e = L.llamaEmbedding(srv, family);
           return fn(createLevel2({ model: row.name, key: `${row.name}@${row.commit}`, embed: e.docs, embedQuery: e.query }));
         }),
