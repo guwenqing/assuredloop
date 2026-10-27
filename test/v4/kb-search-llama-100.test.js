@@ -62,10 +62,18 @@ const lineOf = (stdout, label) => {
   return l ? [l.text, ...l.more].join(' ') : null;
 };
 
+const HEX64 = /\b[0-9a-f]{64}\b/g;
+
+// al's record of the model files it hashed: <git dir>/assuredloop/model-checks.json,
+// a JSON object keyed by the absolute place: { size, mtimeMs, sha256 }.
+const recordFile = (dir) => join(resolve(dir, git(dir, 'rev-parse', '--git-path', 'assuredloop')), 'model-checks.json');
+const readRecord = (dir) => (existsSync(recordFile(dir)) ? JSON.parse(readFileSync(recordFile(dir), 'utf8')) : {});
+
 // A fake computer, the fake llama-server first on PATH, and LLAMA_CACHE.
 // `present`: write the row's model file at its place (true: its size; a
-// number: that size). Returns { fake, pc, opts, place, file, row }.
-function llamaSetup(t, dir, rowName, { conf = {}, computer = BIG_MAC, present = true } = {}) {
+// number: that size). `trust`: the words of a first search that makes al
+// check the present file (see trustFile). Returns { fake, pc, opts, place, file, row }.
+function llamaSetup(t, dir, rowName, { conf = {}, computer = BIG_MAC, present = true, trust = null } = {}) {
   const row = rowOf(rowName);
   const file = fileOf(row);
   const fake = fakeLlama(t, { version: BUILD, ...conf });
@@ -73,7 +81,25 @@ function llamaSetup(t, dir, rowName, { conf = {}, computer = BIG_MAC, present = 
   const place = join(fake.cache, file.path);
   if (present !== false) sparse(place, present === true ? file.bytes : present);
   const opts = { nodeArgs: pc.nodeArgs, env: { PATH: `${fake.bin}${delimiter}${pc.env.PATH}`, LLAMA_CACHE: fake.cache } };
-  return { fake, pc, opts, place, file, row };
+  const s = { fake, pc, opts, place, file, row };
+  if (trust) trustFile(dir, s, trust);
+  return s;
+}
+
+// #100: a present sparse file never has the pinned SHA-256, so al refuses it.
+// To reach level 2, the test plants al's record of the file: the same size and
+// modification time, with the pinned SHA-256. A first search gives the pinned
+// SHA-256: al refuses the file, records the SHA-256 found, and its Fallback
+// names both. No llama-server starts in that search.
+function trustFile(dir, s, words) {
+  const out = jsonOf(run(dir, ['search', words, '--json'], s.opts));
+  const found = readRecord(dir)[s.place]?.sha256;
+  assert.match(String(found), /^[0-9a-f]{64}$/, `the fixture: the first search records the SHA-256 found (fallback: ${out.fallback})`);
+  const pinned = (String(out.fallback).match(HEX64) ?? []).filter((h) => h !== found);
+  assert.equal(pinned.length, 1, `the fixture: the first search names the expected SHA-256: ${out.fallback}`);
+  assert.deepEqual(s.fake.events('start'), [], 'the fixture: the refused file starts no llama-server');
+  const st = statSync(s.place);
+  writeFileSync(recordFile(dir), JSON.stringify({ ...readRecord(dir), [s.place]: { size: st.size, mtimeMs: st.mtimeMs, sha256: pinned[0] } }));
 }
 
 const argOf = (argv, flag) => {
@@ -102,6 +128,10 @@ for (const [name, computer] of [['a Mac with 64 GB', BIG_MAC], ['a Linux compute
     const byName = new Map(out.rows.map((x) => [x.name, x]));
     assert.equal(byName.get(NEW_EXCLUDED).state, 'excluded');
     assert.equal(byName.get(NEW_EXCLUDED).reason, NEW_REASON);
+    const ex = byName.get(NEW_EXCLUDED);
+    assert.deepEqual([ex.ms_a_search, ex.recall, ex.gain], [null, null, null], `${NEW_EXCLUDED}: no measured time of a search, recall or gain in --json`);
+    const full = runOk(dir, ['search', 'export', 'link', '--full'], opts).stdout.split('\n').filter((l) => l.includes(NEW_EXCLUDED)).join('\n');
+    for (const words of ['time of a search not measured', 'recall@10 not measured', 'gain not measured']) assert.ok(full.includes(words), `its --full line says "${words}":\n${full}`);
     const excluded = out.rows.filter((x) => x.state === 'excluded').map((x) => x.name).sort();
     assert.deepEqual(excluded, Object.keys(EXCLUDED).sort());
     for (const x of out.rows) assert.ok(['fits', 'not-fit', 'excluded'].includes(x.state), `${x.name}: state ${x.state}`);
@@ -182,7 +212,7 @@ const EMBED_ROWS = [
 for (const [rowName, family, pooling, ngl] of EMBED_ROWS) {
   test(`#100 search: {local: ${rowName}}, file present, build 11624: level 2 with the row; one llama-server with the measured arguments, stopped at the end`, { timeout: LIMIT }, (t) => {
     const dir = rulesRepo(t, { local: rowName });
-    const s = llamaSetup(t, dir, rowName, { conf: { tok: TOK[family], concepts: CONCEPTS } });
+    const s = llamaSetup(t, dir, rowName, { conf: { tok: TOK[family], concepts: CONCEPTS }, trust: 'url' });
     const r = runOk(dir, ['search', 'url'], s.opts);
     assert.equal(r.stdout.split('\n')[0], level2(rowName), show(r));
     assert.ok(!/^Fallback\b/m.test(r.stdout), show(r));
@@ -203,7 +233,7 @@ for (const [rowName, family, pooling, ngl] of EMBED_ROWS) {
 
   test(`#100 search: {local: ${rowName}}: the vectors come from the server, so each query finds its rule by meaning first`, { timeout: LIMIT }, (t) => {
     const dir = rulesRepo(t, { local: rowName });
-    const s = llamaSetup(t, dir, rowName, { conf: { tok: TOK[family], concepts: CONCEPTS } });
+    const s = llamaSetup(t, dir, rowName, { conf: { tok: TOK[family], concepts: CONCEPTS }, trust: 'url' });
     for (const [word, id] of QUERIES) {
       const words = search(dir, [word], { ...s.opts, level: 1 });
       assert.deepEqual(words.hits.filter((h) => h.role !== 'file'), [], `the fixture: no text has the word ${word}`);
@@ -225,7 +255,7 @@ const LLAMA_RERANKERS = [
 for (const [rowName, kind] of LLAMA_RERANKERS) {
   test(`#100 search: {local: ${rowName}} (${kind === 'head' ? 'a rerank head' : 'no head'}): the top 30 word hits are reordered by the server's scores; hits 31-40 keep their place`, { timeout: LIMIT }, (t) => {
     const dir = invoiceWorld(t, { local: rowName });
-    const s = llamaSetup(t, dir, rowName, { conf: { scoreBy: SCORE_BY } });
+    const s = llamaSetup(t, dir, rowName, { conf: { scoreBy: SCORE_BY }, trust: 'invoice' });
     const words = search(dir, ['invoice', '--limit', '50'], { ...s.opts, level: 1 });
     assert.equal(words.hits.length, 40, `the fixture: word search finds the 40 paragraphs: ${words.hits.map((h) => h.id).join(' ')}`);
     assert.deepEqual(s.fake.events('start'), [], 'level 1 starts no llama-server');
@@ -267,7 +297,7 @@ for (const [rowName, kind] of LLAMA_RERANKERS) {
 
   test(`#100 search: {local: ${rowName}}: --limit cuts after the rerank, and an exact ID stays first`, { timeout: LIMIT }, (t) => {
     const dir = invoiceWorld(t, { local: rowName });
-    const s = llamaSetup(t, dir, rowName, { conf: { scoreBy: SCORE_BY } });
+    const s = llamaSetup(t, dir, rowName, { conf: { scoreBy: SCORE_BY }, trust: 'invoice' });
     const words = search(dir, ['invoice', '--limit', '50'], { ...s.opts, level: 1 });
     const five = search(dir, ['invoice', '--limit', '5'], s.opts);
     assert.deepEqual(five.hits.map((h) => h.id), reranked(words.hits).slice(0, 5).map((h) => h.id));
@@ -283,7 +313,6 @@ for (const [rowName, kind] of LLAMA_RERANKERS) {
 // --- the fetch, and a wrong SHA-256 (point 7)
 
 const FETCH_ROW = 'bge-small-en-v1.5 q4_k_m llama-metal';
-const HEX64 = /\b[0-9a-f]{64}\b/g;
 
 test(`#100 search: {local: ${FETCH_ROW}}, file absent: the Fetch line before llama-server, -mu with the pinned URL; the fetched file's SHA-256 is not the pinned one: word search, and the Fallback names both`, { timeout: LIMIT }, (t) => {
   const dir = rulesRepo(t, { local: FETCH_ROW });
@@ -339,10 +368,6 @@ test(`#100 search: {local: ${FETCH_ROW}}, a present file of another size: word s
 
 // --- the record of the hashed files (#100, the architect's decision)
 
-// al's record of the model files it hashed: <git dir>/assuredloop/model-checks.json,
-// a JSON object keyed by the absolute place: { size, mtimeMs, sha256 }.
-const recordFile = (dir) => join(resolve(dir, git(dir, 'rev-parse', '--git-path', 'assuredloop')), 'model-checks.json');
-const readRecord = (dir) => JSON.parse(readFileSync(recordFile(dir), 'utf8'));
 
 test(`#100 search: {local: ${FETCH_ROW}}, a present file of the right size and the wrong SHA-256: word search, the Fallback names both SHA-256s, no llama-server starts; al records the hash, and refuses the same way on the next run`, { timeout: LIMIT }, (t) => {
   const dir = rulesRepo(t, { local: FETCH_ROW });
@@ -417,7 +442,7 @@ test(`#100 search: {local: ${FETCH_ROW}} with no llama-server on PATH: word sear
 
 test(`#100 search: {local: ${FETCH_ROW}} with llama-server build 11800: it still runs, and a Not known item gives the exact note`, { timeout: LIMIT }, (t) => {
   const dir = rulesRepo(t, { local: FETCH_ROW });
-  const s = llamaSetup(t, dir, FETCH_ROW, { conf: { version: 'version: 11800 (build 11800, commit 9f8e7d6)', tok: TOK.bge, concepts: CONCEPTS } });
+  const s = llamaSetup(t, dir, FETCH_ROW, { conf: { version: 'version: 11800 (build 11800, commit 9f8e7d6)', tok: TOK.bge, concepts: CONCEPTS }, trust: 'link' });
   const note = 'llama.cpp build 11800; measured with b11624; the figures may differ';
   const r = runOk(dir, ['search', 'link'], s.opts);
   assert.equal(r.stdout.split('\n')[0], level2(FETCH_ROW), show(r));
@@ -432,7 +457,7 @@ test(`#100 search: {local: ${FETCH_ROW}} with llama-server build 11800: it still
 
 test(`#100 search: {local: ${FETCH_ROW}} with build 11624: no build note`, { timeout: LIMIT }, (t) => {
   const dir = rulesRepo(t, { local: FETCH_ROW });
-  const s = llamaSetup(t, dir, FETCH_ROW, { conf: { tok: TOK.bge, concepts: CONCEPTS } });
+  const s = llamaSetup(t, dir, FETCH_ROW, { conf: { tok: TOK.bge, concepts: CONCEPTS }, trust: 'link' });
   const out = search(dir, ['link'], s.opts);
   assert.equal(out.level, 2, `level 2 answered (fallback: ${out.fallback})`);
   assert.ok(!out.not_known.some((x) => x.includes('measured with b11624')), JSON.stringify(out.not_known));
