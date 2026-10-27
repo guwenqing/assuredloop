@@ -1727,8 +1727,9 @@ across up to 20 repos. These are estimates, at about 100 tokens a paragraph:
   the level 1 full-text index, and search shows it only in a history query.
   No first full embedding of history is needed.
 - At this size level 0 is weak, and level 1 or 2 carries the search.
-- `al check` must stay fast at 1,000 requests: it checks what the branch
-  changed, and reads archived records only through their stored hashes.
+- `al check` must stay fast at 1,000 requests. It still reads every
+  record, because its checks of the records cover the archived requests
+  too. So it parses each record and each spec doc only once in a run.
 
 <!-- DES-67 note -->
 
