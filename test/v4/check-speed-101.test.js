@@ -56,7 +56,7 @@ import { basename, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { invoicer } from './helpers/invoicer.js';
 import { world } from './helpers/cross-repo.js';
-import { BIN, EPOCH, REPO, commitAll, git, move, read, write } from './helpers/project.js';
+import { BIN, EPOCH, REPO, baseProject, commitAll, git, move, read, write } from './helpers/project.js';
 import { GENERATE, cleanEnv as scaleEnv } from './helpers/scale.js';
 import { Repo, closeRequest, entriesOf } from '../../scale/world.js';
 
@@ -847,6 +847,215 @@ describe('al check and al check --strict on a record that warns: stdout and file
         assert.equal(ours.length, 1, `main gave one warning line for the tag ${tag}: ${want.warnings.join('\n')}`);
         assert.deepEqual(got, want, show(r));
         assert.ok(timesIn(r.stderr, ours[0]) >= 1, `the warning for ${tag} shows at least once:\n${show(r)}`);
+      }
+    });
+  }
+});
+
+// --- 1c. Records that yaml parses but cannot turn into data (review of PR
+// #103). Their aliases expand to more nodes than the default maxAliasCount of
+// yaml allows, so the conversion to data throws. Each text starts with one
+// long comment line, so the records are above the worker size. al check must
+// give main's exit code, stdout and written files, with worker threads and
+// with workers that fail, and no internal error.
+
+const ALIASES = 'a: &a [a,a,a,a,a,a,a,a,a,a]\nb: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a,*a]\nc: [*b,*b,*b,*b,*b,*b,*b,*b,*b,*b]\n';
+const aliasText = (xs) => `#${'x'.repeat(xs)}\n${ALIASES}`;
+
+// A project with five such record files on main, orphan-0 to orphan-4, and no
+// requests/ folder; then the branch pr with one empty commit.
+function orphans(t) {
+  const dir = baseProject(t, { branch: null });
+  for (let i = 0; i < 5; i++) write(dir, `${RECORDS}orphan-${i}.yaml`, aliasText(210_000));
+  commitAll(dir, 'Orphan records');
+  git(dir, 'checkout', '-q', '-b', 'pr');
+  emptyCommit(dir);
+  return dir;
+}
+
+// The archived chain, with such a text as the record of a request that a
+// reader reads: the archived request old. (The same text as the record of an
+// open request is not here: main stops on it with an internal error.)
+const aliasArchived = (dir) => {
+  write(dir, 'requests/archive/old/request.md', '# Old\nStatus: concluded\n');
+  write(dir, `${RECORDS}old.yaml`, aliasText(1_050_000));
+};
+
+const ALIAS_CASES = {
+  'orphan records that cannot be turned into data': orphans,
+  'an archived record that cannot be turned into data': (t) => archivedChain(t, emptyCommit, aliasArchived),
+};
+
+// The output of each run on main before the change: the exit code, the lines
+// of stdout, and what the run wrote.
+const PINNED_ALIAS = {
+  "orphan records that cannot be turned into data: check": {
+    code: 0,
+    stdout: [
+      "records: al check wrote .assuredloop/records/specs/invoices.md.yaml, .assuredloop/records/specs/adr/0003-signed-links.md.yaml; commit them with this change",
+      "hint no-link specs/invoices.md:5 INV-12 INV-12 is a data paragraph with no link · places: INV-12 specs/invoices.md:7",
+      "hint no-link specs/invoices.md:9 INV-13 INV-13 is a rule paragraph with no link · places: INV-13 specs/invoices.md:11",
+      "hint no-link specs/invoices.md:13 INV-41 INV-41 is a rule paragraph with no link · places: INV-41 specs/invoices.md:15",
+      "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, target-removed, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-governs",
+      "hint adr-links specs/adr/0003-signed-links.md:3 ADR-3 ADR-3 has no source: and no decides:; add the links to its marker · places: ADR-3 specs/adr/0003-signed-links.md:5",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-0.yaml orphan-0 .assuredloop/records/requests/orphan-0.yaml has no request.md in requests/orphan-0/ or requests/archive/orphan-0/, so its requirements, sign-offs and evidence are not checked",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-1.yaml orphan-1 .assuredloop/records/requests/orphan-1.yaml has no request.md in requests/orphan-1/ or requests/archive/orphan-1/, so its requirements, sign-offs and evidence are not checked",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-2.yaml orphan-2 .assuredloop/records/requests/orphan-2.yaml has no request.md in requests/orphan-2/ or requests/archive/orphan-2/, so its requirements, sign-offs and evidence are not checked",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-3.yaml orphan-3 .assuredloop/records/requests/orphan-3.yaml has no request.md in requests/orphan-3/ or requests/archive/orphan-3/, so its requirements, sign-offs and evidence are not checked",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-4.yaml orphan-4 .assuredloop/records/requests/orphan-4.yaml has no request.md in requests/orphan-4/ or requests/archive/orphan-4/, so its requirements, sign-offs and evidence are not checked",
+      "list: no change selected: nothing changed against the base {central:Orphan records:7}",
+      "map: no change selected: nothing changed against the base {central:Orphan records:7}",
+      "Read      working tree · base {central:Orphan records:7} (merge-base with main)",
+      "Next      fix each not ok, and deal with each hint or say in the PR why it stays",
+      "Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, whether a test really checks the rule it names, whether a result's declared inputs are complete, and whether a change is authorized in substance (the review judges these)",
+    ],
+    written: [
+      "?? .assuredloop/records/specs/adr/0003-signed-links.md.yaml",
+      "?? .assuredloop/records/specs/invoices.md.yaml",
+      "+++ new file .assuredloop/records/specs/adr/0003-signed-links.md.yaml",
+      "schema: assuredloop/1",
+      "file: specs/adr/0003-signed-links.md",
+      "status: accepted",
+      "paragraphs:",
+      "  - id: ADR-3",
+      "    kind: choice",
+      "    text_sha256: fee03700df0115e902e56e2c7b75453d8ee943e0bd82238c372e81d2640ac0f2",
+      "    display: \"ADR-3 (0, ADR-3: Signed links)\"",
+      "  - id: ADR-3-1",
+      "    kind: rationale",
+      "    text_sha256: 69e7a408d4d2760f3d6f4535e29da1f5dd493ef0caaa6b19b76383af1da6a02e",
+      "    display: \"ADR-3-1 (0:1, in ADR-3: Signed links)\"",
+      "+++ new file .assuredloop/records/specs/invoices.md.yaml",
+      "schema: assuredloop/1",
+      "file: specs/invoices.md",
+      "paragraphs:",
+      "  - id: INV-1",
+      "    kind: note",
+      "    text_sha256: f0a640a6287884852038e3399dc242bbcec72b522f13cf962dee2f202b1663c2",
+      "    display: INV-1 (0, Invoices)",
+      "  - id: INV-12",
+      "    kind: data",
+      "    text_sha256: 12816ead3a1913fe68b0c994be6831f35a248b1ef6f023c8eac8985a8ec0bb14",
+      "    display: INV-12 (0:1, in Invoices)",
+      "  - id: INV-13",
+      "    kind: rule",
+      "    text_sha256: 5ce2b2031715960cc144ed3f298ba3cab6b41ec166ca582c461b0d249fef366e",
+      "    display: INV-13 (0:2, in Invoices)",
+      "  - id: INV-41",
+      "    kind: rule",
+      "    text_sha256: f426664deb96240871f88ee4ab9349aac9d07081550c3f89ffc8a3f87681d52a",
+      "    display: INV-41 (0:3, in Invoices)",
+    ],
+  },
+  "orphan records that cannot be turned into data: check --strict": {
+    code: 1,
+    stdout: [
+      "records: al check wrote .assuredloop/records/specs/invoices.md.yaml, .assuredloop/records/specs/adr/0003-signed-links.md.yaml; commit them with this change",
+      "hint no-link specs/invoices.md:5 INV-12 INV-12 is a data paragraph with no link · places: INV-12 specs/invoices.md:7",
+      "hint no-link specs/invoices.md:9 INV-13 INV-13 is a rule paragraph with no link · places: INV-13 specs/invoices.md:11",
+      "hint no-link specs/invoices.md:13 INV-41 INV-41 is a rule paragraph with no link · places: INV-41 specs/invoices.md:15",
+      "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, target-removed, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-governs",
+      "hint adr-links specs/adr/0003-signed-links.md:3 ADR-3 ADR-3 has no source: and no decides:; add the links to its marker · places: ADR-3 specs/adr/0003-signed-links.md:5",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-0.yaml orphan-0 .assuredloop/records/requests/orphan-0.yaml has no request.md in requests/orphan-0/ or requests/archive/orphan-0/, so its requirements, sign-offs and evidence are not checked",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-1.yaml orphan-1 .assuredloop/records/requests/orphan-1.yaml has no request.md in requests/orphan-1/ or requests/archive/orphan-1/, so its requirements, sign-offs and evidence are not checked",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-2.yaml orphan-2 .assuredloop/records/requests/orphan-2.yaml has no request.md in requests/orphan-2/ or requests/archive/orphan-2/, so its requirements, sign-offs and evidence are not checked",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-3.yaml orphan-3 .assuredloop/records/requests/orphan-3.yaml has no request.md in requests/orphan-3/ or requests/archive/orphan-3/, so its requirements, sign-offs and evidence are not checked",
+      "not ok record-unreadable .assuredloop/records/requests/orphan-4.yaml orphan-4 .assuredloop/records/requests/orphan-4.yaml has no request.md in requests/orphan-4/ or requests/archive/orphan-4/, so its requirements, sign-offs and evidence are not checked",
+      "list: no change selected: nothing changed against the base {central:Orphan records:7}",
+      "map: no change selected: nothing changed against the base {central:Orphan records:7}",
+      "Read      working tree · base {central:Orphan records:7} (merge-base with main)",
+      "Next      fix each not ok, and deal with each hint or say in the PR why it stays",
+      "Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, whether a test really checks the rule it names, whether a result's declared inputs are complete, and whether a change is authorized in substance (the review judges these)",
+    ],
+    written: [
+      "?? .assuredloop/records/specs/adr/0003-signed-links.md.yaml",
+      "?? .assuredloop/records/specs/invoices.md.yaml",
+      "+++ new file .assuredloop/records/specs/adr/0003-signed-links.md.yaml",
+      "schema: assuredloop/1",
+      "file: specs/adr/0003-signed-links.md",
+      "status: accepted",
+      "paragraphs:",
+      "  - id: ADR-3",
+      "    kind: choice",
+      "    text_sha256: fee03700df0115e902e56e2c7b75453d8ee943e0bd82238c372e81d2640ac0f2",
+      "    display: \"ADR-3 (0, ADR-3: Signed links)\"",
+      "  - id: ADR-3-1",
+      "    kind: rationale",
+      "    text_sha256: 69e7a408d4d2760f3d6f4535e29da1f5dd493ef0caaa6b19b76383af1da6a02e",
+      "    display: \"ADR-3-1 (0:1, in ADR-3: Signed links)\"",
+      "+++ new file .assuredloop/records/specs/invoices.md.yaml",
+      "schema: assuredloop/1",
+      "file: specs/invoices.md",
+      "paragraphs:",
+      "  - id: INV-1",
+      "    kind: note",
+      "    text_sha256: f0a640a6287884852038e3399dc242bbcec72b522f13cf962dee2f202b1663c2",
+      "    display: INV-1 (0, Invoices)",
+      "  - id: INV-12",
+      "    kind: data",
+      "    text_sha256: 12816ead3a1913fe68b0c994be6831f35a248b1ef6f023c8eac8985a8ec0bb14",
+      "    display: INV-12 (0:1, in Invoices)",
+      "  - id: INV-13",
+      "    kind: rule",
+      "    text_sha256: 5ce2b2031715960cc144ed3f298ba3cab6b41ec166ca582c461b0d249fef366e",
+      "    display: INV-13 (0:2, in Invoices)",
+      "  - id: INV-41",
+      "    kind: rule",
+      "    text_sha256: f426664deb96240871f88ee4ab9349aac9d07081550c3f89ffc8a3f87681d52a",
+      "    display: INV-41 (0:3, in Invoices)",
+    ],
+  },
+  "an archived record that cannot be turned into data: check": {
+    code: 0,
+    stdout: [
+      "index not bound: EXP-7 illustrates EXP-3: no request record holds it; INV-13 serves invoice-numbers/R1: no request record holds it; INV-13 governed-by ADR-1: no request record holds it; INV-15 explains INV-13: no request record holds it; INV-16 illustrates INV-13: no request record holds it; ADR-1 decides INV-13: no request record holds it; ADR-1 source invoice-numbers/S1: no request record holds it",
+      "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, no-link, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-links, adr-governs",
+      "hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-2 requests/link-expiry-spike/spec.md:7",
+      "hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-3 requests/link-expiry-spike/spec.md:11",
+      "not ok record-unreadable .assuredloop/records/requests/old.yaml old .assuredloop/records/requests/old.yaml cannot be read (Excessive alias count indicates a resource exhaustion attack), so its requirements, sign-offs and evidence are not checked; fix it by hand",
+      "list: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "map: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)",
+      "Next      fix each not ok, and deal with each hint or say in the PR why it stays",
+      "Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, whether a test really checks the rule it names, whether a result's declared inputs are complete, and whether a change is authorized in substance (the review judges these)",
+    ],
+    written: [],
+  },
+  "an archived record that cannot be turned into data: check --strict": {
+    code: 1,
+    stdout: [
+      "index not bound: EXP-7 illustrates EXP-3: no request record holds it; INV-13 serves invoice-numbers/R1: no request record holds it; INV-13 governed-by ADR-1: no request record holds it; INV-15 explains INV-13: no request record holds it; INV-16 illustrates INV-13: no request record holds it; ADR-1 decides INV-13: no request record holds it; ADR-1 source invoice-numbers/S1: no request record holds it",
+      "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, no-link, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-links, adr-governs",
+      "hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-2 requests/link-expiry-spike/spec.md:7",
+      "hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-3 requests/link-expiry-spike/spec.md:11",
+      "not ok record-unreadable .assuredloop/records/requests/old.yaml old .assuredloop/records/requests/old.yaml cannot be read (Excessive alias count indicates a resource exhaustion attack), so its requirements, sign-offs and evidence are not checked; fix it by hand",
+      "list: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "map: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)",
+      "Next      fix each not ok, and deal with each hint or say in the PR why it stays",
+      "Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, whether a test really checks the rule it names, whether a result's declared inputs are complete, and whether a change is authorized in substance (the review judges these)",
+    ],
+    written: [],
+  },
+};
+
+describe('al check and al check --strict on records that cannot be turned into data: as main, with workers and with failing workers', () => {
+  for (const [name, build] of Object.entries(ALIAS_CASES)) {
+    test(name, (t) => {
+      const dir = build(t);
+      assert.ok(recordChars(dir) > WORKER_CHARS, `the records are above the worker size: ${recordChars(dir)} characters`);
+      for (const args of RUNS) {
+        const key = `${name}: ${args.join(' ')}`;
+        for (const workers of [null, 'fail', 'throw']) {
+          reset(dir);
+          const r = al(dir, args, workers ? { hook: yamlHook({ workers }) } : {});
+          assert.equal(r.signal, null, show(r));
+          const label = workers ? `${key}, workers ${workers}` : key;
+          assert.doesNotMatch(r.stderr, /internal error/i, `no internal error: ${label}\n${show(r)}`);
+          const { stderr, ...got } = asPinned(dir, { central: dir }, {}, r);
+          assert.ok(PINNED_ALIAS[key], `an expected output for ${key}`);
+          assert.deepEqual(got, PINNED_ALIAS[key], `${label}\n${show(r)}`);
+        }
       }
     });
   }
