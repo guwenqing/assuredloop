@@ -1,18 +1,22 @@
 // al search (design.md 11): the current system, a change's context and the
-// history, at the strongest level installed. Level 0 scans the export; level
-// 1 is a SQLite FTS5 index of it (BM25) with the ID in its own exact column;
-// level 2 fuses level 1 with the ranking of level2.js (reciprocal rank
-// fusion), which needs the optional peer dependency @huggingface/transformers.
+// history, as the `search` setting chooses (search-setting.js): no setting,
+// own and none search nothing; `local` is level 1, and `local` with a row of
+// the measured table is level 2. Level 0 scans the export; level 1 is a
+// SQLite FTS5 index of it (BM25) with the ID in its own exact column, and one
+// row for each file of each selected repo; level 2 fuses level 1 with the
+// ranking of level2.js (reciprocal rank fusion), which needs the optional peer
+// dependency @huggingface/transformers.
 import { mkdirSync, rmSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { parse } from 'yaml';
 import { Fail, isName } from './base.js';
 import { git } from './git.js';
 import { createHash } from 'node:crypto';
-import { exportRows, exported, firstParents, newHistory, resolveCommit, sectionAt, selectedRepos } from './export.js';
+import { exportRows, exported, firstParents, newHistory, resolveCommit, sectionAt, selectedRepos, treeOf } from './export.js';
+import { noChoice, noSearch, readSetting, rowFit } from './search-setting.js';
 
 // The chunk rule and the tokenizer: a change to either rebuilds the index.
-const MANIFEST = { schema: 'assuredloop-search/1', chunk: 'one paragraph version; header: file title, heading path, kind, ID', tokenizer: 'porter unicode61' };
+const MANIFEST = { schema: 'assuredloop-search/2', chunk: 'one paragraph version; header: file title, heading path, kind, ID; one row for each file: its path and kind', tokenizer: 'porter unicode61' };
 const RRF_K = 60;
 const DEEP = 100;
 const STOP = new Set(['a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'can', 'did', 'do', 'does', 'for', 'from', 'has', 'have', 'how', 'in', 'is', 'it', 'its', 'of', 'on', 'or', 'that', 'the', 'this', 'to', 'was', 'what', 'when', 'which', 'who', 'why', 'with']);
@@ -20,7 +24,7 @@ const STOP = new Set(['a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'can', 'd
 const terms = (words) => [...new Set((words.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter((w) => !STOP.has(w)))];
 const keyOf = (r) => [r.repo, r.doc_or_request, r.id, r.version, r.sha256].join('\t');
 // A chunk: the fixed header (file title, heading path, kind, ID), then the text.
-const chunk = (r) => [r.title ?? '', (r.heading_path ?? []).join(' > '), r.kind ?? '', r.id, r.text].join('\n');
+const chunk = (r) => (r.role === 'file' ? `${r.path}\n${r.kind}` : [r.title ?? '', (r.heading_path ?? []).join(' > '), r.kind ?? '', r.id, r.text].join('\n'));
 const short = (c) => (c ? c.slice(0, 12) : 'unknown');
 
 // node:sqlite with FTS5, or null with the reason.
@@ -36,14 +40,32 @@ async function sqlite() {
   }
 }
 
-// Level 2 when its library is installed, or null with the reason. level2.js
-// is loaded only here, and the library only at its first embed.
-async function level2(top) {
+// Level 2 with `row` when its library is installed, or null with the reason.
+// level2.js is loaded only here, and the library only at its first embed.
+async function level2(top, row) {
   const { findLibrary, level2: create, LIBRARY, INSTALL } = await import('./level2.js');
   const path = findLibrary(top);
   if (!path) return { reason: `level 2 is not installed: no ${LIBRARY} in the project or beside al`, install: `level 2: ${LIBRARY} is not installed; to add level 2, run ${INSTALL}` };
-  return { l2: create(path) };
+  return { l2: create(path, row) };
 }
+
+// What a file is, from its path alone (LD-33): test, doc, config, code or other.
+const CODE = /\.(js|mjs|cjs|jsx|ts|mts|cts|tsx|py|go|java|kt|kts|rb|rs|c|h|cc|cpp|hpp|cs|swift|php|sh|bash|zsh|sql|scala|lua|pl|r|vue|svelte|dart|ex|exs|erl|hs|ml|clj)$/i;
+export function fileKind(path) {
+  const parts = path.split('/');
+  const name = parts.at(-1);
+  const dirs = parts.slice(0, -1);
+  if (dirs.some((d) => ['test', 'tests', '__tests__', 'spec'].includes(d)) || /\.(test|spec)\.[^.]+$/.test(name) || /_test\.[^.]+$/.test(name) || /^test_/.test(name)) return 'test';
+  if (/\.(md|rst|txt|adoc)$/i.test(name) || dirs.includes('docs')) return 'doc';
+  if (/\.(json|ya?ml|toml|ini|cfg|conf)$/i.test(name) || name.startsWith('.') || dirs.some((d) => d.startsWith('.'))) return 'config';
+  if (CODE.test(name)) return 'code';
+  return 'other';
+}
+
+// One row for each file that git tracks in each selected repo at its commit.
+// It is in the current index only, and only in word search.
+const fileRows = (repos) => repos.filter((r) => r.commit).flatMap((r) => [...treeOf(r.dir, r.commit).keys()]
+  .map((path) => ({ repo: r.name, doc_or_request: `file:${path}`, id: '', version: null, role: 'file', path, kind: fileKind(path), commit: r.commit })));
 
 // The folder of the index: <git dir>/assuredloop, never in the working tree.
 function indexDir(top) {
@@ -86,7 +108,7 @@ const onChain = (q, r) => q.chains.get(r.repo)?.has(r.valid_from) ?? true;
 
 // Which current roles a query takes, and whether it adds history.
 function inScope(row, q) {
-  if (row.role === 'baseline') return true;
+  if (row.role === 'baseline' || row.role === 'file') return true;
   if (!q.change) return false;
   if (row.role === 'evidence') return (row.for ?? []).includes(q.change);
   return ['proposal', 'spike', 'source'].includes(row.role) && row.doc_or_request === q.change;
@@ -148,7 +170,7 @@ function refresh(db, top, commit, repos) {
   const names = new Set(records.keys());
   setFor(rows, outputs, names, config.repo);
   const at = new Map(repos.map((r) => [r.name, r.commit]));
-  const live = rows.filter((r) => r.commit === at.get(r.repo) && r.superseded_by === null);
+  const live = [...rows.filter((r) => r.commit === at.get(r.repo) && r.superseded_by === null), ...fileRows(repos)];
   const now = new Map(live.map((r) => [keyOf(r), r]));
   const had = new Map(db.prepare('SELECT key, row FROM current').all().map((x) => [x.key, x.row]));
   db.exec('BEGIN');
@@ -314,16 +336,21 @@ const LEVEL_TEXT = {
 };
 
 // al search [<words>...] [--id <ID>] [--change <request>] [--history] [--level 0|1|2]
-//           [--at <commit>] [--limit <n>] [--section] [--rebuild] [--json]
+//           [--at <commit>] [--limit <n>] [--section] [--rebuild] [--full] [--json]
 export async function search({ top, args, opts }) {
   const words = args.join(' ').trim();
   if (!words && opts.id === undefined) throw new Fail('no words and no --id given', 'al search <words> | al search --id <ID>');
   if (opts.level !== undefined && !['0', '1', '2'].includes(opts.level)) throw new Fail(`--level ${opts.level}: one of 0, 1, 2`);
+  // The setting chooses (kb-search/R10): no setting, own and none search nothing.
+  const setting = readSetting(top);
+  if (setting === null) return noChoice({ top, commit: resolveCommit(top, opts.at), opts, fts5: Boolean((await sqlite()).DatabaseSync) });
+  if (setting.use !== 'local') return noSearch(setting, opts);
+  if (opts.level === '2' && !setting.row) throw new Fail('--level 2: search: local names no row of the measured table', 'set search: {local: <row>} in .assuredloop/config.yaml; al search with no setting lists the rows');
   const limit = opts.limit === undefined ? 10 : Number(opts.limit);
   if (!Number.isInteger(limit) || limit < 1) throw new Fail(`--limit ${opts.limit}: a whole number from 1`);
   if (opts.change !== undefined && !isName(opts.change)) throw new Fail(`--change ${JSON.stringify(opts.change)} is not a request name`);
   const commit = resolveCommit(top, opts.at);
-  const want = opts.level === undefined ? 2 : Number(opts.level);
+  const want = opts.level === undefined ? (setting.row ? 2 : 1) : Number(opts.level);
   const chain = firstParents(top, commit);
   // Each repo at its selected commit (D17): the central repo first, then the output repos.
   const repos = selectedRepos(top, commit);
@@ -339,8 +366,11 @@ export async function search({ top, args, opts }) {
   let found2 = null;
   let lite = null;
   if (level === 2) {
-    found2 = await level2(top);
+    found2 = await level2(top, setting.row);
     if (!found2.l2) { falls.push(found2.reason); notKnown.push(found2.install); level = 1; }
+    // Every choice works: a row that does not fit this computer still runs, and says so.
+    const fit = rowFit(top, setting.row, commit);
+    if (fit) notKnown.push(fit);
   }
   if (level >= 1) {
     lite = await sqlite();
@@ -395,7 +425,7 @@ export async function search({ top, args, opts }) {
       }
       hits = merge(exact, ranked, limit);
       if (opts.section) {
-        const files = new Set(hits.map((h) => h.file));
+        const files = new Set(hits.filter((h) => h.role !== 'file').map((h) => h.file));
         sectionRows = [...db.prepare('SELECT row FROM current').all(), ...db.prepare('SELECT row FROM history').all()]
           .map((x) => JSON.parse(x.row)).filter((r) => files.has(r.file));
         const seen = new Set();
@@ -409,6 +439,7 @@ export async function search({ top, args, opts }) {
   const levelText = level === 2 ? `2 (hybrid: full text and ${model})` : LEVEL_TEXT[level];
   const fallback = falls.length && want > level ? falls.join('; ') : null;
   const out = hits.map((h, i) => {
+    if (h.role === 'file') return { rank: i + 1, exact: false, role: 'file', repo: h.repo, path: h.path, kind: h.kind, commit: h.commit };
     const { for: _, ...row } = h;
     return { rank: i + 1, exact: h.exact, ...exported(row), ...(opts.section ? { section: sectionOf(top, sectionRows ?? [], h, chain) } : {}) };
   });
@@ -423,6 +454,7 @@ export async function search({ top, args, opts }) {
   if (indexLine) body.push(`Index     ${indexLine}`);
   if (!out.length) body.push('No hits');
   for (const h of out) {
+    if (h.role === 'file') { body.push(`${h.rank}. file ${h.repo === central ? '' : `${h.repo}:`}${h.path} ${h.kind} @${short(h.commit)}`); continue; }
     body.push(`${h.rank}. ${h.id} ${h.role}${h.exact ? ' exact' : ''} ${h.kind} ${h.repo === central ? '' : `${h.repo}:`}${h.file} v${h.version} @${short(h.commit)}${h.heading_path?.length ? ` (${h.heading_path.join(' > ')})` : ''}`);
     for (const l of String(h.text).split('\n')) body.push(`   ${l}`);
     for (const s of h.section ?? []) if (s.id !== h.id) body.push(`   | ${s.id}: ${String(s.text).split('\n')[0]}`);
