@@ -363,7 +363,8 @@ export function checks(top, { base, phrases = [], issues = null }) {
         links.push(`declared output ${file} verifies it, and a declared output is a claim, never shown as proven`);
       }
     }
-    const files = citingFiles(now, cites.found.filter((c) => c.ids.includes(key)));
+    // A citation may be written `central:<name>/R<n>`; al context <name>/R<n> counts it too.
+    const files = citingFiles(now, cites.found.filter((c) => c.ids.some((id) => id.replace(/^central:/, '') === key)));
     if (files.length) {
       links.push(`cited in ${files.map((f) => `${f.past ? 'historical' : 'current'} ${f.file}`).join(', ')}, `
         + 'and a citation is not evidence that the code or the test does what the requirement says');
