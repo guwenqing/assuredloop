@@ -9,7 +9,7 @@
 // no network, and the same output for the same state and options.
 import { lstatSync, readFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
-import { parse } from 'yaml';
+import { parseOnce } from './yaml-once.js';
 import { join, posix } from 'node:path';
 import { recordPath } from './base.js';
 import { INDEX_KEYS } from './records.js';
@@ -167,7 +167,7 @@ function recordTouched(top, base, name) {
   const read = (text) => {
     if (text == null) return {};
     try {
-      const data = parse(text);
+      const data = parseOnce(text);
       if (!data || typeof data !== 'object' || Array.isArray(data)) return text;
       return Object.fromEntries(Object.entries(data).filter(([k]) => !INDEX_KEYS.includes(k)));
     } catch { return text; }
