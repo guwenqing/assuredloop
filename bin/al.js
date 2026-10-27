@@ -36,7 +36,7 @@ const COMMANDS = {
     run: search,
     options: {
       id: { type: 'string' }, change: { type: 'string' }, history: { type: 'boolean' }, level: { type: 'string' }, at: { type: 'string' },
-      limit: { type: 'string' }, section: { type: 'boolean' }, rebuild: { type: 'boolean' }, json: { type: 'boolean' },
+      limit: { type: 'string' }, section: { type: 'boolean' }, rebuild: { type: 'boolean' }, full: { type: 'boolean' }, json: { type: 'boolean' },
     },
   },
   context: { run: context, options: { diff: { type: 'string' }, for: { type: 'string' }, audit: { type: 'boolean' }, at: { type: 'string' }, full: { type: 'boolean' } } },

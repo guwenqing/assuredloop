@@ -25,6 +25,8 @@
 //   package.json, npm ls and al --version name package.json's version, al
 //   check --strict runs, and the installed al finds the library in
 //   the project first and then beside itself (a stand-in, helpers/search.js).
+// #99 (kb-search/R10): level 2 answers only when the `search` setting names
+//   a row, so the search tests set {local: bge-small-en-v1.5 q8 tjs-cpu}.
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -38,7 +40,7 @@ import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { lines, makeRepo } from './helpers/repo.js';
 import {
-  LEVEL2_LINE, TRANSFORMERS, TRANSFORMERS_VERSION, importsOf, installEmbedder, smallRepo, standIn,
+  LEVEL2_LINE, TRANSFORMERS, TRANSFORMERS_VERSION, WITH_MODEL, importsOf, installEmbedder, smallRepo, standIn,
 } from './helpers/search.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -495,7 +497,7 @@ describe('#212 the packed @assuredloop/cli alone, installed with no network', ()
   });
 
   test('#212 the installed al, with no @huggingface/transformers anywhere: al search answers at level 1, and Not known says npm install @huggingface/transformers@4.3.1', (t) => {
-    const { dir } = smallRepo(t);
+    const { dir } = smallRepo(t, { search: WITH_MODEL });
     assert.ok(!existsSync(join(dir, 'node_modules')), 'the fixture: the project has no node_modules');
     const text = al(dir, 'search', 'export', 'link');
     assert.match(text.split('\n')[0], /^Level\s+1\b/, text);
@@ -508,7 +510,7 @@ describe('#212 the packed @assuredloop/cli alone, installed with no network', ()
   });
 
   test('#212 the installed al finds @huggingface/transformers in the project: al search URL answers at level 2 and finds EXP-4 by meaning', (t) => {
-    const { dir } = smallRepo(t);
+    const { dir } = smallRepo(t, { search: WITH_MODEL });
     installEmbedder(dir);
     assert.deepEqual(alJson(dir, 'search', 'URL', '--level', '1').hits, [], 'the fixture: at level 1 no row has the word');
     const out = alJson(dir, 'search', 'URL');
@@ -526,7 +528,7 @@ describe('#212 the packed @assuredloop/cli alone, installed with no network', ()
     t.after(() => rmSync(beside, { recursive: true, force: true }));
     const marker = join(scratch, 'beside-imported.log');
     standIn(beside, { marker });
-    const { dir } = smallRepo(t);
+    const { dir } = smallRepo(t, { search: WITH_MODEL });
     assert.ok(!existsSync(join(dir, 'node_modules')), 'the fixture: the project has no node_modules');
     const out = alJson(dir, 'search', 'URL');
     assert.equal(out.level, 2, `level 2 answered (fallback: ${out.fallback})`);
@@ -540,7 +542,7 @@ describe('#212 the packed @assuredloop/cli alone, installed with no network', ()
     t.after(() => rmSync(beside, { recursive: true, force: true }));
     const besideMarker = join(scratch, 'beside-first-imported.log');
     standIn(beside, { mode: 'load-throws', marker: besideMarker });
-    const { dir } = smallRepo(t);
+    const { dir } = smallRepo(t, { search: WITH_MODEL });
     const projectMarker = join(dir, '.git', 'imported.log');
     installEmbedder(dir, { marker: projectMarker });
     const out = alJson(dir, 'search', 'URL');

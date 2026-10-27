@@ -34,7 +34,7 @@ function readBlobs(top, blobs, raw = false) {
 }
 
 // The files of `commit`: Map path -> blob.
-function treeOf(top, commit) {
+export function treeOf(top, commit) {
   const out = git(top, ['ls-tree', '-r', '-z', '--full-tree', commit]) ?? '';
   const tree = new Map();
   for (const e of out.split('\0').filter(Boolean)) {
@@ -462,6 +462,26 @@ export function sectionAt(top, commit, file, id) {
 }
 
 // A row as the export writes it: the design's fields, in a fixed order.
+// What level 2 embeds at `commit` (#99): the paragraphs with an ID of the
+// spec docs, the ADRs and the open change specs, and the bytes of their files.
+export function embedText(top, commit) {
+  const tree = treeOf(top, commit);
+  const config = configAt(top, tree, readBlobs(top, [tree.get('.assuredloop/config.yaml')].filter(Boolean)));
+  const paths = [...tree.keys()].filter((p) => {
+    const what = kindOfPath(p, config, new Map());
+    return what && ['spec', 'adr', 'change'].includes(what.type) && !what.archived;
+  });
+  const texts = readBlobs(top, paths.map((p) => tree.get(p)));
+  let paragraphs = 0;
+  let bytes = 0;
+  for (const p of paths) {
+    const text = texts.get(tree.get(p)) ?? '';
+    bytes += Buffer.byteLength(text);
+    paragraphs += parseMarkdown(text, p).paragraphs.filter((x) => x.id).length;
+  }
+  return { paragraphs, bytes };
+}
+
 export const exported = ({ title, ...row }) => row;
 
 // al export [--at <commit>] [--out <file>] [--yes]: --out shows what it

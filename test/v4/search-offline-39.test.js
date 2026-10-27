@@ -28,7 +28,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { MODEL, REPO, REVISION, TRANSFORMERS, netAttempts, netGuard, search, smallRepo } from './helpers/search.js';
+import { MODEL, REPO, REVISION, TRANSFORMERS, WITH_MODEL, netAttempts, netGuard, search, smallRepo } from './helpers/search.js';
 
 const TEN_MINUTES = 600_000;
 const required = process.env.AL_REQUIRE_REAL_MODEL === '1';
@@ -93,7 +93,7 @@ function libCopy(dir) {
 // A small repo with its own copy of the library (which al finds first) and a
 // scratch HOME, XDG_CACHE_HOME and HF_HOME inside the project.
 function world() {
-  const { dir } = smallRepo(holder);
+  const { dir } = smallRepo(holder, { search: WITH_MODEL }); // #99: level 2 needs the setting to name the row
   libCopy(dir);
   return { dir, env: worldEnv(dir) };
 }

@@ -351,7 +351,7 @@ paragraphs:
     display: DES-57 (10:1, in 10. Records)
   - id: DES-58
     kind: rule
-    text_sha256: a9421a37037b5b891fa6188e66f3e69c21abe273d51ac8c7cf5da15630e684f4
+    text_sha256: de57a3122ec2c8a1db2d960d4a045c3e1ff23c31b813564c2195fc47e0307e9e
     display: DES-58 (10:2, in 10. Records)
   - id: DES-90
     kind: rule
@@ -403,11 +403,11 @@ paragraphs:
     display: DES-60 (11:1, in 11. Search and the export)
   - id: DES-61
     kind: interface
-    text_sha256: 00ec41b9280f75bc8644f2722cb4549587a10187f7af9a466be71b4aefa733fa
+    text_sha256: 1039d2339217a748b42ec2f4a7621124f5247fa113b4f8dae24b01133d1e479a
     display: DES-61 (11:2, in 11. Search and the export)
   - id: DES-62
     kind: definition
-    text_sha256: 3294f7116cdb995db19d9c14c65f020d9302c3f9e2a31c3eb4da5371232345d6
+    text_sha256: 8421dc12b8a5d5e2e243c2cb33bf1c3d864d44fc971bce42ecf9da313ec841bb
     display: DES-62 (11:3, in 11. Search and the export)
   - id: DES-63
     kind: rule
@@ -415,7 +415,7 @@ paragraphs:
     display: DES-63 (11:4, in 11. Search and the export)
   - id: DES-64
     kind: rule
-    text_sha256: dc3fb77f9fb34ebca3a260f5d13c2e5ae50e414836f803642d79f87412d321c2
+    text_sha256: 6c127b47df55e406a1dd4b7c2cefaeebb31718b0a05dd8793397bea824ebc760
     display: DES-64 (11:5, in 11. Search and the export)
   - id: DES-87
     kind: component
@@ -423,20 +423,24 @@ paragraphs:
     display: DES-87 (11:6, in 11. Search and the export)
   - id: DES-65
     kind: rule
-    text_sha256: 9d79e13ff4eea13bd3396de170bb511186b3246b3f02cf7ca53e3a57531713ff
+    text_sha256: 9916b9dd076a62305327fb3219772df412c9b868b95cf79542d499674d0ed5e7
     display: DES-65 (11:7, in 11. Search and the export)
   - id: DES-88
     kind: component
-    text_sha256: 5d81b36bcfb9247ec10585fa457f9f405d50fe8981c1386ba7e00a4808d0271d
+    text_sha256: acc39ce9616e38a43100260c3cf8d9906f41aeaadd8fdcfd28a27452cc419145
     display: DES-88 (11:8, in 11. Search and the export)
   - id: DES-80
     kind: component
-    text_sha256: a04a244da31a17fd1308f97339667d137e2da6b2b7ce2a9fd4b8d92cc8284b02
+    text_sha256: 514ab16f8f7814aa962fef98d68374664c214e23034c4cc82349ccdd33b4c282
     display: DES-80 (11:9, in 11. Search and the export)
+  - id: DES-166
+    kind: component
+    text_sha256: e61c131f6df5817a693ce1b8c295ba7bd3fc0f6bde2ab7a341e1975546b24818
+    display: DES-166 (11:10, in 11. Search and the export)
   - id: DES-66
     kind: rule
     text_sha256: c17cd86c5b9aa10219e909410a7849c0328ddccece3010c0e7f328a3f29aa9a6
-    display: DES-66 (11:10, in 11. Search and the export)
+    display: DES-66 (11:11, in 11. Search and the export)
   - id: DES-67
     kind: note
     text_sha256: f1361c0156d995db0f73407077a8ae6182ec0b2bfe88e5c42a6e5541e4a5e882

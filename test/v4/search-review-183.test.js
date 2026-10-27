@@ -1,6 +1,8 @@
 // Regression tests for four defects that the review of PR #183 found (#181,
 // T13-T14; design.md 11 and decision D11). Each runs through the public
 // commands at the levels named in the review.
+// #99: the fixtures set the `search` setting: `local` for levels 0 and 1,
+// {local: bge-small-en-v1.5 q8 tjs-cpu} for level 2 (helpers/search.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { commitAll, doc, git, project, write, writeConfig } from './helpers/project.js';
@@ -64,7 +66,7 @@ for (const level of [1, 2]) {
 // chain: a text seen only on a merged side branch is no version.
 test('review 183 #3, level 1: after a merged side branch, the current version is the export\'s and the rebuild\'s', (t) => {
   const dir = project(t);
-  writeConfig(dir, [{ file: SPEC, prefix: 'EXP' }], { repo: 'acme' });
+  writeConfig(dir, [{ file: SPEC, prefix: 'EXP' }], { repo: 'acme', search: 'local' }); // #99: word search is set
   const spec = (minutes) => doc([
     ['EXP-1 note', '# Exports'],
     ['EXP-3 note', '## Export links'],

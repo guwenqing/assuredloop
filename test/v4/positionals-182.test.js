@@ -176,7 +176,8 @@ test('spec --add-ids without --yes (the preview) refuses an extra positional too
 
 test('spec with two doc paths and search with several words are not refused', (t) => {
   const dir = project(t);
-  writeConfig(dir, [{ file: 'specs/invoices.md', prefix: 'INV' }, { file: 'specs/refunds.md', prefix: 'REF' }]);
+  // #99: search: local, so that al search searches (word search).
+  writeConfig(dir, [{ file: 'specs/invoices.md', prefix: 'INV' }, { file: 'specs/refunds.md', prefix: 'REF' }], { search: 'local' });
   write(dir, 'specs/invoices.md', INVOICES);
   write(dir, 'specs/refunds.md', doc([['REF-1 note', '# Refunds'], ['REF-2 rule', 'A refund MUST name its invoice.']]));
   commitAll(dir, 'docs');

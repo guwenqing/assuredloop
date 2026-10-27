@@ -1,11 +1,13 @@
 // The search index (#181, T13; design.md 11, "A rebuild compares paragraph
 // hashes with an index manifest ..."; interface.md "The index"): where it is,
 // the current and the history index, the refresh, and --rebuild.
+// #99: smallRepo sets the `search` setting: `local` for level 1, and
+// {local: bge-small-en-v1.5 q8 tjs-cpu} with the stand-in for level 2.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { commitAll, doc, git, write } from './helpers/project.js';
-import { A_TEXT, SMALL_SPEC, indexFile, key, search, smallRepo } from './helpers/search.js';
+import { A_TEXT, SMALL_SPEC, indexFile, key, search, searchFor, setSearch, smallRepo } from './helpers/search.js';
 
 const idRoles = (out) => out.hits.map((h) => `${h.id} v${h.version} ${h.role}`);
 const has = (out, want) => assert.ok(idRoles(out).includes(want), `${want} in:\n${idRoles(out).join('\n')}`);
@@ -94,6 +96,7 @@ for (const level of [1, 2]) {
     const { dir } = smallRepo(t, { embedder });
     search(dir, ['export', 'link'], { level });
     write(dir, '.assuredloop/config.yaml', 'repo: acme\ndocs:\n  - {file: specs/exports.md, prefix: EXP}\n  - {file: specs/billing.md, prefix: BIL}\n');
+    setSearch(dir, searchFor(embedder), { commitIt: false }); // #99: keep the search setting of smallRepo
     write(dir, 'specs/billing.md', doc([['BIL-1 note', '# Billing'], ['BIL-2 rule', 'A quarterly statement MUST list every payment.']]));
     commitAll(dir, 'B: billing');
     has(search(dir, ['quarterly', 'statement'], { level }), 'BIL-2 v1 baseline');

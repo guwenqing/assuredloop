@@ -115,7 +115,7 @@ paragraphs:
     display: SCH-27 (7, 7. Where the model lives)
   - id: SCH-28
     kind: data
-    text_sha256: 920b27992b542c85b6ef8ab32b17939fb15a6025d34027fd5465ccb3f2e915a6
+    text_sha256: 045f78768eec0bf27045cf3e0b737358f5b708672e5af7947061e86a2d10edd2
     display: SCH-28 (7:1, in 7. Where the model lives)
   - id: SCH-39
     kind: data
@@ -125,6 +125,10 @@ paragraphs:
     kind: data
     text_sha256: 53563512fe2c39d87ef964bd5c1a562777fc4e384590b9343e4e249834bf07e4
     display: SCH-40 (7:3, in 7. Where the model lives)
+  - id: SCH-41
+    kind: data
+    text_sha256: 2bf77a5b123e690685c0d2c7aefc76c3d327727510e5f64362b7d6deec2943ed
+    display: SCH-41 (7:4, in 7. Where the model lives)
   - id: SCH-29
     kind: note
     text_sha256: e0fca82db6f459936a572a0a1e03ea567a94238c0985e2b6652bc73c46e542da

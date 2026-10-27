@@ -1,7 +1,8 @@
 // Level 2 of `al search` (design.md 11): the embedding model and the vectors.
 // `al search` gives it the rows to embed and a query, and it answers with the
 // row keys ranked by similarity; search.js fuses that list with its full-text
-// list.
+// list. The model is the row of the measured table (models.js) that the
+// `search` setting names.
 //
 // The vectors live beside al's index, in <dir>/vectors.sqlite. Only new or
 // changed rows are embedded; a change of model embeds everything again.
@@ -9,10 +10,11 @@
 // dependency: it is found by normal Node resolution (the project first, then
 // beside al) and imported only at the first embed, so no other command and no
 // search without words loads it.
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { EMBEDS } from './models.js';
 
 const BATCH = 32;
 
@@ -53,9 +55,10 @@ async function embedAll(embed, texts) {
   return out;
 }
 
-// A level-2 object: `model` names it in al's output; `embed(texts)` gives one
-// vector per text. `queryPrefix` is put before a query only.
-function createLevel2({ model, embed, queryPrefix = '' }) {
+// A level-2 object: `model` names it in al's output, and `key` (default
+// `model`) in the stored vectors; `embed(texts)` gives one vector per text.
+// `queryPrefix` is put before a query, `rowPrefix` before each row.
+function createLevel2({ model, key = model, embed, queryPrefix = '', rowPrefix = '' }) {
   if (typeof model !== 'string' || !model) throw new Error('createLevel2 needs a model name');
   if (typeof embed !== 'function') throw new Error('createLevel2 needs an embed function');
   return {
@@ -66,14 +69,14 @@ function createLevel2({ model, embed, queryPrefix = '' }) {
     async refresh({ dir, rows }) {
       const db = await open(dir);
       try {
-        if (db.prepare("SELECT v FROM meta WHERE k = 'model'").get()?.v !== model) {
+        if (db.prepare("SELECT v FROM meta WHERE k = 'model'").get()?.v !== key) {
           db.exec('DELETE FROM vectors');
-          db.prepare("INSERT OR REPLACE INTO meta (k, v) VALUES ('model', ?)").run(model);
+          db.prepare("INSERT OR REPLACE INTO meta (k, v) VALUES ('model', ?)").run(key);
         }
         const have = new Map(db.prepare('SELECT key, sha256 FROM vectors').all().map((x) => [x.key, x.sha256]));
         const want = new Map(rows.map((r) => [r.key, r]));
         const todo = rows.filter((r) => have.get(r.key) !== r.sha256);
-        const vs = await embedAll(embed, todo.map((r) => r.text));
+        const vs = await embedAll(embed, todo.map((r) => `${rowPrefix}${r.text}`));
         db.exec('BEGIN');
         const del = db.prepare('DELETE FROM vectors WHERE key = ?');
         let removed = 0;
@@ -126,40 +129,76 @@ export function findLibrary(top) {
   return null;
 }
 
-// The real model: bge-small-en-v1.5 (MIT), the ONNX port, pinned by revision.
-const MODEL = 'Xenova/bge-small-en-v1.5';
-const REVISION = 'ea104dacec62c0de699686887e3f920caeb4f3e3';
+// The rows were measured (#28) with the library's tokenizer and model, not
+// its pipeline: the pipeline's own cut drops the closing special token. So
+// a text of more than MAX ids keeps its first MAX - 1 ids and its last one.
+const MAX = 512;
 
-// Level 2 with the library at `path`, which is imported at the first embed.
-export function level2(path) {
+// Level 2 with the library at `path` and the measured `row`, whose model is
+// pinned by its commit and loaded with the row's precision and device. The
+// library is imported at the first embed. Before it fetches the model, al
+// writes the download size to standard error.
+export function level2(path, row) {
+  const [model, precision, runtime] = row.name.split(' ');
+  const how = EMBEDS[model];
   let extractor = null;
-  async function embed(texts) {
-    if (!extractor) {
-      try {
-        // The path is the library's require entry; its exports may come as a default.
-        const mod = await import(pathToFileURL(path).href);
-        const pipeline = mod.pipeline ?? mod.default?.pipeline;
-        const env = mod.env ?? mod.default?.env;
-        if (typeof pipeline !== 'function') throw new Error(`${path} has no pipeline function`);
-        // The library's pipeline() looks for some files at revision main,
-        // whatever its revision option says, and so asks the network on each
-        // load (#39). So the revision goes into every remote URL instead, and
-        // into the cache folder, as the cache's keys do not name it.
-        env.remotePathTemplate = `{model}/resolve/${REVISION}/`;
-        if (basename(env.cacheDir) !== REVISION) env.cacheDir = join(env.cacheDir, REVISION);
-        extractor = await pipeline('feature-extraction', MODEL, { dtype: 'q8' });
-      } catch (e) {
-        throw new Error(`the model ${MODEL} did not load: ${e.message ?? e}`);
+  let Tensor = null;
+  async function load() {
+    try {
+      // The path is the library's require entry; its exports may come as a default.
+      const mod = await import(pathToFileURL(path).href);
+      const pipeline = mod.pipeline ?? mod.default?.pipeline;
+      const env = mod.env ?? mod.default?.env;
+      Tensor = mod.Tensor ?? mod.default?.Tensor;
+      if (typeof pipeline !== 'function') throw new Error(`${path} has no pipeline function`);
+      // The library's pipeline() looks for some files at revision main,
+      // whatever its revision option says, and so asks the network on each
+      // load (#39). So the revision goes into every remote URL instead, and
+      // into the cache folder, as the cache's keys do not name it.
+      env.remotePathTemplate = `{model}/resolve/${row.commit}/`;
+      if (basename(env.cacheDir) !== row.commit) env.cacheDir = join(env.cacheDir, row.commit);
+      // The library keeps a file at <cacheDir>/<model repo>/<file>.
+      if (row.files.some(([file]) => !existsSync(join(env.cacheDir, ...row.repo.split('/'), ...file.split('/'))))) {
+        const mb = Math.round(row.files.reduce((s, [, bytes]) => s + bytes, 0) / 1e6);
+        process.stderr.write(`al: fetching the model ${row.name} (${mb} MB), once\n`);
       }
+      extractor = await pipeline('feature-extraction', row.repo, { dtype: precision, device: runtime.slice('tjs-'.length) });
+    } catch (e) {
+      throw new Error(`the model ${row.repo} did not load: ${e.message ?? e}`);
     }
-    // bge takes the first token's vector (CLS pooling).
-    const out = await extractor(texts, { pooling: 'cls', normalize: true });
-    return out.tolist();
   }
-  return createLevel2({
-    model: `${MODEL}@${REVISION.slice(0, 12)}`,
-    embed,
-    // bge's instruction for a short query that looks for passages.
-    queryPrefix: 'Represent this sentence for searching relevant passages: ',
-  });
+  // One batch, as it was measured: each text's ids with their special tokens,
+  // cut to MAX; padded by hand to the longest; the model called once; the
+  // vector read where the model keeps it. The library adds token_type_ids
+  // where a model needs them.
+  async function embed(texts) {
+    if (!extractor) await load();
+    const { tokenizer } = extractor;
+    const ids = texts.map((t) => {
+      const x = tokenizer.encode(t);
+      return x.length > MAX ? [...x.slice(0, MAX - 1), x[x.length - 1]] : x;
+    });
+    const B = ids.length;
+    const L = Math.max(...ids.map((x) => x.length));
+    const input = new BigInt64Array(B * L).fill(BigInt(tokenizer.pad_token_id ?? 0));
+    const mask = new BigInt64Array(B * L);
+    ids.forEach((x, b) => {
+      const o = b * L + (how.left ? L - x.length : 0);
+      x.forEach((v, j) => { input[o + j] = BigInt(v); mask[o + j] = 1n; });
+    });
+    const out = await extractor.model({ input_ids: new Tensor('int64', input, [B, L]), attention_mask: new Tensor('int64', mask, [B, L]) });
+    if (how.pool === 'sentence_embedding') {
+      const e = out.sentence_embedding;
+      const D = e.dims[1];
+      return ids.map((_, b) => Array.from(e.data.subarray(b * D, (b + 1) * D)));
+    }
+    const h = out.last_hidden_state;
+    const D = h.dims[2];
+    return ids.map((x, b) => {
+      const t = how.pool === 'first' ? 0 : how.left ? L - 1 : x.length - 1;
+      const o = (b * L + t) * D;
+      return Array.from(h.data.subarray(o, o + D));
+    });
+  }
+  return createLevel2({ model: row.name, key: `${row.name}@${row.commit}`, embed, queryPrefix: how.query, rowPrefix: how.row });
 }

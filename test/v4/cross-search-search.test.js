@@ -2,19 +2,23 @@
 // interface-186.md 4). Each test runs at level 0, level 1 and level 2 (the
 // fixed test embedder of helpers/search.js, a stand-in
 // @huggingface/transformers). The world: helpers/cross-search.js.
+// #99: the shared world sets search: {local: bge-small-en-v1.5 q8 tjs-cpu},
+// so level 2 answers with no --level. Since #99 (LD-33) levels 1 and 2 also
+// give a file row for each tracked file of each repo whose path has the
+// words; kb-search-files-99.test.js tests them, and `outside` leaves them out.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { K7 } from './helpers/cross-repo.js';
 import { crossRepo, pin, searchWorld, setOutputs } from './helpers/cross-search.js';
 import { git } from './helpers/project.js';
-import { asRow, embedded, exportRows, installEmbedder, key, runOk, search, show } from './helpers/search.js';
+import { WITH_MODEL, asRow, embedded, exportRows, installEmbedder, key, runOk, search, show } from './helpers/search.js';
 
 // One world for the tests that only read it, with the fixed embedder, and its export.
 let shared = null;
 async function get() {
   if (!shared) {
-    const w = searchWorld(null);
+    const w = searchWorld(null, { search: WITH_MODEL });
     const log = join(w.central, '.git', 'embed-test.log');
     installEmbedder(w.central, { log });
     const { rows } = exportRows(w.central);
@@ -26,8 +30,8 @@ async function get() {
 
 const lv = (level) => (level === 2 ? [] : ['--level', String(level)]);
 const c12 = (sha) => sha.slice(0, 12);
-// The output-repo hits, as "<repo>:<id> v<version> <role>", sorted.
-const outside = (out) => out.hits.filter((h) => h.repo !== 'invoicer').map((h) => `${h.repo}:${h.id} v${h.version} ${h.role}`).sort();
+// The output-repo hits, as "<repo>:<id> v<version> <role>", sorted; no file row (#99).
+const outside = (out) => out.hits.filter((h) => h.repo !== 'invoicer' && h.role !== 'file').map((h) => `${h.repo}:${h.id} v${h.version} ${h.role}`).sort();
 const RESULTS = (repo, names) => names.map((n) => `${repo}:.assuredloop/results/${n}.yaml v1 evidence`);
 
 // Each hit is the export row of the same key, as it is.
