@@ -435,7 +435,7 @@ paragraphs:
     display: DES-80 (11:9, in 11. Search and the export)
   - id: DES-166
     kind: component
-    text_sha256: d7dea330181e57fd65bbf4068aaf539135066777ae652621381ae1586e654f0f
+    text_sha256: e61c131f6df5817a693ce1b8c295ba7bd3fc0f6bde2ab7a341e1975546b24818
     display: DES-166 (11:10, in 11. Search and the export)
   - id: DES-66
     kind: rule
