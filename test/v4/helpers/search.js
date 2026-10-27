@@ -157,47 +157,129 @@ export const CONCEPTS = [
   '\\b(token|tokens)\\b',
 ];
 
+// --- the stand-in's tokenizer (#99, round 2): a word is one id
+
+// The family of a model repo: how the stand-in's model gives its vector.
+export function familyOf(model) {
+  if (/qwen/i.test(String(model))) return 'qwen';
+  if (/gemma/i.test(String(model))) return 'gemma';
+  return 'bge';
+}
+// The words of a text, lower case.
+export function wordsOf(text) {
+  return String(text).toLowerCase().match(/[a-z0-9]+/g) ?? [];
+}
+// The id of a word: 1000 or more, so it is never a special or a pad id.
+export function wordId(word) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < word.length; i += 1) {
+    h ^= word.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return 1000 + (h % 1000000);
+}
+// The ids that the stand-in's tokenizer.encode gives for a text, with the
+// special tokens of the family: bge [101, words, 102]; EmbeddingGemma
+// [2, words, 1]; Qwen3 [words, 151643]. No truncation.
+export function standInIds(text, family) {
+  const special = { bge: [101, 102], gemma: [2, 1], qwen: [null, 151643] }[family];
+  const ids = wordsOf(text).map(wordId);
+  return [...(special[0] === null ? [] : [special[0]]), ...ids, special[1]];
+}
+// The measured cut: more than 512 ids keep the first 511 and the last one.
+export const cutIds = (ids) => (ids.length > 512 ? [...ids.slice(0, 511), ids[ids.length - 1]] : ids);
+// The pad id of the stand-in's tokenizer, unless a test gives another.
+export const STAND_IN_PAD = 3;
+
 // Writes a stand-in @huggingface/transformers into the folder `pkg`
 // (package.json and index.js). It has only what al uses: `pipeline(task,
 // model, options)` gives an extractor; `await extractor(texts, options)`
 // gives an object whose `tolist()` is one vector per text. With
 // `normalize: true` each vector has unit length, as the real library gives.
-// The extractor also has `tokenizer(texts, options)` and `async
-// model(inputs)`, as the real Pipeline object has them (#99: the road of an
-// embeddinggemma-300m row); `model` gives `{ sentence_embedding: { tolist }
-// }`, one vector per text that it got from the tokenizer, not normalized.
+// The extractor also has a `tokenizer` and `async model(inputs)`, as the
+// real Pipeline object has them (#99):
+// - `tokenizer.encode(text, options)` gives the ids of standInIds (special
+//   tokens, no truncation); `tokenizer.pad_token_id` is `padTokenId`;
+//   `tokenizer(texts, options)` gives right-padded int64 tensors, cut only
+//   when options.truncation is true.
+// - `model({ input_ids, attention_mask })` gives `last_hidden_state` [B, L,
+//   D] and `sentence_embedding` [B, D] as Tensors. The concept vector of a
+//   text (from the words of its real ids) is only at the place that its
+//   family documents: bge at the first real position (the CLS token), Qwen3
+//   at the last real position, EmbeddingGemma in sentence_embedding. Every
+//   other place holds a noise vector, so a reader of the wrong place gets
+//   no meaning. Not normalized.
+// - The module exports `Tensor(type, data, dims)`, with `data`, `dims`,
+//   `type` and `tolist()`.
 // It also exports `env`, an object with the documented settings of the real
 // library 4.3.1 and their defaults (#39: al may set them before pipeline).
 // mode: 'ok', 'embed-throws' (the extractor and `model` throw), 'pipeline-throws'
 // (pipeline throws, as when the model does not load; the error has two
 // lines) or 'load-throws' (the import throws).
-// `log`: a file that gets one JSON line for each text the extractor or
-// `model` is given.
+// `log`: a file that gets one JSON line for each text that the extractor,
+// `tokenizer` or `tokenizer.encode` is given.
 // `calls`: a file that gets one JSON line for each call of pipeline, of the
-// extractor ('extract'), of `tokenizer` ('tokenize') and of `model`
-// ('model'), with its arguments (the texts as a count). A pipeline line
+// extractor ('extract', the texts as a count), of `tokenizer` ('tokenize'),
+// of `tokenizer.encode` ('encode', with its text) and of `model` ('model',
+// with each input as { isTensor, type, array, dims, rows }). A pipeline line
 // also holds `env`: the settings in `env` when pipeline was called.
 // `marker`: a file that gets one line each time the module is imported: the
 // process id and al's arguments.
 // `stderrMark` (#99): pipeline writes `stand-in: pipeline called` to standard
 // error when it is called, so a test can see what al wrote before it.
-export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = null, stderrMark = false } = {}) {
+export function standIn(pkg, {
+  mode = 'ok', log = null, calls = null, marker = null, stderrMark = false, padTokenId = STAND_IN_PAD,
+} = {}) {
   mkdirSync(pkg, { recursive: true });
   writeFileSync(join(pkg, 'package.json'), `${JSON.stringify({
     name: TRANSFORMERS, version: TRANSFORMERS_VERSION, private: true, description: 'a test stand-in',
     type: 'module', main: 'index.js', exports: './index.js',
   }, null, 2)}\n`);
+  const throws = mode === 'embed-throws' ? "    throw new Error('test embedder: embed failed');" : '';
   writeFileSync(join(pkg, 'index.js'), [
     "import { appendFileSync } from 'node:fs';",
     `const LOG = ${JSON.stringify(log)};`,
     `const CALLS = ${JSON.stringify(calls)};`,
     `const MARKER = ${JSON.stringify(marker)};`,
+    `const PAD = ${JSON.stringify(padTokenId)};`,
     "if (MARKER) appendFileSync(MARKER, `${process.pid} ${process.argv.slice(2).join(' ')}\\n`);",
     mode === 'load-throws' ? "throw new Error('test embedder: it does not load');" : '',
     `const CONCEPTS = ${JSON.stringify(CONCEPTS)}.map((s) => new RegExp(s, 'i'));`,
     'const vector = (t) => [...CONCEPTS.map((re) => (re.test(t) ? 1 : 0)), 0.1];',
     'const unit = (v) => { const n = Math.sqrt(v.reduce((a, x) => a + x * x, 0)); return v.map((x) => x / n); };',
     'const call = (x) => { if (CALLS) appendFileSync(CALLS, `${JSON.stringify(x)}\\n`); };',
+    "const logTexts = (texts) => { if (LOG) appendFileSync(LOG, texts.map((t) => `${JSON.stringify(t)}\\n`).join('')); };",
+    familyOf.toString(),
+    wordsOf.toString(),
+    wordId.toString(),
+    standInIds.toString(),
+    // The model's vectors: the concepts, a constant, and 8 noise dimensions.
+    'const DIMS = CONCEPTS.length + 1 + 8;',
+    'const NAMES = new Map();',
+    'const learn = (text) => { for (const w of wordsOf(text)) NAMES.set(wordId(w), w); };',
+    "const concept = (words) => { const t = words.join(' '); const v = new Array(DIMS).fill(0); CONCEPTS.forEach((re, i) => { if (re.test(t)) v[i] = 1; }); v[CONCEPTS.length] = 0.1; return v; };",
+    'const noise = (id, p) => { const v = new Array(DIMS).fill(0); v[CONCEPTS.length + 1 + ((Number(id) + p) % 8)] = 1; return v; };',
+    'export class Tensor {',
+    '  constructor(type, data, dims) { this.type = type; this.data = data; this.dims = dims; this.size = data.length; }',
+    '  tolist() {',
+    "    const one = (x) => (typeof x === 'bigint' ? Number(x) : x);",
+    '    const rec = (off, d) => {',
+    '      if (d >= this.dims.length - 1) return Array.from(this.data.slice(off, off + (this.dims[d] ?? this.data.length)), one);',
+    '      const step = this.dims.slice(d + 1).reduce((a, x) => a * x, 1);',
+    '      return Array.from({ length: this.dims[d] }, (_, i) => rec(off + i * step, d + 1));',
+    '    };',
+    '    return rec(0, 0);',
+    '  }',
+    '}',
+    'const rowsOf = (x) => {',
+    '  if (x && x.data && Array.isArray(x.dims) && x.dims.length === 2) {',
+    '    const [b, l] = x.dims;',
+    '    return Array.from({ length: b }, (_, i) => Array.from(x.data.slice(i * l, (i + 1) * l), Number));',
+    '  }',
+    '  if (Array.isArray(x)) return x.map((r) => Array.from(r, Number));',
+    '  return [];',
+    '};',
+    'const describe = (x) => ({ isTensor: x instanceof Tensor, type: x?.type ?? null, array: x?.data?.constructor?.name ?? null, dims: x?.dims ?? null, rows: rowsOf(x) });',
     `const HERE = ${JSON.stringify(join(pkg, '/'))};`,
     'export const env = {',
     "  allowRemoteModels: true, remoteHost: 'https://huggingface.co/', remotePathTemplate: '{model}/resolve/{revision}/',",
@@ -209,30 +291,57 @@ export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = n
     "  call({ call: 'pipeline', task, model, options: options ?? null, env: settings });",
     stderrMark ? "  process.stderr.write('stand-in: pipeline called\\n');" : '',
     mode === 'pipeline-throws' ? "  throw new Error('test embedder: the model does not load\\nsecond line of the error');" : '',
+    '  const family = familyOf(model);',
     '  const extractor = async (input, options) => {',
     '    const texts = Array.isArray(input) ? input : [input];',
     "    call({ call: 'extract', count: texts.length, options: options ?? null });",
-    mode === 'embed-throws' ? "    throw new Error('test embedder: embed failed');" : '',
-    "    if (LOG) appendFileSync(LOG, texts.map((t) => `${JSON.stringify(t)}\\n`).join(''));",
+    throws,
+    '    logTexts(texts);',
     '    const rows = texts.map((t) => (options?.normalize ? unit(vector(t)) : vector(t)));',
     '    return { tolist: () => rows };',
     '  };',
-    // #99: the road of an embeddinggemma-300m row, as the real Pipeline object
-    // has it: extractor.tokenizer(texts, options), then await
-    // extractor.model(inputs), whose sentence_embedding gives one vector per
-    // text, not normalized.
-    '  extractor.tokenizer = (input, options) => {',
+    '  const pad = () => (PAD === null || PAD === undefined ? 0 : PAD);',
+    '  const tokenizer = (input, options) => {',
     '    const texts = Array.isArray(input) ? input : [input];',
     "    call({ call: 'tokenize', count: texts.length, options: options ?? null });",
-    '    return { texts, input_ids: { dims: [texts.length, 1] }, attention_mask: { dims: [texts.length, 1] } };',
+    '    logTexts(texts);',
+    '    texts.forEach(learn);',
+    '    let lists = texts.map((t) => standInIds(t, family));',
+    '    if (options?.truncation) lists = lists.map((l) => (l.length > 512 ? [...l.slice(0, 511), l[l.length - 1]] : l));',
+    '    const L = Math.max(0, ...lists.map((l) => l.length));',
+    '    const ids = new BigInt64Array(lists.length * L).fill(BigInt(pad()));',
+    '    const mask = new BigInt64Array(lists.length * L);',
+    '    lists.forEach((l, b) => l.forEach((id, p) => { ids[b * L + p] = BigInt(id); mask[b * L + p] = 1n; }));',
+    "    return { input_ids: new Tensor('int64', ids, [lists.length, L]), attention_mask: new Tensor('int64', mask, [lists.length, L]) };",
     '  };',
+    '  tokenizer.encode = (text, options) => {',
+    "    call({ call: 'encode', text, options: options ?? null });",
+    '    logTexts([text]);',
+    '    learn(text);',
+    '    return standInIds(text, family);',
+    '  };',
+    '  tokenizer.pad_token_id = PAD;',
+    '  tokenizer.model_max_length = 512;',
+    '  extractor.tokenizer = tokenizer;',
     '  extractor.model = async (inputs) => {',
-    '    const texts = Array.isArray(inputs?.texts) ? inputs.texts : [];',
-    "    call({ call: 'model', count: texts.length });",
-    mode === 'embed-throws' ? "    throw new Error('test embedder: embed failed');" : '',
-    "    if (LOG) appendFileSync(LOG, texts.map((t) => `${JSON.stringify(t)}\\n`).join(''));",
-    '    const rows = texts.map((t) => vector(t));',
-    '    return { sentence_embedding: { tolist: () => rows } };',
+    '    const ids = describe(inputs?.input_ids);',
+    '    const mask = describe(inputs?.attention_mask);',
+    "    call({ call: 'model', count: ids.rows.length, keys: Object.keys(inputs ?? {}), input_ids: ids, attention_mask: mask });",
+    throws,
+    '    const B = ids.rows.length;',
+    '    const L = B ? ids.rows[0].length : 0;',
+    '    const hidden = new Float32Array(B * L * DIMS);',
+    '    const sentence = new Float32Array(B * DIMS);',
+    '    for (let b = 0; b < B; b += 1) {',
+    '      const row = ids.rows[b];',
+    '      const m = mask.rows[b] ?? row.map(() => 1);',
+    '      const real = row.map((_, p) => p).filter((p) => m[p] === 1);',
+    '      const c = concept(real.map((p) => NAMES.get(row[p])).filter(Boolean));',
+    "      const at = family === 'qwen' ? real[real.length - 1] : real[0];",
+    "      for (let p = 0; p < L; p += 1) hidden.set(family !== 'gemma' && p === at ? c : noise(row[p], p), (b * L + p) * DIMS);",
+    "      sentence.set(family === 'gemma' ? c : noise(b, 5), b * DIMS);",
+    '    }',
+    "    return { last_hidden_state: new Tensor('float32', hidden, [B, L, DIMS]), sentence_embedding: new Tensor('float32', sentence, [B, DIMS]) };",
     '  };',
     '  return extractor;',
     '}',
