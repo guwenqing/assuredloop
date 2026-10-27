@@ -1,0 +1,29 @@
+schema: assuredloop/1
+request: link-hints
+tier: "1"
+status: open
+sources:
+  - file: 2026-10-27-owner-words.md
+    kind: owner-words
+    sha256: da6143f1b30b5f360c790e323d5a53cba7b27c32c557574ace5faffbc07adb05
+    taken: 2026-10-27T11:16Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1
+    title: Hints for design links, task references and requirements with no design link
+signoff:
+  - id: S1
+    file: 2026-10-27-signoff.md
+    sha256: 8d44edb03c8785abff63730a021d3e84934aac36d8863019105b5efd1113e786
+    signed: 2026-10-27T11:17Z
+    source: owner chat with the architect, 2026-10-27 about 11:16Z
+    words: Ok sign
+    presented: 2026-10-27 about 06:30Z and again 10:41Z, the text in full, as design-links/R1 version 2
+    transcribed_by: assuredloop/architect
+    covers:
+      - { id: R1, version: 1, sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1 }
+decisions: []
+tasks: []
+bindings:
+  - { holder: link-hints/R1, link: from, target: link-hints/2026-10-27-owner-words.md, holder_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_sha256: da6143f1b30b5f360c790e323d5a53cba7b27c32c557574ace5faffbc07adb05 }
