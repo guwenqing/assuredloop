@@ -31,7 +31,8 @@ bindings:
   - { holder: DES-22, link: serves, target: link-hints/R1, holder_sha256: a8e1cb19a9c02e08d1b13b35635b46e80c7f023261b06b5acacbffe1b0938fc2, target_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_version: 1 }
   - { holder: DES-165, link: serves, target: link-hints/R1, holder_sha256: 461fbf080c52cf70eba22bc9eb96d72efd613c2e3d73363e8b543f052983fe0b, target_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_version: 1, judgement: J1 }
   - { holder: DES-165, link: builds-on, target: DES-22, holder_sha256: 461fbf080c52cf70eba22bc9eb96d72efd613c2e3d73363e8b543f052983fe0b, target_sha256: a8e1cb19a9c02e08d1b13b35635b46e80c7f023261b06b5acacbffe1b0938fc2, judgement: J1 }
-  - { holder: DES-165, link: builds-on, target: DES-37, holder_sha256: 461fbf080c52cf70eba22bc9eb96d72efd613c2e3d73363e8b543f052983fe0b, target_sha256: 3c48a72fe4999189cc6374c4439187890e181600deba3a007f71d7ddf2b1ecc6, judgement: J1 }
+  - { holder: DES-165, link: builds-on, target: DES-37, holder_sha256: 461fbf080c52cf70eba22bc9eb96d72efd613c2e3d73363e8b543f052983fe0b, target_sha256: 4b41fbc5c5eca4b5bab8b3795280da3d2e2ca54b3f3c8c6c8bda6a88c6eb0ca1, judgement: J2 }
   - { holder: DES-26, link: serves, target: link-hints/R1, holder_sha256: d7270345348b9ef0cc634da8067f78e56398ee6112990df98c6ff91cfb590cb2, target_sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1, target_version: 1 }
 judgements:
   - { id: J1, hint: holder-changed, on: DES-165, reason: "DES-165 is new in this change; its edit only says that the message holds no line number, and it still serves link-hints/R1 and builds on DES-22 and DES-37", recorded: 2026-10-27T12:00Z }
+  - { id: J2, hint: stale-base, on: DES-165, reason: "DES-165 builds on item 2 of the close rule in DES-37, which the change leaves as it was", recorded: 2026-10-27T18:46Z }
