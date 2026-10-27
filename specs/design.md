@@ -335,7 +335,9 @@ decides a hint, and its decision is recorded where the next review finds it.
   out.
 - For each pair of hint code and `--on`, only the newest judgement counts.
   An older one is history: it clears nothing, and `al check` does not name
-  it; the request's record keeps it.
+  it; the request's record keeps it. This is for the judgements that keep
+  versions. A binding names the judgement that moved it, and that one
+  counts for that binding; `issue-changed` keeps its own form.
 - A judgement on `stale-base` or `holder-changed` moves each binding of that
   holder that has the hint, in the record of `<name>`, to the versions of now
   (section 4). The binding names its judgement (`judgement: J<n>`), so the
