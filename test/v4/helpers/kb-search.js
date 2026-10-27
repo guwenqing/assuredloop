@@ -106,7 +106,9 @@ export function labelled(stdout) {
 }
 
 // The fit-list lines of "Choice    local with a model: ...": one per row that fits.
-export const FIT_LINE = /^(\S+ \S+ \S+): download (\d+) MB · memory (\d+\.\d) GB · first index about (\d+) s · (\d+) ms a search · recall@10 (\d\.\d+) \[(\d\.\d+)-(\d\.\d+)\] · gain ([+-]\d\.\d+) \[([+-]\d\.\d+), ([+-]\d\.\d+)\]( · .+)?$/;
+// #100: a reranker row builds no index ("no index"), and its recall may say
+// "(word search, then the reranker)".
+export const FIT_LINE = /^(\S+ \S+ \S+): download (\d+) MB · memory (\d+\.\d) GB · (?:first index about (\d+) s|no index) · (\d+) ms a search · recall@10 (\d\.\d+) \[(\d\.\d+)-(\d\.\d+)\](?: \(word search, then the reranker\))? · gain ([+-]\d\.\d+) \[([+-]\d\.\d+), ([+-]\d\.\d+)\]( · .+)?$/;
 export const COMPUTER_LINE = /^Computer  available memory (\d+\.\d) GB · free disk (\d+\.\d) GB · Apple GPU (yes|no) · node:sqlite with FTS5 (yes|no)$/;
 
 // The parts of the output with no setting that the tests read.
@@ -221,17 +223,28 @@ syncBuiltinESMExports();
 }
 
 // The row that #99's recommendation rule gives from the rows of --json
-// (#100: the rule takes every runnable row): of the rows that fit, those with
-// a gain whose interval is above zero; of those within 0.05 of the best
-// recall, the smallest download. null when no row is left (then: local).
-export function ruleRow(jsonRows) {
-  const keep = jsonRows.filter((r) => r.state === 'fits' && r.gain[1] > 0);
+// (#100: the rule takes every runnable row, and caps the time of a search):
+// of the rows that fit, those with a gain whose interval is above zero; of
+// those, the rows whose measured time for one search (ms_a_search) is at most
+// 10,000 ms; of those within 0.05 of the best recall, the smallest download.
+// null when no row is left (then: local).
+export const MS_CAP = 10_000;
+function pick(jsonRows, cap) {
+  const keep = jsonRows.filter((r) => r.state === 'fits' && r.gain[1] > 0 && (!cap || r.ms_a_search <= MS_CAP));
   if (keep.length === 0) return null;
   const best = Math.max(...keep.map((r) => r.recall[0]));
   const near = keep.filter((r) => r.recall[0] >= best - 0.05 - 1e-9);
   near.sort((a, b) => a.download - b.download);
-  return near[0].name;
+  return near[0];
 }
+export const ruleRow = (jsonRows) => pick(jsonRows, true)?.name ?? null;
+// The row that the rule without the cap picks, when the cap removes it; else null.
+export function cappedRow(jsonRows) {
+  const p = pick(jsonRows, false);
+  return p && p.ms_a_search > MS_CAP ? p : null;
+}
+// The clause of the Recommend line for a capped row.
+export const capClause = (row) => `; ${row.name} gains ${row.gain[0] >= 0 ? '+' : '-'}${Math.abs(row.gain[0]).toFixed(3)} but takes about ${Math.round(row.ms_a_search / 1000)} s for each search`;
 
 // Computers for the tests.
 export const BIG_MAC = { platform: 'darwin', arch: 'arm64', memory: 64, disk: 500 };

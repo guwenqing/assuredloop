@@ -25,7 +25,7 @@ import {
 } from './helpers/search.js';
 import {
   ALL_ROWS, BIG_MAC, EXCLUDED, FULL_DISK, INTEL_MAC, LINUX, NO_MEMORY, RUNNABLE, SMALL_MAC,
-  fakeComputer, isLlama, labelled, namedIn, needsGpu, noChoice, notOffered, ruleRow,
+  capClause, cappedRow, fakeComputer, isLlama, labelled, namedIn, needsGpu, noChoice, notOffered, ruleRow,
 } from './helpers/kb-search.js';
 
 const SEARCH_LINE = 'Search    no choice is set: al search searches nothing until .assuredloop/config.yaml sets search (LD-64)';
@@ -37,8 +37,10 @@ const NOT_FIT = /^Not fit   (\d+) rows? needs? more than this computer has: \S/;
 const EXCLUDED_LINE = /^Excluded  6 rows: \S/;
 const NONE_CHOICE = 'Choice    none: no search; the agent reads the files (grep)';
 const LIMITS = 'Limits    measured for issue #28 on one Mac (Apple M5 Pro, 64 GB, macOS), 2026-10-21 to 2026-10-23; 50 questions from one repo;';
-// #100: the part about the rows that this version cannot run yet is gone.
-const RECOMMEND = 'Recommend local: of the rows that this al can run and that fit this computer, none has a gain whose interval is above zero';
+// #100: the part about the rows that this version cannot run yet is gone, and
+// the rule caps the time of a search at 10 s; the exact words of a local
+// recommendation with no capped row are not fixed here.
+const RECOMMEND_LOCAL = 'Recommend local: of the rows that this al can run and that fit this computer, none';
 const SET_IT = 'Set it    write one line in .assuredloop/config.yaml and commit it: search: local · search: {local: <row>} · search: {own: <name>} · search: none';
 const NEXT = 'Next      write the search line in .assuredloop/config.yaml, commit it, then al search <words>';
 const PROJECT = /^Project   (\d+) paragraphs to embed, about (\d+) tokens \(estimate: bytes \/ 4\) · (\d+) files in (\d+) repo\(s\)$/;
@@ -118,14 +120,21 @@ function fitRule(o, rowsByName, pc) {
 }
 
 // #100: the recommendation follows #99's rule over the --json figures of
-// every runnable row: the Recommend line names the row, or is RECOMMEND.
+// every runnable row, with the cap of 10 s for a search (helpers/kb-search.js,
+// ruleRow): the Recommend line names the row, or recommends local; a row that
+// the cap removed from the pick is named in its clause.
 function recommends(r, out) {
   const row = ruleRow(out.rows);
+  const capped = cappedRow(out.rows);
   assert.equal(out.recommend?.choice, 'local');
   assert.equal(out.recommend?.row, row, `--json recommend: ${JSON.stringify(out.recommend)}`);
+  assert.equal(out.recommend?.capped, capped?.name ?? null, `--json recommend.capped: ${JSON.stringify(out.recommend)}`);
   const line = r.stdout.split('\n').find((l) => l.startsWith('Recommend '));
-  if (row === null) assert.equal(line, RECOMMEND, show(r));
-  else assert.ok(line && line.includes(row), `the Recommend line names ${row}:\n${show(r)}`);
+  assert.ok(line, `a Recommend line:\n${show(r)}`);
+  if (row === null) assert.ok(line.startsWith(RECOMMEND_LOCAL) && line.includes('has a gain whose interval is above zero'), `the Recommend line says local:\n${show(r)}`);
+  else assert.ok(line.includes(`local with ${row}`), `the Recommend line names local with ${row}:\n${show(r)}`);
+  if (capped) assert.ok(line.endsWith(capClause(capped)), `the Recommend line ends with "${capClause(capped)}":\n${show(r)}`);
+  else assert.ok(!line.includes(' but takes about '), `no row was capped, so no clause:\n${show(r)}`);
   return row;
 }
 
@@ -279,7 +288,8 @@ const COMPUTERS = [
 ];
 for (const [name, computer] of COMPUTERS) {
   // #100 changed this test: the recommendation follows the rule over every
-  // runnable row, so a computer that fits a row with a gain gets that row.
+  // runnable row, with the cap of 10 s for a search, so a computer that fits a
+  // row with a gain gets that row.
   test(`#99 no setting, ${name}: the rows that fit follow the fit rule, and the recommendation follows the rule`, (t) => {
     const f = fresh(t, { computer });
     const r = runOk(f.dir, ['search', 'export', 'link'], f.opts);
