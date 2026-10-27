@@ -338,7 +338,8 @@ test('#95 a promise or design paragraph of the change spec that serves it clears
   for (let n = 1; n <= 10; n++) noHint(r, `${NAME}/R${n}`);
   noHint(r, `${NAME}/R15`);
   for (let n = 11; n <= 14; n++) hintOn(r, dir, NAME, `R${n}`);
-  assert.deepEqual(hints(r).map((f) => f.id).sort(), [11, 12, 13, 14].map((n) => `${NAME}/R${n}`).sort(), `exactly R11-R14:\n${show(r)}`);
+  // other/R1 is signed and has no link, so it gets its own hint; only share's are counted here.
+  assert.deepEqual(hints(r).filter((f) => f.id.startsWith(`${NAME}/`)).map((f) => f.id).sort(), [11, 12, 13, 14].map((n) => `${NAME}/R${n}`).sort(), `exactly R11-R14 of share:\n${show(r)}`);
 });
 
 test('#95 an approach that serves share/R11 is named with "an approach is not a design and is never in force"; plan, rationale and step each with "a <kind> paragraph is not a promise or design paragraph"', (t) => {
@@ -447,7 +448,7 @@ test('#95 a current close line on R1 clears the hint; when INV-12, which its rea
   save(dir, `${NAME}: INV-12 changed`);
   closeLineIs(dir, 'stale');
   const r = check(dir);
-  const f = hintOn(r, dir, NAME, 'R1');
+  const f = hintOn(r, dir, NAME, 'R1', { known: 'none' });
   assert.ok(f.msg.includes('; close line C1 is stale'), `the hint names C1 as stale:\n${f.line}\n${show(r)}`);
 });
 
@@ -551,12 +552,19 @@ test('#95 the words: with every kind of known link on share/R1, the hint and the
   index(dir);
   editRecord(dir, NAME, (rec) => { rec.outputs = [{ file: 'test/a.test.js', verifies: [`${NAME}/R1`] }]; });
   save(dir, `${NAME}: every link`);
+  // The citing files are those of the Cited lines of al context share/R1:
+  // src/a.js and test/a.test.js, and the ADR-4 file, whose marker names
+  // share/R1 by its decides link.
+  const cites = citedOf(dir, `${NAME}/R1`);
+  for (const file of ['src/a.js', 'test/a.test.js']) {
+    assert.ok(cites.some((c) => c.file === file), `the fixture: al context share/R1 cites ${file}: ${JSON.stringify(cites)}`);
+  }
   const want = [
     APPROACH(`${NAME}/SP-1`, place(dir, CS, 'Reuse the export link of today.')),
     OTHER_KIND('plan', `${NAME}/SP-2`, place(dir, CS, 'One PR for the link.')),
     ADR_LINK('proposed', 'ADR-4', place(dir, a4.file, a4.heading)),
     OUTPUT('test/a.test.js'),
-    CITED([{ group: 'current', file: 'src/a.js' }, { group: 'current', file: 'test/a.test.js' }]),
+    CITED(cites),
   ];
   for (const args of [[], ['--strict'], ['--full']]) {
     const r = check(dir, ...args);
