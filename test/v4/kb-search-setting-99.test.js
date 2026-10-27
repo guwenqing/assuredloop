@@ -6,11 +6,14 @@
 //   measured table (each of its 42 rows named once: fits, not fit, not yet or
 //   excluded), its limits, and the recommendation. --full gives each row on
 //   its own line; --json gives one object with all 42 rows.
+//   #100 changed this: 43 rows, 6 excluded, and no "not yet" state; off
+//   macOS arm64 the llama rows are not fit; the recommendation takes every
+//   runnable row.
 // - The fit rule and the recommendation on fake computers (a preload and a
 //   fake vm_stat, helpers/kb-search.js): memory, disk and the Apple GPU.
 // - `own` and `none`: exit 0, no hits, nothing indexed, and what to do.
-// - A wrong form, an unknown row, a row this version cannot run yet, and an
-//   excluded row: exit 2 with an `al: ` line.
+// - A wrong form, an unknown row, and an excluded row: exit 2 with an `al: `
+//   line. (#100 removed the case of a row this version cannot run yet.)
 // Built from the issue and the public interface only; nothing here reads src/.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,8 +24,8 @@ import {
   ROW, callsOf, embedded, installEmbedder, run, runOk, runRefused, show, smallRepo,
 } from './helpers/search.js';
 import {
-  ALL_ROWS, BIG_MAC, EXCLUDED, FULL_DISK, INTEL_MAC, LINUX, NOT_YET, NO_MEMORY, RUNNABLE, SMALL_MAC,
-  fakeComputer, labelled, namedIn, needsGpu, noChoice,
+  ALL_ROWS, BIG_MAC, EXCLUDED, FULL_DISK, INTEL_MAC, LINUX, NO_MEMORY, RUNNABLE, SMALL_MAC,
+  fakeComputer, isLlama, labelled, namedIn, needsGpu, noChoice, notOffered, ruleRow,
 } from './helpers/kb-search.js';
 
 const SEARCH_LINE = 'Search    no choice is set: al search searches nothing until .assuredloop/config.yaml sets search (LD-64)';
@@ -30,11 +33,12 @@ const OWN_CHOICE = "Choice    own: the team's knowledge base, an MCP server or a
 const LOCAL_CHOICE = /^Choice    local: word search \(SQLite FTS5\); no download; first index about \d+ s \(estimate from the measured word-index speed\); recall@10 0\.335 \[0\.25-0\.42\]$/;
 const MODEL_CHOICE = /^Choice    local with a model: word search and one row of the measured table; the (\d+) rows? that fits? this computer:$/;
 const NOT_FIT = /^Not fit   (\d+) rows? needs? more than this computer has: \S/;
-const NOT_YET_LINE = /^Not yet   26 rows this version cannot run yet \(#100: the llama\.cpp runtime and reranking\): \S/;
-const EXCLUDED_LINE = /^Excluded  5 rows: \S/;
+// #100: no Not yet line, and 6 excluded rows.
+const EXCLUDED_LINE = /^Excluded  6 rows: \S/;
 const NONE_CHOICE = 'Choice    none: no search; the agent reads the files (grep)';
 const LIMITS = 'Limits    measured for issue #28 on one Mac (Apple M5 Pro, 64 GB, macOS), 2026-10-21 to 2026-10-23; 50 questions from one repo;';
-const RECOMMEND = 'Recommend local: of the rows that this al can run and that fit this computer, none has a gain whose interval is above zero; 12 rows that this version cannot run yet have one (al search --full)';
+// #100: the part about the rows that this version cannot run yet is gone.
+const RECOMMEND = 'Recommend local: of the rows that this al can run and that fit this computer, none has a gain whose interval is above zero';
 const SET_IT = 'Set it    write one line in .assuredloop/config.yaml and commit it: search: local · search: {local: <row>} · search: {own: <name>} · search: none';
 const NEXT = 'Next      write the search line in .assuredloop/config.yaml, commit it, then al search <words>';
 const PROJECT = /^Project   (\d+) paragraphs to embed, about (\d+) tokens \(estimate: bytes \/ 4\) · (\d+) files in (\d+) repo\(s\)$/;
@@ -75,7 +79,16 @@ function jsonRows(out) {
 }
 
 // The fit rule, checked against the Computer line and the --json states.
+// #100: off macOS arm64 each llama row is not fit, with the not-offered reason.
 function fitRule(o, rowsByName, pc) {
+  if (!(pc.platform === 'darwin' && pc.arch === 'arm64')) {
+    const reason = notOffered(pc.platform, pc.arch);
+    for (const row of RUNNABLE.filter(isLlama)) {
+      assert.equal(rowsByName.get(row)?.state, 'not-fit', `${row} is not offered on ${pc.platform} ${pc.arch}`);
+      assert.equal(rowsByName.get(row)?.reason, reason, `${row}: the reason in --json`);
+    }
+    assert.ok(o.notFit && [o.notFit.text, ...o.notFit.more].join(' ').includes(reason), `the Not fit line gives "${reason}":\n${o.notFit?.line}`);
+  }
   assert.equal(o.computer.memory, pc.memory, `the Computer line gives the available memory of the fake computer (${pc.memory} GB)`);
   assert.equal(o.computer.disk, Math.round(pc.disk * 10) / 10, `the Computer line gives the free disk of the fake computer (${pc.disk} GB)`);
   assert.equal(o.computer.gpu, pc.gpu, `Apple GPU ${pc.gpu ? 'yes' : 'no'}`);
@@ -104,6 +117,18 @@ function fitRule(o, rowsByName, pc) {
   }
 }
 
+// #100: the recommendation follows #99's rule over the --json figures of
+// every runnable row: the Recommend line names the row, or is RECOMMEND.
+function recommends(r, out) {
+  const row = ruleRow(out.rows);
+  assert.equal(out.recommend?.choice, 'local');
+  assert.equal(out.recommend?.row, row, `--json recommend: ${JSON.stringify(out.recommend)}`);
+  const line = r.stdout.split('\n').find((l) => l.startsWith('Recommend '));
+  if (row === null) assert.equal(line, RECOMMEND, show(r));
+  else assert.ok(line && line.includes(row), `the Recommend line names ${row}:\n${show(r)}`);
+  return row;
+}
+
 // --- no setting
 
 test('#99 no setting: al search <words> exits 0, gives the documented lines in order, and searches and indexes nothing', (t) => {
@@ -112,7 +137,7 @@ test('#99 no setting: al search <words> exits 0, gives the documented lines in o
   const r = runOk(f.dir, ['search', 'export', 'link'], f.opts);
   const o = noChoice(r.stdout);
   const expected = ['Search', 'Computer', 'Project', 'Choice', 'Choice', 'Choice', ...(o.notFit ? ['Not fit'] : []),
-    'Not yet', 'Excluded', 'Choice', 'Limits', 'Recommend', 'Set it', 'Read', 'Next', 'Not known'];
+    'Excluded', 'Choice', 'Limits', 'Recommend', 'Set it', 'Read', 'Next', 'Not known'];
   assert.deepEqual(o.labels, expected, `the lines in the documented order:\n${show(r)}`);
   const line = (i) => o.ls[i].line;
   assert.equal(line(0), SEARCH_LINE, show(r));
@@ -121,19 +146,19 @@ test('#99 no setting: al search <words> exits 0, gives the documented lines in o
   const m = line(5).match(MODEL_CHOICE);
   assert.ok(m, `the Choice line of a local model:\n${show(r)}`);
   assert.equal(Number(m[1]), o.fit.length, 'the count is the number of fit row lines');
+  // #100: no Not yet line, so each line after it moves up by one.
   const after = o.ls.slice(6 + (o.notFit ? 1 : 0));
-  assert.match(after[0].line, NOT_YET_LINE, show(r));
-  assert.match(after[1].line, EXCLUDED_LINE, show(r));
-  assert.equal(after[2].line, NONE_CHOICE, show(r));
-  assert.ok(after[3].line.startsWith(LIMITS), `the Limits line starts "${LIMITS}":\n${show(r)}`);
-  const limits = [after[3].line, ...after[3].more].join(' ');
+  assert.match(after[0].line, EXCLUDED_LINE, show(r));
+  assert.equal(after[1].line, NONE_CHOICE, show(r));
+  assert.ok(after[2].line.startsWith(LIMITS), `the Limits line starts "${LIMITS}":\n${show(r)}`);
+  const limits = [after[2].line, ...after[2].more].join(' ');
   assert.ok(limits.includes('sizes in MB and GB of 10^6 and 10^9 bytes'), `the Limits line says the units:\n${limits}`);
   assert.ok(limits.includes('available memory changes from moment to moment'), `the Limits line says that memory changes:\n${limits}`);
-  assert.equal(after[4].line, RECOMMEND, show(r));
-  assert.equal(after[5].line, SET_IT, show(r));
-  assert.match(after[6].line, /^Read {6}\S/, show(r));
-  assert.equal(after[7].line, NEXT, show(r));
-  assert.match(after[8].line, /^Not known \S/, show(r));
+  recommends(r, jsonOf(runOk(f.dir, ['search', 'export', 'link', '--json'], f.opts)));
+  assert.equal(after[4].line, SET_IT, show(r));
+  assert.match(after[5].line, /^Read {6}\S/, show(r));
+  assert.equal(after[6].line, NEXT, show(r));
+  assert.match(after[7].line, /^Not known \S/, show(r));
   assert.ok(!r.stdout.split('\n').some((l) => HIT.test(l)), `no hit:\n${show(r)}`);
   assert.ok(!/^Level\b/m.test(r.stdout), `no Level line: nothing was searched:\n${show(r)}`);
   searchedNothing(f, before);
@@ -151,20 +176,17 @@ test('#99 no setting: the known figures of word search and of bge-small-en-v1.5 
   assert.deepEqual(q8.gainInterval, ['-0.053', '+0.062'], q8.line);
 });
 
-test('#99 no setting: each of the 42 rows is named in its place, and none is left out; --json has all 42 with their states', (t) => {
+// #100 changed this test: 43 rows, no not-yet state, and 6 excluded rows.
+test('#99 no setting: each of the 43 rows is named in its place, and none is left out; --json has all 43 with their states', (t) => {
   for (const computer of [BIG_MAC, SMALL_MAC, LINUX]) {
     const f = fresh(t, { computer });
     const r = runOk(f.dir, ['search', 'export', 'link'], f.opts);
     const o = noChoice(r.stdout);
     const out = jsonOf(runOk(f.dir, ['search', 'export', 'link', '--json'], f.opts));
     const byName = jsonRows(out);
-    assert.equal(out.rows.length, 42, `rows has all 42, never grouped: ${out.rows.length}`);
-    assert.deepEqual([...byName.keys()].sort(), [...ALL_ROWS].sort(), 'the names of the 42 rows');
-    for (const row of NOT_YET) {
-      assert.equal(byName.get(row).state, 'not-yet', row);
-      assert.ok(namedIn(o.notYet.text, row), `${row} is named in the Not yet line:\n${o.notYet.line}`);
-      assert.ok(!o.fit.some((x) => x.row === row), `${row} is not in the fit list`);
-    }
+    assert.equal(out.rows.length, 43, `rows has all 43, never grouped: ${out.rows.length}`);
+    assert.deepEqual([...byName.keys()].sort(), [...ALL_ROWS].sort(), 'the names of the 43 rows');
+    assert.equal(o.notYet, null, 'no Not yet line');
     for (const [row, reason] of Object.entries(EXCLUDED)) {
       assert.equal(byName.get(row).state, 'excluded', row);
       assert.match(String(byName.get(row).reason), reason, `${row}: its reason in --json`);
@@ -174,15 +196,18 @@ test('#99 no setting: each of the 42 rows is named in its place, and none is lef
     assert.match(o.excluded.text, /drift/i, 'the Excluded line gives the drift reason');
     assert.match(o.excluded.text, /NaN/, 'the Excluded line gives the NaN reason');
     assert.match(o.excluded.text, /EmbeddingGemma/, 'the Excluded line gives the EmbeddingGemma reason');
+    assert.match(o.excluded.text, /recall not measured/, 'the Excluded line gives the reason of qwen3-embedding-4b q4_k_m llama-cpu');
     for (const row of out.rows) {
-      assert.ok(['fits', 'not-fit', 'not-yet', 'excluded'].includes(row.state), `${row.name}: state ${row.state}`);
+      assert.ok(['fits', 'not-fit', 'excluded'].includes(row.state), `${row.name}: state ${row.state}`);
       if (row.state !== 'fits') assert.ok(typeof row.reason === 'string' && row.reason.length > 0, `${row.name}: a reason`);
     }
     fitRule(o, byName, f.pc);
   }
 });
 
-test('#99 no setting: --json is one object with setting null, the computer, the project, 42 rows, the limits, the recommendation and no hits', (t) => {
+// #100 changed this test: 43 rows, and the recommendation follows the rule
+// over every runnable row (on this Mac, a reranker row).
+test('#99 no setting: --json is one object with setting null, the computer, the project, 43 rows, the limits, the recommendation and no hits', (t) => {
   const f = fresh(t);
   const before = tree(f.dir);
   const out = jsonOf(runOk(f.dir, ['search', 'export', 'link', '--json'], f.opts));
@@ -193,13 +218,13 @@ test('#99 no setting: --json is one object with setting null, the computer, the 
   assert.ok(Array.isArray(out.limits) && out.limits.length > 0, 'limits is a list of texts');
   assert.deepEqual(out.hits, []);
   assert.equal(out.recommend?.choice, 'local');
-  assert.equal(out.recommend?.row, null);
+  assert.equal(out.recommend?.row, ruleRow(out.rows));
   assert.ok(typeof out.recommend?.reason === 'string' && out.recommend.reason.length > 0, 'the recommendation gives its reason');
-  assert.equal(out.rows.length, 42);
+  assert.equal(out.rows.length, 43);
   searchedNothing(f, before);
 });
 
-test('#99 no setting: --full gives each of the 42 rows on its own line, with the reason of its group', (t) => {
+test('#99 no setting: --full gives each of the 43 rows on its own line, with the reason of its group (#100: 43 rows, no not-yet state)', (t) => {
   const f = fresh(t, { computer: SMALL_MAC });
   const r = runOk(f.dir, ['search', 'export', 'link', '--full'], f.opts);
   const ls = r.stdout.split('\n');
@@ -210,7 +235,6 @@ test('#99 no setting: --full gives each of the 42 rows on its own line, with the
     const text = mine.join('\n');
     const state = byName.get(row)?.state;
     if (state === 'excluded') assert.match(text, EXCLUDED[row], `${row}: its reason`);
-    if (state === 'not-yet') assert.match(text, /#100|cannot run/, `${row}: this version cannot run it yet`);
     if (state === 'not-fit') assert.match(text, /memory|disk|GPU/i, `${row}: what does not fit`);
     if (state === 'fits') assert.match(text, /download \d+ MB/, `${row}: its figures`);
   }
@@ -254,14 +278,15 @@ const COMPUTERS = [
   ['half a GB of memory', NO_MEMORY],
 ];
 for (const [name, computer] of COMPUTERS) {
-  test(`#99 no setting, ${name}: the rows that fit follow the fit rule, and the recommendation is local`, (t) => {
+  // #100 changed this test: the recommendation follows the rule over every
+  // runnable row, so a computer that fits a row with a gain gets that row.
+  test(`#99 no setting, ${name}: the rows that fit follow the fit rule, and the recommendation follows the rule`, (t) => {
     const f = fresh(t, { computer });
     const r = runOk(f.dir, ['search', 'export', 'link'], f.opts);
     const o = noChoice(r.stdout);
     const out = jsonOf(runOk(f.dir, ['search', 'export', 'link', '--json'], f.opts));
     fitRule(o, jsonRows(out), f.pc);
-    assert.ok(r.stdout.split('\n').includes(RECOMMEND), `the recommendation is local:\n${show(r)}`);
-    assert.deepEqual([out.recommend?.choice, out.recommend?.row], ['local', null]);
+    recommends(r, out);
     assert.ok(!/^Recommend\s+(own|none)\b/m.test(r.stdout), 'al never recommends own or none');
   });
 }
@@ -284,9 +309,11 @@ test('#99 the fit rule: the CoreML row (about 28.1 GB) fits 64 GB with an Apple 
     const s = states(computer);
     for (const row of RUNNABLE.filter(needsGpu)) assert.equal(s.rows.get(row).state, 'not-fit', `${row} needs an Apple GPU`);
     assert.match(s.o.notFit.line, /GPU/, `the Not fit line says that the GPU is missing:\n${s.o.notFit.line}`);
-    for (const row of RUNNABLE.filter((x) => !needsGpu(x) && x !== coreml)) {
+    // #100: a llama row is not offered off macOS arm64.
+    for (const row of RUNNABLE.filter((x) => !needsGpu(x) && x !== coreml && !isLlama(x))) {
       assert.equal(s.rows.get(row).state, 'fits', `${row} needs no GPU, and 64 GB and 500 GB fit it`);
     }
+    for (const row of RUNNABLE.filter(isLlama)) assert.equal(s.rows.get(row).state, 'not-fit', `${row} is not offered here`);
   }
   const disk = states(FULL_DISK);
   for (const row of RUNNABLE) assert.equal(disk.rows.get(row).state, 'not-fit', `${row}: 5 MB of free disk fits no download`);
@@ -296,13 +323,19 @@ test('#99 the fit rule: the CoreML row (about 28.1 GB) fits 64 GB with an Apple 
   assert.match(memory.o.notFit.line, /memory/i, memory.o.notFit.line);
 });
 
-test('#99 no setting, no node:sqlite: the Computer line says so, and the recommendation is still local', (t) => {
+// #100 changed this test: the recommendation is no longer local on this Mac;
+// it is the same as with node:sqlite.
+test('#99 no setting, no node:sqlite: the Computer line says so, and the recommendation is the same as with it', (t) => {
   const f = fresh(t);
   const nodeArgs = [...f.opts.nodeArgs, '--no-experimental-sqlite'];
   const r = runOk(f.dir, ['search', 'export', 'link'], { ...f.opts, nodeArgs });
   const o = noChoice(r.stdout);
   assert.equal(o.computer.fts5, false, show(r));
-  assert.match(r.stdout, /^Recommend local\b/m, show(r));
+  assert.match(r.stdout, /^Recommend \S/m, show(r));
+  const rec = (opts) => jsonOf(runOk(f.dir, ['search', 'export', 'link', '--json'], opts)).recommend;
+  const without = rec({ ...f.opts, nodeArgs });
+  const withIt = rec(f.opts);
+  assert.deepEqual([without?.choice, without?.row], [withIt?.choice, withIt?.row], 'the same choice and row');
 });
 
 // --- own and none
@@ -363,7 +396,8 @@ for (const [name, value, shown] of [
 }
 
 for (const row of ['all-minilm-l6-v2 fp32 tjs-cpu', 'BGE-small-en-v1.5 q8 tjs-cpu', 'bge-small-en-v1.5 q8']) {
-  test(`#99 search: {local: ${row}} names no measured row: al search exits 2 and lists the 11 rows this version runs`, (t) => {
+  // #100: the list has the 37 rows that this version runs.
+  test(`#99 search: {local: ${row}} names no measured row: al search exits 2 and lists the 37 rows this version runs`, (t) => {
     const f = withSetting(t, { local: row });
     const before = tree(f.dir);
     const r = runRefused(f.dir, ['search', 'export', 'link'], f.opts);
@@ -374,17 +408,8 @@ for (const row of ['all-minilm-l6-v2 fp32 tjs-cpu', 'BGE-small-en-v1.5 q8 tjs-cp
   });
 }
 
-for (const row of ['qwen3-embedding-4b q8_0 llama-metal', 'ms-marco-minilm-l-6-v2 q8 tjs-cpu', 'qwen3-reranker-0.6b q4 tjs-cpu']) {
-  test(`#99 search: {local: ${row}} is a row this version cannot run yet: al search exits 2 and names #100`, (t) => {
-    const f = withSetting(t, { local: row });
-    const before = tree(f.dir);
-    const r = runRefused(f.dir, ['search', 'export', 'link'], f.opts);
-    const al = r.stdout.split('\n').find((l) => l.startsWith('al: '));
-    assert.ok(al.includes(`this version cannot run ${row} yet`), show(r));
-    assert.ok(al.includes('#100'), show(r));
-    searchedNothing(f, before);
-  });
-}
+// #100 removed the tests of a row this version cannot run yet: each of
+// those rows runs now (kb-search-llama-100.test.js, kb-search-rerank-100.test.js).
 
 for (const [row, reason] of Object.entries(EXCLUDED)) {
   test(`#99 search: {local: ${row}} is an excluded row: al search exits 2 with its reason`, (t) => {

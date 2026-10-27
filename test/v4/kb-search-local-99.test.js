@@ -26,7 +26,7 @@ import {
   MODEL, REVISION, ROW, TRANSFORMERS, TRANSFORMERS_VERSION, WITH_MODEL, besideAl, callsOf, embedded, installEmbedder,
   familyOf, runOk, runRefused, search, show, smallRepo,
 } from './helpers/search.js';
-import { HUGE_MAC, RUNNABLE, SMALL_MAC, checkRecipe, fakeComputer, noChoice } from './helpers/kb-search.js';
+import { HUGE_MAC, SMALL_MAC, TJS_EMBED, checkRecipe, fakeComputer, noChoice } from './helpers/kb-search.js';
 
 const LEVEL1_LINE = 'Level     1 (full text, SQLite FTS5)';
 const level2Line = (row) => `Level     2 (hybrid: full text and ${row})`;
@@ -107,7 +107,9 @@ test('#99 search: local refuses --level 2 (exit 2)', (t) => {
 
 // --- local with a row
 
-for (const row of RUNNABLE) {
+// #100: these are the 11 transformers.js embedding rows (TJS_EMBED); the
+// llama.cpp and reranker rows have their own tests.
+for (const row of TJS_EMBED) {
   test(`#99 search: {local: ${row}} with the library: level 2 with that row; the library is called with its model and dtype`, (t) => {
     const f = repo(t, { local: row });
     const [model, precision, runtime] = row.split(' ');
