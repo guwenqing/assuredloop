@@ -865,27 +865,40 @@ describe('#40: a link that both files of a number declare', () => {
   });
 
   // The paragraph with the bound text is the holder, also when both
-  // paragraphs declare the link and name the request.
-  test('1-b.md changes and a holder-changed judgement on ADR-1 binds its text (#88): no holder-changed for decides INV-2, before and after a commit', (t) => {
+  // paragraphs declare the link and name the request. #88: a judgement
+  // needs a hint (al index --align, which moved a binding with no hint, is
+  // removed), so both headings change: that gives the "unclear"
+  // holder-changed, and the judgement on ADR-1 clears it.
+  test('both headings change, and a holder-changed judgement on ADR-1 binds the text of one file (#88): no holder-changed for decides INV-2, before and after a commit, and after an edit of the other file', (t) => {
     const dir = both(t);
+    editFile(dir, A1, '# ADR-1: Alpha', '# ADR-1: Alpha, reworded');
     editFile(dir, B1, '# ADR-1: Beta', '# ADR-1: Beta, reworded');
+    const before = check(dir);
+    assert.equal(decides(before).length, 1, `the premise: one holder-changed on ADR-1 for decides INV-2:\n${show(before)}`);
     ok(dir, ['record', 'inv', 'judgement', '--hint', 'holder-changed', '--on', 'ADR-1', '--reason', 'Reworded; ADR-1 still decides INV-2.', '--yes']);
     index(dir);
-    // The premise: the binding holds the text of 1-b.md now, which differs
-    // from the text of 001-a.md. Else this test does not reach the step.
+    // The binding holds the text of now of one of the two files, which differ.
     const found = bindingsOf(record(dir, 'inv'), 'ADR-1', 'decides', 'INV-2');
     assert.equal(found.length, 1, 'one binding ADR-1 decides INV-2');
     assert.notEqual(hashOf(dir, A1, 'ADR-1'), hashOf(dir, B1, 'ADR-1'), 'the two headings differ');
-    assert.equal(found[0].holder_sha256, hashOf(dir, B1, 'ADR-1'), 'the binding holds the text of 1-b.md');
+    const bound = [A1, B1].find((f) => hashOf(dir, f, 'ADR-1') === found[0].holder_sha256);
+    assert.ok(bound, `the binding holds the text of now of ${A1} or ${B1}`);
     const r = check(dir);
     assert.equal(r.code, 0, show(r));
     assert.deepEqual(decides(r).map((f) => f.line), [], `no holder-changed on ADR-1 for decides INV-2:\n${show(r)}`);
-    commitAll(dir, 'reword 1-b.md, with the judgement');
+    commitAll(dir, 'reword both files, with the judgement');
     const again = check(dir);
     assert.equal(again.code, 0, show(again));
     assert.deepEqual(decides(again).map((f) => f.line), [], `after the commit, no holder-changed on ADR-1 for decides INV-2:\n${show(again)}`);
-    assert.deepEqual(again.findings.filter((f) => f.code === 'holder-changed' && f.file === A1).map((f) => f.line), [],
-      `after the commit, no holder-changed at 001-a.md:\n${show(again)}`);
+    assert.deepEqual(again.findings.filter((f) => f.code === 'holder-changed' && f.id === 'ADR-1').map((f) => f.line), [],
+      `after the commit, no holder-changed on ADR-1 in either file:\n${show(again)}`);
+    // The other file changes again; the file with the bound text is unchanged, so it is the holder.
+    const other = bound === A1 ? B1 : A1;
+    const heading = other === A1 ? '# ADR-1: Alpha, reworded' : '# ADR-1: Beta, reworded';
+    editFile(dir, other, heading, `${heading} once more`);
+    const last = check(dir);
+    assert.equal(last.code, 0, show(last));
+    assert.deepEqual(decides(last).map((f) => f.line), [], `an edit of ${other}, which does not hold the bound text, gives no holder-changed for decides INV-2:\n${show(last)}`);
   });
 });
 
