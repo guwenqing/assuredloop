@@ -1,5 +1,5 @@
 # A new version of a signed requirement for the light design
-Tier: 1 · Status: open
+Tier: 1 · Status: concluded
 
 ## Owner's words and dialog
 
@@ -12,3 +12,14 @@ Tier: 1 · Status: open
 ### R1 A rewrite that keeps the meaning
 Any text may be rewritten in other words when its meaning stays the same. This holds for an accepted or superseded ADR as for a spec or any other document. A new ADR is needed only when the decision changes, in whole or in part. The review judges whether a rewrite keeps the decision; a tool does not. So a changed ADR text, or a changed or removed link in an ADR's marker, is a hint: "ADR-3's text changed: check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it." The hint clears by a fix, or by a recorded one-line judgement, with its reason, that the decision is unchanged. The judgement holds until the ADR's text or its marker changes again. This holds for an accepted and for a superseded ADR.
 Signed off: 2026-10-27 owner, origin/2026-10-27-signoff.md
+
+## Outcome
+
+Concluded 2026-10-27 with al conclude, on the working tree at 8027e38.
+
+- R1 A rewrite that keeps the meaning, version 1, signed in S1:
+  - DES-9 data: in specs/design.md, serves it
+  - DES-10 rule: in specs/design.md, serves it
+  - DES-163 rule: in specs/design.md, serves it
+  - SCH-22 rule: in specs/schema.md, serves it
+- Not known: whether the code, tests and documents do what the paragraphs say; whether the work has ended: the tool does not take a merged task or a reconciled spec as evidence of that.
