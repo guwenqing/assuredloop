@@ -939,9 +939,10 @@ code, and code navigation belongs to code tools. The rules chosen for the
 build (#99):
 
 - A file row is each file that git tracks at the selected commit of each
-  repo, with the role `file`. It is in the default query and a change's
-  query, never in history, never in `al export`, never embedded, and never
-  a result of `--id`.
+  repo, with the role `file`. It is in the default query, a change's query
+  and a history query, and is never shown as history. A removed file has no
+  row. It is never in `al export`, never embedded, and never a result of
+  `--id`.
 - Its kind comes from its path alone: `test` (a `test`, `tests`,
   `__tests__` or `spec` folder, or a name like `*.test.*`, `*.spec.*`,
   `*_test.*` or `test_*`); else `doc` (`.md`, `.rst`, `.txt`, `.adoc`, or a
