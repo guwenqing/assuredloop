@@ -873,21 +873,37 @@ code tests do not prove them.
 
 <!-- LD-32 plan -->
 
-One setting, `search`, which the user chooses:
+One setting, `search`, which the user chooses. The dashed list after the
+choices holds the rules chosen for the build (#99).
 
 1. `own`: the team's knowledge base, named as an MCP server or a skill.
    `al export` gives it `al`'s rows: each paragraph version with its role,
    version, commit and links.
-2. `local`: word search alone, or word search with one embedding model that
-   the user picks. `al` shows a short list of models, each with its size
-   and its published benchmark figures, and downloads the chosen one on
-   first use, showing its size. Without the model library, `al search`
-   answers with word search and says how to add a model.
+2. `local`: word search alone, or word search with one row of the measured
+   table that the user names (DES-166): a model, a precision and a runtime
+   measured for the offer, each with its figures and its published score.
+   `al` downloads the chosen model on first use, and first writes its
+   download size to standard error. Without the model library, `al search`
+   answers with word search and says how to add it.
 3. `none`: no search; the skill tells the AI to grep.
+
+- The setting is `search:` in the committed `.assuredloop/config.yaml`:
+  `none`, `local`, `{local: <row>}` or `{own: <name>}` (SCH-41). `al search`
+  reads it from the working tree.
+- Any other form, a name that is no row, a row that this version cannot run
+  yet and an excluded row: `al search` refuses with exit 2 and the rows
+  that it runs.
+- A set row that does not fit this computer still runs (every choice
+  works), and a `Not known` line says what it needs and what the computer
+  has.
+- `--level` may lower the level; `--level 2` with `local` is refused.
 
 <!-- LD-64 plan -->
 
-No setting is a default by itself. The checks never use search.
+No setting is a default by itself. The checks never use search. The rules
+chosen for the build (#99): with no setting, `al search`
+searches and indexes nothing, `--id` included. `al check` does not read the
+setting, so its exit code and its output are the same with any setting.
 
 <!-- LD-45 plan -->
 
@@ -898,7 +914,16 @@ index), and the user chooses. Until a choice is set, `al search` says so
 and how to set it, and the checks run as usual. The skill asks for one
 search question in each review (LD-20, step 4.2), with the chosen search or
 with grep. It asks for more searches when the spec is large, or when the
-task's words are not the spec's words.
+task's words are not the spec's words. The rules chosen for the build
+(#99):
+
+- With no setting, `al search` names every row of the measured table once,
+  each with its state, and recommends by the rule of DES-166. With no
+  `node:sqlite` FTS5 it still recommends `local`, and says so. It never
+  recommends `own` or `none`.
+- With `own`, `al search` names the knowledge base and says to ask it; with
+  `none`, it says to read the files. Neither searches, `--id` included; the
+  Next line names `al context <ID>`.
 
 <!-- LD-33 plan -->
 
@@ -909,7 +934,19 @@ snapshots, the decisions in the records, the result files, the output lines
 that cite an ID, and their history from git. It adds one rough line for
 each file of the spec repo and the output repos that says what the file is
 (code, test, doc, config). Code is not indexed by syntax unit: agents grep
-code, and code navigation belongs to code tools.
+code, and code navigation belongs to code tools. The rules chosen for the
+build (#99):
+
+- A file row is each file that git tracks at the selected commit of each
+  repo, with the role `file`. It is in the default query and a change's
+  query, never in history, never in `al export`, never embedded, and never
+  a result of `--id`.
+- Its kind comes from its path alone: `test` (a `test`, `tests`,
+  `__tests__` or `spec` folder, or a name like `*.test.*`, `*.spec.*`,
+  `*_test.*` or `test_*`); else `doc` (`.md`, `.rst`, `.txt`, `.adoc`, or a
+  `docs` folder); else `config` (`.json`, `.yaml`, `.yml`, `.toml`, `.ini`,
+  `.cfg`, `.conf`, or a name or folder that starts with a dot); else `code`
+  (a known source extension); else `other`, so that no file is left out.
 
 <!-- LD-34 note -->
 
