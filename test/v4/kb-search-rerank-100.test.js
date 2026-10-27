@@ -199,7 +199,7 @@ for (const [name, computer] of [['a Mac with 64 GB', BIG_MAC], ['a Mac with 16 G
     assert.equal(out.recommend?.choice, 'local');
     assert.equal(out.recommend?.row, expected, `--json recommend: ${JSON.stringify(out.recommend)}`);
     assert.equal(out.recommend?.capped, null);
-    assert.match(String(out.recommend?.reason), /^gain [+-]\d\.\d{3} over word search; /, `the reason: ${out.recommend?.reason}`);
+    assert.match(String(out.recommend?.reason), /^gain [+-]\d\.\d{3} \[[+-]\d\.\d{3}, [+-]\d\.\d{3}\] over word search; /, `the reason: ${out.recommend?.reason}`);
     assert.ok(String(out.recommend?.reason).includes(CAP_REASON), `the reason: ${out.recommend?.reason}`);
     const rec = labelled(r.stdout).find((l) => l.label === 'Recommend');
     assert.ok(rec, `a Recommend line:\n${show(r)}`);
@@ -234,5 +234,6 @@ for (const [name, computer] of [['a full disk', FULL_DISK], ['half a GB of memor
     const line = r.stdout.split('\n').find((l) => l.startsWith('Recommend '));
     assert.ok(line && line.startsWith(RECOMMEND_LOCAL) && line.includes('has a gain whose interval is above zero'), `the Recommend line:\n${show(r)}`);
     assert.ok(!line.includes(' but takes about ') && !/cannot run/.test(line), `no clause:\n${show(r)}`);
+    assert.equal(line, `${RECOMMEND_LOCAL} has a gain whose interval is above zero`, 'no capped row, so no words about the 10 s cap');
   });
 }
