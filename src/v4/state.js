@@ -8,7 +8,7 @@ import { parseOnce } from './yaml-once.js';
 import { exists, read, recordPath, sha256 } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { fileAt, filesAt, git } from './git.js';
-import { KINDS, groupOf, lf, parseMarkdown, withoutScope } from './markers.js';
+import { KINDS, groupOf, lf, parseMarkdownOnce, withoutScope } from './markers.js';
 import { frameOf, requirements, signedText } from './request-md.js';
 import { originals } from './originals.js';
 import { ADR_FILE, SPEC, adrId, docsInScope, parseScopes, symlinkOn } from './scope.js';
@@ -168,7 +168,7 @@ function readState(top, rev) {
       if (!rev && exists(top, file)) unreadableAdrs.push(file);
       continue;
     }
-    const paragraphs = parseMarkdown(text, file, { kinds }).paragraphs;
+    const paragraphs = parseMarkdownOnce(text, file, { kinds }).paragraphs;
     const id = adrId(m[1]);
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
     const head = paragraphs.find((p) => p.id === id) ?? null;

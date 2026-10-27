@@ -6,7 +6,7 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, posix, relative } from 'node:path';
 import { git, filesAt, readObjects } from './git.js';
-import { parseMarkdown } from './markers.js';
+import { parseMarkdown, parseMarkdownOnce } from './markers.js';
 
 export const SPEC = 'spec';
 const REQUEST = /^requests\/(?:archive\/)?([^/]+)\/spec\.md$/;
@@ -155,7 +155,7 @@ export function parseScopes(docs, kinds) {
   const scopes = new Map();
   const lints = [];
   for (const d of docs) {
-    const r = parseMarkdown(d.text, d.path, { kinds });
+    const r = parseMarkdownOnce(d.text, d.path, { kinds });
     if (!scopes.has(d.scope)) scopes.set(d.scope, []);
     scopes.get(d.scope).push(...r.paragraphs);
     lints.push(...r.lints);
