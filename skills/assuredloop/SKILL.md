@@ -51,9 +51,10 @@ judgements in `requests/<name>/review.md`.
 
 1. Read the diff, the task, and the list and the map of `al check`.
 2. Ask one search question about the changed behaviour: "which requirement or
-   decision governs <behaviour>?". Use `al search <words>`, or grep when search
-   is off. Written IDs can be incomplete or wrong. An empty result never means
-   that you found every governing item.
+   decision governs <behaviour>?". Use the chosen search: the team's knowledge
+   base for `own`, `al search <words>` for `local`, grep for `none`. Written
+   IDs can be incomplete or wrong. An empty result never means that you found
+   every governing item.
 3. Write a judgement, with its evidence, for each item that applies to the
    change, conflicts with it, or that you are not sure of, however you found
    it. Write no routine judgement for an item that does not apply.
@@ -98,8 +99,15 @@ Add `, base` after a path to quote the base.
 ## 5. A large spec, or other words
 
 When the spec is large, or the task's words are not the spec's words, search
-first: `al search <words>`, or grep when search is off. Then read the files
-that it names.
+first, with the chosen search (step 4.2). Then read the files that it names.
+
+When `.assuredloop/config.yaml` has no `search` line, set it up once:
+1. Ask the user first whether the team has a knowledge base (an MCP server
+   or a skill). If it has one, write `search: {own: <name>}`.
+2. Else run `al search <words>`. Show the user its choices, its
+   recommendation and its limits. Write the user's choice: `search: local`,
+   `search: {local: <row>}` or `search: none`. Add `--full` to see every row.
+3. Commit the line, so that every agent and CI read the same choice.
 
 ## 6. In every answer
 

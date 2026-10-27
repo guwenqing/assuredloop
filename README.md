@@ -30,9 +30,9 @@ It needs Node 24 or newer and git 2.31 or newer. Install the npm package
 
     npm install --global @assuredloop/cli
 
-The recommended install adds the embedding model's library beside it, for
-search at level 2 (see "Search"). `al` names the library as an optional
-dependency, so npm installs it only when you ask:
+Search with a model needs the embedding model's library beside it (see
+"Search"). `al` names the library as an optional dependency, so npm installs
+it only when you ask:
 
     npm install --global @assuredloop/cli @huggingface/transformers@4.3.1
 
@@ -51,7 +51,7 @@ the skill at the pinned version into the project, for example as
 `.claude/skills/assuredloop/SKILL.md`. Name that path in the AGENTS.md line,
 and say in the commit which version it came from.
 
-Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
+Search with a model needs the library `@huggingface/transformers` 4.3.1 (see
 "Search"). Install it in the project, or beside `al`.
 
 ## The model in one page
@@ -739,21 +739,46 @@ writes them. An item file:
 
 ## Search
 
-`al search` answers at the strongest level that is installed, falls back by
-itself (2, then 1, then 0), and says which level answered and why.
+Search follows one committed setting, `search:` in
+`.assuredloop/config.yaml`. No choice is a default. Until you set one,
+`al search` searches nothing: it shows the choices, what each costs on this
+computer, the measured figures with their limits, and its recommendation.
+The checks never use search.
 
-| Level | What it is | Needs |
-|---|---|---|
-| 0 | a scan of the export | nothing |
-| 1 | a local full-text index (SQLite FTS5, BM25), with the ID in its own exact column | Node 24 or newer (`node:sqlite`) |
-| 2 | level 1, plus a small local embedding model; word and vector results are fused | the library `@huggingface/transformers` 4.3.1, in the project or beside `al` |
+| Setting | What `al search` does |
+|---|---|
+| `search: {own: <name>}` | Your team's knowledge base, an MCP server or a skill: `al search` names it and says to ask it. `al export` gives it `al`'s rows. |
+| `search: local` | Word search (level 1): a local full-text index (SQLite FTS5, BM25), with the ID in its own exact column. Needs Node 24 or newer (`node:sqlite`). |
+| `search: {local: <row>}` | Word search and one row of the measured table (level 2): word and vector results are fused. Needs the library `@huggingface/transformers` 4.3.1, in the project or beside `al`. |
+| `search: none` | No search: `al search` says so. Read the files (grep). |
 
+- The measured table holds each model, precision and runtime that was
+  measured for `al search` (issue #28), for example
+  `bge-small-en-v1.5 q8 tjs-cpu`. With no setting, `al search <words>` names
+  every row: the rows that fit this computer, each with its download,
+  memory, first index time, time for each search, recall@10 and gain over
+  word search with their intervals; then the rows that do not fit, the rows
+  that this version cannot run yet (#100), and the excluded rows, each with
+  its reason. `--full` shows every row in full, and `--json` gives them all.
+- The recommendation comes from code with no model: of the rows that this
+  `al` runs and that fit, those with a gain whose interval is above zero,
+  then the smallest download within 0.05 of the best recall. When no row is
+  left, it recommends `local`. The figures come from one Mac and 50
+  questions from one repo; the Limits line says so.
+- A wrong setting, a row that is not in the table, a row that this version
+  cannot run yet and an excluded row are refused (exit 2). A row that does
+  not fit this computer still runs, and a `Not known` line says what it
+  needs.
 - The default query is the current system: the spec text at the selected
   commit. `--change <name>` adds that request's open change spec, its
   sources and its evidence. `--history` adds removed and replaced text,
   marked as history.
 - `--id <ID>` finds one paragraph by its exact ID, never through search.
-  `--level <0|1|2>` asks for a lower level; `--at <commit>` another commit.
+  `--level <0|1|2>` asks for a lower level (2 is the row of the setting);
+  `--at <commit>` another commit.
+- Word search also finds each file of the central repo and the output repos
+  by the words of its path. Such a hit shows `file <path> <kind>`, where the
+  kind (code, test, doc, config or other) comes from the path alone.
 - Each hit shows its role (`baseline`, `proposal`, `spike`, `source`,
   `evidence` or `history`), its version and its commit.
 - In the central repo, search covers the output repos that its committed
@@ -767,11 +792,12 @@ itself (2, then 1, then 0), and says which level answered and why.
   the reason.
 - The index is one SQLite file inside `.git`, never committed. `al search`
   brings it up to date before it answers; `--rebuild` builds it again.
-- Level 2 runs a small local model (bge-small-en-v1.5, pinned by its
-  revision). The model download is the only data that leaves the machine.
-  `al` itself makes no network call. Without the library, `al search`
-  answers at level 1, and a `Not known` line says how to add level 2. Only
-  `al search` loads the library.
+- Level 2 runs the model of the row on this computer, pinned by its commit.
+  Before the first download, `al` writes the row and its size to standard
+  error. The model download is the only data that leaves the machine. `al`
+  itself makes no network call. Without the library, `al search` answers at
+  level 1, and a `Not known` line says how to add it. Only `al search` loads
+  the library.
 
 ## One central repo, and output repos
 

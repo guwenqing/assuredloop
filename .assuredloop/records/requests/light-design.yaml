@@ -203,6 +203,10 @@ own_edits:
   - { paragraph: SCH-35, sha256: f39ab9c5f3d16f20a17328afeb5c2462e272949d5cc164906746168aa64bfc2f, kept: 2026-10-27T04:47Z }
   - { paragraph: DES-26, sha256: d7270345348b9ef0cc634da8067f78e56398ee6112990df98c6ff91cfb590cb2, kept: 2026-10-27T05:16Z }
   - { paragraph: SCH-32, sha256: 66f099e60137a4bdd92acec3eece0efc6c07bdbd335ddb943784f61e45368829, kept: 2026-10-27T05:16Z }
+  - { paragraph: DES-58, sha256: de57a3122ec2c8a1db2d960d4a045c3e1ff23c31b813564c2195fc47e0307e9e, kept: 2026-10-27T16:37Z }
+  - { paragraph: DES-61, sha256: 1039d2339217a748b42ec2f4a7621124f5247fa113b4f8dae24b01133d1e479a, kept: 2026-10-27T16:37Z }
+  - { paragraph: DES-62, sha256: 8421dc12b8a5d5e2e243c2cb33bf1c3d864d44fc971bce42ecf9da313ec841bb, kept: 2026-10-27T16:37Z }
+  - { paragraph: SCH-28, sha256: 045f78768eec0bf27045cf3e0b737358f5b708672e5af7947061e86a2d10edd2, kept: 2026-10-27T16:37Z }
 closes:
   - id: C1
     on: LD-68
