@@ -211,8 +211,8 @@ it"; it is only a hint.
   judgement, with its reason, that the decision is unchanged:
   `al record <name> judgement --hint adr-changed --on ADR-3 --reason <why>`.
   The judgement keeps the ADR's text, with its marker line, and its status
-  line. It holds until the ADR's text or its marker line changes again
-  (design.md 3). This holds for an accepted and for a superseded ADR.
+  line. It holds until the ADR's text, its marker line or its status line
+  changes again (design.md 3). This holds for an accepted and for a superseded ADR.
 - After an accepted or superseded ADR is rewritten, the links that its
   paragraphs hold, and the links to them, get `holder-changed` or
   `stale-base`. A judgement moves those bindings to the new text, as for any
