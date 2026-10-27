@@ -469,18 +469,22 @@ paragraphs:
     kind: interface
     text_sha256: 20f008ad50824aebb327df445bf842b562406342b8900511d0ed93707cf1284e
     display: DES-132 (13:2, in 13. Commands)
+  - id: DES-164
+    kind: interface
+    text_sha256: 1bb0fe8feec7e2d34f365e2b8c388d3db9ab606d5e09bd32624a82585bf43449
+    display: DES-164 (13:3, in 13. Commands)
   - id: DES-133
     kind: interface
     text_sha256: 8fd5dc77b0d310d378d078ed6ef55be5e8b3b6e78f490259f42f17647cae9e2a
-    display: DES-133 (13:3, in 13. Commands)
+    display: DES-133 (13:4, in 13. Commands)
   - id: DES-125
     kind: interface
     text_sha256: a796e0b565e633a022f47a23cd96a4a6d4d857cefdcd1c81a9d9f17f5220f5b8
-    display: DES-125 (13:4, in 13. Commands)
+    display: DES-125 (13:5, in 13. Commands)
   - id: DES-134
     kind: component
     text_sha256: 82cc8f1387e991d97b20bcb5224410fbe1101820a06e97f3b9a43026592a4a4c
-    display: DES-134 (13:5, in 13. Commands)
+    display: DES-134 (13:6, in 13. Commands)
   - id: DES-73
     kind: note
     text_sha256: cff5efe0ec75b164e730f7c30d0ad386e7dc235828ba4911d9eaad32213f41ad

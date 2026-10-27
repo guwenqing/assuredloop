@@ -106,6 +106,18 @@ export function reliance(data, key) {
   return { at: signoffs.length ? String(signoffs.at(-1).id) : 'named', why: 'al kept no text when the request named it or at its sign-off' };
 }
 
+// The state of judgement `j` on item `j.on` in the record of open request
+// `r`, for the full trace (#91), which does not read the items: it holds for
+// the moment of reliance that held when it was recorded, the newest one at
+// that moment counts, and whether the text changed is not known.
+export function itemState(r, j) {
+  const { at } = reliance(r.data, j.on);
+  if (String(j.at) !== at) return `stale: the moment of reliance is now ${at === 'named' ? 'the naming' : `the sign-off ${at}`}`;
+  const newer = judgedFor(r.data, j.on).filter((x) => String(x.at) === at).at(-1);
+  if (newer && newer !== j) return `history: ${r.name}/${newer.id} is newer on the same item and moment`;
+  return `not known whether the item changed since it: al check --issues <folder> reads the item`;
+}
+
 // al check --issues: issue-changed for each item that a task of an open
 // request names, and "not known" for each that it cannot read.
 export function changedHints(named, missing, folder, add) {
