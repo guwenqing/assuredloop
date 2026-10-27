@@ -17,7 +17,14 @@ const once = new Map();
 export function entryOf(text) {
   if (once.has(text)) return once.get(text);
   const doc = parseDocument(text);
-  const entry = doc.warnings.length ? { warns: true } : doc.errors.length ? { error: doc.errors[0] } : { value: doc.toJS() };
+  let entry;
+  if (doc.warnings.length) entry = { warns: true };
+  else if (doc.errors.length) entry = { error: doc.errors[0] };
+  else {
+    // Making the data can throw too (too many aliases, for example): parse
+    // throws the same, but only for a reader that asks for this text.
+    try { entry = { value: doc.toJS() }; } catch (e) { entry = { error: e }; }
+  }
   once.set(text, entry);
   return entry;
 }
@@ -71,6 +78,10 @@ export async function parseRecords(top) {
     worker.once('error', () => done());
     worker.once('exit', () => done());
   }));
-  for (const t of mine) entryOf(t);
+  // A text that no reader asks for must not stop al check: what fails here
+  // fails again for the reader that asks, as before.
+  for (const t of mine) {
+    try { entryOf(t); } catch { /* left to its reader */ }
+  }
   await Promise.all(runs);
 }
