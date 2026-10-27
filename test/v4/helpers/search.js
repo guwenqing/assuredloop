@@ -162,14 +162,20 @@ export const CONCEPTS = [
 // model, options)` gives an extractor; `await extractor(texts, options)`
 // gives an object whose `tolist()` is one vector per text. With
 // `normalize: true` each vector has unit length, as the real library gives.
+// The extractor also has `tokenizer(texts, options)` and `async
+// model(inputs)`, as the real Pipeline object has them (#99: the road of an
+// embeddinggemma-300m row); `model` gives `{ sentence_embedding: { tolist }
+// }`, one vector per text that it got from the tokenizer, not normalized.
 // It also exports `env`, an object with the documented settings of the real
 // library 4.3.1 and their defaults (#39: al may set them before pipeline).
-// mode: 'ok', 'embed-throws' (the extractor throws), 'pipeline-throws'
+// mode: 'ok', 'embed-throws' (the extractor and `model` throw), 'pipeline-throws'
 // (pipeline throws, as when the model does not load; the error has two
 // lines) or 'load-throws' (the import throws).
-// `log`: a file that gets one JSON line for each text the extractor is given.
-// `calls`: a file that gets one JSON line for each call of pipeline and of
-// the extractor, with its arguments (the texts as a count). A pipeline line
+// `log`: a file that gets one JSON line for each text the extractor or
+// `model` is given.
+// `calls`: a file that gets one JSON line for each call of pipeline, of the
+// extractor ('extract'), of `tokenizer` ('tokenize') and of `model`
+// ('model'), with its arguments (the texts as a count). A pipeline line
 // also holds `env`: the settings in `env` when pipeline was called.
 // `marker`: a file that gets one line each time the module is imported: the
 // process id and al's arguments.
@@ -203,7 +209,7 @@ export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = n
     "  call({ call: 'pipeline', task, model, options: options ?? null, env: settings });",
     stderrMark ? "  process.stderr.write('stand-in: pipeline called\\n');" : '',
     mode === 'pipeline-throws' ? "  throw new Error('test embedder: the model does not load\\nsecond line of the error');" : '',
-    '  return async (input, options) => {',
+    '  const extractor = async (input, options) => {',
     '    const texts = Array.isArray(input) ? input : [input];',
     "    call({ call: 'extract', count: texts.length, options: options ?? null });",
     mode === 'embed-throws' ? "    throw new Error('test embedder: embed failed');" : '',
@@ -211,6 +217,24 @@ export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = n
     '    const rows = texts.map((t) => (options?.normalize ? unit(vector(t)) : vector(t)));',
     '    return { tolist: () => rows };',
     '  };',
+    // #99: the road of an embeddinggemma-300m row, as the real Pipeline object
+    // has it: extractor.tokenizer(texts, options), then await
+    // extractor.model(inputs), whose sentence_embedding gives one vector per
+    // text, not normalized.
+    '  extractor.tokenizer = (input, options) => {',
+    '    const texts = Array.isArray(input) ? input : [input];',
+    "    call({ call: 'tokenize', count: texts.length, options: options ?? null });",
+    '    return { texts, input_ids: { dims: [texts.length, 1] }, attention_mask: { dims: [texts.length, 1] } };',
+    '  };',
+    '  extractor.model = async (inputs) => {',
+    '    const texts = Array.isArray(inputs?.texts) ? inputs.texts : [];',
+    "    call({ call: 'model', count: texts.length });",
+    mode === 'embed-throws' ? "    throw new Error('test embedder: embed failed');" : '',
+    "    if (LOG) appendFileSync(LOG, texts.map((t) => `${JSON.stringify(t)}\\n`).join(''));",
+    '    const rows = texts.map((t) => vector(t));',
+    '    return { sentence_embedding: { tolist: () => rows } };',
+    '  };',
+    '  return extractor;',
     '}',
     '',
   ].join('\n'));

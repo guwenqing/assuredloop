@@ -5,8 +5,12 @@
 //   the library's pipeline is never called. `--level 2` is refused.
 // - `{local: <row>}` with the library: level 2 with that row, for each of the
 //   11 rows this version runs. The Level line names the row; the stand-in
-//   (helpers/search.js) sees the row's model, its dtype and, for a WebGPU
-//   row, its device.
+//   (helpers/search.js) sees the row's model repo, its dtype and its device
+//   (cpu, webgpu or coreml). bge and qwen rows embed through the extractor
+//   (pooling cls or last_token, normalize); EmbeddingGemma rows through the
+//   pipeline's tokenizer and model (sentence_embedding).
+// - A row that does not fit this computer still runs, with a Not known item
+//   that says what it needs and what the computer has.
 // - Without the library: level 1, a Fallback line, and the Not known line
 //   with npm install and @huggingface/transformers@4.3.1 (level2-peer/R1).
 // - Before a fetch: when the model file is not in the library's cache, al
@@ -22,7 +26,7 @@ import {
   MODEL, REVISION, ROW, TRANSFORMERS, TRANSFORMERS_VERSION, WITH_MODEL, besideAl, callsOf, embedded, installEmbedder,
   runOk, runRefused, search, show, smallRepo,
 } from './helpers/search.js';
-import { HUGE_MAC, RUNNABLE, fakeComputer, noChoice } from './helpers/kb-search.js';
+import { HUGE_MAC, RUNNABLE, SMALL_MAC, fakeComputer, noChoice } from './helpers/kb-search.js';
 
 const LEVEL1_LINE = 'Level     1 (full text, SQLite FTS5)';
 const level2Line = (row) => `Level     2 (hybrid: full text and ${row})`;
@@ -30,11 +34,17 @@ const fetchLine = (row, mb) => `al: fetching the model ${row} (${mb} MB), once`;
 const MARK = 'stand-in: pipeline called';
 const INSTALL = `${TRANSFORMERS}@${TRANSFORMERS_VERSION}`;
 const idRoles = (out) => out.hits.map((h) => `${h.id} v${h.version} ${h.role}`);
+// The model repo of each model, and the device of each runtime.
 const MODEL_OF = {
-  'bge-small-en-v1.5': /(^|\/)bge-small-en-v1\.5$/i,
-  'embeddinggemma-300m': /(^|\/)embeddinggemma-300m\b/i,
-  'qwen3-embedding-0.6b': /(^|\/)qwen3-embedding-0\.6b\b/i,
+  'bge-small-en-v1.5': 'Xenova/bge-small-en-v1.5',
+  'embeddinggemma-300m': 'onnx-community/embeddinggemma-300m-ONNX',
+  'qwen3-embedding-0.6b': 'onnx-community/Qwen3-Embedding-0.6B-ONNX',
 };
+const DEVICE_OF = { 'tjs-cpu': 'cpu', 'tjs-webgpu': 'webgpu', 'tjs-coreml': 'coreml' };
+// How each model embeds: bge and qwen through the extractor, with their
+// pooling and normalize; EmbeddingGemma through the pipeline's tokenizer and
+// model (its sentence_embedding output), which al normalizes itself.
+const POOLING_OF = { 'bge-small-en-v1.5': 'cls', 'qwen3-embedding-0.6b': 'last_token' };
 
 // A small repo with the setting, the stand-in with its logs, and a fake Mac.
 function repo(t, setting, standIn = {}) {
@@ -116,10 +126,21 @@ for (const row of RUNNABLE) {
     assert.ok(pipes.length > 0, 'pipeline was called');
     for (const p of pipes) {
       assert.equal(p.task, 'feature-extraction');
-      assert.match(p.model, MODEL_OF[model], `the model repo of ${row}: ${p.model}`);
+      assert.equal(p.model, MODEL_OF[model], `the model repo of ${row}`);
       assert.equal(p.options?.dtype, precision, `the dtype of ${row}: ${JSON.stringify(p.options)}`);
-      if (runtime === 'tjs-webgpu') assert.equal(p.options?.device, 'webgpu', `the device of ${row}: ${JSON.stringify(p.options)}`);
-      else assert.notEqual(p.options?.device, 'webgpu', `${row} does not run on WebGPU: ${JSON.stringify(p.options)}`);
+      assert.equal(p.options?.device, DEVICE_OF[runtime], `the device of ${row}: ${JSON.stringify(p.options)}`);
+    }
+    const all = callsOf(f.calls);
+    assert.ok(embedded(f.log).length > 0, `${row}: rows and the query were embedded`);
+    if (model === 'embeddinggemma-300m') {
+      const models = all.filter((c) => c.call === 'model');
+      assert.ok(models.length > 0 && models.every((c) => c.count >= 1), `${row} embeds through the pipeline's model: ${JSON.stringify(all)}`);
+      assert.ok(all.some((c) => c.call === 'tokenize'), `${row} uses the pipeline's tokenizer: ${JSON.stringify(all)}`);
+      assert.deepEqual(all.filter((c) => c.call === 'extract'), [], `${row} does not use the extractor's pooling`);
+    } else {
+      const extracts = all.filter((c) => c.call === 'extract');
+      assert.ok(extracts.length > 0, `${row} embeds through the extractor: ${JSON.stringify(all)}`);
+      for (const c of extracts) assert.deepEqual(c.options, { pooling: POOLING_OF[model], normalize: true }, `${row}: the pooling and normalize`);
     }
     if (row === ROW) {
       assert.equal(pipes[0].model, MODEL);
@@ -134,6 +155,25 @@ test('#99 search: {local: <row>}: --level 1 and --level 0 still answer, and do n
   for (const level of [1, 0]) assert.equal(search(f.dir, ['export', 'link'], { ...f.opts, level }).level, level);
   assert.deepEqual(callsOf(f.calls), [], 'the library\'s pipeline was not called');
   assert.equal(search(f.dir, ['export', 'link', '--level', '2'], f.opts).level, 2, '--level 2 is the row of the setting');
+});
+
+test('#99 a row that does not fit this computer still runs (every choice works), and a Not known item says what it needs and what the computer has', (t) => {
+  const row = 'bge-small-en-v1.5 fp32 tjs-coreml';
+  const f = repo(t, { local: row });
+  const pc = fakeComputer(join(f.dir, '.git', 'small-mac'), SMALL_MAC);
+  const opts = { nodeArgs: pc.nodeArgs, env: pc.env };
+  const r = runOk(f.dir, ['search', 'export', 'link'], opts);
+  assert.equal(r.stdout.split('\n')[0], level2Line(row), show(r));
+  const esc = row.replace(/\./g, '\\.');
+  const need = new RegExp(`${esc} needs \\d+\\.\\d GB of memory \\(\\+1 GB\\) and \\d+ MB of disk; this computer has 16\\.0 GB available and 500\\.0 GB free`);
+  const ls = r.stdout.split('\n');
+  const at = ls.findIndex((l) => /^Not known\b/.test(l));
+  assert.ok(at >= 0 && need.test(ls.slice(at).join('\n')), `the Not known item:\n${show(r)}`);
+  const out = search(f.dir, ['export', 'link'], opts);
+  assert.equal(out.level, 2);
+  assert.ok(out.not_known.some((x) => need.test(x)), JSON.stringify(out.not_known));
+  const fits = runOk(f.dir, ['search', 'export', 'link'], f.opts);
+  assert.ok(!need.test(fits.stdout) && !fits.stdout.includes(`${row} needs`), `on a computer that fits it, no such item:\n${show(fits)}`);
 });
 
 // --- without the library
