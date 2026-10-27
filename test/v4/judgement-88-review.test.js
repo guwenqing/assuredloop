@@ -179,6 +179,47 @@ describe('two accepted ADR files with one number: a judgement on ADR-3 holds for
       assert.ok(!listsJ1(r), `info judged no longer lists J1:\n${show(r)}`);
     });
   }
+
+  // Only the newest judgement on a pair of hint code and --on counts.
+  const lists = (r, n) => judgedLines(r).some((f) => f.msg.includes(`${NAME}/J${n} `));
+
+  test('the newest judgement on adr-changed ADR-3 counts: J1 keeps A1 and B1, J2 keeps A2 and B1; then 0003-a.md goes back to A1 and 3-b.md becomes B2: both hints come back, each names inv/J2 as stale and not J1; info judged lists neither', (t) => {
+    const dir = twoFiles(t);
+    rewrite(dir, A, 0, 1);
+    rewrite(dir, B, 0, 1);
+    judge(dir, 'adr-changed', 'ADR-3', WHY);
+    rewrite(dir, A, 1, 2);
+    let r = check(dir);
+    one(at(r, A), r, `adr-changed at ${A} after A2`);
+    judge(dir, 'adr-changed', 'ADR-3', WHY);
+    r = check(dir);
+    none(coded(r, 'adr-changed', 'ADR-3'), r, 'adr-changed on ADR-3 after J2');
+
+    rewrite(dir, A, 2, 1);
+    rewrite(dir, B, 1, 2);
+    r = check(dir);
+    for (const file of [A, B]) {
+      const f = one(at(r, file), r, `adr-changed at ${file}`);
+      namesStale(f, r, 2);
+      assert.ok(!f.msg.includes(`${NAME}/J1`), `the hint names J2 only, never J1:\n${f.line}\n${show(r)}`);
+    }
+    assert.ok(!lists(r, 1), `info judged does not list J1:\n${show(r)}`);
+    assert.ok(!lists(r, 2), `info judged does not list J2:\n${show(r)}`);
+  });
+
+  test('control: J1 on adr-changed ADR-3; 3-b.md changes again; J2 judges it again: the hint is cleared, and info judged lists J2 only', (t) => {
+    const dir = twoFiles(t);
+    rewrite(dir, B, 0, 1);
+    judge(dir, 'adr-changed', 'ADR-3', WHY);
+    rewrite(dir, B, 1, 2);
+    let r = check(dir);
+    one(at(r, B), r, `adr-changed at ${B} after its second edit`);
+    judge(dir, 'adr-changed', 'ADR-3', WHY);
+    r = check(dir);
+    none(coded(r, 'adr-changed', 'ADR-3'), r, 'adr-changed on ADR-3 after J2');
+    assert.ok(lists(r, 2), `info judged lists J2:\n${show(r)}`);
+    assert.ok(!lists(r, 1), `info judged does not list J1:\n${show(r)}`);
+  });
 });
 
 // =====================================================================
