@@ -28,8 +28,19 @@
 //     document in the prompt. as 'logprobs' (default): yes and no are log
 //     probabilities; as 'probs': probabilities (top_probs). null leaves a token out.
 //   completionDelayMs: each /completion waits this long before it answers.
-// /v1/embeddings: one vector per token list: [length, first, last, sum], and
-// data[] in the reverse order, so that only `index` gives the order.
+//   (stage 2, through `al search`)
+//   fetch.size: with -mu, it writes a file of this many zero bytes (sparse)
+//     in place of fetch.base64.
+//   concepts: a list of regular expressions. /v1/embeddings then gives, for
+//     the text of each token list (its code points, specials dropped), one
+//     dimension per concept (1 when the text matches) and a constant 0.1.
+//   scoreBy: [[text, p], ...]: the score of a document is the p of the first
+//     text that it contains, else scoreDefault (0.01). /v1/rerank gives it as
+//     the relevance_score (when rerankScores is not set); /completion gives
+//     log(p) for "yes" and log(1 - p) for "no" (when yesno has no entry).
+// /v1/embeddings: one vector per token list: [length, first, last, sum]
+// (when concepts is not set), and data[] in the reverse order, so that only
+// `index` gives the order.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -86,6 +97,12 @@ function tokenize({ content, add_special, parse_special }) {
   else core = [...content].map((c) => c.codePointAt(0));
   return add_special ? [...(tok.prefix ?? []), ...core, ...(tok.suffix ?? [])] : core;
 }
+const textOf = (t) => String.fromCodePoint(...t.filter((x) => x <= 0x10ffff));
+const concepts = (conf.concepts ?? []).map((x) => new RegExp(x, 'i'));
+const scoreOf = (doc) => {
+  const hit = (conf.scoreBy ?? []).find(([w]) => String(doc).includes(w));
+  return hit ? hit[1] : (conf.scoreDefault ?? 0.01);
+};
 let listenedAt = 0;
 async function answer(p, b) {
   if (p === '/health') {
@@ -97,13 +114,14 @@ async function answer(p, b) {
   if (p === '/tokenize') return [200, { tokens: tokenize(b) }];
   if (p === '/detokenize') return [200, { content: String.fromCodePoint(...b.tokens.filter((x) => x <= 0x10ffff)) }];
   if (p === '/v1/embeddings') {
-    const data = b.input.map((t, index) => ({
-      object: 'embedding', index, embedding: [t.length, t[0], t[t.length - 1], t.reduce((a, x) => a + x, 0)],
-    }));
+    const vec = (t) => (conf.concepts
+      ? [...concepts.map((re) => (re.test(textOf(t)) ? 1 : 0)), 0.1]
+      : [t.length, t[0], t[t.length - 1], t.reduce((a, x) => a + x, 0)]);
+    const data = b.input.map((t, index) => ({ object: 'embedding', index, embedding: vec(t) }));
     return [200, { object: 'list', model: 'fake', data: data.reverse() }];
   }
   if (p === '/v1/rerank') {
-    const scores = conf.rerankScores ?? b.documents.map((_, i) => i / 10);
+    const scores = conf.rerankScores ?? (conf.scoreBy ? b.documents.map(scoreOf) : b.documents.map((_, i) => i / 10));
     const results = b.documents.map((_, index) => ({ index, relevance_score: scores[index] }));
     results.sort((x, y) => y.relevance_score - x.relevance_score);
     return [200, { model: 'fake', object: 'list', results: results.slice(0, b.top_n ?? results.length) }];
@@ -111,7 +129,8 @@ async function answer(p, b) {
   if (p === '/completion') {
     await sleep(conf.completionDelayMs ?? 0);
     const doc = String(b.prompt).split('<Document>: ')[1]?.split('<|im_end|>')[0];
-    const e = (conf.yesno ?? {})[doc] ?? { yes: -1, no: -2 };
+    const p0 = scoreOf(doc);
+    const e = (conf.yesno ?? {})[doc] ?? (conf.scoreBy ? { yes: Math.log(p0), no: Math.log(1 - p0) } : { yes: -1, no: -2 });
     const probs = e.as === 'probs';
     const entry = (id, token, v) => (probs
       ? { id, token, bytes: [...Buffer.from(token)], prob: v }
@@ -156,7 +175,14 @@ const mu = arg('-mu');
 const f = conf.fetch ?? {};
 if (mu && m && !fs.existsSync(m)) {
   log({ event: 'fetch', url: mu });
-  if (!f.never) {
+  if (f.size != null) {
+    fs.mkdirSync(path.dirname(m), { recursive: true });
+    const fd = fs.openSync(m, 'w');
+    fs.ftruncateSync(fd, f.size);
+    fs.closeSync(fd);
+    log({ event: 'fetched' });
+    serve();
+  } else if (!f.never) {
     const bytes = Buffer.from(f.base64 ?? '', 'base64');
     fs.mkdirSync(path.dirname(m), { recursive: true });
     fs.writeFileSync(m, Buffer.alloc(0));
