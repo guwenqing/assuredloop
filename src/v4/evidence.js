@@ -183,8 +183,10 @@ function requestItem(state, q, id, own, ctx) {
 
 // What findItem reads beyond the state: the record data of a request, and
 // the paragraphs of the own request's design documents (LD-48), read as the
-// list reads them, in this repo at `rev` or in the working tree.
-function context(top, config, issues, { data = (q) => q.data, rev = null } = {}) {
+// list reads them, in this repo at `rev` or in the working tree. With the
+// base state `was`, the tasks of a request that the branch concludes name
+// their design documents too (#110).
+function context(top, config, issues, { data = (q) => q.data, rev = null, was = null } = {}) {
   let outputs = null;
   const repos = () => (outputs ??= outputRepos(top, config));
   const designs = new Map();
@@ -193,7 +195,7 @@ function context(top, config, issues, { data = (q) => q.data, rev = null } = {})
     designs(state, r) {
       if (!designs.has(r.name)) {
         const found = new Map();
-        for (const d of designPaths(top, state, [r], issues).filter((x) => !x.bad)) {
+        for (const d of designPaths(top, state, [r], issues, was).filter((x) => !x.bad)) {
           for (const p of readDesign(top, state, d.path, repos, rev).paras ?? []) if (p.id && !found.has(p.id)) found.set(p.id, p);
         }
         designs.set(r.name, found);
@@ -432,7 +434,7 @@ export function reviewSection(top, { now: state, was = null, base, own, config, 
   let identity = null;
   let outputs = null;
   const repos = () => (outputs ??= outputRepos(top, config));
-  const ctx = context(top, config, issues);
+  const ctx = context(top, config, issues, { was });
   for (const r of own) {
     const path = notePath(r);
     const text = read(top, path);
@@ -515,10 +517,10 @@ export function reviewSection(top, { now: state, was = null, base, own, config, 
 // named paragraphs alone, which al index keeps: current while each one has
 // its kept version, else stale, naming each one that changed. `named` adds
 // to `covers` the change paragraphs of its Item lines (the near-match hint).
-export function consolidations(top, state, r, { config, issues = null }) {
+export function consolidations(top, state, r, { config, issues = null, was = null }) {
   const text = read(top, notePath(r));
   if (text == null) return [];
-  const ctx = context(top, config, issues);
+  const ctx = context(top, config, issues, { was });
   const entries = list(r.data?.reviewed).filter(isMap);
   const bare = (x) => (x.startsWith(`${r.name}/`) ? x.slice(r.name.length + 1) : x);
   return parseNote(text).filter((j) => !j.unread && j.evidence.some((e) => e.kind === 'spec')).map((j) => {
