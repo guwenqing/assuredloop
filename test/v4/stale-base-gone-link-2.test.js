@@ -4,7 +4,8 @@
 // same target). A holder that dropped the link, changed its link word, or is
 // gone gets no stale-base for the old binding. Since #11 (R1), al index
 // removes the old binding and names it in its output; git history keeps it
-// (DES-38). al index --align does not bring it back.
+// (DES-38). A judgement on the holder (#88; it replaced al index --align)
+// does not bring it back.
 //
 // Each test has a control in the same state that still fires: a holder that
 // still declares a link to the target that changed.
@@ -201,7 +202,7 @@ const token = (s, w) => new RegExp(`(^|[^\\w/.-])${esc(w)}($|[^\\w/-])`).test(s)
 const namesRemoved = (r, [holder, link, target]) => r.stdout.split('\n')
   .some((l) => /remov/i.test(l) && token(l, holder) && token(l, link) && token(l, target));
 
-test('#11 R1: al index removes the bindings of the gone links and names each one; the controls keep theirs, unchanged, after al index (twice) and after al index --align on the holders', (t) => {
+test('#11 R1: al index removes the bindings of the gone links and names each one; the controls keep theirs, unchanged, after al index (twice) and after a judgement on the holders', (t) => {
   const dir = linked(t);
   const before = record(dir, 'inv');
   const gone = Object.values(GONE).flat();
@@ -226,15 +227,18 @@ test('#11 R1: al index removes the bindings of the gone links and names each one
     assert.doesNotMatch(text, new RegExp(`holder: ${holder.replace('/', '\\/').replace('.', '\\.')}\\n\\s+link: ${link}\\n\\s+target: ${target}\\n`),
       `the record file no longer holds ${holder} ${link} ${target}:\n${text}`);
   }
-  // --align on a holder that is still there, but dropped the link.
-  for (const holder of ['inv/SP-2', 'INV-60', 'inv/SP-5', 'ADR-4', 'src/count.js']) {
-    ok(dir, ['index', '--align', holder]);
-    removed(`after al index --align ${holder}`);
-  }
-  // --align on a gone holder: it may be refused, but it never brings the binding back.
-  for (const holder of ['inv/SP-3', 'INV-61']) {
-    al(dir, ['index', '--align', holder]);
-    removed(`after al index --align ${holder} (a gone holder)`);
+  // A judgement on a holder that is still there, but dropped the link, and
+  // on a gone holder: it may be refused (no such hint now), but it never
+  // brings the binding back (#88). al index --align is refused.
+  for (const holder of ['inv/SP-2', 'INV-60', 'inv/SP-5', 'ADR-4', 'src/count.js', 'inv/SP-3', 'INV-61']) {
+    for (const hint of ['stale-base', 'holder-changed']) {
+      const r = al(dir, ['record', 'inv', 'judgement', '--hint', hint, '--on', holder, '--reason', 'Checked', '--yes']);
+      assert.ok(r.code === 0 || r.code === 2, show(r));
+      removed(`after a ${hint} judgement on ${holder}`);
+    }
+    const r = al(dir, ['index', '--align', holder]);
+    assert.equal(r.code, 2, show(r));
+    removed(`after al index --align ${holder}, refused`);
   }
 });
 

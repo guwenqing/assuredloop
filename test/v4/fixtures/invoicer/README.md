@@ -51,7 +51,7 @@ Each step is a map with one key.
 | `archive: <request>` | moves `requests/<request>` to `requests/archive/<request>` |
 | `al: [args]`, `input`, `date` | runs `node bin/al-v4.js <args>`; `input` goes to standard input; `date` sets SOURCE_DATE_EPOCH |
 | `index: true`, `date` | runs `al-v4 index` |
-| `align: <ID>`, `date` | runs `al-v4 index --align <ID>` |
+| `judgement: {request, hint, on, reason}`, `date` | runs `al-v4 record <request> judgement --hint <hint> --on <on> --reason <reason> --yes` |
 | `section: {request, text}` | appends text to the request's `request.md` |
 | `adoption: {doc, ids, text}` | writes the adoption request and record (item 2 below); run `index` first |
 | `dispositionsDrop: {request, spec}` | removes a request's dispositions that name one spec ID |

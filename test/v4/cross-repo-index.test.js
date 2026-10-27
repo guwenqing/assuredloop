@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { blobSha, centralConfig, commit, world, worldOutputs, ZIP_V2 } from './helpers/cross-repo.js';
 import { invoicer } from './helpers/invoicer.js';
-import { binding, bindingsOf, hashOf, index, read, record, sha, write } from './helpers/project.js';
+import { binding, bindingsOf, hashOf, index, read, record, refused, sha, write } from './helpers/project.js';
 
 const REQ = 'invoice-exports';
 const EXPORT = 'invoicer-web/src/export-link.js';
@@ -98,19 +98,18 @@ test('a binding is frozen: indexing again after the output repos move on changes
   assert.deepEqual(record(w.central, REQ).bindings, before);
 });
 
-test('al index --align <repo>/<file> advances its hashes and commit, and only its own', (t) => {
+// #88: al index --align is removed. It advanced the hashes and the commit
+// of an output file's bindings. An output file gives no holder-changed, so no
+// judgement moves them: the bindings stay frozen.
+test('al index --align <repo>/<file> is refused, and every binding stays as it was', (t) => {
   const w = world(t);
   index(w.central);
   const old = record(w.central, REQ);
-  const { web } = moveOn(w);
-  index(w.central, '--align', EXPORT);
+  moveOn(w);
+  const r = refused(w.central, ['index', '--align', EXPORT]);
+  assert.match(r.stdout, /^al: --align is removed: /m, r.stdout);
   const rec = record(w.central, REQ);
-  assert.deepEqual(binding(rec, EXPORT, 'implements', EXP4), {
-    ...binding(old, EXPORT, 'implements', EXP4),
-    holder_sha256: blobSha(w.web, web, 'src/export-link.js'),
-    commit: `invoicer-web@${web}`,
-  });
-  assert.notEqual(binding(rec, EXPORT, 'implements', EXP4).holder_sha256, binding(old, EXPORT, 'implements', EXP4).holder_sha256);
+  assert.deepEqual(binding(rec, EXPORT, 'implements', EXP4), binding(old, EXPORT, 'implements', EXP4));
   assert.deepEqual(binding(rec, TEST, 'verifies', EXP4), binding(old, TEST, 'verifies', EXP4));
   assert.deepEqual(binding(rec, ZIP, 'implements', `central:${REQ}/R3`), binding(old, ZIP, 'implements', `central:${REQ}/R3`));
 });

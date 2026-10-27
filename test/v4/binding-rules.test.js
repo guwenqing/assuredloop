@@ -1,5 +1,6 @@
-// The binding rules: frozen bindings, lost bindings, new links, --align, and
-// a second index that changes nothing (#175).
+// The binding rules: frozen bindings, lost bindings, new links, the
+// judgement that moves a binding (#88; it replaced --align), and a second
+// index that changes nothing (#175).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -158,38 +159,45 @@ test('a link removed from its marker loses its binding, and al index names it as
   assert.deepEqual(binding(rec, 'inv/SP-1', 'serves', 'inv/R2'), serves, 'the link that the marker keeps keeps its binding');
 });
 
-test('--align <ID> sets that paragraph\'s bindings to now and leaves the others', (t) => {
+// #88: al record <name> judgement --hint stale-base|holder-changed --on <ID>
+// --reason <why> --yes moves the bindings of <ID> that have the hint.
+const judge = (dir, hint, on) => ok(dir, ['record', 'inv', 'judgement', '--hint', hint, '--on', on, '--reason', `${on} was checked against its targets.`, '--yes']);
+
+test('a stale-base judgement on <ID> sets that paragraph\'s bindings to now, with judgement: J1, and leaves the others', (t) => {
   const dir = bound(t);
   const before = record(dir, 'inv');
   changeTexts(dir);
-  ok(dir, ['index', '--align', 'inv/SP-1']);
+  index(dir);
+  judge(dir, 'stale-base', 'inv/SP-1');
   const rec = record(dir, 'inv');
   const sp1 = hashOf(dir, CS, 'SP-1');
   assert.deepEqual(binding(rec, 'inv/SP-1', 'builds-on', 'INV-12'), {
-    holder: 'inv/SP-1', link: 'builds-on', target: 'INV-12', holder_sha256: sp1, target_sha256: hashOf(dir, SPEC, 'INV-12'),
+    holder: 'inv/SP-1', link: 'builds-on', target: 'INV-12', holder_sha256: sp1, target_sha256: hashOf(dir, SPEC, 'INV-12'), judgement: 'J1',
   });
   assert.deepEqual(binding(rec, 'inv/SP-1', 'serves', 'inv/R2'), {
-    holder: 'inv/SP-1', link: 'serves', target: 'inv/R2', holder_sha256: sp1, target_sha256: R2b.sha256, target_version: 2,
+    holder: 'inv/SP-1', link: 'serves', target: 'inv/R2', holder_sha256: sp1, target_sha256: R2b.sha256, target_version: 2, judgement: 'J1',
   });
   assert.deepEqual(binding(rec, 'inv/SP-2', 'builds-on', 'INV-12'), binding(before, 'inv/SP-2', 'builds-on', 'INV-12'));
   assert.deepEqual(binding(rec, ...R2_FROM), binding(before, ...R2_FROM));
-  assert.deepEqual(rec.requirements.at(-1), { id: 'R2', version: 2, sha256: R2b.sha256, title: R2b.title },
-    'align also does what a plain index does');
+  assert.deepEqual(rec.requirements.at(-1), { id: 'R2', version: 2, sha256: R2b.sha256, title: R2b.title });
 });
 
-test('--align binds a lost link again; the next index has no "binding unknown" for it', (t) => {
+// #88: --align bound a lost link again. A lost binding gives no hint, so no
+// judgement moves it; al index --align is refused, and the link stays
+// "binding unknown".
+test('a lost link: al index --align is refused, and the link stays "binding unknown"', (t) => {
   const dir = lost(t);
-  ok(dir, ['index', '--align', 'inv/SP-1']);
-  assert.deepEqual(binding(record(dir, 'inv'), 'inv/SP-1', 'builds-on', 'INV-12'), {
-    holder: 'inv/SP-1', link: 'builds-on', target: 'INV-12',
-    holder_sha256: hashOf(dir, CS, 'SP-1'), target_sha256: hashOf(dir, SPEC, 'INV-12'),
-  });
+  refused(dir, ['index', '--align', 'inv/SP-1']);
+  assert.equal(bindingsOf(record(dir, 'inv'), 'inv/SP-1', 'builds-on', 'INV-12').length, 0);
   const r = index(dir);
-  assert.doesNotMatch(r.stdout, /binding unknown: inv\/SP-1 /);
-  assert.match(r.stdout, unknownLine(...R2_FROM), 'R2 was not aligned');
+  assert.match(r.stdout, unknownLine('inv/SP-1', 'builds-on', 'INV-12'));
+  assert.match(r.stdout, unknownLine(...R2_FROM));
 });
 
-test('--align a requirement sets its from: bindings; --align a spec ID sets that paragraph\'s', (t) => {
+// #88: --align on a requirement moved its from: bindings. A requirement's
+// changed text needs a new sign-off and gives no binding hint, so no
+// judgement moves them; the judgement on a spec ID moves that paragraph's.
+test('a judgement on a spec ID sets that paragraph\'s bindings; a requirement\'s from: bindings and other holders\' bindings stay', (t) => {
   const dir = bound(t);
   write(dir, SPEC, `${read(dir, SPEC)}\n${doc([['INV-42 rule serves:inv/R2', 'An export link MUST name one month.']])}`);
   index(dir);
@@ -198,27 +206,28 @@ test('--align a requirement sets its from: bindings; --align a spec ID sets that
   editRequest(dir, 'inv', R2.text, R2b.text);
   editFile(dir, SPEC, 'MUST name one month', 'MUST name one month and one customer');
 
-  ok(dir, ['index', '--align', 'inv/R2']);
-  let rec = record(dir, 'inv');
-  assert.deepEqual(binding(rec, ...R2_FROM), {
-    holder: 'inv/R2', link: 'from', target: `inv/${WORDS_FILE}`,
-    holder_sha256: R2b.sha256, target_sha256: rec.sources[0].sha256,
-  });
-  assert.deepEqual(binding(rec, 'inv/SP-1', 'serves', 'inv/R2'), binding(before, 'inv/SP-1', 'serves', 'inv/R2'));
-  assert.deepEqual(binding(rec, 'INV-42', 'serves', 'inv/R2'), binding(before, 'INV-42', 'serves', 'inv/R2'));
-
-  ok(dir, ['index', '--align', 'INV-42']);
-  rec = record(dir, 'inv');
+  refused(dir, ['index', '--align', 'inv/R2']);
+  index(dir);
+  judge(dir, 'stale-base', 'INV-42');
+  const rec = record(dir, 'inv');
   assert.deepEqual(binding(rec, 'INV-42', 'serves', 'inv/R2'), {
     holder: 'INV-42', link: 'serves', target: 'inv/R2',
-    holder_sha256: hashOf(dir, SPEC, 'INV-42'), target_sha256: R2b.sha256, target_version: 2,
+    holder_sha256: hashOf(dir, SPEC, 'INV-42'), target_sha256: R2b.sha256, target_version: 2, judgement: 'J1',
   });
+  assert.deepEqual(binding(rec, ...R2_FROM), binding(before, ...R2_FROM));
+  assert.deepEqual(binding(rec, 'inv/SP-1', 'serves', 'inv/R2'), binding(before, 'inv/SP-1', 'serves', 'inv/R2'));
 });
 
-test('--align refuses an ID that is not found', (t) => {
+test('al index --align is refused for any ID (#88); so is a judgement on an ID that is not found', (t) => {
   const dir = bound(t);
   changeTexts(dir);
-  for (const id of ['inv/SP-99', 'INV-999', 'inv/R9', 'nope/SP-1']) refused(dir, ['index', '--align', id]);
+  for (const id of ['inv/SP-1', 'inv/SP-99', 'INV-999', 'inv/R9', 'nope/SP-1']) {
+    const r = refused(dir, ['index', '--align', id]);
+    assert.match(r.stdout, /^al: --align is removed: /m, r.stdout);
+  }
+  for (const id of ['inv/SP-99', 'INV-999', 'inv/R9', 'nope/SP-1']) {
+    refused(dir, ['record', 'inv', 'judgement', '--hint', 'stale-base', '--on', id, '--reason', 'Checked', '--yes']);
+  }
 });
 
 test('a second index leaves every record byte for byte the same', (t) => {

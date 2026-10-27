@@ -11,8 +11,10 @@
 // R2 A changed paragraph that holds a link: in the records of the open
 // requests, a binding whose holder is a paragraph that still declares the
 // link, and whose holder text changed since it was bound, gives the hint
-// holder-changed (one per binding) until al index --align <holder> moves it.
-// Output files, requirements and archived records are out. Nothing blocks.
+// holder-changed (one per binding) until a judgement on it moves it (#88:
+// al record <name> judgement --hint holder-changed --on <holder> --reason
+// <why> --yes, which replaced al index --align <holder>). Output files,
+// requirements and archived records are out. Nothing blocks.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -719,12 +721,17 @@ const holderChanged = (r, [holder, link, target]) =>
 const staleFor = (r, [holder, link, target]) =>
   r.findings.filter((f) => f.code === 'stale-base' && f.id === holder && f.msg.startsWith(`${link} ${target},`));
 
-// One holder-changed hint for the binding; its message names the link and the align command.
+// The judgement on holder-changed for <holder>, in the record of inv (#88).
+const judge = (dir, holder) =>
+  ok(dir, ['record', 'inv', 'judgement', '--hint', 'holder-changed', '--on', holder, '--reason', `${holder} was reworded; its links still hold.`, '--yes']);
+// One holder-changed hint for the binding; its message names the link and the judgement command.
 function hints(r, b) {
   const found = holderChanged(r, b);
   assert.equal(found.length, 1, `one holder-changed on ${b.join(' ')} (its message names ${b[1]} ${b[2]}):\n${show(r)}`);
   assert.equal(found[0].severity, 'hint', show(r));
-  assert.ok(token(found[0].msg, `al index --align ${b[0]}`), `the message names al index --align ${b[0]}:\n${show(r)}`);
+  const command = `al record inv judgement --hint holder-changed --on ${b[0]} --reason <why>`;
+  assert.ok(token(found[0].msg, command), `the message names ${command}:\n${show(r)}`);
+  assert.ok(!found[0].msg.includes('--align'), `the message does not name --align:\n${show(r)}`);
 }
 function noHint(r, holder) {
   const found = holderChangedAll(r).filter((f) => f.id === holder);
@@ -741,7 +748,7 @@ test('R2 world: before any holder changes, al check and al check --strict exit 0
   }
 });
 
-test('R2: a changed holder paragraph (change spec, specs/, ADR, superseded ADR) gives one holder-changed hint per binding, naming the link and al index --align <holder>; before and after a plain al index', (t) => {
+test('R2: a changed holder paragraph (change spec, specs/, ADR, superseded ADR) gives one holder-changed hint per binding, naming the link and the judgement command; before and after a plain al index', (t) => {
   const dir = holders(t);
   changeHolders(dir);
   for (const when of ['before al index', 'after al index']) {
@@ -753,7 +760,7 @@ test('R2: a changed holder paragraph (change spec, specs/, ADR, superseded ADR) 
   }
 });
 
-test('R2: a plain al index (twice) does not clear holder-changed; al index --align <holder> clears that holder\'s hints and leaves the others', (t) => {
+test('R2: a plain al index (twice) does not clear holder-changed; a judgement on <holder> clears that holder\'s hints and leaves the others', (t) => {
   const dir = holders(t);
   changeHolders(dir);
   index(dir);
@@ -762,12 +769,12 @@ test('R2: a plain al index (twice) does not clear holder-changed; al index --ali
   assert.equal(holderChangedAll(r).length, CHANGED.length, show(r));
   let left = CHANGED;
   for (const holder of ['inv/SP-1', 'INV-60', 'ADR-5', 'ADR-4']) {
-    ok(dir, ['index', '--align', holder]);
+    judge(dir, holder);
     left = left.filter((b) => b[0] !== holder);
     r = check(dir);
     noHint(r, holder);
     for (const b of left) hints(r, b);
-    assert.equal(holderChangedAll(r).length, left.length, `after al index --align ${holder}:\n${show(r)}`);
+    assert.equal(holderChangedAll(r).length, left.length, `after the judgement on ${holder}:\n${show(r)}`);
   }
 });
 
@@ -846,31 +853,31 @@ test('R2 and R1: nothing new blocks: with only holder-changed hints and a remove
   }
 });
 
-// --- R2: holder-changed only where al index --align can move the binding
+// --- R2: holder-changed only where a judgement can move the binding
 
 // INV-13 is deleted from specs/ while inv/SP-1 keeps builds-on:INV-13, and
-// SP-1's text changes. The binding's target does not resolve now, so --align
-// cannot move it: no holder-changed for it. SP-1 serves inv/R1 resolves.
+// SP-1's text changes. The binding's target does not resolve now, so no
+// judgement can move it: no holder-changed for it. SP-1 serves inv/R1 resolves.
 const deleteInv13 = (dir) => editFile(dir, SPEC, '<!-- INV-13 rule -->\n\nAn invoice MUST have at least one line.\n\n', '');
 function targetGone(dir) {
   deleteInv13(dir);
   editFile(dir, CS, R2SP[1], 'An export MUST hold one row per invoice line, in line order.');
 }
 
-test('R2: a binding whose target does not resolve now (INV-13 deleted) gets no holder-changed; the holder\'s link that resolves does, and al index --align clears it', (t) => {
+test('R2: a binding whose target does not resolve now (INV-13 deleted) gets no holder-changed; the holder\'s link that resolves does, and a judgement clears it', (t) => {
   const dir = holders(t);
   targetGone(dir);
   const r = check(dir);
   assert.deepEqual(holderChanged(r, ['inv/SP-1', 'builds-on', 'INV-13']), [], `no holder-changed for a target that is gone:\n${show(r)}`);
   hints(r, ['inv/SP-1', 'serves', 'inv/R1']);
-  ok(dir, ['index', '--align', 'inv/SP-1']);
+  judge(dir, 'inv/SP-1');
   const after = check(dir);
   noHint(after, 'inv/SP-1');
 });
 
 // The holders world as a central repo (its config lists outputs, here one
 // absent clone), with the request other (R1) and two more paragraphs:
-// SP-4 builds on central:INV-13, which al index binds and aligns in a central
+// SP-4 builds on central:INV-13, which al index binds, and a judgement moves, in a central
 // repo; SP-5 serves R1 and other/R1. Indexed and committed.
 const R2SP4 = 'An export MUST show the invoice total in its last row.';
 const R2SP5 = 'An export MUST be the same for an invoice and its credit notes.';
@@ -895,28 +902,28 @@ const changeSp5 = (dir) => editFile(dir, CS, R2SP5, 'An export MUST be the same 
 // other's record is deleted; requests/other/request.md still holds R1.
 const otherRecordGone = (dir) => rmSync(join(dir, recordPath('other')));
 
-test('R2: in a central repo, a changed holder with builds-on:central:INV-13 gets holder-changed for it, and al index --align clears it', (t) => {
+test('R2: in a central repo, a changed holder with builds-on:central:INV-13 gets holder-changed for it, and a judgement clears it', (t) => {
   const dir = scoped(t);
   changeSp4(dir);
   const r = check(dir);
   hints(r, ['inv/SP-4', 'builds-on', 'central:INV-13']);
   hints(r, ['inv/SP-4', 'serves', 'inv/R1']);
-  ok(dir, ['index', '--align', 'inv/SP-4']);
+  judge(dir, 'inv/SP-4');
   noHint(check(dir), 'inv/SP-4');
 });
 
-test('R2: a requirement target whose request\'s record is gone (other/R1) gets no holder-changed; the holder\'s link to inv/R1 does, and al index --align clears it', (t) => {
+test('R2: a requirement target whose request\'s record is gone (other/R1) gets no holder-changed; the holder\'s link to inv/R1 does, and a judgement clears it', (t) => {
   const dir = scoped(t);
   otherRecordGone(dir);
   changeSp5(dir);
   const r = check(dir);
-  assert.deepEqual(holderChanged(r, ['inv/SP-5', 'serves', 'other/R1']), [], `no holder-changed for a target that --align cannot find:\n${show(r)}`);
+  assert.deepEqual(holderChanged(r, ['inv/SP-5', 'serves', 'other/R1']), [], `no holder-changed for a target that a judgement cannot find:\n${show(r)}`);
   hints(r, ['inv/SP-5', 'serves', 'inv/R1']);
-  ok(dir, ['index', '--align', 'inv/SP-5']);
+  judge(dir, 'inv/SP-5');
   noHint(check(dir), 'inv/SP-5');
 });
 
-test('R2 guard: after al index --align <holder> for each holder that has holder-changed, al check gives no holder-changed at all (holders changed; INV-13, the target of several, deleted; a central: target; a requirement whose record is gone)', (t) => {
+test('R2 guard: after a judgement on each holder that has holder-changed, al check gives no holder-changed at all (holders changed; INV-13, the target of several, deleted; a central: target; a requirement whose record is gone)', (t) => {
   const dir = scoped(t);
   changeHolders(dir);
   changeSp4(dir);
@@ -927,7 +934,7 @@ test('R2 guard: after al index --align <holder> for each holder that has holder-
   const r = check(dir);
   const named = [...new Set(holderChangedAll(r).map((f) => f.id))];
   assert.ok(named.length > 0, `some holder-changed to start with:\n${show(r)}`);
-  for (const holder of named) ok(dir, ['index', '--align', holder]);
+  for (const holder of named) judge(dir, holder);
   const after = check(dir);
-  assert.deepEqual(holderChangedAll(after), [], `no holder-changed once each named holder is aligned (${named.join(', ')}):\n${show(after)}`);
+  assert.deepEqual(holderChangedAll(after), [], `no holder-changed once each named holder is judged (${named.join(', ')}):\n${show(after)}`);
 });
