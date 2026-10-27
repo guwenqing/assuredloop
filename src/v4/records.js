@@ -23,11 +23,13 @@ export function openRecord(top, name) {
   const text = read(top, path);
   if (text === null) return null;
   let doc = null;
+  const invalid = (why) => Object.assign(new Fail(`${path} is not a valid record: ${why.split('\n')[0]}`, `fix ${path} by hand`), { invalid: true });
   const open = () => {
     doc = parseDocument(text);
-    if (doc.errors.length || !isMap(doc.contents)) {
-      throw Object.assign(new Fail(`${path} is not a valid record: ${doc.errors[0]?.message.split('\n')[0] ?? 'not a map'}`, `fix ${path} by hand`), { invalid: true });
-    }
+    if (doc.errors.length || !isMap(doc.contents)) throw invalid(doc.errors[0]?.message ?? 'not a map');
+    // A text that parses can still give no data (too many aliases, #104):
+    // that is an invalid record too, with yaml's reason.
+    try { doc.toJS(); } catch (e) { throw invalid(e.message); }
     return doc;
   };
   const { value } = /[&*]/.test(text) ? {} : entryOf(text);
