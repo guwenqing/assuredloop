@@ -192,7 +192,7 @@ function checkAll(args) {
   }));
   // The ok line goes here, where the marker lints end (LD-41).
   const okAt = body.length;
-  body.push(...t10.findings.map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}${places(f)}`));
+  body.push(...t10.findings.map((f) => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}${f.tail ?? ''}${places(f)}`));
   const notOk = Boolean(rootLine) || lints.some((l) => l.severity === 'not ok') || t10.findings.some((f) => f.severity === 'not ok');
   // In an output repo: the central IDs that the branch's changed files cite (T12).
   const central = centralLookup(top);
@@ -261,7 +261,7 @@ const CODES = [
   'spec-root', 'no-id', 'no-kind', 'unknown-kind', 'no-link', 'unknown-link', 'no-blank-before', 'no-blank-after', 'duplicate-id',
   'duplicate-heading', 'lost-id', 'used-again',
   'record-unreadable', 'record-evidence', 'unsigned-requirement', 'signoff-coverage', 'superseded-cited', 'superseded-status',
-  'path-claim', 'no-claim', 'promise-kind', 'typo-mark', 'near-match', 'adoption', 'design-link', 'unresolved-link', 'replaces-link', 'serves-replaced', 'unknown-task',
+  'path-claim', 'no-claim', 'promise-kind', 'typo-mark', 'near-match', 'adoption', 'design-link', 'no-paragraph-link', 'unresolved-link', 'replaces-link', 'serves-replaced', 'unknown-task',
   'target-removed', 'holder-changed', 'stale-base', 'stale-ai-hint', 'overlap', 'result', 'phrase',
   'adr-changed', 'adr-supersede', 'adr-marker', 'adr-status', 'adr-number', 'adr-none', 'adr-links', 'adr-governs',
   'design-doc', 'scope-no-file', 'map-unnamed', 'map-consolidation',
