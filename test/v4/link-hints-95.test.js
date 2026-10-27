@@ -288,6 +288,18 @@ test('#95 citations only: the hint names each citing file (current first, then h
   assert.doesNotMatch(f.line, /\bmore\b/i, `no line is left out:\n${f.line}`);
 });
 
+test('#95 citations only, written central:share/R1 in an ordinary project: al context share/R1 cites src/shared.js line 1, and the hint names the same file and line', (t) => {
+  const dir = world(t, [R1]);
+  write(dir, 'src/shared.js', '// central:share/R1\n');
+  save(dir, `${NAME}: src/shared.js`);
+  const cites = [{ group: 'current', file: 'src/shared.js', ns: [1] }];
+  assert.deepEqual(citedOf(dir, `${NAME}/R1`), cites, 'the fixture: al context share/R1 shows src/shared.js line 1');
+  const r = check(dir);
+  const f = hintOn(r, dir, NAME, 'R1');
+  assert.ok(messageOf(f).includes(CITED(cites)), `the citation, with its limit:\n${CITED(cites)}\n${f.line}\n${show(r)}`);
+  assert.ok(f.msg.includes(TAIL(cites)), `the cited line, after the message:\n${TAIL(cites)}\n${f.line}\n${show(r)}`);
+});
+
 // =====================================================================
 // 2. An existing design reused: a paragraph of specs/ serves it
 
