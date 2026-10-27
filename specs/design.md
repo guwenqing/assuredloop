@@ -320,9 +320,11 @@ the limit of its evidence: an `approach` or another paragraph of an open
 change spec that serves it and is no promise or design; an ADR that decides
 it and is not accepted; a declared `verifies` output; and each file that
 cites `<name>/R<n>`, as `al context <name>/R<n>` shows them. When none is
-known, it says so. The citing line numbers follow the message, outside it:
-a judgement (below) keeps the message, so it goes stale when a link or a
-citing file comes or goes, and not when a citing line only moves. A
+known, it says so. The message names each link by its ID or its file and
+holds no line number; the places of its IDs and the citing line numbers
+follow it, outside it. A judgement (below) keeps the message, so it goes
+stale when a link or a citing file comes or goes, and not when a linked
+paragraph or a citing line only moves. A
 requirement whose sign-off is not checked gets no hint, and the Not known
 line names it. An unsigned requirement, a spike's question and a
 requirement of an archived request get no hint.

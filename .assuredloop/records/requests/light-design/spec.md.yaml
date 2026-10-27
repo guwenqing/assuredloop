@@ -207,7 +207,7 @@ paragraphs:
     display: "LD-29 (5:14, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-49
     kind: plan
-    text_sha256: eaa649c5e13e855794c71a813f273db075f49062debadca9080e5e4100041cd8
+    text_sha256: e0bfc4891651edf99ee589a7e92fdb4e8f1ab94975e4940ddb0058d6d8a19034
     display: "LD-49 (5:15, in 4a. The code side: what is in force, the list, the judgements)"
   - id: LD-31
     kind: note
