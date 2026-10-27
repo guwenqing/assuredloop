@@ -94,18 +94,19 @@ const day = (j) => String(j.recorded ?? '').slice(0, 10);
 export function judgementPass(state) {
   const entries = [...state.requests.values()].filter((r) => r.open)
     .flatMap((r) => list(r.data?.judgements).filter((j) => isMap(j) && j.id != null && typeof j.hint === 'string' && !OWN_FORM.has(j.hint) && j.on != null)
-      .map((j) => ({ r, j })));
+      .map((j) => ({ r, j })))
+    .sort((a, b) => String(a.j.recorded ?? '').localeCompare(String(b.j.recorded ?? '')));
   const cleared = new Map();
   const stale = new Set();
   const codes = new Set();
   const apply = (findings) => findings.flatMap((f) => {
-    const mine = entries.filter(({ j }) => j.hint === f.code && names(f, j.on));
-    if (!mine.length || f.severity === 'info') return [f];
-    const last = mine.at(-1);
+    // Only the newest judgement on a pair of hint code and --on counts; an
+    // older one is history (DES-163).
+    const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on));
+    if (!last || f.severity === 'info') return [f];
     if (f.severity === 'not ok') return [{ ...f, message: `${f.message} · judgement ${last.r.name}/${last.j.id} is shown; it does not clear a not ok` }];
-    const holds = mine.findLast(({ j }) => changedSince(state, j, f) === null);
-    if (holds) {
-      cleared.set(`${holds.r.name}/${holds.j.id}`, holds);
+    if (changedSince(state, last.j, f) === null) {
+      cleared.set(`${last.r.name}/${last.j.id}`, last);
       codes.add(f.code);
       return [];
     }
