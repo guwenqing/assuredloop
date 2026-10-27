@@ -411,8 +411,9 @@ export function checks(top, { base, phrases = [], issues = null }) {
       if (!cur || !cur.sha || cur.sha === (b.judged_target_sha256 ?? b.target_sha256)) continue;
       // The change's own branch made the target of its changes or removes
       // link what it is now: al kept that version (LD-61). Another link to
-      // the same target, such as builds-on, still gets the hint.
-      if (!t.req && ['changes', 'removes'].includes(b.link) && String(b.holder).startsWith(`${r.name}/`) && ownEdit(r, t.id) === cur.sha) continue;
+      // the same target, such as builds-on, still gets the hint, and so does
+      // a target that a judgement kept (#88).
+      if (!t.req && ['changes', 'removes'].includes(b.link) && String(b.holder).startsWith(`${r.name}/`) && b.judged_target_sha256 == null && ownEdit(r, t.id) === cur.sha) continue;
       // A superseded ADR's links are history (schema.md 5).
       if (now.adrs.get(String(b.holder))?.status === 'superseded') continue;
       // A link that its holder no longer declares, or whose holder is gone, is history too (#2).
