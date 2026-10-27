@@ -93,6 +93,8 @@ export function gitEnv(ms = START) {
   const date = `${Math.floor(ms / 1000)} +0000`;
   return {
     ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1',
+    // No automatic maintenance or gc: a detached run writes into .git while the test removes it (#108).
+    GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'maintenance.auto', GIT_CONFIG_VALUE_0: 'false', GIT_CONFIG_KEY_1: 'gc.auto', GIT_CONFIG_VALUE_1: '0',
     GIT_AUTHOR_NAME: 'Scale Author', GIT_AUTHOR_EMAIL: 'author@example.invalid', GIT_AUTHOR_DATE: date,
     GIT_COMMITTER_NAME: 'Scale Committer', GIT_COMMITTER_EMAIL: 'committer@example.invalid', GIT_COMMITTER_DATE: date,
   };
