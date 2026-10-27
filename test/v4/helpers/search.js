@@ -111,13 +111,40 @@ export const head = (dir) => git(dir, 'rev-parse', 'HEAD');
 
 // --- level 2: a fixed test embedder, as a stand-in @huggingface/transformers
 
-// al's model, its pinned revision, and the Level line at level 2 (#212).
+// The model of the row `bge-small-en-v1.5 q8 tjs-cpu`, its pinned revision,
+// and the Level line at level 2 with that row (#212; #99: the Level line
+// names the row of the `search` setting).
 // The model name is al's own: a stand-in cannot change it.
 export const TRANSFORMERS = '@huggingface/transformers';
 export const TRANSFORMERS_VERSION = '4.3.1';
 export const MODEL = 'Xenova/bge-small-en-v1.5';
 export const REVISION = 'ea104dacec62c0de699686887e3f920caeb4f3e3';
-export const LEVEL2_LINE = `Level     2 (hybrid: full text and ${MODEL}@${REVISION.slice(0, 12)})`;
+export const ROW = 'bge-small-en-v1.5 q8 tjs-cpu';
+export const LEVEL2_LINE = `Level     2 (hybrid: full text and ${ROW})`;
+
+// --- the `search` setting in .assuredloop/config.yaml (#99, kb-search/R10)
+
+// The setting for level 2 with the row above, and for word search alone.
+export const WITH_MODEL = { local: ROW };
+export const WORDS_ONLY = 'local';
+// The setting a fixture gets when the test does not name one: level 2 when
+// the stand-in is installed, level 1 when it is not.
+export const searchFor = (embedder) => (embedder ? WITH_MODEL : WORDS_ONLY);
+
+// Sets the `search` key of .assuredloop/config.yaml (null removes it; a
+// project with no config gets one with this key alone), and commits that
+// file alone unless `commitIt` is false. Returns the new HEAD, or null when
+// nothing was committed.
+export function setSearch(dir, value, { commitIt = true, message = 'Set the search setting' } = {}) {
+  const cfg = (existsSync(join(dir, '.assuredloop/config.yaml')) ? readYaml(dir, '.assuredloop/config.yaml') : null) ?? {};
+  if (value === null) delete cfg.search;
+  else cfg.search = value;
+  writeYaml(dir, '.assuredloop/config.yaml', cfg);
+  if (!commitIt) return null;
+  git(dir, 'add', '--', '.assuredloop/config.yaml');
+  git(dir, 'commit', '-q', '-m', message);
+  return git(dir, 'rev-parse', 'HEAD');
+}
 export const QUERY_PREFIX = 'Represent this sentence for searching relevant passages: ';
 
 // The fixed embedder: one dimension per concept, from words in the text, and
@@ -146,7 +173,9 @@ export const CONCEPTS = [
 // also holds `env`: the settings in `env` when pipeline was called.
 // `marker`: a file that gets one line each time the module is imported: the
 // process id and al's arguments.
-export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = null } = {}) {
+// `stderrMark` (#99): pipeline writes `stand-in: pipeline called` to standard
+// error when it is called, so a test can see what al wrote before it.
+export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = null, stderrMark = false } = {}) {
   mkdirSync(pkg, { recursive: true });
   writeFileSync(join(pkg, 'package.json'), `${JSON.stringify({
     name: TRANSFORMERS, version: TRANSFORMERS_VERSION, private: true, description: 'a test stand-in',
@@ -172,6 +201,7 @@ export function standIn(pkg, { mode = 'ok', log = null, calls = null, marker = n
     'export async function pipeline(task, model, options) {',
     "  const settings = Object.fromEntries(Object.entries(env).filter(([, v]) => typeof v !== 'function'));",
     "  call({ call: 'pipeline', task, model, options: options ?? null, env: settings });",
+    stderrMark ? "  process.stderr.write('stand-in: pipeline called\\n');" : '',
     mode === 'pipeline-throws' ? "  throw new Error('test embedder: the model does not load\\nsecond line of the error');" : '',
     '  return async (input, options) => {',
     '    const texts = Array.isArray(input) ? input : [input];',
@@ -351,10 +381,12 @@ const result = (check, inputFile, inputText, note) => [
 // C: EXP-2 replaced, EXP-5 removed, R1 of reminder-emails at version 2;
 // D: a commit that changes nothing in scope.
 // The fixed embedder is installed in node_modules (not committed) when `embedder` is set.
-export function buildWorld(t, { embedder = null } = {}) {
+// `search` (#99): the search setting in the config of commit A; by default
+// {local: <ROW>} with the embedder and `local` without it; null for none.
+export function buildWorld(t, { embedder = null, search: setting = searchFor(embedder) } = {}) {
   const dir = project(t);
   write(dir, '.gitignore', 'node_modules/\n');
-  writeConfig(dir, [{ file: 'specs/exports.md', prefix: 'EXP' }], { repo: 'acme' });
+  writeConfig(dir, [{ file: 'specs/exports.md', prefix: 'EXP' }], { repo: 'acme', ...(setting === null ? {} : { search: setting }) });
   write(dir, 'specs/exports.md', EXPORTS_V1);
   write(dir, 'specs/adr/0001-csv-files.md', adr('accepted', [
     ['ADR-1 choice decides:EXP-2', '# ADR-1: Exports are CSV files'],
@@ -466,7 +498,7 @@ export const appendTo = (dir, rel, text) => appendFileSync(join(dir, rel), text)
 // A small repo: specs/exports.md (EXP-1 to EXP-5, as EXPORTS_V1 up to EXP-5)
 // and one open request `links` with a change spec, committed once. The fixed
 // embedder is installed (not committed) when `embedder` is set, with its log
-// in the git dir.
+// in the git dir. `search` (#99): as for buildWorld.
 export const SMALL_SPEC = doc([
   ['EXP-1 note', '# Exports'],
   ['EXP-2 rule', A_TEXT.exp2v2],
@@ -475,10 +507,10 @@ export const SMALL_SPEC = doc([
   ['EXP-5 rationale explains:EXP-4', A_TEXT.exp5],
 ]);
 export const SMALL_SP2 = 'The export link MUST offer a new link when an expired one is opened.';
-export function smallRepo(t, { embedder = null } = {}) {
+export function smallRepo(t, { embedder = null, search: setting = searchFor(embedder) } = {}) {
   const dir = project(t);
   write(dir, '.gitignore', 'node_modules/\n');
-  writeConfig(dir, [{ file: 'specs/exports.md', prefix: 'EXP' }], { repo: 'acme' });
+  writeConfig(dir, [{ file: 'specs/exports.md', prefix: 'EXP' }], { repo: 'acme', ...(setting === null ? {} : { search: setting }) });
   write(dir, 'specs/exports.md', SMALL_SPEC);
   newRequest(dir, 'links', 'Expired links should offer a new one.\n', ['--tier', '2']);
   write(dir, 'requests/links/spec.md', doc([

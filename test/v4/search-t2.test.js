@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { REPO, besideAl } from './helpers/search.js';
+import { REPO, WITH_MODEL, WORDS_ONLY, besideAl, setSearch } from './helpers/search.js';
 import { KS, measureOne, pct, summary, useLevel2 } from './helpers/t2.js';
 
 const QUESTIONS = parse(readFileSync(join(REPO, 'test/v4/fixtures/search/t2-questions.yaml'), 'utf8'));
@@ -74,6 +74,8 @@ test('T2: recall of the expected IDs in the top 5 and top 10, at each level (no 
     results[arm.name] = [];
     for (const state of [...new Set(measured.map(caseOf))]) {
       const dir = invoicer(t, state);
+      // #99: the search setting, committed: a row for level 2, word search for levels 0 and 1.
+      setSearch(dir, arm.kind ? WITH_MODEL : WORDS_ONLY);
       if (arm.kind) useLevel2(dir, arm.kind);
       for (const q of measured.filter((x) => caseOf(x) === state)) {
         let query = QUERY[q.id] ?? [];

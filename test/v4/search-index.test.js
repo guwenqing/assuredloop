@@ -1,6 +1,8 @@
 // The search index (#181, T13; design.md 11, "A rebuild compares paragraph
 // hashes with an index manifest ..."; interface.md "The index"): where it is,
 // the current and the history index, the refresh, and --rebuild.
+// #99: smallRepo sets the `search` setting: `local` for level 1, and
+// {local: bge-small-en-v1.5 q8 tjs-cpu} with the stand-in for level 2.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';

@@ -1,7 +1,8 @@
 // The incremental search index across the output repos (#186; interface-186.md
 // 4, "Incremental"): a walk per repo, up to date only when no repo moved, and
 // an output repo that becomes unknown. Level 1 (the index); the --json field
-// `index` is the text of the Index line. The world: helpers/cross-search.js.
+// `index` is the text of the Index line. The world: helpers/cross-search.js,
+// whose central config sets search: local (#99).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -12,7 +13,8 @@ import { read, write } from './helpers/project.js';
 
 const L1 = { level: 1 };
 const UP_TO_DATE = /^up to date\b/;
-const outside = (out) => out.hits.filter((h) => h.repo !== 'invoicer').map((h) => `${h.repo}:${h.id} v${h.version} ${h.role}`).sort();
+// No file row (#99, LD-33): kb-search-files-99.test.js tests those.
+const outside = (out) => out.hits.filter((h) => h.repo !== 'invoicer' && h.role !== 'file').map((h) => `${h.repo}:${h.id} v${h.version} ${h.role}`).sort();
 const keys = (out) => out.hits.map((h) => `${key(h)} ${h.role}`).sort();
 const ALL = ['central', '--change', 'invoice-exports', '--history', '--limit', '500'];
 
