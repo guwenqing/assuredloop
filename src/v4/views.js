@@ -241,13 +241,15 @@ export function placesOf(now, was, base, f) {
   return parts.length ? ` · places: ${[...new Set(parts)].join(', ')}` : '';
 }
 
-// The findings of al check on the working tree, and each one's line with
-// the places of its IDs; null at --at.
+// The findings of al check on the working tree, after its judgements
+// (DES-163, #91), and each one's line with the places of its IDs; null at
+// --at.
 function hintsNow(state) {
   if (state.rev) return null;
   const base = mergeBase(state.top);
   const t = checks(state.top, { base });
-  return { findings: t.findings, line: (f) => findingLine(f, placesOf(t.now, t.was, base, f)) };
+  const findings = judgementPass(t.now).apply(t.findings);
+  return { findings, line: (f) => findingLine(f, placesOf(t.now, t.was, base, f)) };
 }
 
 // --- the views

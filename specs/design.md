@@ -1787,7 +1787,9 @@ request to the answer of `al context <name>`, after its coverage lines.
 Each entry of the request's record has a line of its own, so that none is
 left out. Under `--audit`, the `Records` line also names the bindings and
 the judgements when the record holds them, because only `al`'s record holds
-these facts. The lines, in this order:
+these facts. The `Hints` section of `al context`, with or without
+`--audit`, shows the hints that `al check` gives after its judgements
+(DES-163). The lines of the trace, in this order:
 - `Source`: each source of the owner's words, with its file, its hash, and
   when and where it was taken.
 - `Version`: each requirement version, with its hash.
