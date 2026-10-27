@@ -1,10 +1,15 @@
-// #88, from the review: three cases that the other tests of #88 miss.
+// #88, from the review: four cases that the other tests of #88 miss.
 // 1. A hint whose ID is "-" (no-id): --on is its path.
+//    A no-id judgement holds for the judged paragraph by its text: an edit
+//    brings the hint back as stale, a move does not, and a new unmarked
+//    paragraph gets its own hint.
 // 2. A hint that only `al check --issues` gives (issue-missing): the
 //    judgement takes --issues too.
 // 3. A judgement on a `changes` link keeps what the link changes: the map
 //    fact and al conclude stay as they were, because the version that the
 //    link changes is not moved to now. A builds-on link still moves.
+// 4. Two accepted files of ADR-3: a judgement on ADR-3 holds for each file
+//    by its own text.
 // Nothing here reads the code under test.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,11 +18,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { findings } from './helpers/invoicer.js';
 import {
-  al, appendSection, binding, commitAll, doc, editFile, editRecord, git, hashOf, index, newRequest, ok, organized, read,
-  record, refused, show, write, writeYaml,
+  ADR3, al, appendSection, binding, commitAll, doc, editFile, editRecord, git, hashOf, index, newRequest, ok, organized,
+  read, record, refused, show, write, writeYaml,
 } from './helpers/project.js';
 import {
-  CS, NAME, R1, SPEC, T, base, check, coded, judge, judgedLine, namesStale, none, onLink, one, world,
+  CS, NAME, R1, SPEC, T, base, check, coded, judge, judgedLine, judgedLines, namesStale, none, onLink, one, world,
 } from './helpers/judgement-88.js';
 import { base7, entry } from './helpers/map-68.js';
 
@@ -41,6 +46,109 @@ describe('a hint whose ID is "-": --on is its path', () => {
     none(coded(r, 'no-id').filter((x) => x.file.split(':')[0] === SPEC), r, `no-id on ${SPEC} after the judgement`);
     assert.ok(judgedLine(r).includes(`${NAME}/J1 no-id ${SPEC}: ${WHY}`), show(r));
   });
+
+  // The world above, with the judgement J1 on the no-id hint of the
+  // unmarked paragraph at the end of specs/invoices.md (after INV-60).
+  const STRAY = 'A stray paragraph with no marker.';
+  const INV12 = `<!-- INV-12 data -->\n\n${T.INV12}\n`;
+  const noIds = (r) => coded(r, 'no-id').filter((x) => x.file.split(':')[0] === SPEC);
+  function judged(t) {
+    const dir = world(t);
+    write(dir, SPEC, `${read(dir, SPEC)}\n${STRAY}\n`);
+    one(noIds(check(dir)), check(dir), `no-id on ${SPEC}`);
+    judge(dir, 'no-id', SPEC, WHY);
+    none(noIds(check(dir)), check(dir), `no-id on ${SPEC} after the judgement`);
+    return dir;
+  }
+
+  test('no-id: an edit of the judged unmarked paragraph brings the hint back, and it names the judgement inv/J1 as stale', (t) => {
+    const dir = judged(t);
+    editFile(dir, SPEC, STRAY, 'A stray paragraph with no marker, edited.');
+    const r = check(dir);
+    namesStale(one(noIds(r), r, `no-id on ${SPEC} after the edit`), r, 1);
+  });
+
+  test('no-id: a second unmarked paragraph added after the judgement (after INV-12) gives its own no-id hint, which is not cleared; the judged one stays cleared', (t) => {
+    const dir = judged(t);
+    editFile(dir, SPEC, INV12, `${INV12}\nA second stray paragraph.\n`);
+    const r = check(dir);
+    const f = one(noIds(r), r, `one no-id on ${SPEC}: the new paragraph's`);
+    assert.ok(f.msg.startsWith('a paragraph with no ID marker, after INV-12'), `the hint is on the new paragraph, after INV-12:\n${f.line}\n${show(r)}`);
+  });
+
+  test('no-id: a move of the judged unmarked paragraph (from after INV-60 to after INV-12), its text kept, keeps it cleared', (t) => {
+    const dir = judged(t);
+    editFile(dir, SPEC, `\n${STRAY}\n`, '');
+    editFile(dir, SPEC, INV12, `${INV12}\n${STRAY}\n`);
+    const r = check(dir);
+    none(noIds(r), r, `no-id on ${SPEC} after the move`);
+    assert.ok(judgedLine(r).includes(`${NAME}/J1 no-id ${SPEC}: ${WHY}`), show(r));
+  });
+});
+
+// =====================================================================
+
+describe('two accepted ADR files with one number: a judgement on ADR-3 holds for each file by its own text', () => {
+  // main: two accepted files of ADR-3, then the branch feature with the
+  // open request inv. The texts: a, then b, then c.
+  const A = 'specs/adr/0003-a.md';
+  const B = 'specs/adr/3-b.md';
+  const TB = 'Context: a link must be signed.';
+  const TBb = 'Context: a link must be signed by the server.';
+  const TBc = 'Context: a link must be signed by the server only.';
+  const TEXT = { [A]: [T.ADR, T.ADRb, T.ADRc], [B]: [TB, TBb, TBc] };
+  function twoFiles(t) {
+    const dir = base(t, { adr: false });
+    git(dir, 'checkout', '-q', 'main');
+    write(dir, A, ADR3);
+    write(dir, B, `Status: accepted\n\n${doc([['ADR-3 choice', '# ADR-3: Signed links, part two'], ['ADR-3-1 rationale', TB]])}`);
+    commitAll(dir, 'two files of ADR-3');
+    git(dir, 'checkout', '-q', 'feature');
+    git(dir, 'merge', '-q', '--ff-only', 'main');
+    newRequest(dir, NAME, 'The owner wants signed links.\n', ['--tier', '2']);
+    commitAll(dir, `The request ${NAME}\n\nTier: 2 — ${NAME}`);
+    return dir;
+  }
+  const at = (r, file) => coded(r, 'adr-changed', 'ADR-3').filter((f) => f.file.split(':')[0] === file);
+  const rewrite = (dir, file, from, to) => editFile(dir, file, TEXT[file][from], TEXT[file][to]);
+  const listsJ1 = (r) => judgedLines(r).some((f) => f.msg.includes(`${NAME}/J1 `));
+
+  test('only the second file is rewritten: adr-changed on ADR-3 at 3-b.md; the judgement clears it; a second edit of 3-b.md brings it back, names inv/J1 as stale, and "info judged" no longer lists J1', (t) => {
+    const dir = twoFiles(t);
+    rewrite(dir, B, 0, 1);
+    let r = check(dir);
+    one(at(r, B), r, `adr-changed at ${B}`);
+    none(at(r, A), r, `adr-changed at ${A}`);
+    judge(dir, 'adr-changed', 'ADR-3', WHY);
+    r = check(dir);
+    none(coded(r, 'adr-changed', 'ADR-3'), r, 'adr-changed on ADR-3 after the judgement');
+    assert.ok(listsJ1(r), `info judged lists J1:\n${show(r)}`);
+
+    rewrite(dir, B, 1, 2);
+    r = check(dir);
+    namesStale(one(at(r, B), r, `adr-changed at ${B} after the second edit`), r, 1);
+    none(at(r, A), r, `adr-changed at ${A} after the second edit`);
+    assert.ok(!listsJ1(r), `info judged no longer lists J1:\n${show(r)}`);
+  });
+
+  for (const [again, other] of [[A, B], [B, A]]) {
+    test(`control: both files are rewritten; one judgement on ADR-3 clears both hints; a second edit of ${again.split('/').pop()} brings back the hint at that file only`, (t) => {
+      const dir = twoFiles(t);
+      rewrite(dir, A, 0, 1);
+      rewrite(dir, B, 0, 1);
+      let r = check(dir);
+      one(at(r, A), r, `adr-changed at ${A}`);
+      one(at(r, B), r, `adr-changed at ${B}`);
+      judge(dir, 'adr-changed', 'ADR-3', WHY);
+      r = check(dir);
+      none(coded(r, 'adr-changed', 'ADR-3'), r, 'adr-changed on ADR-3 after the judgement');
+
+      rewrite(dir, again, 1, 2);
+      r = check(dir);
+      namesStale(one(at(r, again), r, `adr-changed at ${again} after its second edit`), r, 1);
+      none(at(r, other), r, `adr-changed at ${other}, which did not change again`);
+    });
+  }
 });
 
 // =====================================================================
