@@ -127,29 +127,36 @@ export function unsignedRemovals(state, was, r) {
 }
 
 // The kind that spec paragraph `id` had in the newest commit that held it,
-// from git history, or null. First the selected commit itself; then, newest
+// from git history, or null.
+function pastKind(state, id) {
+  const past = pastParagraph(state, id);
+  return past ? past.p.kind : null;
+}
+
+// Spec paragraph `id` in the newest commit that held it, from git history:
+// { p, commit }, or null. First the selected commit itself; then, newest
 // first, each commit whose diff adds or removes the marker (in any spacing
 // the parser allows, in any path) or changes .assuredloop/config.yaml (which
 // can bring a marked file into scope or take it out). Each commit, then its
 // parent, is read with that commit's own config and schema.
-function pastKind(state, id) {
+export function pastParagraph(state, id) {
   const top = state.top;
   const rev = state.rev ?? 'HEAD';
   const marker = `<!--[[:space:]][[:space:]]*${id}[[:space:]]`;
   const list = (args) => (git(top, ['log', '--format=%H', ...args], { allowFail: true }) ?? '').split('\n').filter(Boolean);
   const candidates = new Set([...list(['-G', marker, rev]), ...list([rev, '--', '.assuredloop/config.yaml'])]);
   const ordered = (git(top, ['rev-list', rev], { allowFail: true }) ?? '').split('\n').filter((sha) => candidates.has(sha));
-  const kindAt = (at) => {
+  const paragraphAt = (at) => {
     const { config, kinds } = settingsAt(top, at);
     for (const d of docsInScope(top, config, at).filter((x) => x.scope === SPEC)) {
       const p = parseMarkdown(d.text, d.path, { kinds }).paragraphs.find((x) => x.id === id);
-      if (p) return p.kind;
+      if (p) return p;
     }
-    return undefined;
+    return null;
   };
   for (const at of [rev, ...ordered.flatMap((sha) => [sha, `${sha}^`])]) {
-    const kind = kindAt(at);
-    if (kind !== undefined) return kind;
+    const p = paragraphAt(at);
+    if (p) return { p, commit: git(top, ['rev-parse', '--verify', '--quiet', `${at}^{commit}`], { allowFail: true }) };
   }
   return null;
 }

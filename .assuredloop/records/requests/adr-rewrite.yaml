@@ -27,3 +27,9 @@ decisions: []
 tasks: []
 bindings:
   - { holder: adr-rewrite/R1, link: from, target: adr-rewrite/2026-10-27-owner-words.md, holder_sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8, target_sha256: 3d52d71f9f20507427791f888136f089aee4563f10c649418fd17e814b1f161f }
+  - { holder: DES-9, link: serves, target: adr-rewrite/R1, holder_sha256: c890c9717a36d1e256fe0e60f24742db8f3935570dcad3555e254e3c3a8c7d7c, target_sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8, target_version: 1 }
+  - { holder: DES-10, link: serves, target: adr-rewrite/R1, holder_sha256: 101ed9c2217d4e5da1ccbb648b926100d2673a7cd65f97bcd9f602ff6690b15c, target_sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8, target_version: 1 }
+  - { holder: DES-163, link: serves, target: hints-and-blocks/R2, holder_sha256: 758ee5ce91fbc9a4d028914fade2a3987cb6bc5e26ee44b50e70308f9f435f62, target_sha256: 43b981532770dca76cffdeaa82bbe7933264ddc2f1512e9c694b77e3fc365838, target_version: 1 }
+  - { holder: DES-163, link: serves, target: adr-rewrite/R1, holder_sha256: 758ee5ce91fbc9a4d028914fade2a3987cb6bc5e26ee44b50e70308f9f435f62, target_sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8, target_version: 1 }
+  - { holder: DES-163, link: builds-on, target: DES-22, holder_sha256: 758ee5ce91fbc9a4d028914fade2a3987cb6bc5e26ee44b50e70308f9f435f62, target_sha256: a8e1cb19a9c02e08d1b13b35635b46e80c7f023261b06b5acacbffe1b0938fc2 }
+  - { holder: SCH-22, link: serves, target: adr-rewrite/R1, holder_sha256: ceff1e883ac5094b5647937a906e6ae04c246cfd1f05a42d9f05be4728934d89, target_sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8, target_version: 1 }

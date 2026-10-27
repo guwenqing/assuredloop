@@ -81,7 +81,7 @@ Why: the owner keeps both a change's own documents and one current set
 (inputs 92, 104-108), and wants no design text outside the trace (input 109).
 A reader must find the current system without reading past changes (R1).
 
-<!-- DES-9 data serves:assuredloop-v4/R1,adr-links/R1,hints-and-blocks/R1 -->
+<!-- DES-9 data serves:assuredloop-v4/R1,adr-links/R1,adr-rewrite/R1 -->
 
 | Set | Where | Holds | Changes how |
 |---|---|---|---|
@@ -94,7 +94,7 @@ A reader must find the current system without reading past changes (R1).
 | Outputs | code, tests, `docs/` | the product and its user documents | normal PRs; traced from the change's record (input 112) |
 | Tool data | `.assuredloop/` | `config.yaml`, `schema.yaml`, `records/` | the developer's agent and `al` |
 
-<!-- DES-10 rule serves:assuredloop-v4/R1,assuredloop-v4/R2,hints-and-blocks/R1 -->
+<!-- DES-10 rule serves:assuredloop-v4/R1,assuredloop-v4/R2,adr-rewrite/R1 -->
 
 - There is no free design document anywhere. Design lives only in a change
   spec or in `specs/` (inputs 108, 109).
@@ -305,6 +305,48 @@ semantic coverage as "not checked".
   `--strict`, the exit is 1 when any `not ok` prints. No finding changes
   severity with the mode.
 
+<!-- DES-163 rule serves:hints-and-blocks/R2,adr-rewrite/R1 builds-on:DES-22 -->
+
+**A hint clears by a fix or by a judgement.** Every hint of `al check`
+clears by a fix, or by a one-line judgement with its reason:
+`al record <name> judgement --hint <code> --on <ID> --reason <why>`. `--on`
+is the ID that the hint line shows, or the hint's path when that ID is `-`.
+The command refuses when `al check` gives no such hint now. Why: the review
+decides a hint, and its decision is recorded where the next review finds it.
+- A judgement lives only in the record of an open request. A PR with no
+  request of its own records no judgement, and its hints stay for its
+  review. A rewrite of an ADR in other words is path 1d, which has a short
+  request.
+- The judgement keeps the versions of both sides of its hint. For
+  `adr-changed`, these are the ADR's text, with its marker line, and its
+  status line. For another hint, they are the hint's message, and the text of
+  the paragraph that it is on and of each paragraph that its message names.
+  The hint is cleared while these are the versions of now.
+- When one side changes, the hint comes back, and it ends with "the
+  judgement <request>/J<n> (<date>) is stale: <what> changed since it".
+- `al check` shows the current judgements in one line:
+  `info judged - - <request>/J<n> <code> <ID>: <reason>; …`.
+- A judgement on `stale-base` or `holder-changed` moves each binding of that
+  holder that has the hint, in the record of `<name>`, to the versions of now
+  (section 4). The binding names its judgement (`judgement: J<n>`), so the
+  versions are kept once. Another record that holds the same link keeps its
+  binding and its hint.
+- A judgement on `binding-unknown` binds each link of that holder whose
+  binding is unknown, in the record of `<name>`. A target that is gone takes
+  its text in the newest commit that held it. When no commit of the clone
+  holds it, the command refuses.
+- A binding with no hint is not moved, for example a binding of an output
+  file whose bytes changed.
+- A move makes no binding and no judgement stale: the text hashes leave out
+  the place. An ID-only edit makes no binding stale: the text hashes leave
+  out the ID. A judgement names its hint by the ID, so after a new ID the
+  hint shows again. The ID rules still name a lost ID.
+- A judgement never clears a `not ok` or a refusal of `al conclude`. A
+  judgement on a `not ok` is recorded and shown on its line ("· judgement
+  <request>/J<n> is shown; it does not clear a not ok"). It changes neither
+  `--strict` nor `al conclude`.
+- `issue-changed` keeps its own form, with `--issues <folder>` (section 8).
+
 <!-- DES-81 choice serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1 -->
 
 Close means a word-set similarity (Dice) of 0.6 or more, one named
@@ -370,13 +412,18 @@ the link was made.
   the request's record: the target's version or text hash at that time, and
   the source paragraph's text hash. Both ends are hashed.
   - Ordinary indexing never advances a binding.
-  - Only an explicit align step (`al index --align <ID>`) advances it, after
-    the agent has checked the change against the new target. The PR diff then
-    shows the old and the new binding.
+  - Only a recorded judgement moves it, after the agent has checked the
+    change against the new target (section 3): `al record <name> judgement
+    --hint stale-base --on <ID> --reason <why>`, or `--hint holder-changed`.
+    The PR diff then shows the old and the new binding, and the binding names
+    its judgement.
   - A newly declared link (not in the marker at the base commit) gets its
     first binding when it is first indexed. A link that was in the marker at
     the base commit but whose binding record is gone stays "binding unknown".
-    The script never fills a lost binding with today's value.
+    The script never fills a lost binding with today's value by itself. A
+    recorded judgement with `--hint binding-unknown` binds it, to the versions
+    of now, or, for a target that is gone, to its text in the newest commit
+    that held it (section 3).
   - The same rules hold for `serves R<n>` (the requirement version), for
     `from` (the owner's-words snapshot), and for declared outputs where a
     project declares them. Where a project declares no outputs, the tool
@@ -389,17 +436,20 @@ the link was made.
     record's `outputs` still declare their links. Git history keeps the
     removed binding. While `al index` cannot read a file that can declare
     links, it removes no binding and says why.
-- When a bound target changes, the source paragraph gets a hint until it is
-  aligned: "your change builds on INV-41, which change X changed on <date>.
-  Align it." Running the index again does not remove the hint.
-- When the source paragraph's text changes after a link was bound, it gets a
-  hint until it is aligned: "this paragraph changed after its link builds-on
-  INV-41 was bound. Check it, then al index --align <ID>." The hint covers
-  the links that a paragraph in a spec doc, an ADR or a change spec still
-  declares, to a target that still resolves, in the records of the open
-  requests: the bindings that `al index --align` reaches. A requirement is
-  out, because a changed requirement already needs a new sign-off. An output
-  file is out.
+- When a bound target changes, the source paragraph gets the hint
+  `stale-base` until it is fixed or judged: "builds-on INV-41, which changed
+  since it was bound. Align it: check it, then al record <name> judgement
+  --hint stale-base --on <ID> --reason <why>". Running the index again does
+  not remove the hint.
+- When the source paragraph's text changes after a link was bound, it gets
+  the hint `holder-changed` until it is fixed or judged: "builds-on INV-41:
+  this paragraph changed after the link was bound. Check that it still
+  builds-on INV-41, then al record <name> judgement --hint holder-changed
+  --on <ID> --reason <why>". The hint covers the links that a paragraph in a
+  spec doc, an ADR or a change spec still declares, to a target that still
+  resolves, in the records of the open requests: the bindings that a
+  judgement can move. A requirement is out, because a changed requirement
+  already needs a new sign-off. An output file is out.
 - Request-local IDs resolve by request name, never by path:
   `invoice-exports/R2`, `invoice-exports/SP-12`. A request's name is
   permanent, so its IDs still resolve after a move or an archive.
@@ -1094,8 +1144,8 @@ is not kept.
   `al record <name> judgement --hint issue-changed --on <item> --reason <why> --issues <folder>`
   keeps the hash of the item's text with the judgement, and the moment of
   reliance that held then. The hint comes back when that text changes again, or
-  when a later sign-off becomes the moment of reliance. Only
-  `issue-changed` takes such a judgement.
+  when a later sign-off becomes the moment of reliance. The other hints take
+  the judgement of section 3.
 - It is a hint in every mode, and never a `not ok`.
 
 <!-- DES-131 rationale explains:DES-130 -->
@@ -1670,12 +1720,12 @@ are its outputs.
 | `al new` | starts a request and snapshots the owner's words |
 | `al record origin`, `signoff`, `decision` | record later owner's words, a sign-off and a decision |
 | `al record close` | records a close line (section 5) |
-| `al record judgement` | records that the change of a work item was read; only `--hint issue-changed` (section 8) |
+| `al record judgement` | records a one-line judgement, with its reason, that clears a hint (section 3); `--hint issue-changed` keeps its form with `--issues <folder>` (section 8) |
 | `al spec` | lists IDs, display numbers and kinds; `--add-ids` marks every paragraph |
 | `al context` | with no argument, where the project stands; `al context <name>`, where a request stands and what comes next, and with `--audit` its whole trace; `al context <ID>`, one paragraph, requirement or ADR (below). `--full` adds the text of each citing line, and `--at <commit>` answers as of that commit. `--diff` and `--for` refuse and name `al check` |
 | `al check` | the one command for a change and its review: the checks in sections 3-10, the list, the review section and the map (section 15). `--full` shows the text of every item and of each changed paragraph; `--at <commit>` answers as of that commit; `--all` is the audit; `--issues <folder>` also checks the work items that the caller saved for the tasks of the open requests (section 8); `--strict` exits 1 on a `not ok` |
 | `al conclude` | the close rule. It refuses with exit 1 and a `refused:` line for each reason. Without `--yes` it shows what it would do. With `--yes` it writes the Outcome, which shows the evidence and what is unknown, and moves the request to `requests/archive/` |
-| `al index` | writes derived facts and new bindings; `--align <ID>` advances a binding on purpose; `--issues <folder>` keeps the text of the work items (section 8); lists the hints that the agent must refresh. `al check` runs it |
+| `al index` | writes derived facts and new bindings; `--issues <folder>` keeps the text of the work items (section 8); lists the hints that the agent must refresh. `al check` runs it. `--align` is removed: it refuses and names `al record <name> judgement` |
 | `al export` | the export: one JSONL row per paragraph version, output file or result, with its repo, role, version, commit and edges; not committed |
 | `al search` | search at levels 0-2 across the central repo and its output repos, with the current-system, change-context and history queries; it shows each hit's repo and commit |
 

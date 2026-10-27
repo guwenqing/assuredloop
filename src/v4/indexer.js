@@ -1,6 +1,7 @@
-// al index [--align <ID>]: writes the per-doc records (the regenerable fields,
-// with the agents' hints kept), appends requirement versions, freezes the
-// bindings of new links. Ordinary indexing never advances a binding; only --align does (design.md 4, 10).
+// al index: writes the per-doc records (the regenerable fields, with the
+// agents' hints kept), appends requirement versions, freezes the bindings of
+// new links. Ordinary indexing never advances a binding; only a recorded
+// judgement does (al record <name> judgement, #88; design.md 4, 10).
 // With --issues <folder>, it keeps the text of the tasks' work items at the
 // moment of reliance (light-design LD-22, kept-items.js).
 import { accessSync, constants, lstatSync, readdirSync } from 'node:fs';
@@ -16,6 +17,7 @@ import { outputRepos } from './repos.js';
 import { loadItems, taskItems } from './issues.js';
 import { keepItems } from './kept-items.js';
 import { keepJudgements } from './evidence.js';
+import { pastParagraph } from './close.js';
 import { keepOwnEdits } from './map.js';
 import { INDEX_KEYS, YAML_OPTIONS, addVersions, append, latest, openRecord, recordText, seq } from './records.js';
 
@@ -198,7 +200,6 @@ export function targetOf(t, state) {
 }
 
 const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
-const short = (h) => (h ? h.slice(0, 12) : 'unknown');
 
 // Whether a binding's holder declares its link now: the same holder, link
 // word and target (#2). It reads al check's own state (state.js), so each
@@ -213,9 +214,9 @@ export function declaredNow(top, state) {
   return (b) => keys.has(tripleKey(b));
 }
 
-// Whether al index --align can move a binding to `target` now, by its own
-// target rules, in al check's state (state.js): holder-changed names --align
-// only where it works (#11).
+// Whether a judgement can move a binding to `target` now, by the target
+// rules of al index, in al check's state (state.js): holder-changed is given
+// only where the judgement can clear it (#11).
 export function canAlignTo(state) {
   const adrs = [...state.adrs.values()].flatMap((a) => a.paragraphs.filter((p) => p.id).map((p) => [p.id, p]));
   const view = { spec: new Map([...state.spec, ...adrs]), requests: state.requests };
@@ -271,6 +272,11 @@ function notRead(top, root, config) {
 }
 
 export function index({ top, cwd, opts }) {
+  // --align is removed (#88): a hint clears by a fix, or by a recorded judgement.
+  if (opts.align !== undefined) {
+    throw new Fail('--align is removed: a hint clears by a fix, or by a recorded judgement with its reason',
+      `al record <name> judgement --hint stale-base|holder-changed --on ${opts.align} --reason <why>`);
+  }
   let loaded;
   try { loaded = loadConfig(top); } catch (e) { throw new Fail(e.message, 'fix .assuredloop/config.yaml'); }
   // The work items that the caller saved; a folder that is not there is a refusal.
@@ -319,28 +325,21 @@ export function index({ top, cwd, opts }) {
 
   const now = loadState(top, null, config, names);
   for (const [n, rec] of recs) now.requests.get(n).data = rec.data;
-  if (issues) {
+  const bind = opts.bind ?? null;
+  if (issues && !bind) {
     const { named, missing, finder } = taskItems(top, { ...now, config: loaded }, issues.items);
     body.push(...keepItems(top, recs, named, finder));
     for (const m of missing) notes.push(`not kept: ${m.r.name}/${m.task} ${m.written}: ${m.key ? `no item in ${issues.folder} is ${m.key}` : m.unknown ?? 'it names no item'}`);
     for (const u of issues.unread) notes.push(`item file not read: ${u.file}: ${u.why}`);
   }
   // The identity of each review judgement that has none (light-design R2).
-  body.push(...keepJudgements(top, recs, loaded, issues));
+  if (!bind) body.push(...keepJudgements(top, recs, loaded, issues));
   // The versions that the change's own branch gave the spec paragraphs it names (LD-61).
-  body.push(...keepOwnEdits(top, recs, main));
+  if (!bind) body.push(...keepOwnEdits(top, recs, main));
   const repos = new Map(outputRepos(top, loaded).filter((r) => r.name).map((r) => [r.name, r]));
   const links = linksOf(top, now, config, true, repos);
   const then = base ? loadState(top, base, config, names) : null;
   const atBase = new Set(then ? linksOf(top, then, config, false).map(tripleKey) : []);
-
-  // --align <ID>: the ID must be something that holds links now.
-  const align = opts.align;
-  if (align !== undefined) {
-    const froms = new Set([...now.docs.flatMap((d) => d.paragraphs.map((p) => (d.request ? `${d.request}/${p.id}` : p.id))),
-      ...[...now.requests.values()].filter((r) => r.open).flatMap((r) => [...r.reqs.map((q) => `${r.name}/${q.id}`), ...(r.data?.outputs ?? []).map((o) => (o && foreign(o, config) ? `${o.repo}/${o.file}` : o?.file))])]);
-    if (!froms.has(align)) throw new Fail(`--align ${align}: no paragraph, requirement or output with that ID (a change spec's ID is <request>/<ID>)`, 'al index --align <ID>');
-  }
 
   // The records of the archived requests: they still hold bindings (#41),
   // and a binding that no current marker declares is removed from them too.
@@ -361,6 +360,7 @@ export function index({ top, cwd, opts }) {
       held.set(k, [...(held.get(k) ?? []), n]);
     }
   }
+  if (bind) return bindNow(top, { bind, recs, links, atBase, held, now });
 
   // al keeps a binding "at a moment that is now" only for a link that the
   // working tree adds. A link that HEAD already declares, with no binding,
@@ -422,18 +422,17 @@ export function index({ top, cwd, opts }) {
     if (l.t.cross) { once(`not bound: ${name}: cross-repo`); continue; }
     const homes = [...new Set([...l.homes.filter((h) => recs.has(h)), ...(held.get(tripleKey(l)) ?? [])])];
     if (!homes.length) { once(`not bound: ${name}: no request record holds it`); continue; }
-    const aligning = align !== undefined && l.holder === align;
     const isHeld = held.has(tripleKey(l));
     for (const h of homes) {
       if (!recs.has(h)) continue;
       const rec = recs.get(h);
       const items = seq(rec, 'bindings').items;
       const at = items.findIndex((it) => it?.get?.('holder') === l.holder && it.get('link') === l.link && it.get('target') === l.target);
-      if (at >= 0 && !aligning) continue;
+      if (at >= 0) continue;
       // Held in another record, open or archived, the binding is not gone (DES-26).
-      if (at < 0 && !aligning && atBase.has(tripleKey(l))) { if (!isHeld) once(`binding unknown: ${name}`); continue; }
+      if (atBase.has(tripleKey(l))) { if (!isHeld) once(`binding unknown: ${name}`); continue; }
       if (l.unknown) { once(`unknown: ${name}: ${l.unknown}`); continue; }
-      const past = main && at < 0 && !aligning && committed(l) ? madeAt(l) : null;
+      const past = main && committed(l) ? madeAt(l) : null;
       if (past?.unknown) { once(`not bound: ${name}: ${past.unknown}`); continue; }
       const target = past ? past.target : targetOf(l.t, now);
       if (!target) { once(`not bound: ${name}: target not found`); continue; }
@@ -443,21 +442,12 @@ export function index({ top, cwd, opts }) {
       // A new changes or removes link of a change spec whose target the
       // branch already changed binds the target's text at the base: the
       // version that it had when the change linked it (LD-61).
-      const before = past ? past.before : main && at < 0 && !aligning && !l.t.req && ['changes', 'removes'].includes(l.link) && l.holder.includes('/') ? then.spec.get(l.t.id) : null;
+      const before = past ? past.before : main && !l.t.req && ['changes', 'removes'].includes(l.link) && l.holder.includes('/') ? then.spec.get(l.t.id) : null;
       if (before) entry.target_sha256 = before.sha256;
       if (target.version !== undefined) entry.target_version = target.version;
       if (l.commit) entry.commit = l.commit;
-      const node = rec.doc.createNode(entry);
-      node.flow = true;
-      if (at >= 0) {
-        const old = items[at].toJSON();
-        items[at] = node;
-        body.push(`aligned: ${name}: ${short(old.holder_sha256)} -> ${short(entry.holder_sha256)}, ${short(old.target_sha256)} -> ${short(entry.target_sha256)}`);
-      } else {
-        append(rec, 'bindings', entry, true);
-        if (aligning) body.push(`aligned: ${name}: unknown -> ${short(entry.holder_sha256)}, ${short(entry.target_sha256)}`);
-        else bound.push(name);
-      }
+      append(rec, 'bindings', entry, true);
+      bound.push(name);
       rec.changed = true;
     }
   }
@@ -518,8 +508,57 @@ export function index({ top, cwd, opts }) {
     // each link bound, and the other lines, each "<kind>: <entry>".
     written, bound, lines: [...notes, ...body],
     next: body.some((l) => l.startsWith('refresh hint:')) ? 'refresh the hints listed, then al index'
-      : body.some((l) => l.startsWith('binding unknown:')) ? 'a binding unknown was in the marker at the base and its record is gone: check the link, then al index --align <its holder ID>' : 'al check',
+      : body.some((l) => l.startsWith('binding unknown:')) ? 'a binding unknown was in the marker at the base and its record is gone: check the link, then al record <name> judgement --hint binding-unknown --on <its holder ID> --reason <why>' : 'al check',
   };
+}
+
+// The bind mode of al index, for al record <name> judgement (#88): the
+// links that `bind.pick(l, { bound, unknown })` chooses, in the record of
+// `bind.record` only, are bound to the versions of now, each with
+// `judgement: <its ID>`. A target that is gone takes its text in the newest
+// commit that held it. Returns { done: [{ name, link, target, holder, at? }],
+// refused: [{ name, why }] }; with `bind.write`, it also adds `bind.entry` to
+// the record's judgements and writes that record, and nothing else.
+function bindNow(top, { bind, recs, links, atBase, held, now }) {
+  const rec = recs.get(bind.record);
+  if (!rec) throw new Fail(`${recordPath(bind.record)} is not read, so no binding can be recorded in it`, 'al check');
+  const items = seq(rec, 'bindings').items;
+  const done = [];
+  const refused = [];
+  const seen = new Set();
+  for (const l of links) {
+    const k = tripleKey(l);
+    if (seen.has(k) || l.t.cross) continue;
+    seen.add(k);
+    if (!l.homes.includes(bind.record) && !(held.get(k) ?? []).includes(bind.record)) continue;
+    const at = items.findIndex((it) => it?.get?.('holder') === l.holder && it.get('link') === l.link && it.get('target') === l.target);
+    if (!bind.pick(l, { bound: at >= 0, unknown: at < 0 && atBase.has(k) && !held.has(k) })) continue;
+    const name = `${l.link} ${l.target} of ${l.holder}`;
+    if (l.unknown || l.holderSha === null) { refused.push({ name, why: `${name}: ${l.unknown ?? 'its output file is not there'}` }); continue; }
+    let target = targetOf(l.t, now);
+    let past = null;
+    if (!target && !l.t.req) {
+      past = pastParagraph({ top, rev: null }, l.t.id);
+      if (!past) { refused.push({ name, why: `al cannot tell what ${l.t.id} said: no commit in this clone holds it` }); continue; }
+      target = { sha: past.p.sha256 };
+    }
+    if (!target) { refused.push({ name, why: `${name}: ${l.target} is not found` }); continue; }
+    const entry = { holder: l.holder, link: l.link, target: l.target, holder_sha256: l.holderSha, target_sha256: target.sha };
+    if (target.version !== undefined) entry.target_version = target.version;
+    if (l.commit) entry.commit = l.commit;
+    entry.judgement = bind.entry.id;
+    done.push({ name, link: l.link, target: l.target, holder: l.holder, ...(past ? { at: past.commit } : {}) });
+    const node = rec.doc.createNode(entry);
+    node.flow = true;
+    if (at >= 0) items[at] = node;
+    else items.push(node);
+  }
+  if (bind.write && done.length && !refused.length) {
+    append(rec, 'judgements', bind.entry, true);
+    guard(top, [rec.path]);
+    write(top, rec.path, recordText(rec));
+  }
+  return { done, refused };
 }
 
 // A hint is stale when its paragraph changed since it was made, or its quote
