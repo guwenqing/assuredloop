@@ -856,8 +856,16 @@ describe('al check and al check --strict on a record that warns: stdout and file
 // #103). Their aliases expand to more nodes than the default maxAliasCount of
 // yaml allows, so the conversion to data throws. Each text starts with one
 // long comment line, so the records are above the worker size. al check must
-// give main's exit code, stdout and written files, with worker threads and
+// give the exit code, stdout and written files below, with worker threads and
 // with workers that fail, and no internal error.
+//
+// Issue #104: such a record is the case record-unreadable, with the message of
+// yaml as the reason, and its lines and exit codes are those of a record with
+// a YAML syntax error. For the archived record, main lacked the two lines
+// "index not read" and "index not removed" that a syntax error gives (a bug of
+// main); the pins below have them. The test also checks the archived case
+// against the same record with a syntax error in place of the aliases, so
+// the expected text comes from al itself.
 
 const ALIASES = 'a: &a [a,a,a,a,a,a,a,a,a,a]\nb: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a,*a]\nc: [*b,*b,*b,*b,*b,*b,*b,*b,*b,*b]\n';
 const aliasText = (xs) => `#${'x'.repeat(xs)}\n${ALIASES}`;
@@ -881,13 +889,26 @@ const aliasArchived = (dir) => {
   write(dir, `${RECORDS}old.yaml`, aliasText(1_050_000));
 };
 
-const ALIAS_CASES = {
-  'orphan records that cannot be turned into data': orphans,
-  'an archived record that cannot be turned into data': (t) => archivedChain(t, emptyCommit, aliasArchived),
+// The same record with a YAML syntax error in place of the aliases.
+const syntaxArchived = (dir) => {
+  write(dir, 'requests/archive/old/request.md', '# Old\nStatus: concluded\n');
+  write(dir, `${RECORDS}old.yaml`, `#${'x'.repeat(1_050_000)}\na: [b\nc: d\n`);
 };
 
-// The output of each run on main before the change: the exit code, the lines
-// of stdout, and what the run wrote.
+const ALIAS_CASES = {
+  'orphan records that cannot be turned into data': { build: orphans },
+  'an archived record that cannot be turned into data': {
+    build: (t) => archivedChain(t, emptyCommit, aliasArchived),
+    twin: (t) => archivedChain(t, emptyCommit, syntaxArchived),
+  },
+};
+
+// The reason in the record-unreadable line of old.yaml.
+const unreadableReason = (stdout) => /^not ok record-unreadable \.assuredloop\/records\/requests\/old\.yaml old .* cannot be read \((.*)\), so /m.exec(stdout)?.[1];
+
+// The output of each run: the exit code, the lines of stdout, and what the run
+// wrote. The orphan case is as main gave it; the archived case is as main gave
+// it with the two index lines of #104.
 const PINNED_ALIAS = {
   "orphan records that cannot be turned into data: check": {
     code: 0,
@@ -1008,7 +1029,9 @@ const PINNED_ALIAS = {
   "an archived record that cannot be turned into data: check": {
     code: 0,
     stdout: [
+      "index not read: .assuredloop/records/requests/old.yaml is not a valid record: Excessive alias count indicates a resource exhaustion attack",
       "index not bound: EXP-7 illustrates EXP-3: no request record holds it; INV-13 serves invoice-numbers/R1: no request record holds it; INV-13 governed-by ADR-1: no request record holds it; INV-15 explains INV-13: no request record holds it; INV-16 illustrates INV-13: no request record holds it; ADR-1 decides INV-13: no request record holds it; ADR-1 source invoice-numbers/S1: no request record holds it",
+      "index not removed: no binding is removed in this run, as al index could not read .assuredloop/records/requests/old.yaml is not a valid record: Excessive alias count indicates a resource exhaustion attack",
       "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, no-link, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-links, adr-governs",
       "hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-2 requests/link-expiry-spike/spec.md:7",
       "hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-3 requests/link-expiry-spike/spec.md:11",
@@ -1024,7 +1047,9 @@ const PINNED_ALIAS = {
   "an archived record that cannot be turned into data: check --strict": {
     code: 1,
     stdout: [
+      "index not read: .assuredloop/records/requests/old.yaml is not a valid record: Excessive alias count indicates a resource exhaustion attack",
       "index not bound: EXP-7 illustrates EXP-3: no request record holds it; INV-13 serves invoice-numbers/R1: no request record holds it; INV-13 governed-by ADR-1: no request record holds it; INV-15 explains INV-13: no request record holds it; INV-16 illustrates INV-13: no request record holds it; ADR-1 decides INV-13: no request record holds it; ADR-1 source invoice-numbers/S1: no request record holds it",
+      "index not removed: no binding is removed in this run, as al index could not read .assuredloop/records/requests/old.yaml is not a valid record: Excessive alias count indicates a resource exhaustion attack",
       "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, no-link, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-links, adr-governs",
       "hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-2 requests/link-expiry-spike/spec.md:7",
       "hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-3 requests/link-expiry-spike/spec.md:11",
@@ -1040,12 +1065,28 @@ const PINNED_ALIAS = {
 };
 
 describe('al check and al check --strict on records that cannot be turned into data: as main, with workers and with failing workers', () => {
-  for (const [name, build] of Object.entries(ALIAS_CASES)) {
+  for (const [name, { build, twin }] of Object.entries(ALIAS_CASES)) {
     test(name, (t) => {
       const dir = build(t);
       assert.ok(recordChars(dir) > WORKER_CHARS, `the records are above the worker size: ${recordChars(dir)} characters`);
+      const twinDir = twin ? twin(t) : null;
       for (const args of RUNS) {
         const key = `${name}: ${args.join(' ')}`;
+        if (twinDir) {
+          // #104: the same output as the record with a syntax error, but for the reason.
+          reset(dir);
+          const r = al(dir, args);
+          const s = al(twinDir, args);
+          const reason = unreadableReason(r.stdout);
+          const syntaxReason = unreadableReason(s.stdout);
+          assert.match(reason ?? '', /alias/i, `the reason is the message of yaml about the aliases:\n${show(r)}`);
+          assert.ok(syntaxReason, `the syntax error gives record-unreadable:\n${show(s)}`);
+          assert.equal(r.code, s.code, `the exit code of a syntax error: ${key}\n${show(r)}\n${show(s)}`);
+          // Commit hashes by name, as the two worlds hash differently.
+          const mine = named(r.stdout, { central: dir }, { [dir]: '<dir>' });
+          const theirs = named(s.stdout, { central: twinDir }, { [twinDir]: '<dir>' });
+          assert.equal(mine, theirs.split(syntaxReason).join(reason), `the stdout of a syntax error, with the reason of yaml: ${key}`);
+        }
         for (const workers of [null, 'fail', 'throw']) {
           reset(dir);
           const r = al(dir, args, workers ? { hook: yamlHook({ workers }) } : {});
