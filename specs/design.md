@@ -1939,9 +1939,11 @@ these facts. The `Hints` section of `al context`, with or without
   judgement at the moment of reliance says that it is not known whether the
   item changed, and names `al check --issues <folder>`. It is stale when a
   later sign-off became the moment of reliance, and history when a newer
-  one covers the same item and moment. The judgements of an archived
-  request are recorded and not checked. At `--at`, their state is not
-  known. An entry with no hint code or no `--on` is not checked.
+  one covers the same item and moment. The judgements of a request
+  archived at the base are recorded and not checked; those of a request
+  that the branch concludes are checked as for an open request. A binding
+  judgement of an archived request is recorded and not checked. At `--at`,
+  their state is not known. An entry with no hint code or no `--on` is not checked.
 - `Disp.`: each disposition of an old record, as recorded; `al` no longer
   checks it (DES-136).
 - `Close`: each close line of the record, with what it names.
