@@ -388,6 +388,27 @@ describe('a judgement on a changes link keeps what the link changes', () => {
     assert.equal(fact(r), factBefore, `the map fact stays:\n${show(r)}`);
   });
 
+  test('inv changes INV-12 from A to B (its own edit); other work changes B to C; stale-base judged at C; then other work changes INV-12 back to B, the own edit: the hint comes back and names inv/J1 as stale; "info judged" does not list J1', (t) => {
+    const dir = changes(t);
+    editFile(dir, SPEC, T.INV12, T.INV12b);
+    commitAll(dir, `${NAME}: INV-12 gets a unique number`);
+    index(dir);
+    commitAll(dir, `${NAME}: records`);
+    otherWork(dir, 'feature', 'feature-2', T.INV12b, T.INV12c);
+    let r = check(dir);
+    one(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12 (B to C)');
+    judge(dir, 'stale-base', H, WHY);
+    r = check(dir);
+    none(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12 after the judgement');
+    assert.ok(judgedLines(r).some((f) => f.msg.includes(`${NAME}/J1 `)), `info judged lists J1:\n${show(r)}`);
+
+    commitAll(dir, `${NAME}: J1`);
+    otherWork(dir, 'feature-2', 'feature-3', T.INV12c, T.INV12b);
+    r = check(dir);
+    namesStale(one(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12 (C back to B)'), r, 1);
+    assert.ok(!judgedLines(r).some((f) => f.msg.includes(`${NAME}/J1 `)), `info judged does not list J1:\n${show(r)}`);
+  });
+
   test('stale-base judged on inv/SP-1 changes INV-12 at its text C; then other work changes INV-12 back to its link-time text A: the hint comes back and names inv/J1 as stale; "info judged" no longer lists J1', (t) => {
     const dir = changes(t);
     otherWork(dir, 'feature', 'feature-2', T.INV12, T.INV12c);
