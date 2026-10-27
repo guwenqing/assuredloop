@@ -319,15 +319,17 @@ function editText(dir, file, from, to) {
 // portal-downloads and link-refresh archived; so main holds the archived
 // requests adoption, invoice-numbers, portal-downloads and link-refresh
 // (records with bindings, decisions, sign-offs and dispositions) and the
-// open requests invoice-exports, reminder-emails and link-expiry-spike. Then
-// the branch pr2 from there, with one commit that `change` makes.
-function archivedChain(t, change) {
+// open requests invoice-exports, reminder-emails and link-expiry-spike. With
+// `onMain`, it changes main before that commit. Then the branch pr2 from
+// there, with one commit that `change` makes.
+function archivedChain(t, change, onMain = () => {}) {
   const dir = invoicer(t, 'cr-chain');
   git(dir, 'checkout', '-q', 'main');
   git(dir, 'merge', '-q', '--ff-only', 'pr');
   mkdirSync(join(dir, 'requests/archive'), { recursive: true });
   move(dir, 'requests/portal-downloads', 'requests/archive/portal-downloads');
   move(dir, 'requests/link-refresh', 'requests/archive/link-refresh');
+  onMain(dir);
   commitAll(dir, 'Archive portal-downloads and link-refresh');
   git(dir, 'checkout', '-q', '-b', 'pr2');
   change(dir);
@@ -721,6 +723,135 @@ describe('al check and al check --strict print and write what main prints and wr
   }
 });
 
+// --- 1b. A request record whose YAML makes the yaml library warn (review of
+// #101). al's own output (stdout, the exit code and the written files) stays
+// what main gives, byte for byte. The yaml warning of the record shows on
+// stderr at least once, not once for each parse: main parsed a record several
+// times and gave its warning each time. A warning line of Node holds the
+// process ID, so stderr is not compared byte for byte. Instead, the warning
+// lines, with the process ID left out, must be the same set as main gave.
+
+// An archived request `old` whose record has a tag that yaml does not know.
+const warnsArchived = (dir) => {
+  write(dir, 'requests/archive/old/request.md', '# Old\nStatus: concluded\n');
+  write(dir, `${RECORDS}old.yaml`, 'schema: assuredloop/1\nrequest: old\nstatus: concluded\ncustom: !archived value\n');
+};
+// The open record of reminder-emails with a tag that yaml does not know.
+const warnsOpen = (dir) => {
+  const rel = `${RECORDS}reminder-emails.yaml`;
+  write(dir, rel, `${read(dir, rel)}custom: !open value\n`);
+};
+const emptyCommit = (dir) => git(dir, 'commit', '-q', '--allow-empty', '-m', 'Nothing\n\nTier: 0 — notes only');
+
+const WARN_CASES = {
+  'a record that warns: an archived one': { build: (t) => archivedChain(t, emptyCommit, warnsArchived), tag: '!archived' },
+  'a record that warns: an open one': { build: (t) => archivedChain(t, emptyCommit, warnsOpen), tag: '!open' },
+};
+
+// The distinct warning lines of Node on stderr, with the process ID left out.
+const NODE_WARNING = /^\(node:\d+\) /;
+const warningsOf = (stderr) => [...new Set(stderr.split('\n').filter((l) => NODE_WARNING.test(l)).map((l) => l.replace(NODE_WARNING, '(node:<pid>) ')))].sort();
+const timesIn = (stderr, line) => stderr.split('\n').filter((l) => l.replace(NODE_WARNING, '(node:<pid>) ') === line).length;
+
+// The output of each run on main before the change: the exit code, the lines
+// of stdout, the distinct warning lines of stderr, and what the run wrote.
+const PINNED_WARN = {
+  "a record that warns: an archived one: check": {
+    code: 0,
+    stdout: [
+      "index not bound: EXP-7 illustrates EXP-3: no request record holds it; INV-13 serves invoice-numbers/R1: no request record holds it; INV-13 governed-by ADR-1: no request record holds it; INV-15 explains INV-13: no request record holds it; INV-16 illustrates INV-13: no request record holds it; ADR-1 decides INV-13: no request record holds it; ADR-1 source invoice-numbers/S1: no request record holds it",
+      "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, no-link, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, record-unreadable, record-evidence, unsigned-requirement, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-links, adr-governs",
+      "hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-2 requests/link-expiry-spike/spec.md:7",
+      "hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-3 requests/link-expiry-spike/spec.md:11",
+      "list: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "map: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)",
+      "Next      deal with each hint, or say in the PR why it stays",
+      "Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, whether a test really checks the rule it names, whether a result's declared inputs are complete, and whether a change is authorized in substance (the review judges these)",
+    ],
+    written: [],
+    warnings: [
+      "(node:<pid>) [TAG_RESOLVE_FAILED] YAMLWarning: Unresolved tag: !archived at line 4, column 9:",
+    ],
+  },
+  "a record that warns: an archived one: check --strict": {
+    code: 0,
+    stdout: [
+      "index not bound: EXP-7 illustrates EXP-3: no request record holds it; INV-13 serves invoice-numbers/R1: no request record holds it; INV-13 governed-by ADR-1: no request record holds it; INV-15 explains INV-13: no request record holds it; INV-16 illustrates INV-13: no request record holds it; ADR-1 decides INV-13: no request record holds it; ADR-1 source invoice-numbers/S1: no request record holds it",
+      "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, no-link, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, record-unreadable, record-evidence, unsigned-requirement, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-links, adr-governs",
+      "hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-2 requests/link-expiry-spike/spec.md:7",
+      "hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-3 requests/link-expiry-spike/spec.md:11",
+      "list: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "map: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)",
+      "Next      deal with each hint, or say in the PR why it stays",
+      "Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, whether a test really checks the rule it names, whether a result's declared inputs are complete, and whether a change is authorized in substance (the review judges these)",
+    ],
+    written: [],
+    warnings: [
+      "(node:<pid>) [TAG_RESOLVE_FAILED] YAMLWarning: Unresolved tag: !archived at line 4, column 9:",
+    ],
+  },
+  "a record that warns: an open one: check": {
+    code: 0,
+    stdout: [
+      "index not bound: EXP-7 illustrates EXP-3: no request record holds it; INV-13 serves invoice-numbers/R1: no request record holds it; INV-13 governed-by ADR-1: no request record holds it; INV-15 explains INV-13: no request record holds it; INV-16 illustrates INV-13: no request record holds it; ADR-1 decides INV-13: no request record holds it; ADR-1 source invoice-numbers/S1: no request record holds it",
+      "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, no-link, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, record-unreadable, record-evidence, unsigned-requirement, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-links, adr-governs",
+      "hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-2 requests/link-expiry-spike/spec.md:7",
+      "hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-3 requests/link-expiry-spike/spec.md:11",
+      "list: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "map: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)",
+      "Next      deal with each hint, or say in the PR why it stays",
+      "Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, whether a test really checks the rule it names, whether a result's declared inputs are complete, and whether a change is authorized in substance (the review judges these)",
+    ],
+    written: [],
+    warnings: [
+      "(node:<pid>) [TAG_RESOLVE_FAILED] YAMLWarning: Unresolved tag: !open at line 40, column 9:",
+    ],
+  },
+  "a record that warns: an open one: check --strict": {
+    code: 0,
+    stdout: [
+      "index not bound: EXP-7 illustrates EXP-3: no request record holds it; INV-13 serves invoice-numbers/R1: no request record holds it; INV-13 governed-by ADR-1: no request record holds it; INV-15 explains INV-13: no request record holds it; INV-16 illustrates INV-13: no request record holds it; ADR-1 decides INV-13: no request record holds it; ADR-1 source invoice-numbers/S1: no request record holds it",
+      "ok: nothing found by spec-root, no-id, no-kind, unknown-kind, no-link, unknown-link, no-blank-before, no-blank-after, duplicate-id, duplicate-heading, lost-id, used-again, record-unreadable, record-evidence, unsigned-requirement, signoff-coverage, superseded-cited, superseded-status, path-claim, no-claim, promise-kind, typo-mark, near-match, adoption, design-link, no-paragraph-link, unresolved-link, replaces-link, serves-replaced, unknown-task, holder-changed, stale-base, stale-ai-hint, overlap, result, phrase, adr-changed, adr-supersede, adr-marker, adr-status, adr-number, adr-none, adr-links, adr-governs",
+      "hint target-removed requests/link-expiry-spike/spec.md:5 link-expiry-spike/SP-2 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-2 requests/link-expiry-spike/spec.md:7",
+      "hint target-removed requests/link-expiry-spike/spec.md:9 link-expiry-spike/SP-3 EXP-4: target removed by portal-downloads; align this link · places: link-expiry-spike/SP-3 requests/link-expiry-spike/spec.md:11",
+      "list: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "map: no change selected: nothing changed against the base {central:Archive portal-downloads and link-refresh:7}",
+      "Read      working tree · base {central:Archive portal-downloads and link-refresh:7} (merge-base with main)",
+      "Next      deal with each hint, or say in the PR why it stays",
+      "Not known IDs used on branches that were never fetched here; whether each kind is right, whether a requirement is fully covered, whether a test really checks the rule it names, whether a result's declared inputs are complete, and whether a change is authorized in substance (the review judges these)",
+    ],
+    written: [],
+    warnings: [
+      "(node:<pid>) [TAG_RESOLVE_FAILED] YAMLWarning: Unresolved tag: !open at line 40, column 9:",
+    ],
+  },
+};
+
+describe('al check and al check --strict on a record that warns: stdout and files as main, each warning at least once', () => {
+  for (const [name, { build, tag }] of Object.entries(WARN_CASES)) {
+    test(name, (t) => {
+      const dir = build(t);
+      for (const args of RUNS) {
+        reset(dir);
+        const r = al(dir, args);
+        assert.equal(r.signal, null, show(r));
+        const key = `${name}: ${args.join(' ')}`;
+        const { stderr, ...rest } = asPinned(dir, { central: dir }, {}, r);
+        const got = { ...rest, warnings: warningsOf(r.stderr) };
+        const want = PINNED_WARN[key];
+        assert.ok(want, `an expected output for ${key}`);
+        const ours = want.warnings.filter((w) => w.includes(`Unresolved tag: ${tag}`));
+        assert.equal(ours.length, 1, `main gave one warning line for the tag ${tag}: ${want.warnings.join('\n')}`);
+        assert.deepEqual(got, want, show(r));
+        assert.ok(timesIn(r.stderr, ours[0]) >= 1, `the warning for ${tag} shows at least once:\n${show(r)}`);
+      }
+    });
+  }
+});
+
 // --- the scale worlds of tests 2 to 4, made by scale/generate.js in the
 // background as the file starts, side by side, so that they are ready when
 // their tests run.
@@ -984,5 +1115,43 @@ describe(`al check gives the same with worker threads and without them (scale wo
     const { twice, parsed } = parsedTwice(on.hook.calls(), texts);
     assert.ok(twice.length === 0,
       `with workers (${on.hook.workers().length} made): ${twice.length} of the ${parsed} request record texts parsed were parsed more than once:\n${firstLines(twice)}`);
+  });
+
+  // Review of #101: a record that warns, in a world above the worker size.
+  // The warning of each record shows at least once with workers and without
+  // them, and al's own output is the same.
+  test('records that warn: the same exit code, stdout and written files with workers and without, and each warning at least once', async (t) => {
+    const { dir } = await scaleWorld('workers');
+    reset(dir);
+    warnsArchived(dir);
+    const open = git(dir, 'ls-tree', '--name-only', 'HEAD', 'requests/').split('\n').map((p) => p.slice('requests/'.length)).filter((n) => n !== 'archive');
+    assert.ok(open.length >= 1, 'the world has an open request');
+    const rel = `${RECORDS}${open[0]}.yaml`;
+    write(dir, rel, `${read(dir, rel)}custom: !open value\n`);
+    commitAll(dir, 'Records that warn\n\nTier: 0 — notes only');
+    assert.ok(recordChars(dir) >= WORKER_CHARS * WORKER_MARGIN, `the records are above the worker size: ${recordChars(dir)} characters`);
+    const tags = ['!archived', '!open'];
+    const runs = {};
+    for (const workers of ['on', 'throw', 'fail']) {
+      reset(dir);
+      const hook = yamlHook({ workers });
+      const r = al(dir, ['check'], { hook });
+      assert.equal(r.signal, null, show(r));
+      runs[workers] = { r, hook, written: written(dir) };
+      for (const tag of tags) {
+        const lines = warningsOf(r.stderr).filter((w) => w.includes(`Unresolved tag: ${tag} `));
+        assert.equal(lines.length, 1, `workers ${workers}: one warning line for the tag ${tag}:\n${r.stderr.slice(0, 3000)}`);
+      }
+    }
+    const cores = availableParallelism();
+    t.diagnostic(`${runs.on.hook.workers().length} workers made, on ${cores} cores`);
+    if (cores >= 2) assert.ok(runs.on.hook.workers().length >= 1, `al made no worker thread on ${cores} cores`);
+    for (const workers of ['throw', 'fail']) {
+      const off = runs[workers];
+      assert.equal(off.r.code, runs.on.r.code, `the exit code, workers ${workers}\n${show(off.r)}`);
+      assert.equal(off.r.stdout, runs.on.r.stdout, `the stdout, workers ${workers}`);
+      assert.deepEqual(off.written, runs.on.written, `the written files, workers ${workers}`);
+      assert.deepEqual(warningsOf(off.r.stderr), warningsOf(runs.on.r.stderr), `the warning lines, workers ${workers}`);
+    }
   });
 });
