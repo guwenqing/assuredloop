@@ -221,7 +221,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // the change paragraph count as links, current or stale.
   const judged = new Map();
   const judgedOf = (r) => {
-    if (!judged.has(r.name)) judged.set(r.name, consolidations(top, now, r, { config: now.config, issues }));
+    if (!judged.has(r.name)) judged.set(r.name, consolidations(top, now, r, { config: now.config, issues, was }));
     return judged.get(r.name);
   };
   for (const c of changes) {

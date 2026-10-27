@@ -71,7 +71,7 @@ export function mapSection(top, { now: state, was, base, own, changes, config, i
   if (!rs.length) return { body: ['map: no open change of path 2 or 3 is this change\'s own', ...paras], findings: [], ran: false };
   const findings = [];
   const names = new Set(rs.map((r) => r.name));
-  const judged = new Map(rs.map((r) => [r.name, consolidations(top, state, r, { config, issues })]));
+  const judged = new Map(rs.map((r) => [r.name, consolidations(top, state, r, { config, issues, was })]));
   const place = (s, p) => `${p.file}:${textLine(s.docs.find((d) => d.path === p.file)?.text ?? '', p)}`;
   const entries = [];
 
