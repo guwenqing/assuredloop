@@ -63,7 +63,7 @@ export function fileKind(path) {
 }
 
 // One row for each file that git tracks in each selected repo at its commit.
-// It is in the current index only, and only in word search.
+// It is in the current index only (refresh), and only in word search.
 const fileRows = (repos) => repos.filter((r) => r.commit).flatMap((r) => [...treeOf(r.dir, r.commit).keys()]
   .map((path) => ({ repo: r.name, doc_or_request: `file:${path}`, id: '', version: null, role: 'file', path, kind: fileKind(path), commit: r.commit })));
 
@@ -179,19 +179,28 @@ function refresh(db, top, commit, repos) {
   let kept = 0;
   const delRow = db.prepare('DELETE FROM current WHERE key = ?');
   const delText = db.prepare('DELETE FROM current_text WHERE key = ?');
-  for (const k of had.keys()) if (!now.has(k)) { delRow.run(k); delText.run(k); removed += 1; }
+  const delHistoryText = db.prepare('DELETE FROM history_text WHERE key = ?');
+  const putHistoryText = db.prepare('INSERT INTO history_text (key, body) VALUES (?, ?)');
+  // A file row's text is also in history_text while the file is current, so a
+  // history query, which reads history_text, keeps it; a removed file leaves both.
+  const isFile = (row) => JSON.parse(row).role === 'file';
+  for (const [k, row] of had) {
+    if (now.has(k)) continue;
+    delRow.run(k); delText.run(k); removed += 1;
+    if (isFile(row)) delHistoryText.run(k);
+  }
   const putRow = db.prepare('INSERT OR REPLACE INTO current (key, id, row) VALUES (?, ?, ?)');
   const putText = db.prepare('INSERT INTO current_text (key, body) VALUES (?, ?)');
   for (const [k, r] of now) {
     putRow.run(k, r.id, JSON.stringify(r));
-    if (!had.has(k)) { putText.run(k, chunk(r)); added += 1; }
+    if (!had.has(k)) {
+      putText.run(k, chunk(r)); added += 1;
+      if (r.role === 'file') putHistoryText.run(k, chunk(r));
     // The same version under a new header (a heading renamed): its chunk is written again.
-    else if (chunk(JSON.parse(had.get(k))) !== chunk(r)) { delText.run(k); putText.run(k, chunk(r)); }
+    } else if (chunk(JSON.parse(had.get(k))) !== chunk(r)) { delText.run(k); putText.run(k, chunk(r)); }
   }
   const inHistory = db.prepare('SELECT row FROM history WHERE key = ?');
-  const delHistoryText = db.prepare('DELETE FROM history_text WHERE key = ?');
   const putHistory = db.prepare('INSERT OR REPLACE INTO history (key, id, row) VALUES (?, ?, ?)');
-  const putHistoryText = db.prepare('INSERT INTO history_text (key, body) VALUES (?, ?)');
   for (const r of rows) {
     const k = keyOf(r);
     const known = inHistory.get(k);

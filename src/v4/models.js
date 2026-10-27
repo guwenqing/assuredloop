@@ -22,15 +22,15 @@ export const WORDS = { recall: [0.335, 0.25, 0.42], tokensPerSecond: 36900 };
 // that is not excluded needs the llama.cpp runtime or reranking (#100).
 export const runs = (row) => !row.excluded && !row.rerank && row.name.split(' ')[2].startsWith('tjs-');
 
-// How each model of a runnable row embeds, as it was measured: the pooling
-// of the library's feature-extraction pipeline, or the model's own
-// `sentence_embedding` output; the text put before a query and before a row.
+// How each model of a runnable row embeds, as it was measured (level2.js):
+// `pool`, where its vector is: the model's `sentence_embedding` output, or
+// the hidden state of the first token or of the last real one; `left`, it
+// pads on the left; the text put before a query and before a row.
 const INSTRUCT = 'Given the title and description of a code change, retrieve the files and spec paragraphs that the change touches';
 export const EMBEDS = {
-  'bge-small-en-v1.5': { pooling: 'cls', query: 'Represent this sentence for searching relevant passages: ', row: '' },
-  'embeddinggemma-300m': { output: 'sentence_embedding', query: 'task: search result | query: ', row: 'title: none | text: ' },
-  // Qwen3 pads on the left, so the last token is the last real one.
-  'qwen3-embedding-0.6b': { pooling: 'last_token', query: `Instruct: ${INSTRUCT}\nQuery:`, row: '', maxTokens: 512 },
+  'bge-small-en-v1.5': { pool: 'first', query: 'Represent this sentence for searching relevant passages: ', row: '' },
+  'embeddinggemma-300m': { pool: 'sentence_embedding', query: 'task: search result | query: ', row: 'title: none | text: ' },
+  'qwen3-embedding-0.6b': { pool: 'last', left: true, query: `Instruct: ${INSTRUCT}\nQuery:`, row: '' },
 };
 
 export const ROWS = [

@@ -129,6 +129,11 @@ export function findLibrary(top) {
   return null;
 }
 
+// The rows were measured (#28) with the library's tokenizer and model, not
+// its pipeline: the pipeline's own cut drops the closing special token. So
+// a text of more than MAX ids keeps its first MAX - 1 ids and its last one.
+const MAX = 512;
+
 // Level 2 with the library at `path` and the measured `row`, whose model is
 // pinned by its commit and loaded with the row's precision and device. The
 // library is imported at the first embed. Before it fetches the model, al
@@ -137,12 +142,14 @@ export function level2(path, row) {
   const [model, precision, runtime] = row.name.split(' ');
   const how = EMBEDS[model];
   let extractor = null;
+  let Tensor = null;
   async function load() {
     try {
       // The path is the library's require entry; its exports may come as a default.
       const mod = await import(pathToFileURL(path).href);
       const pipeline = mod.pipeline ?? mod.default?.pipeline;
       const env = mod.env ?? mod.default?.env;
+      Tensor = mod.Tensor ?? mod.default?.Tensor;
       if (typeof pipeline !== 'function') throw new Error(`${path} has no pipeline function`);
       // The library's pipeline() looks for some files at revision main,
       // whatever its revision option says, and so asks the network on each
@@ -156,22 +163,42 @@ export function level2(path, row) {
         process.stderr.write(`al: fetching the model ${row.name} (${mb} MB), once\n`);
       }
       extractor = await pipeline('feature-extraction', row.repo, { dtype: precision, device: runtime.slice('tjs-'.length) });
-      // As it was measured: inputs cut at 512 tokens.
-      if (how.maxTokens && extractor.tokenizer) extractor.tokenizer.model_max_length = how.maxTokens;
     } catch (e) {
       throw new Error(`the model ${row.repo} did not load: ${e.message ?? e}`);
     }
   }
+  // One batch, as it was measured: each text's ids with their special tokens,
+  // cut to MAX; padded by hand to the longest; the model called once; the
+  // vector read where the model keeps it. The library adds token_type_ids
+  // where a model needs them.
   async function embed(texts) {
     if (!extractor) await load();
-    // EmbeddingGemma's vector is the model's own output, after its Dense
-    // layers; the pipeline's pooling would not give it.
-    if (how.output) {
-      const out = await extractor.model(extractor.tokenizer(texts, { padding: true, truncation: true }));
-      return out[how.output].tolist();
+    const { tokenizer } = extractor;
+    const ids = texts.map((t) => {
+      const x = tokenizer.encode(t);
+      return x.length > MAX ? [...x.slice(0, MAX - 1), x[x.length - 1]] : x;
+    });
+    const B = ids.length;
+    const L = Math.max(...ids.map((x) => x.length));
+    const input = new BigInt64Array(B * L).fill(BigInt(tokenizer.pad_token_id ?? 0));
+    const mask = new BigInt64Array(B * L);
+    ids.forEach((x, b) => {
+      const o = b * L + (how.left ? L - x.length : 0);
+      x.forEach((v, j) => { input[o + j] = BigInt(v); mask[o + j] = 1n; });
+    });
+    const out = await extractor.model({ input_ids: new Tensor('int64', input, [B, L]), attention_mask: new Tensor('int64', mask, [B, L]) });
+    if (how.pool === 'sentence_embedding') {
+      const e = out.sentence_embedding;
+      const D = e.dims[1];
+      return ids.map((_, b) => Array.from(e.data.subarray(b * D, (b + 1) * D)));
     }
-    const out = await extractor(texts, { pooling: how.pooling, normalize: true });
-    return out.tolist();
+    const h = out.last_hidden_state;
+    const D = h.dims[2];
+    return ids.map((x, b) => {
+      const t = how.pool === 'first' ? 0 : how.left ? L - 1 : x.length - 1;
+      const o = (b * L + t) * D;
+      return Array.from(h.data.subarray(o, o + D));
+    });
   }
   return createLevel2({ model: row.name, key: `${row.name}@${row.commit}`, embed, queryPrefix: how.query, rowPrefix: how.row });
 }

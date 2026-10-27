@@ -227,7 +227,7 @@ paragraphs:
     display: LD-45 (6:3, in 5. Search and the knowledge base (plan))
   - id: LD-33
     kind: plan
-    text_sha256: b63e575c52b77e848a78c991a9094855004817246302ada455f79a543931e0b8
+    text_sha256: dca527673c9e8b7d8a5e041c360f305412dc5545fa4b6b5e930a9110ccfc913d
     display: LD-33 (6:4, in 5. Search and the knowledge base (plan))
   - id: LD-34
     kind: note
