@@ -91,7 +91,7 @@ paragraphs:
     display: DES-22 (3:11, in 3. IDs, kinds and links)
   - id: DES-163
     kind: rule
-    text_sha256: 758ee5ce91fbc9a4d028914fade2a3987cb6bc5e26ee44b50e70308f9f435f62
+    text_sha256: 50bd9683901997346bae5b164af145aae76411f03396240d8b899c568c6459b0
     display: DES-163 (3:12, in 3. IDs, kinds and links)
   - id: DES-81
     kind: choice
@@ -119,7 +119,7 @@ paragraphs:
     display: DES-25 (4:1, in 4. The change spec honors the consolidated spec)
   - id: DES-26
     kind: rule
-    text_sha256: 0e9db0ee65d3e2b249b6e47076a10c8c03f3e2b44ba947d55d109b83d2fb5731
+    text_sha256: d7270345348b9ef0cc634da8067f78e56398ee6112990df98c6ff91cfb590cb2
     display: DES-26 (4:2, in 4. The change spec honors the consolidated spec)
   - id: DES-27
     kind: note

@@ -360,7 +360,7 @@ export function index({ top, cwd, opts }) {
       held.set(k, [...(held.get(k) ?? []), n]);
     }
   }
-  if (bind) return bindNow(top, { bind, recs, links, atBase, held, now });
+  if (bind) return bindNow(top, { bind, recs, links, atBase, held, now, then, base });
 
   // al keeps a binding "at a moment that is now" only for a link that the
   // working tree adds. A link that HEAD already declares, with no binding,
@@ -516,10 +516,15 @@ export function index({ top, cwd, opts }) {
 // links that `bind.pick(l, { bound, unknown })` chooses, in the record of
 // `bind.record` only, are bound to the versions of now, each with
 // `judgement: <its ID>`. A target that is gone takes its text in the newest
-// commit that held it. Returns { done: [{ name, link, target, holder, at? }],
-// refused: [{ name, why }] }; with `bind.write`, it also adds `bind.entry` to
-// the record's judgements and writes that record, and nothing else.
-function bindNow(top, { bind, recs, links, atBase, held, now }) {
+// commit that held it. The target side of a change paragraph's changes or
+// removes link is the version from when the change linked it, which the map
+// and al conclude read (DES-160): a judgement keeps it, and a stale-base
+// judgement keeps the target of now in judged_target_sha256; a new binding
+// takes the target's text at the base. Returns { done: [{ name, link,
+// target, holder, at?, base? }], refused: [{ name, why }] }; with
+// `bind.write`, it also adds `bind.entry` to the record's judgements and
+// writes that record, and nothing else.
+function bindNow(top, { bind, recs, links, atBase, held, now, then, base }) {
   const rec = recs.get(bind.record);
   if (!rec) throw new Fail(`${recordPath(bind.record)} is not read, so no binding can be recorded in it`, 'al check');
   const items = seq(rec, 'bindings').items;
@@ -535,7 +540,10 @@ function bindNow(top, { bind, recs, links, atBase, held, now }) {
     if (!bind.pick(l, { bound: at >= 0, unknown: at < 0 && atBase.has(k) && !held.has(k) })) continue;
     const name = `${l.link} ${l.target} of ${l.holder}`;
     if (l.unknown || l.holderSha === null) { refused.push({ name, why: `${name}: ${l.unknown ?? 'its output file is not there'}` }); continue; }
-    let target = targetOf(l.t, now);
+    const linked = !l.t.req && ['changes', 'removes'].includes(l.link) && l.holder.includes('/');
+    const old = at >= 0 ? items[at].toJSON() : null;
+    const atTheBase = linked && !old ? then?.spec.get(l.t.id) ?? null : null;
+    let target = atTheBase ? { sha: atTheBase.sha256 } : targetOf(l.t, now);
     let past = null;
     if (!target && !l.t.req) {
       past = pastParagraph({ top, rev: null }, l.t.id);
@@ -543,11 +551,12 @@ function bindNow(top, { bind, recs, links, atBase, held, now }) {
       target = { sha: past.p.sha256 };
     }
     if (!target) { refused.push({ name, why: `${name}: ${l.target} is not found` }); continue; }
-    const entry = { holder: l.holder, link: l.link, target: l.target, holder_sha256: l.holderSha, target_sha256: target.sha };
+    const entry = { holder: l.holder, link: l.link, target: l.target, holder_sha256: l.holderSha, target_sha256: linked && old ? old.target_sha256 : target.sha };
     if (target.version !== undefined) entry.target_version = target.version;
     if (l.commit) entry.commit = l.commit;
     entry.judgement = bind.entry.id;
-    done.push({ name, link: l.link, target: l.target, holder: l.holder, ...(past ? { at: past.commit } : {}) });
+    if (linked && old && bind.entry.hint === 'stale-base') entry.judged_target_sha256 = target.sha;
+    done.push({ name, link: l.link, target: l.target, holder: l.holder, ...(past ? { at: past.commit } : {}), ...(atTheBase ? { base } : {}) });
     const node = rec.doc.createNode(entry);
     node.flow = true;
     if (at >= 0) items[at] = node;

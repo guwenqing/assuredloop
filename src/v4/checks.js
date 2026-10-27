@@ -405,7 +405,9 @@ export function checks(top, { base, phrases = [], issues = null }) {
       const t = qualify(String(b.target), null);
       if (t.cross) continue;
       const cur = resolve(now, t);
-      if (!cur || !cur.sha || cur.sha === b.target_sha256) continue;
+      // A stale-base judgement on a change paragraph's changes or removes
+      // link keeps the target it judged apart from the link-time version (#88).
+      if (!cur || !cur.sha || cur.sha === b.target_sha256 || cur.sha === b.judged_target_sha256) continue;
       // The change's own branch made the target of its changes or removes
       // link what it is now: al kept that version (LD-61). Another link to
       // the same target, such as builds-on, still gets the hint.

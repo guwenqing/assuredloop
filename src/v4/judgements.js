@@ -6,7 +6,7 @@
 // form (kept-items.js), and a judgement on a binding hint moves the binding
 // (indexer.js), so the versions are kept once. A judgement never clears a
 // `not ok`: it is shown on its line.
-import { sha256 } from './base.js';
+import { read, sha256 } from './base.js';
 import { namedIds } from './repos.js';
 import { qualify, resolve } from './state.js';
 import { CHANGED } from './kept-items.js';
@@ -19,8 +19,10 @@ const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 
 // The path of a finding: its file, with no line and no "at the base".
 const pathOf = (f) => String(f.file ?? f.where ?? '').replace(/ at the base .*$/, '').replace(/:\d+$/, '');
+// The ID that a finding's line shows: a lint with no ID shows "-".
+const idOf = (f) => f.id ?? '-';
 // Whether `on` names finding `f`: its ID, or its path when its ID is "-".
-export const names = (f, on) => String(on) === f.id || (f.id === '-' && String(on) === pathOf(f));
+export const names = (f, on) => String(on) === idOf(f) || (idOf(f) === '-' && String(on) === pathOf(f));
 
 // The text hash of an ID in `state`, or null when it does not resolve. A bare
 // ID of a request's own paragraph, or a bare R<n>, is read in `request`.
@@ -30,17 +32,31 @@ function shaOf(state, id, request) {
   return got?.sha ?? null;
 }
 
+// The text of the block of lines at `line` of `file`: the paragraph there,
+// up to its first blank line.
+function blockAt(state, file, line) {
+  const lines = String(read(state.top, file) ?? '').replace(/\r\n?/g, '\n').split('\n').slice(line - 1);
+  const end = lines.findIndex((l) => !l.trim());
+  return (end < 0 ? lines : lines.slice(0, end)).join('\n');
+}
+
 // The versions that a judgement on finding `f` keeps. For adr-changed, the
-// ADR's text (its status line left out, its marker line in) and its status
-// line; for another hint, the hint's message, and the text of the paragraph
-// it is on and of each that its message names.
+// text of the ADR file that the hint is on (its status line left out, its
+// marker line in) and its status line. For a hint with no ID on a line of a
+// file, such as no-id, the text of the paragraph at that line: its message
+// names its place, which a move changes. For another hint, the hint's
+// message, and the text of the paragraph it is on and of each that its
+// message names.
 export function keptOf(state, f) {
   if (f.code === 'adr-changed') {
-    const a = state.adrs.get(f.id);
-    return { text_sha256: a ? sha256(a.body) : null, status_sha256: a ? sha256(a.line ?? '') : null };
+    const file = pathOf(f);
+    const a = state.adrList.find((x) => x.file === file);
+    return { files: [{ file, text_sha256: a ? sha256(a.body) : null, status_sha256: a ? sha256(a.line ?? '') : null }] };
   }
-  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(f.id)?.[1] ?? null;
-  const ids = [...new Set([...(f.id === '-' ? [] : [f.id]), ...namedIds(f.message, { qualified: false })])];
+  const at = /^(.+):(\d+)$/.exec(String(f.file && f.line ? `${f.file}:${f.line}` : f.where ?? ''));
+  if (idOf(f) === '-' && at) return { blocks: [sha256(blockAt(state, at[1], Number(at[2])))] };
+  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(idOf(f))?.[1] ?? null;
+  const ids = [...new Set([...(idOf(f) === '-' ? [] : [f.id]), ...namedIds(f.message, { qualified: false })])];
   return { message_sha256: [sha256(f.message)], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
 }
 
@@ -48,12 +64,18 @@ export function keptOf(state, f) {
 function changedSince(state, j, f) {
   const now = keptOf(state, f);
   if (f.code === 'adr-changed') {
-    if (j.text_sha256 !== now.text_sha256) return `${f.id}'s text`;
-    if (j.status_sha256 !== now.status_sha256) return `${f.id}'s status line`;
+    // The file that the judgement kept; after a rename, the one file of that number (DES-113).
+    const [cur] = now.files;
+    const files = list(j.files).filter(isMap);
+    const k = files.find((x) => x.file === cur.file)
+      ?? (files.length === 1 && state.adrList.filter((x) => x.id === f.id).length === 1 ? files[0] : null);
+    if (!k || k.text_sha256 !== cur.text_sha256) return `${f.id}'s text (${cur.file})`;
+    if (k.status_sha256 !== cur.status_sha256) return `${f.id}'s status line (${cur.file})`;
     return null;
   }
+  if (now.blocks) return list(j.blocks).includes(now.blocks[0]) ? null : `the text at ${f.where ?? `${f.file}:${f.line}`}`;
   if (!list(j.message_sha256).includes(now.message_sha256[0])) return 'the hint\'s text';
-  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(f.id)?.[1] ?? null;
+  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(idOf(f))?.[1] ?? null;
   const moved = list(j.keeps).find((k) => isMap(k) && shaOf(state, String(k.id), request) !== (k.sha256 ?? null));
   return moved ? String(moved.id) : null;
 }

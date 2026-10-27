@@ -139,7 +139,7 @@ paragraphs:
     display: SCH-31 (8:2, in 8. A worked example as records)
   - id: SCH-32
     kind: example
-    text_sha256: fce09c315d399ddf06cedf0100205ff218ca5f616bfd2d5ce6d8ae7467b779b3
+    text_sha256: 66f099e60137a4bdd92acec3eece0efc6c07bdbd335ddb943784f61e45368829
     display: SCH-32 (8:3, in 8. A worked example as records)
   - id: SCH-33
     kind: example
