@@ -12,7 +12,7 @@ import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  adrParagraph, adrPlace, hasBaselineEffect, isPromise, loadState, named, placeOf, placeOfTarget, qualify, replaceLinks, requestOf, resolve, servesSigned,
+  adrParagraph, hasBaselineEffect, isPromise, loadState, named, placeOf, placeOfTarget, qualify, replaceLinks, requestOf, resolve, servesSigned,
   servesUnknown, signed, unknownBy,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
@@ -321,8 +321,9 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // ADR decides it (item 2 of the close rule, declaredLink), and no promise or
   // design paragraph of an open change spec serves it. A current close line
   // clears it, as it clears item 2. The hint shows the known direct links,
-  // each with the limit of its evidence; the citing line numbers follow the
-  // message, so a judgement does not go stale when a citing line only moves.
+  // each with the limit of its evidence, by ID or file only: the places of the
+  // IDs (LD-47) and the citing line numbers follow the message, so a
+  // judgement does not go stale when a link or a citing line only moves.
   const designs = open.flatMap((o) => [...o.paras.values()].map((p) => ({ p, o, own: new Set(o.paras.keys()) })));
   const servesKey = ({ p, o, own }, key) => p.links.serves.some((ref) => qualify(self(ref), o.name, own).key === key);
   const holds = (p) => isPromise(now, p.kind) || (p.kind !== 'approach' && groupOf(p.kind, now.kinds) === 'design');
@@ -345,15 +346,15 @@ export function checks(top, { base, phrases = [], issues = null }) {
   for (const { r, q, key, close } of unlinked) {
     const links = [];
     for (const d of designs.filter((x) => !holds(x.p) && servesKey(x, key))) {
-      const who = `${d.o.name}/${d.p.id} (${placeOf(d.p)}) serves it`;
+      const who = `${d.o.name}/${d.p.id} serves it`;
       if (d.p.kind === 'approach') links.push(`approach ${who}, and an approach is not a design and is never in force`);
       else if (d.p.kind) links.push(`${d.p.kind} ${who}, and ${an(d.p.kind)} ${d.p.kind} paragraph is not a promise or design paragraph`);
       else links.push(`paragraph ${who}, and a paragraph with no kind is not a promise or design paragraph`);
     }
     for (const a of now.adrList.filter((x) => x.status !== 'accepted' && (x.head?.links.decides ?? []).some((s) => qualify(s, null).key === key))) {
       const status = a.status ?? 'no status';
-      links.push(a.status ? `${status} ${a.id} (${adrPlace(a)}) decides it, and ${an(status)} ${status} ADR is not in force`
-        : `${a.id} (${adrPlace(a)}) decides it, and an ADR with no status is not in force`);
+      links.push(a.status ? `${status} ${a.id} decides it, and ${an(status)} ${status} ADR is not in force`
+        : `${a.id} decides it, and an ADR with no status is not in force`);
     }
     for (const o of now.requests.values()) {
       for (const out of (Array.isArray(o.data?.outputs) ? o.data.outputs : [])) {
