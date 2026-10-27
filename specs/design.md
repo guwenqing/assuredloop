@@ -573,6 +573,9 @@ refuses while:
   failed, and names each file and why. It does not run the checks of other
   requests. A request whose original files are all in the repo and verified
   needs no place.
+- A request whose record cannot be read is refused first, because the
+  reasons above need the record: `al conclude` exits 2 with
+  `al: <path> is not a valid record: <reason>`, and writes nothing.
 - **The close line.** The author records one sentence with
   `al record <name> close --on <ID> --reason <sentence>`. On a change
   paragraph, it says why the paragraph is not delivered, and it clears item
