@@ -357,15 +357,31 @@ export function checks(top, { base, phrases = [], issues = null }) {
   }
 
   // Bindings whose target changed since they were bound (design.md 4, 6).
+  // A hint clears by a judgement, which moves the binding to now and names
+  // itself in it (#88); when a side changes again, the hint names it as
+  // stale. `judgedBindings`: each such judgement, and whether a binding that
+  // names it gives a hint now.
   let declared = null;
   let alignable = null;
+  const judgedBindings = new Map();
   for (const r of open) {
+    const judgements = new Map((Array.isArray(r.data?.judgements) ? r.data.judgements : []).filter((j) => j?.id).map((j) => [String(j.id), j]));
     for (const b of Array.isArray(r.data?.bindings) ? r.data.bindings : []) {
       if (!b?.target || !b.holder || !b.target_sha256) continue;
+      const j = b.judgement != null ? judgements.get(String(b.judgement)) : undefined;
+      const key = j && `${r.name}/${j.id}`;
+      if (j && !judgedBindings.has(key)) judgedBindings.set(key, { r, j, hinted: false });
+      const next = (code) => `then al record ${r.name} judgement --hint ${code} --on ${b.holder} --reason <why>`;
+      // A binding hint: the record that holds it, and the judgement that it names as stale.
+      const hint = (code, p, message, what) => {
+        add('hint', code, p, b.holder, j ? `${message}; the judgement ${key} (${String(j.recorded ?? '').slice(0, 10)}) is stale: ${what} changed since it` : message);
+        findings.at(-1).binding = { request: r.name, holder: String(b.holder), link: b.link, target: String(b.target) };
+        if (j) judgedBindings.get(key).hinted = true;
+      };
       // A holder paragraph whose text changed since the link was bound
       // (removed-links/R2, #11). Output files and requirements are not
       // paragraphs; a link no longer declared is history (#2); the target
-      // must be one that al index --align can move the binding to.
+      // must be one that a judgement can move the binding to.
       if (b.holder_sha256) {
         const hq = qualify(String(b.holder), null);
         // An ID in several files of one ADR number (DES-113): the paragraph
@@ -383,17 +399,21 @@ export function checks(top, { base, phrases = [], issues = null }) {
         declared ??= declaredNow(top, now);
         alignable ??= canAlignTo(now);
         if (hp && hp.sha256 !== b.holder_sha256 && declared(b) && alignable(b.target)) {
-          add('hint', 'holder-changed', hp, b.holder, `${b.link} ${b.target}: this paragraph changed after the link was bound.${unclear} Check that it still ${b.link} ${b.target}, then al index --align ${b.holder}`);
+          hint('holder-changed', hp, `${b.link} ${b.target}: this paragraph changed after the link was bound.${unclear} Check that it still ${b.link} ${b.target}, ${next('holder-changed')}`, b.holder);
         }
       }
       const t = qualify(String(b.target), null);
       if (t.cross) continue;
       const cur = resolve(now, t);
-      if (!cur || !cur.sha || cur.sha === b.target_sha256) continue;
+      // A stale-base judgement on a change paragraph's changes or removes
+      // link keeps the target it judged apart from the link-time version;
+      // stale-base then compares with the judged target only (#88).
+      if (!cur || !cur.sha || cur.sha === (b.judged_target_sha256 ?? b.target_sha256)) continue;
       // The change's own branch made the target of its changes or removes
       // link what it is now: al kept that version (LD-61). Another link to
-      // the same target, such as builds-on, still gets the hint.
-      if (!t.req && ['changes', 'removes'].includes(b.link) && String(b.holder).startsWith(`${r.name}/`) && ownEdit(r, t.id) === cur.sha) continue;
+      // the same target, such as builds-on, still gets the hint, and so does
+      // a target that a judgement kept (#88).
+      if (!t.req && ['changes', 'removes'].includes(b.link) && String(b.holder).startsWith(`${r.name}/`) && b.judged_target_sha256 == null && ownEdit(r, t.id) === cur.sha) continue;
       // A superseded ADR's links are history (schema.md 5).
       if (now.adrs.get(String(b.holder))?.status === 'superseded') continue;
       // A link that its holder no longer declares, or whose holder is gone, is history too (#2).
@@ -402,9 +422,9 @@ export function checks(top, { base, phrases = [], issues = null }) {
       const hq = qualify(String(b.holder), null);
       const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : now.spec.get(hq.id);
       const msg = /^[RQ]\d+$/.test(t.id ?? '')
-        ? `${b.target} changed after this paragraph was linked to it. Check that it still ${b.link} ${t.id}, then al index --align ${b.holder}`
-        : `${b.link} ${b.target}, which changed since it was bound. Align it: check it, then al index --align ${b.holder}`;
-      add('hint', 'stale-base', hp ?? '-', b.holder, msg);
+        ? `${b.target} changed after this paragraph was linked to it. Check that it still ${b.link} ${t.id}, ${next('stale-base')}`
+        : `${b.link} ${b.target}, which changed since it was bound. Align it: check it, ${next('stale-base')}`;
+      hint('stale-base', hp ?? '-', msg, `the target ${b.target}`);
     }
   }
 
@@ -440,19 +460,21 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // Each file is compared with the same file; else, when its number has one
   // file at the base and one now, with that file, as after a rename (DES-113).
   const filesOf = (state, id) => state.adrList.filter((x) => x.id === id).length;
+  // A decision that is unchanged is a recorded judgement (adr-rewrite/R1, #88).
+  const judge = (id) => `; else al record <name> judgement --hint adr-changed --on ${id} --reason <why>`;
   for (const a of was?.adrList ?? []) {
     const { id } = a;
     if (!['accepted', 'superseded'].includes(a.status)) continue;
     const h = now.adrList.find((x) => x.file === a.file)
       ?? (filesOf(was, id) === 1 && filesOf(now, id) === 1 ? now.adrs.get(id) : undefined);
     if (!h) {
-      add('hint', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone: check that its decision is not lost; an ADR that no longer holds is superseded by a new ADR, not deleted`);
+      add('hint', 'adr-changed', a.file, id, `${id} was ${a.status} and its file is gone: check that its decision is not lost; an ADR that no longer holds is superseded by a new ADR, not deleted${judge(id)}`);
       continue;
     }
     const back = statusBack(a, h);
     const changed = h.body !== a.body && !linksAdded(a, h);
-    if (back) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s status changed from "${a.line}" to "${h.line}"${changed ? ', and its text changed' : ''}, but a status goes only forward: proposed, accepted, superseded by ADR-n; check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
-    else if (changed) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s text changed: check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it`);
+    if (back) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s status changed from "${a.line}" to "${h.line}"${changed ? ', and its text changed' : ''}, but a status goes only forward: proposed, accepted, superseded by ADR-n; check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it${judge(id)}`);
+    else if (changed) add('hint', 'adr-changed', h.head ?? h.file, id, `${id}'s text changed: check that its decision is unchanged; if the decision changed, write a new ADR that supersedes it${judge(id)}`);
   }
   // Every ADR file, whatever its status (#4): a first line that is not a known
   // status, and a marker line that holds more than its ID, a kind and links.
@@ -534,7 +556,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   for (const [id, hashes] of captured) if (!notAdopted.has(id) && now.spec.has(id) && hashes.has(now.spec.get(id).sha256)) adopted.add(id);
 
   if (base && !claim) skip('path-claim', ...(commits ? [] : ['no-claim']));
-  return { findings, notKnown, adopted, now, was, changes, skipped: [...skipped] };
+  return { findings, notKnown, adopted, now, was, changes, skipped: [...skipped], judgedBindings };
 }
 
 // Whether a result applies (design.md 9): never "applies", only what is known.

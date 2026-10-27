@@ -2,8 +2,9 @@
 // exact rules that block (requests/hints-and-blocks/request.md, R1 to R5 and
 // the architect's decisions D1 to D8).
 //
-// - R1: a rewritten ADR is a hint with one fixed message; al index --align
-//   clears stale-base on bindings to a rewritten superseded ADR.
+// - R1: a rewritten ADR is a hint with one fixed message; a judgement on
+//   stale-base (#88; it replaced al index --align) clears stale-base on
+//   bindings to a rewritten superseded ADR.
 // - R2: each finding has one severity in every mode; --strict sets only the
 //   exit code. Only signoff-coverage, unsigned-requirement, record-evidence,
 //   superseded-cited, superseded-status, record-unreadable and spec-root are
@@ -708,7 +709,12 @@ function adrChanged(r, n) {
   assert.equal(found[0].severity, 'hint', show(r));
   return found[0];
 }
-const hasR1Message = (r, f, n) => assert.equal(f.msg.replace(/\.$/, ''), R1_MESSAGE(n), show(r));
+// #88 (adr-rewrite/R1): the message ends with the judgement that clears it.
+const R1_JUDGEMENT = (n) => new RegExp(`; else al record \\S+ judgement --hint adr-changed --on ADR-${n} --reason <why>\\.?$`);
+function hasR1Message(r, f, n) {
+  assert.ok(f.msg.startsWith(`${R1_MESSAGE(n)}; else al record `), show(r));
+  assert.match(f.msg, R1_JUDGEMENT(n), show(r));
+}
 
 describe('R1: a changed ADR is a hint with one message', () => {
   for (const [name, arm, n, what] of [
@@ -745,7 +751,7 @@ describe('R1: a changed ADR is a hint with one message', () => {
   });
 });
 
-describe('R1: al index --align clears stale-base on bindings to a rewritten superseded ADR', () => {
+describe('R1: a judgement on stale-base clears it on bindings to a rewritten superseded ADR (#88)', () => {
   // The clean world merged on main, with three holders bound to the
   // superseded ADR-3: the change spec paragraph invoice-exports/SP-6
   // (builds-on:ADR-3,ADR-4), the spec paragraph EXP-6 (builds-on:ADR-3,ADR-4)
@@ -775,14 +781,14 @@ describe('R1: al index --align clears stale-base on bindings to a rewritten supe
     onlyNotOk(r, []);
   });
 
-  test('al index --align on each holder in turn clears its stale-base hint, and only its own', (t) => {
+  test('a stale-base judgement on each holder in turn, in the record of invoice-exports, clears its stale-base hint, and only its own', (t) => {
     const dir = rewritten(t);
     const left = [...HOLDERS];
     for (const holder of HOLDERS) {
-      ok(dir, ['index', '--align', holder]);
+      ok(dir, ['record', 'invoice-exports', 'judgement', '--hint', 'stale-base', '--on', holder, '--reason', 'ADR-3 was reworded; the link still holds.', '--yes']);
       left.splice(left.indexOf(holder), 1);
       const r = check(dir);
-      assert.deepEqual(stale(r), [...left].sort(), `after --align ${holder}:\n${show(r)}`);
+      assert.deepEqual(stale(r), [...left].sort(), `after the judgement on ${holder}:\n${show(r)}`);
     }
   });
 });
