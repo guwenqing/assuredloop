@@ -35,6 +35,7 @@ import {
   project, read, req, show, write, writeConfig, INVOICES,
 } from './helpers/project.js';
 import { settled } from './helpers/as-78.js';
+import { setSearch } from './helpers/search.js';
 
 const SPEC = 'specs/invoices.md';
 const ADR3_FILE = 'specs/adr/0003-signed-links.md';
@@ -758,6 +759,7 @@ test('#58 R1: the same change, project state and options give the same output, b
 
 test('#58 LD-29: a search index built before (al search --level 1) does not change the list', (t) => {
   const dir = richChange(t);
+  setSearch(dir, 'local'); // #99: al search searches only when the setting is set
   const before = check(dir);
   grouped(before);
   ok(dir, ['search', '--level', '1', 'invoice', 'export']);

@@ -215,19 +215,19 @@ paragraphs:
     display: LD-31 (6, 5. Search and the knowledge base (plan))
   - id: LD-32
     kind: plan
-    text_sha256: 44c5b5987cb86ac8a76e03c594ecd4f407564989d86af0aa61c9e90e413c4c50
+    text_sha256: e747cd8f952ba10de6fae9ffe31a29ec63632bde626f0d06fa0f2d6203f66c61
     display: LD-32 (6:1, in 5. Search and the knowledge base (plan))
   - id: LD-64
     kind: plan
-    text_sha256: 01c0c80244333ce5c58a4530c1164cf9f4c31f9a9eda09c5147a9a686b8d1f2e
+    text_sha256: c7522dd34187cfc224b60532e0f3a915654debc6be4681149767a1f6715e77a7
     display: LD-64 (6:2, in 5. Search and the knowledge base (plan))
   - id: LD-45
     kind: plan
-    text_sha256: f4e10312fcbd2d6c240ddb689ad066fe25c4b6a5f73db0708aa929e54b928d36
+    text_sha256: c0c2cf174c3ca44442ed1a38d48cdf22da2c8aae93bab28634021c15dc4a9a2e
     display: LD-45 (6:3, in 5. Search and the knowledge base (plan))
   - id: LD-33
     kind: plan
-    text_sha256: 0b7edef1a633541b26ed6cac74e798fdef45b27baa5bf248bffe36643da09e17
+    text_sha256: dca527673c9e8b7d8a5e041c360f305412dc5545fa4b6b5e930a9110ccfc913d
     display: LD-33 (6:4, in 5. Search and the knowledge base (plan))
   - id: LD-34
     kind: note

@@ -1355,7 +1355,7 @@ varied by up to 15% over ten runs (arXiv 2408.04667), and a change of model
 moved the main tag on close to half of the notes in one study (arXiv
 2606.05970).
 
-<!-- DES-58 rule serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1,hints-and-blocks/R2 -->
+<!-- DES-58 rule serves:kb-search/R10,assuredloop-v4/R12,promise-design-split/R1,hints-and-blocks/R2 -->
 
 - `.assuredloop/schema.yaml`: the schema, with a version. The owner and the
   architect design it. A user's extension gets the same careful review.
@@ -1373,7 +1373,7 @@ moved the main tag on close to half of the notes in one study (arXiv
 - The developer's agent writes the markers in the PR, and the review reads
   them (input 98). The script writes the derived facts.
 - AI hints and declared outputs are optional. A PR never needs them. A
-  project fills AI hints only where it uses search level 2 or higher. Why: a PR must not depend on them, and keeping them costs tokens.
+  project fills AI hints only where its `search` setting names a model (level 2). Why: a PR must not depend on them, and keeping them costs tokens.
 - **AI hints** (summaries, tags, quotes):
   - Each hint records the paragraph hash it was made from. A hint is stale
     when the paragraph's hash differs, even if its quote still matches: a
@@ -1488,14 +1488,14 @@ before a file name is made from the value. The full value of `--url` or
 `--presented` value is kept only as the record holds it. `--words` is kept
 as given.
 
-<!-- DES-82 data serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
+<!-- DES-82 data serves:kb-search/R10,assuredloop-v4/R12,promise-design-split/R1 -->
 
 A quote is scoped to its paragraph ID and the paragraph's source version.
 It holds the exact text by default. It adds `prefix` and `suffix` (the W3C
 Web Annotation TextQuoteSelector form) only when the exact text occurs more
 than once in that paragraph. A fuzzy re-anchor stays a hint.
 
-<!-- DES-83 choice serves:assuredloop-v4/R10,assuredloop-v4/R12,promise-design-split/R1 -->
+<!-- DES-83 choice serves:kb-search/R10,assuredloop-v4/R12,promise-design-split/R1 -->
 
 The search command may use a local SQLite index (section 11); no check
 depends on it. `al` may use a pinned YAML library; zero dependencies is the
@@ -1524,7 +1524,7 @@ strong base; and old text must be filtered out, not ranked down.
 - An agent that greps files does well on small corpora, and word search
   (BM25) overtakes it near 10 million tokens (arXiv 2607.26497).
 
-<!-- DES-61 interface serves:assuredloop-v4/R10,origin-elsewhere/R1 -->
+<!-- DES-61 interface serves:kb-search/R10,origin-elsewhere/R1 -->
 
 **The export.** `al export` writes one deterministic JSONL row per paragraph
 version, built from the committed docs and records. It is not committed;
@@ -1533,7 +1533,8 @@ heading_path, kind, serves[], builds_on[], changes[], valid_from,
 superseded_by, commit, sha256, text`, and the AI hints (`summary, tags`) in
 fields marked as hints. The version key is repo + document or request +
 paragraph ID + version. Local RAG tools do not read HTML-comment markers, so
-levels above 0 need this export.
+the local index and a team's own knowledge base (`search: {own: <name>}`)
+read this export.
 - History comes from git. The export walks the first-parent history to the
   selected commit, through only the commits that touched the docs in scope,
   and reads only the files that changed. Every paragraph or requirement
@@ -1549,7 +1550,7 @@ levels above 0 need this export.
   error when the export goes to standard output, and in the summary with
   `--out`. Search uses the same rows.
 
-<!-- DES-62 definition serves:assuredloop-v4/R10 -->
+<!-- DES-62 definition serves:kb-search/R10 -->
 
 **Roles.** "Latest version" does not mean "the current system": a baseline
 paragraph, an open proposal for it and a spike candidate can each be their
@@ -1561,29 +1562,37 @@ existing records:
 - `source`: the owner's words, the requirement and question versions, and
   decisions;
 - `evidence`: results and outputs;
-- `history`: removed and superseded text, and closed changes.
+- `history`: removed and superseded text, and closed changes;
+- `file`: one row for each file that git tracks at the selected commit, in
+  the central repo and in each output repo, with its path and a rough kind
+  from the path alone (code, test, doc, config or other). It is in the local
+  index only, not in the export.
 
-<!-- DES-63 rule serves:assuredloop-v4/R10 -->
+<!-- DES-63 rule serves:kb-search/R10 -->
 
 These are retrieval labels, not work states. When a row fits two roles,
 `history` wins, and the row keeps its original source type (for example a
 closed spike, or a replaced requirement version).
 
-<!-- DES-64 rule serves:assuredloop-v4/R10,promise-design-split/R1 -->
+<!-- DES-64 rule serves:kb-search/R10,promise-design-split/R1 -->
 
 **Queries:**
 - The default query is the current system: `baseline` rows at the selected
-  central commit.
+  central commit, and the `file` rows of each repo at its selected commit.
 - A change-context query, for one selected change, adds its live `proposal`
   and `spike` text, its `source` rows and its `evidence` rows to the default
   query, so all `baseline` rows stay in.
-- A history query adds `history` rows, never shown as current promises.
+- A history query adds `history` rows, never shown as current promises. A
+  `file` row is never history.
+- `file` rows are in word search only: level 2 does not embed them. Code is
+  not indexed by syntax unit: agents grep code, and code navigation belongs
+  to code tools.
 - Each hit shows its role and its commit. All roles stay in the level 1
   full-text index, so they can be found by their words even where level 2
   does not embed them.
 - IDs resolve exactly, in their own column, never through search.
 
-<!-- DES-87 component serves:assuredloop-v4/R10,promise-design-split/R1 -->
+<!-- DES-87 component serves:kb-search/R10,promise-design-split/R1 -->
 
 - A chunk is one paragraph version, the unit that carries the ID, with a fixed
   header (file title, heading path, kind, ID). The parent section is returned
@@ -1599,36 +1608,44 @@ closed spike, or a replaced requirement version).
   One index serves the central repo and its output repos.
 - No `llms.txt`: it has no measured benefit.
 
-<!-- DES-65 rule serves:assuredloop-v4/R10,level2-peer/R1,promise-design-split/R1 -->
+<!-- DES-65 rule serves:kb-search/R10,level2-peer/R1,promise-design-split/R1 -->
 
-**The search levels** (input 130):
+**The search setting** (kb-search/R10): the user chooses the source of
+search with one committed setting (schema.md 7), so every agent of the team
+and CI read the same choice.
 
-| Level | Setup | Status |
+| Setting | What `al search` does | Level |
 |---|---|---|
-| 0 | No index: `al`'s exact views and the agent's grep. | always there |
-| 1 | Local full text: `al export` into an index, with the ID in its own exact column. | built in |
-| 2 | Local hybrid: level 1 plus a small local embedding model; vectors stored beside the text; word and vector results fused; the same roles and queries. | **default** |
-| 3 | Mixed: the local index of level 2, with embeddings from a hosted service, preferably on Google Cloud; a hosted shared index may follow. | future |
+| `none` | No search: it says so; the agent reads the files (grep). | 0 for the agent; `al` searches nothing |
+| `{own: <name>}` | The team's own knowledge base, an MCP server or a skill: it names it and says to ask it. `al export` gives it `al`'s rows. | the team's |
+| `local` | Local full text: `al export` into an index, with the ID in its own exact column, and one row for each file. | 1 |
+| `{local: <row>}` | Level 1 plus one row of the measured table: an embedding model; vectors stored beside the text; word and vector results fused; the same roles and queries. | 2 |
+| (later) | Mixed: the local index of level 2, with embeddings from a hosted service, preferably on Google Cloud; a hosted shared index may follow. | 3, future |
 
-- One search command answers at the strongest level that is installed, falls
-  back 2 → 1 → 0 by itself, and says which level answered. Every level keeps
-  exact-ID lookup, the roles, the commit identity and the history scope; only
-  the strength changes.
+- No setting is a default (LD-64). Until the setting is there, `al search`
+  searches nothing: it gives the choices, what each costs on this computer,
+  the measured figures with their limits, and a recommendation (DES-166).
+- The checks never use search. `al check` does not read the setting, so its
+  exit code and its output do not change with it.
+- Every choice works; a choice changes only the strength. Every level keeps
+  exact-ID lookup, the roles, the commit identity and the history scope.
+  `--level` may ask for a lower level; `--level 2` with `local` is refused.
+- A wrong form of the setting, a row not in the table, a row that this
+  version cannot run yet and an excluded row are refused (exit 2), with the
+  rows that it runs.
 - Level 1 needs no new dependency. It lives in `al` itself, as `al search`,
-  and stays deterministic and offline.
-- Level 2 adds an embedding model, whose library the user installs (below).
-  Without the library, `al search` answers at level 1, and a `Not known` line
-  says how to add level 2.
-- The only data that leaves the machine is the model download.
-- Level 2 stays optional, because it costs every user a model download and a
-  native runtime, and CI needs no search (input 131: "if it is not costing a
-  lot, optional is good for user"). The recommended install includes it, so
-  level 2 is the default in practice.
-- Level 3 is future work.
+  and stays deterministic and offline. Without `node:sqlite` with FTS5 it
+  scans the export (level 0), and says which level answered.
+- Level 2 is optional: its library is installed by the user (DES-80).
+  Without the library, `al search` answers at level 1, and a `Not known`
+  line says how to add it. A set row that does not fit this computer still
+  runs, and a `Not known` line says what it needs and what the computer has.
+- The only data that leaves the machine is the model download. Before it,
+  `al` writes the row and its download size to standard error.
 - All levels read the same export and rebuild the same way, so a user moves
   between levels with no change to the records.
 
-<!-- DES-88 component serves:assuredloop-v4/R10,promise-design-split/R1 -->
+<!-- DES-88 component serves:kb-search/R10,promise-design-split/R1 -->
 
 - Level 1 is a SQLite FTS5 (BM25) index. Node's built-in `node:sqlite` has
   FTS5 (checked on Node 24.21.0 and 26.11.1, with SQLite 3.53.4). The package
@@ -1636,20 +1653,19 @@ closed spike, or a replaced requirement version).
 - The fusion is reciprocal rank fusion over the rows that have vectors. A row
   with no vector keeps its level 1 place, because the vector list gives it no
   vote and must not push it down.
-  Candidate models: bge-small-en-v1.5 (MIT) or EmbeddingGemma-300M; a
-  multilingual one (Qwen3-Embedding-0.6B) for specs not in English. At this
-  size a plain scan of the stored vectors is fast enough, so no vector
-  database is needed (an estimate: 20,000 rows of 384 numbers per query).
+  The models are the rows of the measured table (DES-166). At this size a
+  plain scan of the stored vectors is fast enough, so no vector database is
+  needed (an estimate: 20,000 rows of 384 numbers per query).
 - Level 3: candidates on Google Cloud: Gemini or Vertex AI embeddings for the
   mixed setup; later a hosted index (for example Vertex AI RAG Engine, Vertex
   AI Vector Search, or pgvector on Cloud SQL or AlloyDB). Prices and data
   terms are not checked yet.
 - The tool's tests run the search tests at levels 0, 1 and 2: level 2 with a
   small fixed test embedder for exact results, plus one smoke test with a real
-  model. Validation compares level 1 with level 2 on the golden questions, so
-  the default is checked, not assumed.
+  model. The recall of each row against level 1 is the measured figure of the
+  table (DES-166), not a run of the tests.
 
-<!-- DES-80 component serves:assuredloop-v4/R10,level2-peer/R1 -->
+<!-- DES-80 component serves:kb-search/R10,level2-peer/R1 -->
 
 Where level 2 lives: its code is in `al`; its library,
 `@huggingface/transformers` pinned at 4.3.1, is not our code and is no
@@ -1657,7 +1673,47 @@ package of ours. `al` names the library as an optional peer dependency, so
 npm installs it only when the user asks:
 `npm install --global @assuredloop/cli @huggingface/transformers@4.3.1`.
 `al` finds it by normal Node resolution: the project first, then beside
-`al`. Only `al search` loads it, at its first embed.
+`al`. Only `al search` loads it, at its first embed. The model is the row
+that the setting names: its model repo pinned by its commit, with the row's
+precision and device, embedded as the row was measured.
+
+<!-- DES-166 component serves:kb-search/R10 builds-on:DES-65 -->
+
+**The measured table and the recommendation.** The table in `al` holds each
+model, precision and runtime that issue #28 measured for `al search` on one
+Mac, 2026-10-21 to 2026-10-23, on 50 questions from one repo: the
+embedding rows (transformers.js on the CPU, WebGPU and CoreML; llama.cpp on
+the Metal GPU and the CPU) and the reranker rows. A row is named
+`<model> <precision> <runtime>`, for example `bge-small-en-v1.5 q8 tjs-cpu`.
+- Each row keeps its figures: the model files with their bytes, the peak
+  memory, the index speed, the time of one search, recall@10 with its 95%
+  interval, the gain over word search with its interval, and a published
+  score where there is one. No figure of a row comes from a run of `al`.
+- A row is in one state: it runs in this version and fits this computer;
+  it runs and does not fit; this version cannot run it yet (the llama.cpp
+  runtime and reranking, #100); or it is excluded, with the reason that the
+  measurement found.
+- It fits when the available memory is at least its peak memory plus 1 GB,
+  the free disk at least its download plus its vectors (4 bytes × its
+  dimension × the paragraphs to embed), and, for a Metal, WebGPU or CoreML
+  row, the computer is macOS on arm64. The available memory is the free,
+  inactive, speculative and purgeable pages of `vm_stat` on macOS, and
+  `os.freemem` elsewhere.
+- The recommendation, from code with no model: of the rows that this `al`
+  runs and that fit, keep those whose gain has its interval above zero; of
+  those within 0.05 of the best recall, recommend the smallest download.
+  When none is left, recommend `local`. `al` never recommends `own` or
+  `none`; the skill asks about a knowledge base first.
+- With no setting, the answer names each of the rows once: one line for
+  each row that fits, then the others grouped by state with their reasons;
+  `--full` gives every row on its own line, and `--json` every row.
+- Sizes are in MB and GB of 10^6 and 10^9 bytes. The first index times are
+  estimates: the paragraphs to embed, at about bytes / 4 tokens, over the
+  measured speed; for word search, the speed of the scale run's full index.
+- The limits go with the figures: one Mac; 50 questions from one repo; a
+  difference under about 0.05 is no difference; Linux, Windows and NVIDIA
+  GPUs not measured; the thresholds of fit inferred; available memory
+  changes from moment to moment.
 
 <!-- DES-66 rule serves:assuredloop-v4/R13 -->
 

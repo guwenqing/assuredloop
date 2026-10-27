@@ -2,12 +2,23 @@
 // and T14; design.md 11 "Queries"; interface.md "al search"). Each test runs
 // at level 0, level 1 and level 2 (the fixed test embedder): every level keeps
 // exact-ID lookup, the roles, the commit identity and the history scope.
+// #99: the world sets `search: {local: bge-small-en-v1.5 q8 tjs-cpu}`, so
+// level 2 answers with no --level. Since #99 (LD-33) levels 1 and 2 also
+// give a file row for each tracked file whose path has the words. Those rows
+// are tested in kb-search-files-99.test.js; these tests leave them out
+// (`search` below), except where they count the hits or their ranks.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { git, read, write } from './helpers/project.js';
 import {
-  A_TEXT, LEVEL2_LINE, ROW_FIELDS, asRow, buildWorld, exportRows, key, run, runOk, runRefused, search, show,
+  A_TEXT, LEVEL2_LINE, ROW_FIELDS, asRow, buildWorld, exportRows, key, run, runOk, runRefused, search as searchAll, show,
 } from './helpers/search.js';
+
+// The answer without its file rows (role `file`, #99).
+const search = (dir, args, opts) => {
+  const out = searchAll(dir, args, opts);
+  return { ...out, hits: out.hits.filter((h) => h.role !== 'file') };
+};
 
 const cleanups = [];
 after(() => cleanups.forEach((f) => f()));
@@ -50,14 +61,15 @@ for (const level of [0, 1, 2]) {
 
   test(`${L} --json: one object with level, fallback, commit, query and ranked hits`, () => {
     const { W, rows } = get();
+    const all = searchAll(W.dir, ['export', 'link'], { level });
+    all.hits.forEach((h, i) => assert.equal(h.rank, i + 1, 'ranks from 1, file rows included'));
     const out = search(W.dir, ['export', 'link'], { level });
     assert.equal(out.level, level, 'the level that answered');
     assert.equal(out.fallback, null, 'no fallback');
     assert.equal(out.commit, W.D, 'the selected commit, in full');
     assert.deepEqual(out.query, { words: 'export link', id: null, change: null, history: false });
     assert.ok(out.hits.length > 0);
-    out.hits.forEach((h, i) => {
-      assert.equal(h.rank, i + 1, 'ranks from 1');
+    out.hits.forEach((h) => {
       assert.equal(typeof h.exact, 'boolean');
       for (const f of ROW_FIELDS) assert.ok(Object.hasOwn(h, f), `hit has ${f}`);
     });
@@ -201,7 +213,7 @@ for (const level of [0, 1, 2]) {
     const { W } = get();
     const many = search(W.dir, ['reminder', '--change', 'reminder-emails', '--limit', '50'], { level });
     assert.ok(many.hits.length >= 3, idRoles(many).join('\n'));
-    const two = search(W.dir, ['reminder', '--change', 'reminder-emails', '--limit', '2'], { level });
+    const two = searchAll(W.dir, ['reminder', '--change', 'reminder-emails', '--limit', '2'], { level });
     assert.equal(two.hits.length, 2);
   });
 
@@ -261,7 +273,7 @@ for (const level of [0, 1, 2]) {
     const r = runOk(W.dir, ['search', '--id', 'EXP-4', ...lv]);
     const lines = r.stdout.split('\n');
     assert.match(lines[0], new RegExp(`^Level\\s+${level}\\b`), show(r));
-    if (level === 2) assert.equal(lines[0], LEVEL2_LINE, 'level 2 names al\'s model and its revision');
+    if (level === 2) assert.equal(lines[0], LEVEL2_LINE, 'level 2 names the row of the search setting');
     assert.ok(!lines.some((l) => /^Fallback\b/.test(l)), 'no Fallback line when no fallback happened');
     assert.ok(lines.some((l) => /^Query\b/.test(l)), show(r));
     assert.ok(lines.some((l) => /^\s*1\. EXP-4 baseline (exact )?rule specs\/exports\.md v1 @[0-9a-f]{7,40}\b/.test(l)), show(r));

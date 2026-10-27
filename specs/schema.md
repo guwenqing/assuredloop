@@ -305,7 +305,7 @@ A link to another repo uses a qualified ID: `central:INV-41`,
 
 ## 7. Where the model lives
 
-<!-- SCH-28 data serves:assuredloop-v4/R3,assuredloop-v4/R10 builds-on:DES-26 -->
+<!-- SCH-28 data serves:assuredloop-v4/R3,kb-search/R10 builds-on:DES-26 -->
 
 - The docs hold the text and the markers.
 - `.assuredloop/` holds `config.yaml` (the settings and, in the central repo,
@@ -332,7 +332,7 @@ A link to another repo uses a qualified ID: `central:INV-41`,
   that paragraph.
 - The developer's agent writes the markers in the PR, and the review reads
   them. AI hints and declared outputs are optional: a project adds them only
-  where they help (AI hints where it uses search level 2 or higher). The script recomputes every derived field and ignores
+  where they help (AI hints where its `search` setting names a model). The script recomputes every derived field and ignores
   what anyone wrote there. Ordinary indexing never advances a binding; only
   a recorded judgement does (design.md 3, 4).
 
@@ -350,6 +350,17 @@ read: `items-out-of-reach:` in `.assuredloop/config.yaml`, a list of texts.
 Each is a repository `owner/repo` or one item, in a form of a task's
 `ref`. With no `items-out-of-reach` key, every item that a task names is
 looked for in the folder of `--issues` (design.md 8).
+
+<!-- SCH-41 data serves:kb-search/R10 builds-on:DES-65 -->
+
+The committed config holds the search choice, `search:` in
+`.assuredloop/config.yaml`, in one of four forms: `none`; `local` (word
+search alone); `{local: <row>}`, word search with one row of the measured
+table by its name, for example `{local: bge-small-en-v1.5 q8 tjs-cpu}`; or
+`{own: <name>}`, the team's knowledge base, an MCP server or a skill, by its
+name. `al search` reads it from the working tree. With no `search` key, no
+choice is set and `al search` searches nothing (design.md 11). `al check`
+does not read it.
 
 <!-- SCH-29 note -->
 

@@ -6,7 +6,10 @@
 //   level 1, keeps its Fallback line, and a Not known line (and an item of
 //   not_known in --json) says how to install it: npm install and
 //   @huggingface/transformers@4.3.1. An explicit --level 1 or --level 0 has
-//   no such line. With the library in the project, level 2 is the default.
+//   no such line. With the library in the project, level 2 answers.
+// #99 (kb-search/R10) took out "level 2 is the default": level 2 answers only
+// when the `search` setting names a row. So every test here that searches
+// sets search: {local: bge-small-en-v1.5 q8 tjs-cpu} (WITH_MODEL).
 // - Item 4: only `al search` loads the library, and only when it embeds (a
 //   query with words at level 2). The stand-in writes a marker file each time
 //   it is imported.
@@ -15,7 +18,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { git, project, write } from './helpers/project.js';
 import {
-  TRANSFORMERS, TRANSFORMERS_VERSION, besideAl, importsOf, installEmbedder, run, runOk, search, show, smallRepo,
+  TRANSFORMERS, TRANSFORMERS_VERSION, WITH_MODEL, besideAl, importsOf, installEmbedder, run, runOk, search, show, smallRepo,
 } from './helpers/search.js';
 
 const INSTALL = `${TRANSFORMERS}@${TRANSFORMERS_VERSION}`;
@@ -37,7 +40,7 @@ const mentionsLibrary = (text) => text.includes(TRANSFORMERS);
 
 test('#212 no @huggingface/transformers: al search <words> answers at level 1, with a Fallback line, and a Not known line says npm install @huggingface/transformers@4.3.1', (t) => {
   if (besideAl()) { t.skip(NO_LIBRARY); return; }
-  const { dir } = smallRepo(t);
+  const { dir } = smallRepo(t, { search: WITH_MODEL });
   const r = runOk(dir, ['search', 'export', 'link']);
   const ls = r.stdout.split('\n');
   assert.match(ls[0], /^Level\s+1\b/, show(r));
@@ -48,7 +51,7 @@ test('#212 no @huggingface/transformers: al search <words> answers at level 1, w
 
 test('#212 no @huggingface/transformers: al search <words> --json answers at level 1, fallback gives the reason, and an item of not_known says npm install @huggingface/transformers@4.3.1', (t) => {
   if (besideAl()) { t.skip(NO_LIBRARY); return; }
-  const { dir } = smallRepo(t);
+  const { dir } = smallRepo(t, { search: WITH_MODEL });
   const out = search(dir, ['export', 'link']);
   assert.equal(out.level, 1);
   assert.equal(typeof out.fallback, 'string');
@@ -60,7 +63,7 @@ test('#212 no @huggingface/transformers: al search <words> --json answers at lev
 
 test('#212 no @huggingface/transformers: al search --id <ID> (no words) also answers at level 1 with the install line in Not known and in not_known', (t) => {
   if (besideAl()) { t.skip(NO_LIBRARY); return; }
-  const { dir } = smallRepo(t);
+  const { dir } = smallRepo(t, { search: WITH_MODEL });
   const r = runOk(dir, ['search', '--id', 'EXP-4']);
   assert.match(r.stdout.split('\n')[0], /^Level\s+1\b/, show(r));
   assert.ok(saysInstall(notKnown(r.stdout)), `the Not known line names npm install and ${INSTALL}:\n${show(r)}`);
@@ -73,7 +76,7 @@ test('#212 no @huggingface/transformers: al search --id <ID> (no words) also ans
 for (const level of [1, 0]) {
   test(`#212 no @huggingface/transformers: an explicit --level ${level} gives no Not known line about installing level 2, and no such not_known item`, (t) => {
     if (besideAl()) { t.skip(NO_LIBRARY); return; }
-    const { dir } = smallRepo(t);
+    const { dir } = smallRepo(t, { search: WITH_MODEL });
     const r = runOk(dir, ['search', 'export', 'link', '--level', String(level)]);
     assert.match(r.stdout.split('\n')[0], new RegExp(`^Level\\s+${level}\\b`), show(r));
     const nk = notKnown(r.stdout);
@@ -85,7 +88,7 @@ for (const level of [1, 0]) {
   });
 }
 
-test('#212 @huggingface/transformers in the project: level 2 is the default, with no Fallback and no install line', (t) => {
+test('#212 #99 @huggingface/transformers in the project and search: {local: <row>}: level 2 answers, with no Fallback and no install line', (t) => {
   const { dir } = smallRepo(t, { embedder: {} });
   const out = search(dir, ['export', 'link']);
   assert.equal(out.level, 2, `level 2 answered (fallback: ${out.fallback})`);
@@ -119,7 +122,7 @@ const OTHERS = [
 ];
 
 test('#212 al --version, check, index, spec, export, context, conclude and record never import @huggingface/transformers, though it is in the project', (t) => {
-  const { dir } = smallRepo(t);
+  const { dir } = smallRepo(t, { search: WITH_MODEL });
   const marker = join(dir, '.git', 'imported.log');
   installEmbedder(dir, { marker });
   for (const [args, code] of OTHERS) {
@@ -134,7 +137,7 @@ test('#212 al --version, check, index, spec, export, context, conclude and recor
 });
 
 test('#212 al search --id <ID> (no words) reports level 2 and does not import @huggingface/transformers; al search <words> does', (t) => {
-  const { dir } = smallRepo(t);
+  const { dir } = smallRepo(t, { search: WITH_MODEL });
   const marker = join(dir, '.git', 'imported.log');
   installEmbedder(dir, { marker });
   const out = search(dir, ['--id', 'EXP-4']);
@@ -150,7 +153,7 @@ test('#212 al search --id <ID> (no words) reports level 2 and does not import @h
 });
 
 test('#212 al search <words> at an explicit --level 1 or --level 0 does not import @huggingface/transformers', (t) => {
-  const { dir } = smallRepo(t);
+  const { dir } = smallRepo(t, { search: WITH_MODEL });
   const marker = join(dir, '.git', 'imported.log');
   installEmbedder(dir, { marker });
   for (const level of [1, 0]) {
