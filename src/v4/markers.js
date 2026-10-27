@@ -247,8 +247,23 @@ export function onlyLinksAdded(was, now, kinds = KINDS) {
   return now.slice(0, start) + kept + now.slice(start + n[2].length) === was;
 }
 
+// parseMarkdown gives the same for the same text, file and kinds, and al
+// check parses one doc many times: at the working tree and at the base, in
+// al index and in its checks. So each is parsed once in a process (#101),
+// and every reader gets the same paragraphs and lints. No reader changes them.
+const parsed = new Map();
+const kindsKeys = new WeakMap();
 export function parseMarkdown(text, file, options = {}) {
   const kinds = options.kinds ?? KINDS;
+  if (!kindsKeys.has(kinds)) kindsKeys.set(kinds, JSON.stringify(kinds));
+  const key = `${file}\n${kindsKeys.get(kinds)}`;
+  if (!parsed.has(key)) parsed.set(key, new Map());
+  const byText = parsed.get(key);
+  if (!byText.has(text)) byText.set(text, parseText(text, file, kinds));
+  return byText.get(text);
+}
+
+function parseText(text, file, kinds) {
   const known = new Set(Object.values(kinds).flat());
   const lines = lf(text).split('\n');
   const paragraphs = [];

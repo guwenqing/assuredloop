@@ -7,6 +7,7 @@
 import { accessSync, constants, lstatSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { parse, stringify } from 'yaml';
+import { parseOnce } from './yaml-once.js';
 import { parseMarkdown } from './markers.js';
 import { baseOf, git, mergeBase, fileAt, filesAt, blobAt, shallowCommits } from './git.js';
 import { loadConfig } from './config.js';
@@ -49,6 +50,15 @@ export function requestNames(top, at = null) {
   return { open, archived };
 }
 
+// Property `key` of `o`, made by `make` when it is first read; a write sets it.
+function lazy(o, key, make) {
+  Object.defineProperty(o, key, {
+    enumerable: true, configurable: true,
+    get() { const v = make(); Object.defineProperty(o, key, { value: v, enumerable: true, configurable: true, writable: true }); return v; },
+    set(v) { Object.defineProperty(o, key, { value: v, enumerable: true, configurable: true, writable: true }); },
+  });
+}
+
 // One state of the project, the working tree (at null) or a commit: its
 // docs, parsed, and its requests, each with request.md's requirements and
 // its record's data.
@@ -59,11 +69,13 @@ export function loadState(top, at, config, names) {
     ? (git(top, ['ls-tree', '--name-only', at, `${adr}/`], { allowFail: true }) ?? '').split('\n')
     : symlinkOn(top, adr) ? [] : list(top, adr).filter((e) => e.isFile()).map((e) => `${adr}/${e.name}`))
     .filter((f) => f.startsWith(`${adr}/`) && ADR_FILE.test(f.slice(adr.length + 1))).sort();
-  // At a commit, every file below is read in one batch.
-  const atCommit = at ? filesAt(top, at, [...adrs,
-    ...names.open.flatMap((n) => [`requests/${n}/request.md`, recordPath(n)]),
-    ...names.archived.flatMap((n) => [`requests/archive/${n}/request.md`, recordPath(n), `requests/archive/${n}/spec.md`])]) : null;
-  const get = at ? (p) => (atCommit.has(p) ? atCommit.get(p) : fileAt(top, at, p)) : (p) => read(top, p);
+  // At a commit, every file below is read in one batch; the archived
+  // requests' files in a second one, when a reader first asks for one (#101).
+  const atCommit = at ? filesAt(top, at, [...adrs, ...names.open.flatMap((n) => [`requests/${n}/request.md`, recordPath(n)])]) : null;
+  const archived = names.archived.flatMap((n) => [`requests/archive/${n}/request.md`, recordPath(n), `requests/archive/${n}/spec.md`]);
+  const inArchive = new Set(archived);
+  let atArchive = null;
+  const get = at ? (p) => (atCommit.has(p) ? atCommit.get(p) : inArchive.has(p) ? (atArchive ??= filesAt(top, at, archived)).get(p) : fileAt(top, at, p)) : (p) => read(top, p);
   const open = new Set(names.open);
   const files = [
     ...docsInScope(top, config, at).flatMap((d) => {
@@ -79,20 +91,29 @@ export function loadState(top, at, config, names) {
     const paragraphs = parseMarkdown(text, file).paragraphs.filter((p) => p.id);
     docs.push({ file, request, text, adr: Boolean(isAdr), paragraphs, ids: new Set(paragraphs.map((p) => p.id)) });
   }
+  // Each request's files are read and parsed when a reader first asks for
+  // them (#101): a state at the base never reads an archived record's data.
   const requests = new Map();
   for (const [n, open] of [...names.open.map((n) => [n, true]), ...names.archived.map((n) => [n, false])]) {
-    const md = get(open ? `requests/${n}/request.md` : `requests/archive/${n}/request.md`) ?? '';
-    let data = null;
+    const r = { name: n, open };
+    lazy(r, 'md', () => get(open ? `requests/${n}/request.md` : `requests/archive/${n}/request.md`) ?? '');
+    lazy(r, 'reqs', () => requirements(r.md));
     // A record that is not YAML reads as none; a refused read (outside, or through a symlink) stays a refusal.
-    const text = get(recordPath(n));
-    try { data = parse(text ?? 'null'); } catch { data = null; }
-    const spec = open ? docs.find((d) => d.request === n) : null;
-    let paras = spec?.paragraphs;
-    if (!open) {
-      const text = get(`requests/archive/${n}/spec.md`);
-      paras = text === null ? [] : parseMarkdown(text, `requests/archive/${n}/spec.md`).paragraphs.filter((p) => p.id);
-    }
-    requests.set(n, { name: n, open, md, reqs: requirements(md), data: data && typeof data === 'object' ? data : null, paras: new Map((paras ?? []).map((p) => [p.id, p])) });
+    lazy(r, 'data', () => {
+      const text = get(recordPath(n));
+      let data = null;
+      try { data = parseOnce(text ?? 'null'); } catch { data = null; }
+      return data && typeof data === 'object' ? data : null;
+    });
+    lazy(r, 'paras', () => {
+      let paras = open ? docs.find((d) => d.request === n)?.paragraphs : null;
+      if (!open) {
+        const text = get(`requests/archive/${n}/spec.md`);
+        paras = text === null ? [] : parseMarkdown(text, `requests/archive/${n}/spec.md`).paragraphs.filter((p) => p.id);
+      }
+      return new Map((paras ?? []).map((p) => [p.id, p]));
+    });
+    requests.set(n, r);
   }
   // An ADR number names the first of its files in name order (DES-113).
   const firsts = new Set();
@@ -200,6 +221,18 @@ export function targetOf(t, state) {
 }
 
 const tripleKey = (l) => `${l.holder}\t${l.link}\t${l.target}`;
+
+// The holder, link and target of each binding of a record that is a map or
+// a list: from its document when it is open, else from its data, which gives
+// the same values (records.js opens the document of a text that may hold an
+// alias).
+function bindingsOf(rec) {
+  if (rec.opened) {
+    return (rec.doc.get('bindings')?.items ?? []).filter((it) => it?.get).map((it) => ({ holder: it.get('holder'), link: it.get('link'), target: it.get('target') }));
+  }
+  const list = rec.data.bindings;
+  return (Array.isArray(list) ? list : []).filter((it) => it !== null && typeof it === 'object');
+}
 
 // Whether a binding's holder declares its link now: the same holder, link
 // word and target (#2). It reads al check's own state (state.js), so each
@@ -354,9 +387,8 @@ export function index({ top, cwd, opts }) {
   // an archived record counts as held; al binds no new link there (#41).
   const held = new Map();
   for (const [n, rec] of [...recs, ...archived]) {
-    for (const it of rec.doc.get('bindings')?.items ?? []) {
-      if (!it?.get) continue;
-      const k = tripleKey({ holder: it.get('holder'), link: it.get('link'), target: it.get('target') });
+    for (const it of bindingsOf(rec)) {
+      const k = tripleKey(it);
       held.set(k, [...(held.get(k) ?? []), n]);
     }
   }
@@ -426,9 +458,9 @@ export function index({ top, cwd, opts }) {
     for (const h of homes) {
       if (!recs.has(h)) continue;
       const rec = recs.get(h);
-      const items = seq(rec, 'bindings').items;
-      const at = items.findIndex((it) => it?.get?.('holder') === l.holder && it.get('link') === l.link && it.get('target') === l.target);
-      if (at >= 0) continue;
+      // A record with no list of bindings gets an empty one, as it always did.
+      if (rec.opened || !Array.isArray(rec.data.bindings)) seq(rec, 'bindings');
+      if (bindingsOf(rec).some((it) => it.holder === l.holder && it.link === l.link && it.target === l.target)) continue;
       // Held in another record, open or archived, the binding is not gone (DES-26).
       if (atBase.has(tripleKey(l))) { if (!isHeld) once(`binding unknown: ${name}`); continue; }
       if (l.unknown) { once(`unknown: ${name}: ${l.unknown}`); continue; }
@@ -463,7 +495,9 @@ export function index({ top, cwd, opts }) {
   ])];
   const declared = new Set(linksOf(top, everyDeclaration(now), config, false).map(tripleKey));
   const undeclared = (it) => it?.get && !declared.has(tripleKey({ holder: it.get('holder'), link: it.get('link'), target: it.get('target') }));
-  const dead = [...recs, ...archived].flatMap(([n, rec]) => (rec.doc.get('bindings')?.items ?? []).filter(undeclared).map((it) => [n, rec, it]));
+  // A record's document is opened only when it holds such a binding.
+  const dead = [...recs, ...archived].filter(([, rec]) => bindingsOf(rec).some((it) => !declared.has(tripleKey(it))))
+    .flatMap(([n, rec]) => (rec.doc.get('bindings')?.items ?? []).filter(undeclared).map((it) => [n, rec, it]));
   if (unread.length) {
     body.push(`not removed: no binding is removed in this run, as al index could not read ${unread.join('; ')}`);
   } else {
