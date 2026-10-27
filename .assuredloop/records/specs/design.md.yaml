@@ -471,7 +471,7 @@ paragraphs:
     display: DES-132 (13:2, in 13. Commands)
   - id: DES-164
     kind: interface
-    text_sha256: 7c0fb02adabb8382ac48f360e41068a9a75458abe264c751230b0f100c734749
+    text_sha256: e0a0fe2814392027019f0cee8df378f85aef7d92ca2b1411b2f0145560eb86a1
     display: DES-164 (13:3, in 13. Commands)
   - id: DES-133
     kind: interface

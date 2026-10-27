@@ -1813,8 +1813,10 @@ these facts. The lines, in this order:
   gives (DES-163, DES-130): current; stale, with what changed since it;
   history, with the newer judgement on the same hint code and `--on`; shown
   on a `not ok`, which it does not clear; or no hint now, when `al check`
-  gives no such hint. A binding judgement is current while no binding that
-  names it gives a hint, and history when no binding names it. For
+  gives no such hint. A judgement that is stale on one of its hints is
+  stale, as on the `info judged` line, and each thing that changed is named
+  once. A binding judgement is current while no binding that names it gives
+  a hint, and history when no binding names it. For
   `issue-changed`, `al context` does not read the items. So the newest
   judgement at the moment of reliance says that it is not known whether the
   item changed, and names `al check --issues <folder>`. It is stale when a
