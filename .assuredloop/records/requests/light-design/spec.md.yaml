@@ -235,7 +235,7 @@ paragraphs:
     display: LD-34 (7, 6. Signed requirements to sign again (plan))
   - id: LD-35
     kind: plan
-    text_sha256: f75fbb5c885ae9e1723b4346203ac821485095c84e3a968ffeba648c88818390
+    text_sha256: 2a8623344d33f5d1a6e10f176fe8f0896bd2238de2651ecbaae07959c069635c
     display: LD-35 (7:1, in 6. Signed requirements to sign again (plan))
   - id: LD-36
     kind: note
