@@ -893,7 +893,8 @@ missing, not that nothing was built. It names the known direct links, each
 with the limit of its evidence: an `approach` or another paragraph of a
 change spec that serves the requirement, an ADR that decides it and is not
 accepted, a declared `verifies` output, and each file that cites
-`<name>/R<n>`. The citing line numbers follow, after ` · cited lines:`. It
+`<name>/R<n>`. The message holds no line number: the citing lines follow it
+after ` · cited lines:`, and the places of its IDs after ` · places:`. It
 clears by a link, by a close line (`al record <name> close --on R<n>
 --reason <where it is met>`), or by a judgement on `<name>/R<n>`.
 

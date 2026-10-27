@@ -857,10 +857,12 @@ known line names it. The known direct links are each paragraph of an open
 change spec that serves it and is no promise or design, each ADR that
 decides it and is not accepted, each declared `verifies` output, and each
 file that `al context <name>/R<n>` shows as citing it, current files first.
-The message names each link by its ID or its file, with its limit. The
-citing line numbers follow the message, outside it, every line shown. A
-judgement keeps the message (DES-163), so it goes stale when a link or a
-citing file comes or goes, and not when a citing line only moves. Whether the code
+The message names each link by its ID or its file, with its limit, and
+holds no line number. The places of its IDs (LD-47) and the citing line
+numbers follow the message, outside it, every line shown. A judgement keeps
+the message (DES-163), so it goes stale when a link or a citing file comes
+or goes, and not when a linked paragraph or a citing line only moves.
+Whether the code
 does what the requirement says, and whether a user document still says what
 was decided, stay review questions (LD-20, steps 4.4, 4.6 and 4.7); the
 code tests do not prove them.
