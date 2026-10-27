@@ -1,6 +1,6 @@
 # D07: a stale base after indexing (t2 defects.yaml D07, as amended). Path 1:
 # INV-10 now serves billing-copy/R1. reminder-emails/SP-4 builds on INV-10.
-# Only the control checks SP-4 and runs `al-v4 index --align reminder-emails/SP-4`.
+# Only the control checks SP-4 and records a judgement on its stale-base.
 title: "Invoices: a copy to the business"
 base: base
 claim: "Tier: 1 — billing-copy"
@@ -46,5 +46,9 @@ arms:
           text: |
             2026-07-13 the agent checked SP-4 against the new INV-10: reminders go to
             the billing address only. Aligned.
-      - align: reminder-emails/SP-4
+      - judgement:
+          request: reminder-emails
+          hint: stale-base
+          on: reminder-emails/SP-4
+          reason: Reminders go to the billing address only.
         date: 2026-07-13

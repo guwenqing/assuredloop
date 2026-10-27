@@ -83,8 +83,10 @@ function step(dir, caseDir, s) {
     run(dir, s.al, { input: s.input === undefined ? '' : textOf(caseDir, s.input), date: s.date });
   } else if (s.index !== undefined) {
     run(dir, ['index'], { date: s.date });
-  } else if (s.align) {
-    run(dir, ['index', '--align', s.align], { date: s.date });
+  } else if (s.judgement) {
+    // A recorded judgement on a hint (#88; it replaced al index --align).
+    const { request, hint, on, reason } = s.judgement;
+    run(dir, ['record', request, 'judgement', '--hint', hint, '--on', on, '--reason', reason, '--yes'], { date: s.date });
   } else if (s.section) {
     const path = `requests/${s.section.request}/request.md`;
     let md = readFileSync(join(dir, path), 'utf8');

@@ -813,7 +813,7 @@ const PINNED = {
       'specs/invoices.md:24 INV-6 Changed',
       'ok: no marker lint',
       'not ok signoff-coverage specs/invoices.md:24 INV-6 a definition paragraph is changed with no signed requirement that covers it',
-      'hint stale-base requests/reminder-emails/spec.md:12 reminder-emails/SP-3 builds-on INV-6, which changed since it was bound. Align it: check it, then al index --align reminder-emails/SP-3 · places: INV-6 specs/invoices.md:24',
+      'hint stale-base requests/reminder-emails/spec.md:12 reminder-emails/SP-3 builds-on INV-6, which changed since it was bound. Align it: check it, then al record reminder-emails judgement --hint stale-base --on reminder-emails/SP-3 --reason <why> · places: INV-6 specs/invoices.md:24',
       'Read      working tree · base {central:The invoicer world:7} (merge-base with main)',
       // #238: with an unsigned requirement, Next says to index and ask the owner to sign.
       'Next      fix each not ok, and deal with each hint or say in the PR why it stays; for an unsigned requirement, run al index, then ask the owner to sign it (al record <name> signoff)',
