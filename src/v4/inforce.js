@@ -18,7 +18,7 @@ import { FENCE, groupOf, lf, onlyLinksAdded, parseMarkdown, withoutScope } from 
 import { taskItems } from './issues.js';
 import { centralRepo, namedIds, outputRepos } from './repos.js';
 import { ADR_FILE, SPEC, symlinkOn } from './scope.js';
-import { loadState, placeOf, replaceLinks, replacersOf, reqLine, signedBy, unknownBy, versionOf } from './state.js';
+import { checkedNow, loadState, placeOf, replaceLinks, replacersOf, reqLine, signedBy, unknownBy, versionOf } from './state.js';
 
 const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 const inForceKind = (state, kind) => !!kind && kind !== 'approach' && ['promise', 'design'].includes(groupOf(kind, state.kinds));
@@ -149,10 +149,11 @@ function itemsInForce(now) {
 }
 
 // The open requests that are this change's own: the change touches their
-// folder or their record, or a commit message of base..HEAD names them.
-export function ownRequests(top, now, base, paths = pathsOf(top, base).paths) {
+// folder or their record, or a commit message of base..HEAD names them. With
+// the base state `was`, a request that the branch concludes counts too (DES-139).
+export function ownRequests(top, now, base, paths = pathsOf(top, base).paths, was = null) {
   const messages = git(top, ['log', '--format=%B%x00', `${base}..HEAD`], { allowFail: true }) ?? '';
-  return [...now.requests.values()].filter((r) => r.open)
+  return [...now.requests.values()].filter((r) => checkedNow(r, was))
     .filter((r) => [...paths].some((f) => f.startsWith(`${r.dir}/`) || (f === recordPath(r.name) && recordTouched(top, base, r.name)))
     || word(r.name).test(messages)).sort((a, b) => (a.name < b.name ? -1 : 1));
 }
@@ -260,13 +261,13 @@ function designDoc(top, now, path, source, repos) {
 // the design lines of each saved work item that a task of one of them names.
 // Each as { path, r, source, where, item }, or { bad, it } for a design field
 // that is not a path or a list of paths; item is set for a work item's.
-export function designPaths(top, now, own, issues) {
+export function designPaths(top, now, own, issues, was = null) {
   const out = [];
   for (const r of own) {
     for (const d of designLines(r.md)) out.push({ path: d.path, r, source: `design line ${r.dir}/request.md:${d.line}`, where: `${r.dir}/request.md:${d.line}` });
   }
   const ownNames = new Set(own.map((r) => r.name));
-  const named = issues && own.length ? taskItems(top, now, issues.items).named.filter((n) => ownNames.has(n.r.name)) : [];
+  const named = issues && own.length ? taskItems(top, now, issues.items, was).named.filter((n) => ownNames.has(n.r.name)) : [];
   const seen = new Set();
   for (const { r, it } of named) {
     if (seen.has(it)) continue;
@@ -350,7 +351,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     return !(b.status === 'accepted' && b.head && a.head && b.rest === a.rest && onlyLinksAdded(b.marker, a.marker, now.kinds));
   };
 
-  const own = central ? [] : ownRequests(top, now, base, change.paths);
+  const own = central ? [] : ownRequests(top, now, base, change.paths, was);
   const ownNames = new Set(own.map((r) => r.name));
   const proposals = new Map();
   for (const r of [...now.requests.values()].filter((x) => x.open && !ownNames.has(x.name))) {
@@ -408,7 +409,7 @@ export function changeInForce(top, { now, was, base, issues = null, full = false
     if (got.info) findings.push({ severity: 'info', code: 'output-repo', where, id: path, message: got.info });
     return got.lines ?? [];
   };
-  const designs = designPaths(top, now, own, issues);
+  const designs = designPaths(top, now, own, issues, was);
   let replacedShown = false;
   for (const r of own) {
     const lines = lf(r.md).split('\n');

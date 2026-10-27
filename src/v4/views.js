@@ -9,7 +9,7 @@ import { fileAt, git, mergeBase, mergesOf } from './git.js';
 import { crossRepo, findCites, namedIds } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  adrPlace, decisionLine, loadState, named, placeOf, placeOfTarget, qualify, replaceLinks, replaceWords, replacersOf, reqLine, requestOf, resolve, signedBy, unknownBy,
+  adrPlace, checkedNow, decisionLine, loadState, named, placeOf, placeOfTarget, qualify, replaceLinks, replaceWords, replacersOf, reqLine, requestOf, resolve, signedBy, unknownBy,
   versionOf,
 } from './state.js';
 import { isCentral } from './indexer.js';
@@ -219,11 +219,14 @@ const findingLine = (f, places = '') => `${f.severity} ${f.code} ${f.where} ${f.
 // base in `was`, and the finding's own ID when `where` is not its place.
 // A word that names nothing al knows (SHA-256) is not listed, and neither is
 // a bare R, Q, D, S or T number or another repo's ID. A bare ID that is no
-// spec ID may be a paragraph of the finding's own open request (named by its
-// ID or its place), and is shown with that request's name.
+// spec ID may be a paragraph of the finding's own open request, or of one
+// that the branch concludes (named by its ID or its place), and is shown with
+// that request's name.
 export function placesOf(now, was, base, f) {
   const parts = [];
-  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(f.id)?.[1] ?? /^requests\/(?!archive\/)([^/]+)\//.exec(f.where)?.[1] ?? null;
+  const at = /^requests\/(archive\/)?([^/]+)\//.exec(f.where);
+  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(f.id)?.[1]
+    ?? (at && (!at[1] || (now.requests.has(at[2]) && checkedNow(now.requests.get(at[2]), was))) ? at[2] : null);
   for (const written of namedIds(`${f.id} ${f.message}`, { qualified: false })) {
     if (written.startsWith('central:') || /^[RQDST]\d+$/.test(written)) continue;
     let name = written;

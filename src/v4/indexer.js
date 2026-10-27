@@ -246,7 +246,8 @@ export function declaredNow(top, state, was = null) {
     ...[...state.requests.values()].filter((r) => checkedNow(r, was)).map((r) => ({ request: r.name, ids: new Set(r.paras.keys()), paragraphs: [...r.paras.values()].filter((p) => p.id) })),
     ...state.adrList.map((a) => ({ request: null, ids: new Set(), paragraphs: a.paragraphs.filter((p) => p.id) })),
   ];
-  const keys = new Set(linksOf(top, { docs, requests: state.requests }, state.config, false).map(tripleKey));
+  const requests = new Map([...state.requests].map(([n, r]) => [n, !r.open && checkedNow(r, was) ? { ...r, open: true } : r]));
+  const keys = new Set(linksOf(top, { docs, requests }, state.config, false).map(tripleKey));
   return (b) => keys.has(tripleKey(b));
 }
 

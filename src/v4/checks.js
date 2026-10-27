@@ -589,13 +589,13 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // The rules that block (#238): unsigned requirements, record evidence,
   // unreadable records and citations of superseded ADRs.
   notKnown.push(...recordBlocks(top, now, add, skip));
-  supersededBlocks(top, now, add);
+  supersededBlocks(top, now, add, was);
 
   // Phrases for the review (issue-hints R2), and with --issues <folder> the
   // hints from the work items that the caller saved (issue-hints R1); without
   // it, no item is read and nothing is added.
-  phraseFindings(top, now, phrases, add);
-  if (issues) notKnown.push(...issueHints(top, now, phrases, add, issues, skip));
+  phraseFindings(top, now, phrases, add, was);
+  if (issues) notKnown.push(...issueHints(top, now, phrases, add, issues, skip, was));
 
   // Results (design.md 9): whether each one applies to the current text. The
   // commits they ran at are looked up in one batch.
