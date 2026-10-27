@@ -200,9 +200,13 @@ test('check --full, ADR-4 with a source: link (adr-governs decided): the governe
 test('check --full: nothing else is added to the map; with the mark taken back from the governed line, the map equals the control map', (t) => {
   const marked = review(t, 'adr-governs-nosource');
   const plain = review(t, 'adr-governs', 'decided');
-  const ls = mapBlock(lines(marked));
+  // The two worlds have different bases, and the map header names the base
+  // (#110: the PR's own concluded request link-wording makes the header), so
+  // the base hash is taken out of both maps.
+  const noBase = (ls) => ls.map((l) => l.replace(/^(map: the change against its base )[0-9a-f]{7}\b/, '$1<base>'));
+  const ls = noBase(mapBlock(lines(marked)));
   assert.ok(ls.includes(GOVERNED_NO_SOURCE), show(marked));
-  assert.deepEqual(ls.map((l) => (l === GOVERNED_NO_SOURCE ? GOVERNED : l)), mapBlock(lines(plain)), `${show(marked)}\n${show(plain)}`);
+  assert.deepEqual(ls.map((l) => (l === GOVERNED_NO_SOURCE ? GOVERNED : l)), noBase(mapBlock(lines(plain))), `${show(marked)}\n${show(plain)}`);
 });
 
 test("al check in the same world: its adr-governs line has no '; ADR-4 has no source:' ending, and ADR-4 gets adr-links (no source:)", (t) => {

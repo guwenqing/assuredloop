@@ -535,6 +535,12 @@ describe('LD-11: a closed item and an archived request are judged by what held w
     editRecord(w.dir, NAME, (rec) => { rec.status = 'concluded'; });
     move(w.dir, `requests/${NAME}`, `requests/archive/${NAME}`);
     commitAll(w.dir, 'archive the request');
+    // feature is merged into main, and the branch next starts there, so the
+    // request is archived at the base (#110: a request that the branch
+    // itself concludes is checked).
+    git(w.dir, 'checkout', '-q', 'main');
+    git(w.dir, 'merge', '-q', '--ff-only', 'feature');
+    git(w.dir, 'checkout', '-q', '-b', 'next');
     saveItem(w, 5, { body: 'Build the export as JSON.\n' });
     const r = check(w, ...ISSUES);
     assert.notEqual(r.code, 2, show(r));
