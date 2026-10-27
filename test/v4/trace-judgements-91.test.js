@@ -377,11 +377,18 @@ describe('issue-changed judgements: al context does not read the work items', ()
 
 describe('the other cases: an archived request, --at, an entry with no hint code or no --on', () => {
   test('an archived request: "recorded; not checked: the request is archived"', (t) => {
+    // world() makes inv on the branch feature. It is judged and archived
+    // there, and feature is merged into main, so inv is archived at the
+    // base of the next branch (#107: a request that the branch itself
+    // concludes is still checked).
     const dir = world(t);
     judge(dir, 'promise-kind', 'inv/SP-2', WHY);
     editRecord(dir, NAME, (rec) => { rec.status = 'concluded'; });
     move(dir, `requests/${NAME}`, `requests/archive/${NAME}`);
     commitAll(dir, 'archive inv');
+    git(dir, 'checkout', '-q', 'main');
+    git(dir, 'merge', '-q', '--no-ff', '-m', 'Merge the branch feature', 'feature');
+    git(dir, 'checkout', '-q', '-b', 'next');
     const r = audit(dir);
     hasJudgement(r, dir, 1, 'recorded; not checked: the request is archived');
   });
