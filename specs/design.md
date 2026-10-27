@@ -173,7 +173,7 @@ lines. The check flags a marker with no blank line after it.
   interface, data, flow, choice) is consolidated. Why: the OpenSpec replay
   found delivered design that belongs to its change only.
 
-<!-- DES-16 definition serves:assuredloop-v4/R2,assuredloop-v4/R8,design-links/R1 -->
+<!-- DES-16 definition serves:assuredloop-v4/R2,assuredloop-v4/R8,link-hints/R1 -->
 
 **Links:**
 - `serves R<n>`: a promise or design paragraph, to the requirement;
@@ -239,7 +239,7 @@ semantic coverage as "not checked".
   incomplete (only about 60% of commits named an issue, Rath et al., ICSE
   2018).
 
-<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,design-links/R1,adr-links/R1,hints-and-blocks/R2,issue-hints/R1,issue-hints/R2,applied-promise/R1 -->
+<!-- DES-22 rule serves:assuredloop-v4/R2,assuredloop-v4/R11,promise-design-split/R1,delete-in-change-spec/R1,link-hints/R1,adr-links/R1,hints-and-blocks/R2,issue-hints/R1,issue-hints/R2,applied-promise/R1 -->
 
 **What the script checks** (no AI):
 - A paragraph with no ID: a hint. A promise or design paragraph with no kind
@@ -304,6 +304,30 @@ semantic coverage as "not checked".
 - The exit code is 0 by default, even when `not ok` lines print. Under
   `--strict`, the exit is 1 when any `not ok` prints. No finding changes
   severity with the mode.
+
+<!-- DES-165 rule serves:link-hints/R1 builds-on:DES-22,DES-37 -->
+
+**A signed requirement with no declared paragraph link.** Each requirement
+R<n> of an open request's current version that is signed gets the hint
+`no-paragraph-link` while no paragraph of `specs/` serves it, no accepted ADR
+decides it, and no promise or design paragraph of an open change spec serves
+it. In `specs/` these are the declared links of item 2 of the close rule
+(section 5), read by the same rule. A current close line on the requirement
+clears the hint, as it clears item 2; a stale one does not, and the hint
+names it. The hint says that the link is missing, never that the
+requirement has no code or test. It shows the known direct links, each with
+the limit of its evidence: an `approach` or another paragraph of an open
+change spec that serves it and is no promise or design; an ADR that decides
+it and is not accepted; a declared `verifies` output; and each file that
+cites `<name>/R<n>`, as `al context <name>/R<n>` shows them. When none is
+known, it says so. The message names each link by its ID or its file and
+holds no line number; the places of its IDs and the citing line numbers
+follow it, outside it. A judgement (below) keeps the message, so it goes
+stale when a link or a citing file comes or goes, and not when a linked
+paragraph or a citing line only moves. A
+requirement whose sign-off is not checked gets no hint, and the Not known
+line names it. An unsigned requirement, a spike's question and a
+requirement of an archived request get no hint.
 
 <!-- DES-163 rule serves:hints-and-blocks/R2,adr-rewrite/R1 builds-on:DES-22 -->
 
@@ -423,7 +447,7 @@ Why: the change's design must honor "the existing consolidated design"
 input 25). A link is only useful if it remembers what the target said when
 the link was made.
 
-<!-- DES-26 rule serves:assuredloop-v4/R6,design-links/R1,removed-links/R1,removed-links/R2 -->
+<!-- DES-26 rule serves:assuredloop-v4/R6,link-hints/R1,removed-links/R1,removed-links/R2 -->
 
 - A change paragraph that relies on a spec paragraph says `builds on <ID>`.
   One that replaces it says `changes <ID>`: a reference, with no copy of the

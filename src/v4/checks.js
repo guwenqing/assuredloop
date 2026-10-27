@@ -12,7 +12,8 @@ import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  adrParagraph, hasBaselineEffect, isPromise, loadState, named, placeOf, qualify, replaceLinks, requestOf, resolve, servesSigned, servesUnknown,
+  adrParagraph, hasBaselineEffect, isPromise, loadState, named, placeOf, placeOfTarget, qualify, replaceLinks, requestOf, resolve, servesSigned,
+  servesUnknown, signed, unknownBy,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
 import { LINK_WORDS, groupOf, markerLines, onlyLinksAdded, sameBlocks } from './markers.js';
@@ -22,6 +23,8 @@ import { phraseFindings } from './phrases.js';
 import { issueHints } from './issues.js';
 import { ownEdit } from './map.js';
 import { consolidations } from './evidence.js';
+import { closeLines, declaredLink } from './close.js';
+import { citeScan, citingFiles } from './views.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
 
@@ -146,7 +149,8 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // A finding about what a marker holds (a link, a task) names the marker
   // line, the place of the problem.
   const markerOf = (p) => `${p.file}:${p.line}`;
-  const add = (severity, code, p, id, message) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message });
+  // `more` holds a finding's other fields, such as the `tail` printed after its message.
+  const add = (severity, code, p, id, message, more = {}) => findings.push({ severity, code, where: typeof p === 'string' ? p : at(p), id, message, ...more });
   // The checks that did not run in full, for the ok line (LD-41).
   const skipped = new Set();
   const skip = (...codes) => codes.forEach((c) => skipped.add(c));
@@ -310,6 +314,69 @@ export function checks(top, { base, phrases = [], issues = null }) {
         add('hint', 'design-link', markerOf(p), `${r.name}/${p.id}`, `serves ${k}, but links to none of its promise paragraphs in this change spec (${ids.join(', ')}): which promise does it keep?`);
       }
     }
+  }
+
+  // A signed requirement of an open request with no declared paragraph link
+  // (LD-49, link-hints/R1): no paragraph of specs/ serves it and no accepted
+  // ADR decides it (item 2 of the close rule, declaredLink), and no promise or
+  // design paragraph of an open change spec serves it. A current close line
+  // clears it, as it clears item 2. The hint shows the known direct links,
+  // each with the limit of its evidence, by ID or file only: the places of the
+  // IDs (LD-47) and the citing line numbers follow the message, so a
+  // judgement does not go stale when a link or a citing line only moves.
+  const designs = open.flatMap((o) => [...o.paras.values()].map((p) => ({ p, o, own: new Set(o.paras.keys()) })));
+  const servesKey = ({ p, o, own }, key) => p.links.serves.some((ref) => qualify(self(ref), o.name, own).key === key);
+  const holds = (p) => isPromise(now, p.kind) || (p.kind !== 'approach' && groupOf(p.kind, now.kinds) === 'design');
+  const unlinked = [];
+  for (const r of open) {
+    const lines = new Map(closeLines(now, r).map((c) => [String(c.e.on), c]));
+    for (const q of r.reqs.filter((x) => /^R\d+$/.test(x.id))) {
+      const key = `${r.name}/${q.id}`;
+      if (lines.get(q.id)?.current || declaredLink(now, key) || designs.some((d) => holds(d.p) && servesKey(d, key))) continue;
+      if (signed(now, r.name, q.id)) unlinked.push({ r, q, key, close: lines.get(q.id) });
+      else if (unknownBy(now, r.name, q.id)) {
+        notKnown.push(`whether ${key} has a declared paragraph link matters: its sign-off is not checked`);
+        skip('no-paragraph-link');
+      }
+    }
+  }
+  // One pass of the cite finder for all of them.
+  const cites = unlinked.length ? citeScan(now, unlinked.map((u) => u.key)) : { found: [], unread: [] };
+  const an = (word) => (/^[aeiou]/.test(word) ? 'an' : 'a');
+  for (const { r, q, key, close } of unlinked) {
+    const links = [];
+    for (const d of designs.filter((x) => !holds(x.p) && servesKey(x, key))) {
+      const who = `${d.o.name}/${d.p.id} serves it`;
+      if (d.p.kind === 'approach') links.push(`approach ${who}, and an approach is not a design and is never in force`);
+      else if (d.p.kind) links.push(`${d.p.kind} ${who}, and ${an(d.p.kind)} ${d.p.kind} paragraph is not a promise or design paragraph`);
+      else links.push(`paragraph ${who}, and a paragraph with no kind is not a promise or design paragraph`);
+    }
+    for (const a of now.adrList.filter((x) => x.status !== 'accepted' && (x.head?.links.decides ?? []).some((s) => qualify(s, null).key === key))) {
+      const status = a.status ?? 'no status';
+      links.push(a.status ? `${status} ${a.id} decides it, and ${an(status)} ${status} ADR is not in force`
+        : `${a.id} decides it, and an ADR with no status is not in force`);
+    }
+    for (const o of now.requests.values()) {
+      for (const out of (Array.isArray(o.data?.outputs) ? o.data.outputs : [])) {
+        if (![].concat(out?.verifies ?? []).some((t) => String(t).replace(/^central:/, '') === key)) continue;
+        const file = out.repo && out.repo !== now.config.repo ? `${out.repo}/${out.file}` : out.file;
+        links.push(`declared output ${file} verifies it, and a declared output is a claim, never shown as proven`);
+      }
+    }
+    // A citation may be written `central:<name>/R<n>`; al context <name>/R<n> counts it too.
+    const files = citingFiles(now, cites.found.filter((c) => c.ids.some((id) => id.replace(/^central:/, '') === key)));
+    if (files.length) {
+      links.push(`cited in ${files.map((f) => `${f.past ? 'historical' : 'current'} ${f.file}`).join(', ')}, `
+        + 'and a citation is not evidence that the code or the test does what the requirement says');
+    }
+    const unread = cites.unread.length ? `not known: ${cites.unread.join('; ')}` : '';
+    const known = links.length ? ` Known direct links, each with the limit of its evidence: ${links.join(' · ')}${unread ? `; ${unread}` : ''}.`
+      : ` Known direct links: none known${unread ? ` in the files that were read; ${unread}` : ''}.`;
+    const message = `${key} has no declared paragraph link: no paragraph of specs/ and no promise or design paragraph of an open change spec serves it, `
+      + `and no accepted ADR decides it.${known} Link it, record where it is met (al record ${r.name} close --on ${q.id} --reason <why>), `
+      + `or judge it (al record ${r.name} judgement --hint no-paragraph-link --on ${key} --reason <why>)${close ? `; close line ${close.e.id} is stale` : ''}`;
+    const tail = files.length ? ` · cited lines: ${files.map((f) => `${f.file} ${f.at.map(([n]) => n).join(', ')}`).join('; ')}` : '';
+    add('hint', 'no-paragraph-link', placeOfTarget(now, qualify(key, null)) ?? `${r.dir}/request.md`, key, message, { tail });
   }
 
   // Requirements that replace a requirement of another request (LD-68).

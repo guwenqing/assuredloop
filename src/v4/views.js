@@ -210,7 +210,9 @@ function taskPrs(state, r) {
 // The findings of al check that concern request `name`.
 const hintsFor = (findings, name) => findings.filter((f) => f.severity !== 'info'
   && (f.id === name || f.id.startsWith(`${name}/`) || f.message.includes(`${name}/`)));
-const findingLine = (f, places = '') => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}${places}`;
+// A finding's `tail`, such as the cited lines of no-paragraph-link, follows
+// its message and is not part of it, so a judgement does not keep it.
+const findingLine = (f, places = '') => `${f.severity} ${f.code} ${f.where} ${f.id} ${f.message}${f.tail ?? ''}${places}`;
 
 // After a finding's message, the place of each other ID that it shows
 // (LD-47): each ID in the message that al knows in `now`, or else at the
@@ -555,36 +557,52 @@ const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 // `.assuredloop/` left out and only the lines that `counts` takes: one line
 // for each file, with the count and every line number, so that no place is
 // left out (light-resign/R1, LD-19); with `full`, each citing line's text.
-// Historical: under requests/archive/, in an origin/ snapshot or in a
-// superseded ADR; else current. Current files come first, each group by path.
 function citedLines(state, ids, { counts = () => true, full = false } = {}) {
-  const old = new Set(state.adrList.filter((a) => a.status === 'superseded').map((a) => a.file));
-  const byFile = new Map();
-  // A file that git cannot read may cite it: a limit, never "nowhere".
+  const { found, unread } = citeScan(state, ids);
+  const out = [];
+  for (const { file, past, at } of citingFiles(state, found.filter(counts))) {
+    out.push(line('Cited', `${past ? 'historical' : 'current'} ${file}: ${at.length} line${at.length === 1 ? '' : 's'}: ${at.map(([n]) => n).join(', ')}`));
+    if (full) out.push(...at.map(([n, text]) => `  ${file}:${n}: ${text}`));
+  }
+  if (!out.length) out.push(line('Cited', unread.length ? 'nowhere in the files that were read' : 'nowhere'));
+  return [...out, ...unread.map((m) => line('Cited', `not known: ${m}`))];
+}
+
+// One pass of the cite finder for `ids`: each line that names one of them,
+// as { file, line, text, ids }, with `.assuredloop/` left out; and, in
+// `unread`, git's message for each file that it could not read (a file that
+// git cannot read may cite it: a limit, never "nowhere").
+export function citeScan(state, ids) {
   const unread = [];
   const known = new Set(ids);
   // The marker lines that al parsed as paragraphs' markers: on such a line
   // its own ID is no citation, and the IDs of its links are. Any other line,
   // fenced code and other files too, cites what it names.
   const markers = new Set([...state.scopes.values()].flat().concat(state.adrList.flatMap((a) => a.paragraphs)).map((p) => `${p.file}:${p.line}`));
-  for (const found of findCites(state.top, state.rev ?? null, { qualified: false, known, exclude: ['.assuredloop', 'node_modules'], errors: unread })) {
-    const text = markers.has(`${found.file}:${found.line}`) ? found.text.replace(DECLARED, '$1') : found.text;
-    const c = { ...found, ids: namedIds(text, { qualified: false, known }) };
-    if (!c.ids.length || !counts(c)) continue;
+  const found = [];
+  for (const f of findCites(state.top, state.rev ?? null, { qualified: false, known, exclude: ['.assuredloop', 'node_modules'], errors: unread })) {
+    const text = markers.has(`${f.file}:${f.line}`) ? f.text.replace(DECLARED, '$1') : f.text;
+    const c = { ...f, ids: namedIds(text, { qualified: false, known }) };
+    if (c.ids.length) found.push(c);
+  }
+  return { found, unread };
+}
+
+// The citing lines `found` by file: [{ file, past, at: [[line, text]] }].
+// Historical (`past`): under requests/archive/, in an origin/ snapshot or in
+// a superseded ADR; else current. Current files come first, each group by path.
+export function citingFiles(state, found) {
+  const old = new Set(state.adrList.filter((a) => a.status === 'superseded').map((a) => a.file));
+  const byFile = new Map();
+  for (const c of found) {
     if (!byFile.has(c.file)) byFile.set(c.file, new Map());
     byFile.get(c.file).set(c.line, c.text);
   }
   const past = (file) => file.startsWith('requests/archive/') || /^requests\/[^/]+\/origin\//.test(file) || old.has(file);
   const order = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
   const files = [...byFile.keys()].sort(order);
-  const out = [];
-  for (const file of [...files.filter((f) => !past(f)), ...files.filter(past)]) {
-    const at = [...byFile.get(file)].sort(([a], [b]) => a - b);
-    out.push(line('Cited', `${past(file) ? 'historical' : 'current'} ${file}: ${at.length} line${at.length === 1 ? '' : 's'}: ${at.map(([n]) => n).join(', ')}`));
-    if (full) out.push(...at.map(([n, text]) => `  ${file}:${n}: ${text}`));
-  }
-  if (!out.length) out.push(line('Cited', unread.length ? 'nowhere in the files that were read' : 'nowhere'));
-  return [...out, ...unread.map((m) => line('Cited', `not known: ${m}`))];
+  return [...files.filter((f) => !past(f)), ...files.filter(past)]
+    .map((file) => ({ file, past: past(file), at: [...byFile.get(file)].sort(([a], [b]) => a - b) }));
 }
 
 // The paragraphs of the open requests whose links name `matches` (a key, as
