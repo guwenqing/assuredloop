@@ -23,7 +23,17 @@ signoff:
     transcribed_by: assuredloop/architect
     covers:
       - { id: R10, version: 1, sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da }
-decisions: []
+decisions:
+  - id: D1
+    date: 2026-10-27
+    source: the agent (architect)
+    text: "The llama.cpp runtime is installed by the user, as a peer: al finds llama-server on PATH and never downloads it, so level2-peer/R1 holds as signed. llama-server fetches the GGUF file of a row from its pinned commit into its own place. al checks the file's size on every run and its SHA-256 once, with a record of its checks in its index folder; another build than b11624 still runs, with a note."
+    sha256: 331c896fad79260ef46cc92a25628523d7c7950ff85e54d39094f2d3d0bc0523
+  - id: D2
+    date: 2026-10-27
+    source: the agent (architect)
+    text: The recommendation keeps only the rows whose measured time for one search is at most 10 s, the same bound as al check at 1,000 requests, before it takes the smallest download within 0.05 of the best recall. The time of a reranker recurs at each search. When the bound removes the row that would be recommended, the recommendation names it, with its gain and its time.
+    sha256: 021f5fbf6b584d0dea31c638e532271a944cd7c150739556b24b786fcf973c00
 tasks: []
 bindings:
   - { holder: kb-search/R10, link: from, target: kb-search/2026-10-27-owner-words.md, holder_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_sha256: a810f4a6f20b2323facb83139f98c514649dab647ff315920acf52c661ced172 }
