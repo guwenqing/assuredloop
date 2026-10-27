@@ -339,7 +339,8 @@ decides a hint, and its decision is recorded where the next review finds it.
   moves only the holder side. The target side stays the version from when
   the change linked it, which the map and `al conclude` read (DES-160). A
   judgement on its `stale-base` keeps the target's version of now in
-  `judged_target_sha256`, which only `stale-base` reads.
+  `judged_target_sha256`, which only `stale-base` reads: it compares the
+  target with that version only, and a later judgement keeps it.
 - A judgement on `binding-unknown` binds each link of that holder whose
   binding is unknown, in the record of `<name>`. For a `changes` or
   `removes` link of a change paragraph, the target takes its text at the
