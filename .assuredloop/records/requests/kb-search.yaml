@@ -23,7 +23,17 @@ signoff:
     transcribed_by: assuredloop/architect
     covers:
       - { id: R10, version: 1, sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da }
-decisions: []
+decisions:
+  - id: D1
+    date: 2026-10-27
+    source: the agent (architect)
+    text: "The llama.cpp runtime is installed by the user, as a peer: al finds llama-server on PATH and never downloads it, so level2-peer/R1 holds as signed. llama-server fetches the GGUF file of a row from its pinned commit into its own place. al checks the file's size on every run and its SHA-256 once, with a record of its checks in its index folder; another build than b11624 still runs, with a note."
+    sha256: 331c896fad79260ef46cc92a25628523d7c7950ff85e54d39094f2d3d0bc0523
+  - id: D2
+    date: 2026-10-27
+    source: the agent (architect)
+    text: The recommendation keeps only the rows whose measured time for one search is at most 10 s, the same bound as al check at 1,000 requests, before it takes the smallest download within 0.05 of the best recall. The time of a reranker recurs at each search. When the bound removes the row that would be recommended, the recommendation names it, with its gain and its time.
+    sha256: 021f5fbf6b584d0dea31c638e532271a944cd7c150739556b24b786fcf973c00
 tasks: []
 bindings:
   - { holder: kb-search/R10, link: from, target: kb-search/2026-10-27-owner-words.md, holder_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_sha256: a810f4a6f20b2323facb83139f98c514649dab647ff315920acf52c661ced172 }
@@ -35,13 +45,20 @@ bindings:
   - { holder: DES-63, link: serves, target: kb-search/R10, holder_sha256: 8172772664da028db32f2b7ce58ab201c19c676a12b6c5f5e461365f3294053d, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
   - { holder: DES-64, link: serves, target: kb-search/R10, holder_sha256: 6c127b47df55e406a1dd4b7c2cefaeebb31718b0a05dd8793397bea824ebc760, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
   - { holder: DES-87, link: serves, target: kb-search/R10, holder_sha256: 5d82ca914bc5bf1b7b933156077f8415189fd0f19ecb837d7a0c2c25f8b874d6, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
-  - { holder: DES-65, link: serves, target: kb-search/R10, holder_sha256: 9916b9dd076a62305327fb3219772df412c9b868b95cf79542d499674d0ed5e7, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
+  - { holder: DES-65, link: serves, target: kb-search/R10, holder_sha256: e5269d5dc0bc16d094675a8edef362811e724ff938d258af828c71dc6fea8c9c, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1, judgement: J2 }
   - { holder: DES-88, link: serves, target: kb-search/R10, holder_sha256: acc39ce9616e38a43100260c3cf8d9906f41aeaadd8fdcfd28a27452cc419145, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
   - { holder: DES-80, link: serves, target: kb-search/R10, holder_sha256: 514ab16f8f7814aa962fef98d68374664c214e23034c4cc82349ccdd33b4c282, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
-  - { holder: DES-166, link: serves, target: kb-search/R10, holder_sha256: e61c131f6df5817a693ce1b8c295ba7bd3fc0f6bde2ab7a341e1975546b24818, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1, judgement: J1 }
-  - { holder: DES-166, link: builds-on, target: DES-65, holder_sha256: e61c131f6df5817a693ce1b8c295ba7bd3fc0f6bde2ab7a341e1975546b24818, target_sha256: 9916b9dd076a62305327fb3219772df412c9b868b95cf79542d499674d0ed5e7, judgement: J1 }
+  - { holder: DES-166, link: serves, target: kb-search/R10, holder_sha256: ac6f3dbb159f2ea99eb74f230a8368bbe41782754e67fa5430555d98449c05d0, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1, judgement: J3 }
+  - { holder: DES-166, link: builds-on, target: DES-65, holder_sha256: ac6f3dbb159f2ea99eb74f230a8368bbe41782754e67fa5430555d98449c05d0, target_sha256: e5269d5dc0bc16d094675a8edef362811e724ff938d258af828c71dc6fea8c9c, judgement: J3 }
   - { holder: SCH-28, link: serves, target: kb-search/R10, holder_sha256: 045f78768eec0bf27045cf3e0b737358f5b708672e5af7947061e86a2d10edd2, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
   - { holder: SCH-41, link: serves, target: kb-search/R10, holder_sha256: 2bf77a5b123e690685c0d2c7aefc76c3d327727510e5f64362b7d6deec2943ed, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
-  - { holder: SCH-41, link: builds-on, target: DES-65, holder_sha256: 2bf77a5b123e690685c0d2c7aefc76c3d327727510e5f64362b7d6deec2943ed, target_sha256: 9916b9dd076a62305327fb3219772df412c9b868b95cf79542d499674d0ed5e7 }
+  - { holder: SCH-41, link: builds-on, target: DES-65, holder_sha256: 2bf77a5b123e690685c0d2c7aefc76c3d327727510e5f64362b7d6deec2943ed, target_sha256: e5269d5dc0bc16d094675a8edef362811e724ff938d258af828c71dc6fea8c9c, judgement: J4 }
+  - { holder: DES-167, link: serves, target: kb-search/R10, holder_sha256: 4d4450d45e4ee5dbd087c228b2f12577455d30ee46622adafe327f053c9bbdd5, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
+  - { holder: DES-167, link: builds-on, target: DES-65, holder_sha256: 4d4450d45e4ee5dbd087c228b2f12577455d30ee46622adafe327f053c9bbdd5, target_sha256: e5269d5dc0bc16d094675a8edef362811e724ff938d258af828c71dc6fea8c9c }
+  - { holder: DES-168, link: serves, target: kb-search/R10, holder_sha256: 35f0942a6acd187112b20c54a415bf61334f29e0874fcd103460d5c46c5128ee, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
+  - { holder: DES-168, link: builds-on, target: DES-65, holder_sha256: 35f0942a6acd187112b20c54a415bf61334f29e0874fcd103460d5c46c5128ee, target_sha256: e5269d5dc0bc16d094675a8edef362811e724ff938d258af828c71dc6fea8c9c }
 judgements:
   - { id: J1, hint: holder-changed, on: DES-166, reason: "DES-166 still serves kb-search/R10 and builds on DES-65: the later edit in this change only says that no figure of a row comes from a run of al, as the word-index speed comes from the scale run.", recorded: 2026-10-27T16:52Z }
+  - { id: J2, hint: holder-changed, on: DES-65, reason: "DES-65 still serves kb-search/R10: its edit adds the reranker row to the setting table, names llama.cpp as the second runtime of level 2, and drops the not-yet refusal now that every measured row runs.", recorded: 2026-10-27T18:13Z }
+  - { id: J3, hint: holder-changed, on: DES-166, reason: "DES-166 still serves kb-search/R10 and builds on DES-65: its edit drops the not-yet state, adds that a llama.cpp row is offered on macOS arm64 only, and adds the 10 s bound to the recommendation (decision D2).", recorded: 2026-10-27T18:13Z }
+  - { id: J4, hint: stale-base, on: SCH-41, reason: "SCH-41 still builds on DES-65: the four forms of the setting are unchanged; DES-65 only adds the reranker row kind and the llama.cpp runtime.", recorded: 2026-10-27T18:13Z }

@@ -874,7 +874,7 @@ code tests do not prove them.
 <!-- LD-32 plan -->
 
 One setting, `search`, which the user chooses. The dashed list after the
-choices holds the rules chosen for the build (#99).
+choices holds the rules chosen for the build (#99, #100).
 
 1. `own`: the team's knowledge base, named as an MCP server or a skill.
    `al export` gives it `al`'s rows: each paragraph version with its role,
@@ -882,22 +882,48 @@ choices holds the rules chosen for the build (#99).
 2. `local`: word search alone, or word search with one row of the measured
    table that the user names (DES-166): a model, a precision and a runtime
    measured for the offer, each with its figures and its published score.
-   The model's library downloads the chosen model on first use; before it,
+   A row is an embedding model, or a reranker of the word-search top 30.
+   The row's runtime downloads the chosen model on first use; before it,
    `al` writes the row and its download size to standard error. Without the
-   model library, `al search`
-   answers with word search and says how to add it.
+   runtime, `al search` answers with word search and says how to add it.
 3. `none`: no search; the skill tells the AI to grep.
 
 - The setting is `search:` in the committed `.assuredloop/config.yaml`:
   `none`, `local`, `{local: <row>}` or `{own: <name>}` (SCH-41). `al search`
   reads it from the working tree.
-- Any other form, a name that is no row, a row that this version cannot run
-  yet and an excluded row: `al search` refuses with exit 2 and the rows
-  that it runs.
+- Any other form, a name that is no row and an excluded row: `al search`
+  refuses with exit 2 and the rows that it runs.
 - A set row that does not fit this computer still runs (every choice
   works), and a `Not known` line says what it needs and what the computer
   has.
 - `--level` may lower the level; `--level 2` with `local` is refused.
+- The llama.cpp rows run in `llama-server`, which the user installs; `al`
+  finds it on PATH and never downloads it. Another build than the measured
+  b11624 still runs, and a `Not known` line says that its figures may
+  differ from the measured ones. Without `llama-server`, the answer is word
+  search, with a line that says how to add llama.cpp.
+- A llama.cpp row is offered on macOS arm64 only, where it was measured.
+  Elsewhere it is listed as not fit, with that reason; a setting that names
+  it answers with word search, with the reason, and is not refused.
+- `al` starts one `llama-server` for one `al search`, on a free port of
+  127.0.0.1, with the measured arguments (`--cache-ram 0` among them), and
+  stops it when the search ends or fails. It waits at most 120 s for the
+  server to be ready, counted from the time the model file is complete.
+- The model file's place is llama-server's own: `LLAMA_CACHE`, else
+  `~/Library/Caches/llama.cpp`, with the file's name. When it is absent,
+  `llama-server` fetches it from its pinned commit (`-mu`). When it is
+  present, `llama-server` gets only the place, and makes no network call.
+- `al` checks the file before it uses it: its size on every run, and its
+  SHA-256 against the pinned one once for each file. A record of these
+  checks (place, size, modification time and the SHA-256 found) is kept in
+  `al`'s index folder; a changed size or time hashes the file again. A file
+  whose size or SHA-256 differs gives word search, and the `Fallback` line
+  names the file, its place, and what was expected and found. `al` deletes
+  nothing in llama-server's place.
+- A reranker row scores the word-search top 30 as it was measured: with its
+  rerank head where its file has one, else from P(yes) / (P(yes) + P(no)) of
+  the next token. Its order replaces the order of those 30; exact ID hits
+  stay first, and `--limit` cuts after. It builds no index.
 
 <!-- LD-64 plan -->
 

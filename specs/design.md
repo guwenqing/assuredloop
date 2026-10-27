@@ -1619,7 +1619,7 @@ and CI read the same choice.
 | `none` | No search: it says so; the agent reads the files (grep). | 0 for the agent; `al` searches nothing |
 | `{own: <name>}` | The team's own knowledge base, an MCP server or a skill: it names it and says to ask it. `al export` gives it `al`'s rows. | the team's |
 | `local` | Local full text: `al export` into an index, with the ID in its own exact column, and one row for each file. | 1 |
-| `{local: <row>}` | Level 1 plus one row of the measured table: an embedding model; vectors stored beside the text; word and vector results fused; the same roles and queries. | 2 |
+| `{local: <row>}` | Level 1 plus one row of the measured table: an embedding model, with vectors stored beside the text and word and vector results fused; or a reranker of the word-search top 30. The same roles and queries. | 2 |
 | (later) | Mixed: the local index of level 2, with embeddings from a hosted service, preferably on Google Cloud; a hosted shared index may follow. | 3, future |
 
 - No setting is a default (LD-64). Until the setting is there, `al search`
@@ -1630,14 +1630,14 @@ and CI read the same choice.
 - Every choice works; a choice changes only the strength. Every level keeps
   exact-ID lookup, the roles, the commit identity and the history scope.
   `--level` may ask for a lower level; `--level 2` with `local` is refused.
-- A wrong form of the setting, a row not in the table, a row that this
-  version cannot run yet and an excluded row are refused (exit 2), with the
-  rows that it runs.
+- A wrong form of the setting, a row not in the table and an excluded row
+  are refused (exit 2), with the rows that it runs.
 - Level 1 needs no new dependency. It lives in `al` itself, as `al search`,
   and stays deterministic and offline. Without `node:sqlite` with FTS5 it
   scans the export (level 0), and says which level answered.
-- Level 2 is optional: its library is installed by the user (DES-80).
-  Without the library, `al search` answers at level 1, and a `Not known`
+- Level 2 is optional: its runtime is installed by the user, the library
+  for a transformers.js row (DES-80) and llama.cpp for a llama.cpp row.
+  Without the runtime, `al search` answers at level 1, and a `Not known`
   line says how to add it. A set row that does not fit this computer still
   runs, and a `Not known` line says what it needs and what the computer has.
 - The only data that leaves the machine is the model download. Before it,
@@ -1677,6 +1677,29 @@ npm installs it only when the user asks:
 that the setting names: its model repo pinned by its commit, with the row's
 precision and device, embedded as the row was measured.
 
+<!-- DES-167 component serves:kb-search/R10 builds-on:DES-65 -->
+
+**The llama.cpp runtime.** A llama.cpp row runs in `llama-server` of
+llama.cpp, which is not our code and no package of ours. The user installs
+it so that it is on PATH; `al` never downloads it. The rows were measured
+with release b11624 on macOS arm64, with the Metal GPU and in one
+configuration with the CPU only. `al` starts one server for one `al search`
+on 127.0.0.1, with the measured arguments, and stops it after. The GGUF
+model file is fetched by `llama-server` itself, from its commit as the
+table pins it, into llama-server's own place. `al` checks the file's size
+on every run and its SHA-256 against the table once, and keeps the record
+of these checks beside its index.
+
+<!-- DES-168 component serves:kb-search/R10 builds-on:DES-65 -->
+
+**The rerank method.** A reranker row reorders the word-search top 30, as
+the measurement did: it scores each of the 30 against the query, and its
+order replaces theirs. A file with a rerank head scores with the head; a
+file with none scores P(yes) / (P(yes) + P(no)) of the next token, from the
+model card's prompt with one fixed instruction. Exact ID hits stay first,
+and `--limit` cuts after. A reranker row builds no index; its time is spent
+at each search.
+
 <!-- DES-166 component serves:kb-search/R10 builds-on:DES-65 -->
 
 **The measured table and the recommendation.** The table in `al` holds each
@@ -1689,20 +1712,25 @@ the Metal GPU and the CPU) and the reranker rows. A row is named
   memory, the index speed, the time of one search, recall@10 with its 95%
   interval, the gain over word search with its interval, and a published
   score where there is one. No figure of a row comes from a run of `al`.
-- A row is in one state: it runs in this version and fits this computer;
-  it runs and does not fit; this version cannot run it yet (the llama.cpp
-  runtime and reranking, #100); or it is excluded, with the reason that the
-  measurement found.
+- A row is in one state: it fits this computer; it does not fit; or it is
+  excluded, with the reason that the measurement found. Every row that is
+  not excluded runs in this version.
 - It fits when the available memory is at least its peak memory plus 1 GB,
   the free disk at least its download plus its vectors (4 bytes × its
   dimension × the paragraphs to embed), and, for a Metal, WebGPU or CoreML
-  row, the computer is macOS on arm64. The available memory is the free,
+  row, the computer is macOS on arm64. A llama.cpp row is offered on macOS
+  arm64 only, where it was measured; elsewhere it does not fit, for that
+  reason alone. The available memory is the free,
   inactive, speculative and purgeable pages of `vm_stat` on macOS, and
   `os.freemem` elsewhere.
 - The recommendation, from code with no model: of the rows that this `al`
-  runs and that fit, keep those whose gain has its interval above zero; of
-  those within 0.05 of the best recall, recommend the smallest download.
-  When none is left, recommend `local`. `al` never recommends `own` or
+  runs and that fit, keep those whose gain has its interval above zero;
+  keep only those whose measured time for one search is at most 10 s, the
+  same bound as `al check` at 1,000 requests; of those within 0.05 of the
+  best recall, recommend the smallest download. When none is left,
+  recommend `local`. When the bound removes the row that would be
+  recommended without it, the recommendation names that row, its gain and
+  its time for one search. `al` never recommends `own` or
   `none`; the skill asks about a knowledge base first.
 - With no setting, the answer names each of the rows once: one line for
   each row that fits, then the others grouped by state with their reasons;
