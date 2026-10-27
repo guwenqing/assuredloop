@@ -70,7 +70,11 @@ export function judgementsInOrder(r, dir, name = NAME) {
   const at = ls.map((l, i) => (l.startsWith('Judgement ') ? i : -1)).filter((i) => i >= 0);
   assert.deepEqual(at.map((i) => ls[i].split(' ')[1]), ids, `one Judgement line for each entry, in record order:\n${show(r)}`);
   const lastBinding = ls.map((l, i) => (l.startsWith('Binding   ') ? i : -1)).filter((i) => i >= 0).pop();
-  assert.ok(lastBinding !== undefined, `the trace has Binding lines:\n${show(r)}`);
+  if (lastBinding === undefined) {
+    // No Binding line: right only when the record holds no binding.
+    assert.deepEqual(record(dir, name).bindings ?? [], [], `the record holds bindings, so the trace has Binding lines:\n${show(r)}`);
+    return;
+  }
   for (const i of at) assert.ok(i > lastBinding, `the Judgement lines come after the Binding lines:\n${show(r)}`);
 }
 
