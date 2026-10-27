@@ -247,6 +247,25 @@ export function onlyLinksAdded(was, now, kinds = KINDS) {
   return now.slice(0, start) + kept + now.slice(start + n[2].length) === was;
 }
 
+// parseMarkdown gives the same for the same text, file and kinds. al check
+// parses one doc many times: at the working tree and at the base, in al
+// index and in its checks. Those readers use parseMarkdownOnce, which parses
+// each once in a process (#101) and gives every reader the same paragraphs
+// and lints; no reader changes them. A reader of every version in history
+// (the export, the IDs ever used) uses parseMarkdown, so that no version is
+// kept after it is read.
+const parsed = new Map();
+const kindsKeys = new WeakMap();
+export function parseMarkdownOnce(text, file, options = {}) {
+  const kinds = options.kinds ?? KINDS;
+  if (!kindsKeys.has(kinds)) kindsKeys.set(kinds, JSON.stringify(kinds));
+  const key = `${file}\n${kindsKeys.get(kinds)}`;
+  if (!parsed.has(key)) parsed.set(key, new Map());
+  const byText = parsed.get(key);
+  if (!byText.has(text)) byText.set(text, parseMarkdown(text, file, options));
+  return byText.get(text);
+}
+
 export function parseMarkdown(text, file, options = {}) {
   const kinds = options.kinds ?? KINDS;
   const known = new Set(Object.values(kinds).flat());
