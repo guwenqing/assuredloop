@@ -154,7 +154,7 @@ describe('binding unknown: a judgement binds the unknown links of its holder', (
     assert.equal(b.holder_sha256, hashOf(dir, CS, 'SP-2'), 'the holder hash is its text of now');
     assert.equal(b.target_sha256, removedSha, `the target hash is INV-41's text at ${bound}`);
     const c = check(dir);
-    assert.deepEqual(checkUnknown(c).sort(), [UNKNOWN.sp3], show(c));
+    assert.deepEqual(checkUnknown(c).sort(), [UNKNOWN.sp1, UNKNOWN.sp3], `SP-1 is not judged here, so it stays unknown:\n${show(c)}`);
   });
 
   test('two judgements: one grouped info judged line, J1 then J2', (t) => {
