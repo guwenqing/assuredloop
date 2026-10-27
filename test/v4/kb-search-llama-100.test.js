@@ -18,9 +18,9 @@
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, statSync } from 'node:fs';
-import { delimiter, join } from 'node:path';
-import { commitAll, doc, project, write, writeConfig } from './helpers/project.js';
+import { existsSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { delimiter, join, resolve } from 'node:path';
+import { commitAll, doc, git, project, write, writeConfig } from './helpers/project.js';
 import { CONCEPTS, run, runOk, search, show, smallRepo } from './helpers/search.js';
 import {
   ALL_ROWS, BIG_MAC, EXCLUDED, INTEL_MAC, LINUX, LLAMA_ROWS, SMALL_MAC, fakeComputer, labelled, namedIn, noChoice, notOffered,
@@ -314,6 +314,13 @@ test(`#100 search: {local: ${FETCH_ROW}}, file absent: the Fetch line before lla
   assert.equal(statSync(s.place).size, file.bytes);
   assert.equal(s.fake.events('sigterm').length, 1, 'the server is stopped');
   noneLeft(s.fake);
+  // The next run refuses the kept file the same way, and starts no llama-server.
+  const again = runOk(dir, ['search', 'link'], s.opts);
+  assert.match(again.stdout.split('\n')[0], /^Level\s+1\b/, show(again));
+  const second = lineOf(again.stdout, 'Fallback');
+  for (const part of [file.path, s.place, found, others[0]]) assert.ok(second && second.includes(part), `the Fallback line names ${part} again:\n${show(again)}`);
+  assert.equal(s.fake.events('start').length, 1, 'no llama-server started the second time');
+  assert.ok(!again.stderr.includes('Fetch '), `no fetch the second time:\n${show(again)}`);
 });
 
 // --- a present file of another size (point 8)
@@ -330,11 +337,66 @@ test(`#100 search: {local: ${FETCH_ROW}}, a present file of another size: word s
   assert.equal(statSync(s.place).size, 1234, 'the file is left as it is');
 });
 
+// --- the record of the hashed files (#100, the architect's decision)
+
+// al's record of the model files it hashed: <git dir>/assuredloop/model-checks.json,
+// a JSON object keyed by the absolute place: { size, mtimeMs, sha256 }.
+const recordFile = (dir) => join(resolve(dir, git(dir, 'rev-parse', '--git-path', 'assuredloop')), 'model-checks.json');
+const readRecord = (dir) => JSON.parse(readFileSync(recordFile(dir), 'utf8'));
+
+test(`#100 search: {local: ${FETCH_ROW}}, a present file of the right size and the wrong SHA-256: word search, the Fallback names both SHA-256s, no llama-server starts; al records the hash, and refuses the same way on the next run`, { timeout: LIMIT }, (t) => {
+  const dir = rulesRepo(t, { local: FETCH_ROW });
+  const s = llamaSetup(t, dir, FETCH_ROW, { conf: { tok: TOK.bge, concepts: CONCEPTS } });
+  const found = createHash('sha256').update(Buffer.alloc(s.file.bytes)).digest('hex');
+  const r = runOk(dir, ['search', 'link'], s.opts);
+  assert.match(r.stdout.split('\n')[0], /^Level\s+1\b/, show(r));
+  const fallback = lineOf(r.stdout, 'Fallback');
+  assert.ok(fallback, `a Fallback line:\n${show(r)}`);
+  for (const part of [s.file.path, s.place, found]) assert.ok(fallback.includes(part), `the Fallback line names ${part}:\n${fallback}`);
+  const expected = (fallback.match(HEX64) ?? []).filter((h) => h !== found);
+  assert.equal(expected.length, 1, `the Fallback line names the expected SHA-256 too:\n${fallback}`);
+  assert.deepEqual(s.fake.events('start'), [], 'no llama-server started');
+  const st = statSync(s.place);
+  assert.deepEqual(readRecord(dir)[s.place], { size: s.file.bytes, mtimeMs: st.mtimeMs, sha256: found }, 'the record has the place, its size, its modification time and the SHA-256 found');
+  const again = runOk(dir, ['search', 'link'], s.opts);
+  assert.match(again.stdout.split('\n')[0], /^Level\s+1\b/, show(again));
+  const second = lineOf(again.stdout, 'Fallback');
+  for (const part of [s.file.path, s.place, found, expected[0]]) assert.ok(second && second.includes(part), `the Fallback line names ${part} again:\n${show(again)}`);
+  assert.deepEqual(s.fake.events('start'), [], 'no llama-server started the second time');
+  const out = search(dir, ['link'], s.opts);
+  assert.equal(out.level, 1);
+  assert.ok(String(out.fallback).includes(found) && String(out.fallback).includes(expected[0]), `--json fallback: ${out.fallback}`);
+});
+
+test(`#100 search: {local: ${FETCH_ROW}}: al trusts the record while the size and the modification time are the same, and hashes the file again when the modification time changes`, { timeout: LIMIT }, (t) => {
+  const dir = rulesRepo(t, { local: FETCH_ROW });
+  const s = llamaSetup(t, dir, FETCH_ROW, { conf: { tok: TOK.bge, concepts: CONCEPTS } });
+  const found = createHash('sha256').update(Buffer.alloc(s.file.bytes)).digest('hex');
+  runOk(dir, ['search', 'link'], s.opts);
+  // A record entry with the same size and modification time, and another SHA-256:
+  // al takes it and does not hash the file.
+  const planted = 'b'.repeat(64);
+  const rec = readRecord(dir);
+  assert.ok(rec[s.place], `the fixture: the first run recorded the place: ${JSON.stringify(rec)}`);
+  writeFileSync(recordFile(dir), JSON.stringify({ ...rec, [s.place]: { ...rec[s.place], sha256: planted } }));
+  const trusted = lineOf(runOk(dir, ['search', 'link'], s.opts).stdout, 'Fallback');
+  assert.ok(trusted && trusted.includes(planted) && !trusted.includes(found), `the Fallback line names the recorded SHA-256, not a new hash:\n${trusted}`);
+  // A new modification time: al hashes the file again and records it.
+  const later = new Date(statSync(s.place).mtimeMs + 60_000);
+  utimesSync(s.place, later, later);
+  const hashed = lineOf(runOk(dir, ['search', 'link'], s.opts).stdout, 'Fallback');
+  assert.ok(hashed && hashed.includes(found) && !hashed.includes(planted), `the Fallback line names the SHA-256 found again:\n${hashed}`);
+  assert.deepEqual(readRecord(dir)[s.place], { size: s.file.bytes, mtimeMs: statSync(s.place).mtimeMs, sha256: found }, 'the record has the new modification time');
+  assert.deepEqual(s.fake.events('start'), [], 'no llama-server started');
+  assert.ok(!git(dir, 'status', '--porcelain').includes('model-checks'), 'the record is never in the working tree');
+});
+
 // --- no llama-server on PATH (point 9)
 
 test(`#100 search: {local: ${FETCH_ROW}} with no llama-server on PATH: word search; the Fallback says so, and a Not known item says how to add llama.cpp`, { timeout: LIMIT }, (t) => {
   const dir = rulesRepo(t, { local: FETCH_ROW });
-  const s = llamaSetup(t, dir, FETCH_ROW);
+  // The file is absent, so no check of a present file comes first.
+  const s = llamaSetup(t, dir, FETCH_ROW, { present: false });
   const opts = { ...s.opts, env: { ...s.opts.env, PATH: pathWithout('llama-server', s.pc.env.PATH) } };
   const r = runOk(dir, ['search', 'link'], opts);
   assert.match(r.stdout.split('\n')[0], /^Level\s+1\b/, show(r));
@@ -380,7 +442,9 @@ test(`#100 search: {local: ${FETCH_ROW}} with build 11624: no build note`, { tim
 
 test(`#100 search: {local: ${FETCH_ROW}}: llama-server exits before it is ready: word search; the Fallback says level 2 failed and llama-server exited; no process left`, { timeout: LIMIT }, (t) => {
   const dir = rulesRepo(t, { local: FETCH_ROW });
-  const s = llamaSetup(t, dir, FETCH_ROW, { conf: { health: 'never', exitAfterMs: 300, exitCode: 3 } });
+  // The file is absent, and the fetch never ends: a present file would be refused
+  // by its SHA-256 before llama-server starts.
+  const s = llamaSetup(t, dir, FETCH_ROW, { present: false, conf: { fetch: { never: true }, health: 'never', exitAfterMs: 300, exitCode: 3 } });
   const r = runOk(dir, ['search', 'link'], s.opts);
   assert.match(r.stdout.split('\n')[0], /^Level\s+1\b/, show(r));
   const fallback = lineOf(r.stdout, 'Fallback');
@@ -395,7 +459,7 @@ for (const computer of [LINUX, INTEL_MAC]) {
   for (const rowName of [FETCH_ROW, 'qwen3-reranker-0.6b q8_0 llama-metal', 'qwen3-embedding-0.6b q8_0 llama-cpu']) {
     test(`#100 search: {local: ${rowName}} on ${computer.platform} ${computer.arch}: not refused; word search with the not-offered reason; no llama-server starts`, { timeout: LIMIT }, (t) => {
       const dir = rulesRepo(t, { local: rowName });
-      const s = llamaSetup(t, dir, rowName, { computer });
+      const s = llamaSetup(t, dir, rowName, { computer, present: false });
       const reason = notOffered(computer.platform, computer.arch);
       const r = run(dir, ['search', 'link'], s.opts);
       assert.equal(r.code, 0, show(r));

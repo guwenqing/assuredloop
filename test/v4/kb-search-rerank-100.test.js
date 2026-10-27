@@ -10,6 +10,8 @@
 //   error (point 16).
 // - The recommendation (#99's rule) takes the llama and reranker rows: a
 //   computer that fits a reranker row gets it when the rule picks it (point 4).
+//   The rule keeps only the rows that take at most 10 s for each search; a
+//   pick that the cap removes is named in a clause, and in recommend.capped.
 // A stand-in @huggingface/transformers (helpers/rerank.js) scores each
 // paragraph by its marker word. Built from the issue and the public
 // interface only; nothing here reads src/. No model, no download, no network.
@@ -18,7 +20,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { TRANSFORMERS, TRANSFORMERS_VERSION, besideAl, callsOf, runOk, search, show, smallRepo } from './helpers/search.js';
 import {
-  BIG_MAC, FULL_DISK, HUGE_MAC, LINUX, NO_MEMORY, SMALL_MAC, fakeComputer, labelled, namedIn, ruleRow,
+  BIG_MAC, FULL_DISK, HUGE_MAC, INTEL_MAC, LINUX, NO_MEMORY, SMALL_MAC, capClause, cappedRow, fakeComputer, labelled, ruleRow,
 } from './helpers/kb-search.js';
 import { fileOf, installReranker, invoiceWorld, reranked, sparse, tableOf } from './helpers/rerank.js';
 
@@ -26,7 +28,8 @@ const reranks = (row) => `Level     2 (full text, reranked by ${row})`;
 const fetchLine = (row, mb) => `al: fetching the model ${row} (${mb} MB), once`;
 const MARK = 'stand-in: from_pretrained called';
 const INSTALL = `${TRANSFORMERS}@${TRANSFORMERS_VERSION}`;
-const RECOMMEND_LOCAL = 'Recommend local: of the rows that this al can run and that fit this computer, none has a gain whose interval is above zero';
+// The start of a local recommendation (#100: the words after "none" depend on the cap).
+const RECOMMEND_LOCAL = 'Recommend local: of the rows that this al can run and that fit this computer, none';
 
 const ROWS = [
   ['ms-marco-minilm-l-6-v2 fp32 tjs-cpu', 'head'],
@@ -181,30 +184,55 @@ function noSetting(t, computer) {
   return { r, out: jsonOf(runOk(dir, ['search', 'export', 'link', '--json'], opts)) };
 }
 
-for (const [name, computer, expected] of [
-  ['a Mac with 64 GB', BIG_MAC, 'qwen3-reranker-0.6b q8_0 llama-metal'],
-  ['a Mac with 16 GB', SMALL_MAC, 'qwen3-reranker-0.6b q8_0 llama-metal'],
-  ['a Linux computer (no llama.cpp row)', LINUX, 'qwen3-reranker-0.6b q4 tjs-cpu'],
-]) {
-  test(`#100 no setting, ${name}: the recommendation is the reranker row ${expected}, by #99's rule over the runnable rows`, (t) => {
+const CAP_REASON = 'the smallest download within 0.05 of the best recall among the rows that fit and take at most 10 s for each search';
+const LINUX_RECOMMEND = 'Recommend local: of the rows that this al can run and that fit this computer, none that takes at most 10 s for each search has a gain whose interval is above zero; qwen3-reranker-0.6b q4 tjs-cpu gains +0.066 but takes about 23 s for each search';
+
+// The cap does not change the pick: a Mac with an Apple GPU and room gets the
+// llama.cpp reranker, which takes about 3.7 s for each search.
+for (const [name, computer] of [['a Mac with 64 GB', BIG_MAC], ['a Mac with 16 GB', SMALL_MAC]]) {
+  test(`#100 no setting, ${name}: the recommendation is local with qwen3-reranker-0.6b q8_0 llama-metal; the cap of 10 s removes no pick`, (t) => {
+    const expected = 'qwen3-reranker-0.6b q8_0 llama-metal';
     const { r, out } = noSetting(t, computer);
     assert.equal(ruleRow(out.rows), expected, 'the fixture: the rule over the figures of --json picks this row');
+    assert.equal(cappedRow(out.rows), null, 'the fixture: the rule without the cap picks the same row');
     assert.equal(out.rows.find((x) => x.name === expected).state, 'fits', `${expected} fits this computer`);
-    assert.equal(out.recommend?.row, expected, `--json recommend: ${JSON.stringify(out.recommend)}`);
     assert.equal(out.recommend?.choice, 'local');
+    assert.equal(out.recommend?.row, expected, `--json recommend: ${JSON.stringify(out.recommend)}`);
+    assert.equal(out.recommend?.capped, null);
+    assert.match(String(out.recommend?.reason), /^gain [+-]\d\.\d{3} over word search; /, `the reason: ${out.recommend?.reason}`);
+    assert.ok(String(out.recommend?.reason).includes(CAP_REASON), `the reason: ${out.recommend?.reason}`);
     const rec = labelled(r.stdout).find((l) => l.label === 'Recommend');
     assert.ok(rec, `a Recommend line:\n${show(r)}`);
     const text = [rec.text, ...rec.more].join(' ');
-    assert.ok(namedIn(text, expected), `the Recommend line names ${expected}:\n${rec.line}`);
+    assert.ok(text.includes(`local with ${expected}`), `the Recommend line names local with ${expected}:\n${rec.line}`);
+    assert.ok(text.includes(CAP_REASON), `the Recommend line gives the reason:\n${rec.line}`);
+    assert.ok(!text.includes(' but takes about '), `no clause: the cap removed no pick:\n${rec.line}`);
     assert.ok(!/cannot run/.test(text), `no word about rows that this version cannot run:\n${rec.line}`);
   });
 }
 
+// The cap changes the pick: off macOS arm64 the only row with a gain above
+// zero is qwen3-reranker-0.6b q4 tjs-cpu, which takes about 23 s for each
+// search; so the recommendation is local, with the clause.
+for (const [name, computer] of [['a Linux computer', LINUX], ['an Intel Mac', INTEL_MAC]]) {
+  test(`#100 no setting, ${name}: the cap removes qwen3-reranker-0.6b q4 tjs-cpu, so the recommendation is local, with the clause`, (t) => {
+    const { r, out } = noSetting(t, computer);
+    assert.equal(ruleRow(out.rows), null, 'the fixture: no row is left with the cap');
+    assert.equal(cappedRow(out.rows)?.name, 'qwen3-reranker-0.6b q4 tjs-cpu', 'the fixture: the rule without the cap picks this row');
+    assert.deepEqual([out.recommend?.choice, out.recommend?.row, out.recommend?.capped], ['local', null, 'qwen3-reranker-0.6b q4 tjs-cpu'], JSON.stringify(out.recommend));
+    assert.ok(r.stdout.split('\n').includes(LINUX_RECOMMEND), `the Recommend line:\n${show(r)}`);
+    assert.equal(LINUX_RECOMMEND.endsWith(capClause(cappedRow(out.rows))), true, 'the fixture: the clause from the figures of --json');
+  });
+}
+
 for (const [name, computer] of [['a full disk', FULL_DISK], ['half a GB of memory', NO_MEMORY]]) {
-  test(`#100 no setting, ${name}: no row fits, so the recommendation is local, with no word about rows that this version cannot run`, (t) => {
+  test(`#100 no setting, ${name}: no row fits, so the recommendation is local, with no clause and no word about rows that this version cannot run`, (t) => {
     const { r, out } = noSetting(t, computer);
     assert.equal(ruleRow(out.rows), null, 'the fixture: no row is left by the rule');
-    assert.deepEqual([out.recommend?.choice, out.recommend?.row], ['local', null]);
-    assert.ok(r.stdout.split('\n').includes(RECOMMEND_LOCAL), `the Recommend line:\n${show(r)}`);
+    assert.equal(cappedRow(out.rows), null, 'the fixture: no row is left without the cap either');
+    assert.deepEqual([out.recommend?.choice, out.recommend?.row, out.recommend?.capped], ['local', null, null]);
+    const line = r.stdout.split('\n').find((l) => l.startsWith('Recommend '));
+    assert.ok(line && line.startsWith(RECOMMEND_LOCAL) && line.includes('has a gain whose interval is above zero'), `the Recommend line:\n${show(r)}`);
+    assert.ok(!line.includes(' but takes about ') && !/cannot run/.test(line), `no clause:\n${show(r)}`);
   });
 }
