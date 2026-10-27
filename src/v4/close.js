@@ -73,6 +73,15 @@ export function closeLines(state, r) {
 export const closeLine = (r, c, place = null) => `close ${c.e.id} ${r.name}/${c.e.on}${place ? ` (${place})` : ''} `
   + `${c.archived ? 'recorded at the close; an archived request is not checked against today\'s spec' : c.current ? 'current' : `stale: ${c.facts.join(', ')} since it was recorded; it clears nothing until you record it again`}: ${c.e.reason}`;
 
+// Whether requirement `key` (<name>/R<n>) has a declared link in specs/, as
+// item 2 reads it: a `serves` link from a paragraph of specs/, or a `decides`
+// link from an accepted ADR. The hint no-paragraph-link reads it too (LD-49).
+export function declaredLink(state, key) {
+  const names = (refs) => refs.some((s) => qualify(s, null).key === key);
+  return [...state.spec.values()].some((p) => names(p.links.serves))
+    || state.adrList.some((a) => a.status === 'accepted' && names(a.head?.links.decides ?? []));
+}
+
 // The refusals of items 2 and 3 for request `r`, on paths 2 and 3 only (the
 // requests that have a map). `was` is the base state, or null.
 export function closeRefusals(state, was, r, lines = closeLines(state, r)) {
@@ -87,9 +96,7 @@ export function closeRefusals(state, was, r, lines = closeLines(state, r)) {
   for (const q of r.reqs) {
     if (!signed(state, r.name, q.id) || cleared(q.id)) continue;
     const key = `${r.name}/${q.id}`;
-    const names = (refs) => refs.some((s) => qualify(s, null).key === key);
-    if ([...state.spec.values()].some((p) => names(p.links.serves))) continue;
-    if (state.adrList.some((a) => a.status === 'accepted' && names(a.head?.links.decides ?? []))) continue;
+    if (declaredLink(state, key)) continue;
     out.push(`${key} has no declared paragraph link: no paragraph of specs/ serves it, and no accepted ADR decides it; `
       + `link it, or record where it is met: al record ${r.name} close --on ${q.id} --reason <why>${stale(q.id)}`);
   }

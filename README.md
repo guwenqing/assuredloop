@@ -885,6 +885,19 @@ it applies a promise, for example a flow step that keeps a rule, give it
 `builds-on:` the promise paragraph in its marker. The hint then goes. A
 `builds-on:` to another kind, or to an ID that does not exist, keeps it.
 
+`al check` gives the hint `no-paragraph-link` for a signed requirement of an
+open request that no paragraph of `specs/`, no accepted ADR and no promise or
+design paragraph of an open change spec links to. At the close, `al conclude`
+refuses on the same fact for paths 2 and 3. The hint says that the link is
+missing, not that nothing was built. It names the known direct links, each
+with the limit of its evidence: an `approach` or another paragraph of a
+change spec that serves the requirement, an ADR that decides it and is not
+accepted, a declared `verifies` output, and each file that cites
+`<name>/R<n>`. The message holds no line number: the citing lines follow it
+after ` · cited lines:`, and the places of its IDs after ` · places:`. It
+clears by a link, by a close line (`al record <name> close --on R<n>
+--reason <where it is met>`), or by a judgement on `<name>/R<n>`.
+
 ## What is enforced, and by whom
 
 | The tool checks | The skill asks | The owner decides |
