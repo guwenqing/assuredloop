@@ -447,6 +447,8 @@ outputs:                        # optional; this project declares them; claims, 
 bindings:                       # written when a link is first indexed; moved only by a judgement
   - {holder: invoice-exports/SP-12, link: serves, target: invoice-exports/R2, target_version: 1, holder_sha256: 2f07…}
   - {holder: invoice-exports/SP-12, link: builds-on, target: INV-12, target_sha256: 9c41…, holder_sha256: 2f07…}
+  - {holder: invoice-exports/SP-14, link: changes, target: INV-41, target_sha256: 4e1a…, holder_sha256: 77d0…, judgement: J2, judged_target_sha256: c3b9…}
+    # judged_target_sha256: the target's text when judgement J2 cleared stale-base; only stale-base reads it, never the map or al conclude
   - {holder: invoicer-web/test/export-link.test.js, link: verifies, target: central:INV-41, target_sha256: 2f07…, commit: invoicer-web@a81c…}
 
 closes:                         # close lines (design.md 5); al keeps the hashes

@@ -274,7 +274,7 @@ function recordJudgement(ctx) {
     let pick;
     if (opts.hint === 'binding-unknown') pick = (l, s) => s.unknown && l.holder === opts.on;
     else {
-      const keys = new Set(findingsNow({ top, cwd, opts: {} }).findings
+      const keys = new Set(findingsNow({ top, cwd, opts: { issues: opts.issues } }).findings
         .filter((f) => f.code === opts.hint && f.binding?.request === name && f.binding.holder === opts.on)
         .map((f) => `${f.binding.link}\t${f.binding.target}`));
       pick = (l, s) => s.bound && l.holder === opts.on && keys.has(`${l.link}\t${l.target}`);
@@ -284,19 +284,22 @@ function recordJudgement(ctx) {
     if (dry.refused.length) throw new Fail(`--on ${opts.on}: ${dry.refused.map((x) => x.why).join('; ')}`, usage);
     if (!dry.done.length) throw none();
     const verb = opts.hint === 'binding-unknown' ? 'binds' : 'moves';
-    const lines = [head, ...dry.done.map((d) => `  ${verb} ${d.link} ${d.target} of ${d.holder} to ${d.at ? `${d.target}'s text at ${d.at.slice(0, 7)}, the newest commit that held it` : 'now'}`)];
+    const to = (d) => (d.base ? `${d.target}'s text at the base ${d.base.slice(0, 7)}`
+      : d.at ? `${d.target}'s text at ${d.at.slice(0, 7)}, the newest commit that held it` : 'now');
+    const lines = [head, ...dry.done.map((d) => `  ${verb} ${d.link} ${d.target} of ${d.holder} to ${to(d)}`)];
     if (opts.yes) index({ top, cwd, opts: { bind: { ...bind, write: true } } });
     return done(lines);
   }
 
-  const { state, findings } = findingsNow({ top, cwd, opts: {} });
+  const { state, findings } = findingsNow({ top, cwd, opts: { issues: opts.issues } });
   const found = findings.filter((f) => f.code === opts.hint && names(f, opts.on));
   if (!found.length) throw none();
   const kept = found.map((f) => keptOf(state, f));
-  const versions = opts.hint === 'adr-changed' ? kept[0] : {
-    message_sha256: [...new Set(kept.flatMap((k) => k.message_sha256))],
-    keeps: [...new Map(kept.flatMap((k) => k.keeps).map((k) => [k.id, k])).values()],
-  };
+  const versions = opts.hint === 'adr-changed' ? { files: kept.flatMap((k) => k.files) }
+    : kept.every((k) => k.blocks) ? { blocks: [...new Set(kept.flatMap((k) => k.blocks))] } : {
+      message_sha256: [...new Set(kept.flatMap((k) => k.message_sha256 ?? []))],
+      keeps: [...new Map(kept.flatMap((k) => k.keeps ?? []).map((k) => [k.id, k])).values()],
+    };
   const lines = [head];
   if (found.some((f) => f.severity === 'not ok')) {
     lines.push(`${id} ${opts.yes ? 'is' : 'would be'} recorded, but a judgement never clears a not ok: ${opts.hint} clears only by its own fix`);
@@ -304,8 +307,8 @@ function recordJudgement(ctx) {
   if (!opts.yes) return done(lines);
   guard(top, [rec.path]);
   const node = append(rec, 'judgements', { id, hint: opts.hint, on: opts.on, reason: opts.reason, ...versions, recorded: stamp(now()) });
-  for (const k of node.get('keeps')?.items ?? []) k.flow = true;
-  if (node.get('message_sha256')) node.get('message_sha256').flow = true;
+  for (const k of [...node.get('keeps')?.items ?? [], ...node.get('files')?.items ?? []]) k.flow = true;
+  for (const key of ['message_sha256', 'blocks']) if (node.get(key)) node.get(key).flow = true;
   write(top, rec.path, recordText(rec));
   return done(lines);
 }

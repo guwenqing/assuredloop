@@ -318,10 +318,14 @@ decides a hint, and its decision is recorded where the next review finds it.
   review. A rewrite of an ADR in other words is path 1d, which has a short
   request.
 - The judgement keeps the versions of both sides of its hint. For
-  `adr-changed`, these are the ADR's text, with its marker line, and its
-  status line. For another hint, they are the hint's message, and the text of
-  the paragraph that it is on and of each paragraph that its message names.
-  The hint is cleared while these are the versions of now.
+  `adr-changed`, these are the text of each ADR file that it covers, with its
+  marker line, and its status line; after a rename, the one file of that
+  number counts. For a hint with no ID on a line of a file, such as `no-id`,
+  it is the text of the paragraph at that line, because the message names
+  the place, which a move changes. For another hint, they are the hint's
+  message, and the text of the paragraph that it is on and of each paragraph
+  that its message names. The hint is cleared while these are the versions
+  of now.
 - When one side changes, the hint comes back, and it ends with "the
   judgement <request>/J<n> (<date>) is stale: <what> changed since it".
 - `al check` shows the current judgements in one line:
@@ -331,10 +335,17 @@ decides a hint, and its decision is recorded where the next review finds it.
   (section 4). The binding names its judgement (`judgement: J<n>`), so the
   versions are kept once. Another record that holds the same link keeps its
   binding and its hint.
+- For a `changes` or `removes` link of a change paragraph, the judgement
+  moves only the holder side. The target side stays the version from when
+  the change linked it, which the map and `al conclude` read (DES-160). A
+  judgement on its `stale-base` keeps the target's version of now in
+  `judged_target_sha256`, which only `stale-base` reads.
 - A judgement on `binding-unknown` binds each link of that holder whose
-  binding is unknown, in the record of `<name>`. A target that is gone takes
-  its text in the newest commit that held it. When no commit of the clone
-  holds it, the command refuses.
+  binding is unknown, in the record of `<name>`. For a `changes` or
+  `removes` link of a change paragraph, the target takes its text at the
+  base, when the base holds it. A target that is gone takes its text in the
+  newest commit that held it. When no commit of the clone holds it, the
+  command refuses.
 - A binding with no hint is not moved, for example a binding of an output
   file whose bytes changed.
 - A move makes no binding and no judgement stale: the text hashes leave out
@@ -416,7 +427,8 @@ the link was made.
     change against the new target (section 3): `al record <name> judgement
     --hint stale-base --on <ID> --reason <why>`, or `--hint holder-changed`.
     The PR diff then shows the old and the new binding, and the binding names
-    its judgement.
+    its judgement. For a `changes` or `removes` link of a change paragraph,
+    the judgement moves only the source side (section 3).
   - A newly declared link (not in the marker at the base commit) gets its
     first binding when it is first indexed. A link that was in the marker at
     the base commit but whose binding record is gone stays "binding unknown".
