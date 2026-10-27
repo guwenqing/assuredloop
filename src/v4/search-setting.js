@@ -140,17 +140,28 @@ function withReasons(rows, reasonOf) {
 }
 
 // The recommendation (the rule of design.md 11): of the rows that this al
-// runs and that fit, those whose gain has its interval above zero; of those
-// within 0.05 of the best recall, the smallest download; else word search.
+// runs and that fit, those whose gain has its interval above zero; of those,
+// the rows whose measured time for one search is at most 10 s (the bound of
+// `al check` at 1,000 requests); of those within 0.05 of the best recall, the
+// smallest download; else word search. When the bound removes the row that
+// the rule would pick without it, the reason names that row (`capped`).
+const CAP_MS = 10_000;
+function pick(rows) {
+  if (!rows.length) return null;
+  const best = Math.max(...rows.map((r) => r.recall[0]));
+  return rows.filter((r) => r.recall[0] >= best - 0.05).sort((a, b) => download(a) - download(b))[0];
+}
 function recommend(states, pc) {
-  const good = states.filter((s) => s.state === 'fits' && s.row.gain[1] > 0);
+  const good = states.filter((s) => s.state === 'fits' && s.row.gain[1] > 0).map((s) => s.row);
+  const row = pick(good.filter((r) => r.ms !== null && r.ms <= CAP_MS));
+  const without = pick(good);
+  const capped = without && without !== row ? without : null;
+  const clause = capped ? `; ${capped.name} gains ${signed(capped.gain[0])} but takes about ${Math.round(capped.ms / 1000)} s for each search` : '';
   const noFts = pc.fts5 ? '' : '; this computer has no node:sqlite with FTS5, so word search scans the export (level 0)';
-  if (!good.length) {
-    return { choice: 'local', row: null, reason: `of the rows that this al can run and that fit this computer, none has a gain whose interval is above zero${noFts}` };
+  if (!row) {
+    return { choice: 'local', row: null, capped: capped?.name ?? null, reason: `of the rows that this al can run and that fit this computer, none ${capped ? 'that takes at most 10 s for each search ' : ''}has a gain whose interval is above zero${clause}${noFts}` };
   }
-  const best = Math.max(...good.map((s) => s.row.recall[0]));
-  const pick = good.filter((s) => s.row.recall[0] >= best - 0.05).sort((a, b) => download(a.row) - download(b.row))[0].row;
-  return { choice: 'local', row: pick.name, reason: `gain ${gainText(pick.gain)} over word search; the smallest download within 0.05 of the best recall among the rows that fit${noFts}` };
+  return { choice: 'local', row: row.name, capped: capped?.name ?? null, reason: `gain ${gainText(row.gain)} over word search; the smallest download within 0.05 of the best recall among the rows that fit and take at most 10 s for each search${clause}${noFts}` };
 }
 
 // `al search` with no setting: the choices and the recommendation; no search.
