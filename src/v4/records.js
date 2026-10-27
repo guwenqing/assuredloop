@@ -3,6 +3,7 @@
 // outputs) stays as it is, and the tool only appends or fills.
 import { parseDocument, isMap, isSeq } from 'yaml';
 import { Fail, read, recordPath } from './base.js';
+import { entryOf } from './yaml-once.js';
 
 export const YAML_OPTIONS = { lineWidth: 0 };
 
@@ -13,15 +14,25 @@ export const INDEX_KEYS = ['requirements', 'bindings', 'reviewed', 'items', 'own
 
 // The record of request `name`: { doc, path, data } or null when absent.
 // A record that is not valid YAML is a refusal: the tool does not guess.
+// Its data is the text's one parse (yaml-once.js); the YAML document, which
+// al edits, is made only when a caller asks for it (#101). `opened` says
+// whether it is made. A text that may hold an anchor or an alias, or that is
+// not a plain mapping, gets its document at once, as before.
 export function openRecord(top, name) {
   const path = recordPath(name);
   const text = read(top, path);
   if (text === null) return null;
-  const doc = parseDocument(text);
-  if (doc.errors.length || !isMap(doc.contents)) {
-    throw Object.assign(new Fail(`${path} is not a valid record: ${doc.errors[0]?.message.split('\n')[0] ?? 'not a map'}`, `fix ${path} by hand`), { invalid: true });
-  }
-  return { doc, path, text, get data() { return doc.toJS() ?? {}; } };
+  let doc = null;
+  const open = () => {
+    doc = parseDocument(text);
+    if (doc.errors.length || !isMap(doc.contents)) {
+      throw Object.assign(new Fail(`${path} is not a valid record: ${doc.errors[0]?.message.split('\n')[0] ?? 'not a map'}`, `fix ${path} by hand`), { invalid: true });
+    }
+    return doc;
+  };
+  const { value } = /[&*]/.test(text) ? {} : entryOf(text);
+  if (!value || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) open();
+  return { path, text, get doc() { return doc ?? open(); }, get opened() { return doc !== null; }, get data() { return doc ? doc.toJS() ?? {} : value; } };
 }
 
 export const recordText = (rec) => rec.doc.toString(YAML_OPTIONS);

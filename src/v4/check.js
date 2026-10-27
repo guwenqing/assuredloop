@@ -27,11 +27,19 @@ import { index, isCentral } from './indexer.js';
 import { named, placeOf, requestOf } from './state.js';
 import { placesOf } from './views.js';
 import { judgementPass } from './judgements.js';
+import { parseRecords } from './yaml-once.js';
 
 // A file or folder that al check cannot read, and that no check reports as
 // not ok, stops it with a refusal: never an internal error, never a pass (#238).
 const UNREADABLE = new Set(['EACCES', 'EPERM', 'EISDIR', 'ENOTDIR', 'ELOOP']);
-export function check(args) {
+export async function check(args) {
+  // The working tree's request records are parsed first, in worker threads
+  // when they are large (#101); --at reads its records from git.
+  if (args.opts.at === undefined) await parseRecords(args.top);
+  return checkNow(args);
+}
+
+function checkNow(args) {
   try {
     if (args.opts.at !== undefined) return atCommit(args);
     // A refusal writes nothing: the settings are read before al index runs.

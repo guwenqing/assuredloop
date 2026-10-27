@@ -4,10 +4,11 @@
 import { readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { parse } from 'yaml';
+import { parseOnce } from './yaml-once.js';
 import { exists, read, recordPath, sha256 } from './base.js';
 import { loadConfig, loadSchema } from './config.js';
 import { fileAt, filesAt, git } from './git.js';
-import { KINDS, groupOf, lf, parseMarkdown, withoutScope } from './markers.js';
+import { KINDS, groupOf, lf, parseMarkdownOnce, withoutScope } from './markers.js';
 import { frameOf, requirements, signedText } from './request-md.js';
 import { originals } from './originals.js';
 import { ADR_FILE, SPEC, adrId, docsInScope, parseScopes, symlinkOn } from './scope.js';
@@ -52,7 +53,19 @@ export function settingsAt(top, rev) {
   return { config: { ...c, root: c.root ?? 'specs', docs: Array.isArray(c.docs) ? c.docs : [] }, kinds: s.kinds ?? KINDS };
 }
 
+// A state at a commit, named by its full hash, is read once in a process
+// (#101): nothing changes it, and al check reads the base's state in al
+// index and again in its checks. The working tree's state is read each time,
+// as al index writes records between two reads.
+const atCommits = new Map();
 export function loadState(top, rev = null) {
+  if (!rev || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(rev)) return readState(top, rev);
+  const key = `${top}\n${rev}`;
+  if (!atCommits.has(key)) atCommits.set(key, readState(top, rev));
+  return atCommits.get(key);
+}
+
+function readState(top, rev) {
   const { config, kinds } = rev ? settingsAt(top, rev) : { config: loadConfig(top), kinds: loadSchema(top).kinds };
   const root = posix.normalize(String(config.root)).replace(/\/+$/, '');
   const openNames = names(top, rev, 'requests', true).filter((n) => n !== 'archive');
@@ -94,7 +107,7 @@ export function loadState(top, rev = null) {
     const dataOf = () => {
       if (data !== undefined) return data;
       try {
-        data = parse(text ?? 'null');
+        data = parseOnce(text ?? 'null');
       } catch (e) {
         data = null;
         error = e.message.split('\n')[0];
@@ -155,7 +168,7 @@ export function loadState(top, rev = null) {
       if (!rev && exists(top, file)) unreadableAdrs.push(file);
       continue;
     }
-    const paragraphs = parseMarkdown(text, file, { kinds }).paragraphs;
+    const paragraphs = parseMarkdownOnce(text, file, { kinds }).paragraphs;
     const id = adrId(m[1]);
     const status = /^\s*Status:\s*([a-z]+)/i.exec(text)?.[1].toLowerCase() ?? null;
     const head = paragraphs.find((p) => p.id === id) ?? null;

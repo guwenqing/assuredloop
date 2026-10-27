@@ -437,3 +437,46 @@ test('generate.js: --open 0 concludes every request; --open equal to --requests 
     removeDir(top);
   }
 });
+
+// --- #101: main as al leaves it, also when a later request rewrites a
+// paragraph that an earlier concluded request bound. When a later request
+// rewrites such a paragraph, the earlier record must not hold a binding that
+// no marker declares any more, or al index on main removes it and rewrites
+// the archived record. This is the smallest world found (by a search of the
+// options) in which the generator on main before #101 left such a binding.
+describe('generate.js when a later request rewrites a paragraph that an earlier concluded request bound', () => {
+  const REWRITE = { requests: 5, outputs: 0, paragraphs: 5, open: 0 };
+  let top;
+  let central;
+  let world;
+  before(() => {
+    top = tempDir();
+    const made = makeWorld(top, REWRITE);
+    central = join(made.dir, 'central');
+    world = made.world;
+  });
+  after(() => removeDir(top));
+
+  test('the world has a spec paragraph that two concluded requests incorporated, one after the other', () => {
+    const by = new Map(); // spec ID -> the concluded requests that incorporated it, in order
+    for (const name of world.concluded) {
+      const rec = readYamlFile(join(central, `.assuredloop/records/requests/${name}.yaml`));
+      for (const d of rec.dispositions ?? []) {
+        if (d.disposition !== 'incorporated' || !d.source?.startsWith(`${name}/`)) continue;
+        if (!by.has(d.spec)) by.set(d.spec, []);
+        if (!by.get(d.spec).includes(name)) by.get(d.spec).push(name);
+      }
+    }
+    const rewritten = [...by].filter(([, names]) => names.length >= 2);
+    assert.ok(rewritten.length >= 1,
+      `a paragraph incorporated by one concluded request and then by a later one; by paragraph:\n${[...by].map(([id, n]) => `${id}: ${n.join(', ')}`).join('\n')}`);
+  });
+
+  test('al-v4 index on main changes no file and removes no binding', () => {
+    const r = al(central, ['index']);
+    assert.equal(r.code, 0, show(r));
+    const removed = linesOf(r.stdout).filter((l) => /\bremoved: /.test(l));
+    assert.deepEqual(removed, [], `al-v4 index removed bindings on main:\n${show(r)}`);
+    assert.equal(git(central, 'status', '--porcelain'), '', `al-v4 index changed files on main:\n${show(r)}`);
+  });
+});
