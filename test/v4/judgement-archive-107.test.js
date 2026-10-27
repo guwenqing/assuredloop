@@ -19,7 +19,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { check } from './helpers/invoicer.js';
 import {
-  INVOICES, commitAll, doc, editFile, git, index, newRequest, ok, project, show, write, writeConfig,
+  INVOICES, commitAll, doc, editFile, git, index, newRequest, ok, project, recordPath, show, write, writeConfig,
 } from './helpers/project.js';
 import { coded, judge, judgedLines, none, one } from './helpers/judgement-88.js';
 
@@ -295,5 +295,85 @@ describe('Control: with no base, al behaves as today', () => {
     const f = one(coded(after, 'no-link', 'SP-2'), after, 'no-link on SP-2 after the move, with no base');
     assert.equal(f.file, ARCHIVED, show(after));
     assert.equal(f.msg, NO_LINK_MSG, show(after));
+  });
+});
+
+// =====================================================================
+// A binding judgement (stale-base, holder-changed, binding-unknown) of a
+// request that is not open is "recorded; not checked: the request is
+// archived", also when the branch concludes the request. A non-binding
+// judgement of that request stays current. The binding hints are not asked
+// about here.
+
+describe('A binding judgement of a request that the branch concludes: "recorded; not checked: the request is archived"', () => {
+  const REC = recordPath(NAME);
+  const WHY_BOUND = 'Checked against the new INV-12.';
+  const BOUND_J1 = /^Binding {3}inv\/SP-1 builds-on INV-12 target [0-9a-f]{12} holder [0-9a-f]{12} judgement J1: bound$/;
+  const NAMES_J1 = /^Binding {3}inv\/SP-1 builds-on INV-12 target [0-9a-f]{12} holder [0-9a-f]{12} judgement J1: /;
+
+  // main: the config and specs/invoices.md. The branch feature makes inv
+  // (path 1d) with SP-1 plan builds-on:INV-12, which holds never. Then
+  // INV-12 changes: stale-base and promise-kind on inv/SP-1, judged as J1
+  // (stale-base) and J2 (promise-kind).
+  function judgedTwice(t) {
+    const dir = project(t);
+    writeConfig(dir);
+    write(dir, 'specs/invoices.md', INVOICES);
+    commitAll(dir, 'base');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    newRequest(dir, NAME, 'The owner wants a monthly export.\n', ['--tier', '1d']);
+    write(dir, CS, doc([['SP-1 plan builds-on:INV-12', PLAN_NEVER]]));
+    index(dir);
+    commitAll(dir, `The request inv\n\n${TIER}`);
+    editFile(dir, 'specs/invoices.md', 'An invoice has a number', 'An invoice has a unique number');
+    const r = check(dir);
+    one(coded(r, 'stale-base', 'inv/SP-1'), r, 'stale-base on inv/SP-1');
+    one(coded(r, 'promise-kind', 'inv/SP-1'), r, 'promise-kind on inv/SP-1');
+    judge(dir, 'stale-base', 'inv/SP-1', WHY_BOUND);
+    judge(dir, 'promise-kind', 'inv/SP-1', WHY);
+    return dir;
+  }
+
+  function trace(dir) {
+    const r = ok(dir, ['context', NAME, '--audit']);
+    const ls = r.stdout.split('\n');
+    return { r, binding: ls.filter((l) => l.startsWith('Binding ')), j: (id) => ls.find((l) => l.startsWith(`Judgement ${id} `)) };
+  }
+  function judgementIs(tr, id, code, state, reason) {
+    const line = tr.j(id) ?? '';
+    assert.ok(line.startsWith(`Judgement ${id} ${code} inv/SP-1 recorded `), `a Judgement line for ${id}:\n${show(tr.r)}`);
+    assert.ok(line.includes(` (${REC}:`), `${id} names its record:\n${show(tr.r)}`);
+    assert.ok(line.endsWith(`): ${state}; reason: ${reason}`), `${id} is "${state}":\n${show(tr.r)}`);
+  }
+
+  for (const [moment, commit] of MOMENTS) {
+    test(`stale-base J1 and promise-kind J2 on inv/SP-1; al conclude --yes (${moment}), al index: --audit gives J1 "recorded; not checked: the request is archived", its Binding line still names J1, and J2 stays current`, (t) => {
+      const dir = judgedTwice(t);
+      const before = trace(dir);
+      assert.equal(before.binding.length, 1, show(before.r));
+      assert.match(before.binding[0], BOUND_J1, show(before.r));
+      judgementIs(before, 'J1', 'stale-base', 'current', WHY_BOUND);
+      judgementIs(before, 'J2', 'promise-kind', 'current', WHY);
+
+      concludeHere(dir, { commit });
+      const after = trace(dir);
+      assert.equal(after.binding.length, 1, show(after.r));
+      assert.match(after.binding[0], NAMES_J1, show(after.r));
+      judgementIs(after, 'J1', 'stale-base', 'recorded; not checked: the request is archived', WHY_BOUND);
+      judgementIs(after, 'J2', 'promise-kind', 'current', WHY);
+    });
+  }
+
+  test('control: the same request concluded and merged into main before the branch: J1 and J2 are both "recorded; not checked: the request is archived", and the Binding line names J1', (t) => {
+    const dir = judgedTwice(t);
+    concludeHere(dir, { commit: true });
+    git(dir, 'checkout', '-q', 'main');
+    git(dir, 'merge', '-q', '--no-ff', '-m', 'Merge the branch feature', 'feature');
+    git(dir, 'checkout', '-q', '-b', 'next');
+    const tr = trace(dir);
+    assert.equal(tr.binding.length, 1, show(tr.r));
+    assert.match(tr.binding[0], BOUND_J1, show(tr.r));
+    judgementIs(tr, 'J1', 'stale-base', 'recorded; not checked: the request is archived', WHY_BOUND);
+    judgementIs(tr, 'J2', 'promise-kind', 'recorded; not checked: the request is archived', WHY);
   });
 });
