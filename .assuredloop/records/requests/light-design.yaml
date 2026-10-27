@@ -196,6 +196,11 @@ own_edits:
   - { paragraph: DES-119, sha256: b7bf37ae78258de9c8a2a045944352f1ef63cb9ec93d63771ea3ba35fea88921, kept: 2026-10-26T16:20Z }
   - { paragraph: DES-72, sha256: 392453f6891f52f67d3f1fd4858db41d11d434c1ba62b00dcef46a6e7d54afef, kept: 2026-10-26T17:53Z }
   - { paragraph: SCH-28, sha256: 736537193af2388f644e8f74b3c4dabbf8f7b55aefaf697b1ed1a00c5e49f405, kept: 2026-10-26T17:53Z }
+  - { paragraph: DES-26, sha256: 0e9db0ee65d3e2b249b6e47076a10c8c03f3e2b44ba947d55d109b83d2fb5731, kept: 2026-10-27T04:47Z }
+  - { paragraph: DES-72, sha256: 391e1fb5fb7788a1fde1daf61be0154e2bcc6e419aaf24c456f77ff65e474eca, kept: 2026-10-27T04:47Z }
+  - { paragraph: SCH-28, sha256: 920b27992b542c85b6ef8ab32b17939fb15a6025d34027fd5465ccb3f2e915a6, kept: 2026-10-27T04:47Z }
+  - { paragraph: SCH-32, sha256: fce09c315d399ddf06cedf0100205ff218ca5f616bfd2d5ce6d8ae7467b779b3, kept: 2026-10-27T04:47Z }
+  - { paragraph: SCH-35, sha256: f39ab9c5f3d16f20a17328afeb5c2462e272949d5cc164906746168aa64bfc2f, kept: 2026-10-27T04:47Z }
 closes:
   - id: C1
     on: LD-68

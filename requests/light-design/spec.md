@@ -108,8 +108,9 @@ judgement never clears a `not ok` rule (an unsigned requirement, changed
 record evidence, an unreadable record, a citation of a replaced decision
 under `--strict`) or a refusal of `al conclude`. Those clear only by their
 own fix: a valid sign-off, or repaired evidence. A judgement on them is
-shown, and changes neither `--strict` nor `conclude`. An edit that changes
-only an ID, or moves a paragraph, gives no hint. An edit of an accepted or
+shown, and changes neither `--strict` nor `conclude`. A move makes no
+binding and no judgement stale, and an ID-only edit makes no binding stale;
+the ID rules still name a lost ID. An edit of an accepted or
 replaced ADR's marker line keeps the hint of adr-edits/R1.
 
 <!-- LD-13 rationale -->
@@ -302,8 +303,8 @@ This change removes from today's design (`specs/design.md`, section 5): the
 dispositions and their table, the exact-text rule, the wording decisions,
 and the close rule that asks for a disposition for each change paragraph.
 In section 4, `changes <ID>` becomes a reference with no replacement text,
-and `al index --align` gives way to the recorded judgement of LD-12 when
-that is built; until then it stays. Typo
+and `al index --align` gives way to the recorded judgement of LD-12
+(DES-163). Typo
 claims stay, on path 0. Old records that hold dispositions or wording
 decisions stay readable, and `al` no longer checks them (LD-9): `al context
 <name> --audit` shows them as recorded. An abandoned disposition no longer
@@ -526,8 +527,8 @@ clears by a recorded judgement that the change was read (LD-12):
 `al record <name> judgement --hint issue-changed --on <item> --reason <why>
 --issues <folder>` keeps the hash of the item's text with the judgement, and the moment
 of reliance that held then. The hint comes back when that text changes
-again, or when a later sign-off becomes the moment of reliance. Only `issue-changed` takes a
-judgement until the general judgement of LD-12 is built.
+again, or when a later sign-off becomes the moment of reliance. The other
+hints take the general judgement of LD-12 (DES-163).
 
 <!-- LD-23 note -->
 
