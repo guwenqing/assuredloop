@@ -314,6 +314,67 @@ describe('a judgement on a changes link keeps what the link changes', () => {
     namesStale(one(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12 again'), r, 1);
   });
 
+  // Merges the branch `from` into main; on main, other work changes INV-12
+  // from `a` to `b` and indexes; then the new branch `to` of inv, with a
+  // commit of its own.
+  function otherWork(dir, from, to, a, b) {
+    git(dir, 'checkout', '-q', 'main');
+    git(dir, 'merge', '-q', '--no-ff', '-m', `Merge ${from}`, from);
+    editFile(dir, SPEC, a, b);
+    index(dir);
+    commitAll(dir, 'other work on INV-12');
+    git(dir, 'checkout', '-q', '-b', to);
+    write(dir, `src/${to}.js`, 'export const unique = true;\n');
+    commitAll(dir, `${NAME}: ${to}`);
+  }
+
+  test('stale-base judged on inv/SP-1 changes INV-12, then holder-changed judged on inv/SP-1: the binding keeps judged_target_sha256 and its link-time target_sha256; no stale-base comes back; the map fact stays', (t) => {
+    const dir = changes(t);
+    editFile(dir, SPEC, T.INV12, T.INV12b);
+    commitAll(dir, `${NAME}: INV-12 gets a unique number`);
+    index(dir);
+    commitAll(dir, `${NAME}: records`);
+    otherWork(dir, 'feature', 'feature-2', T.INV12b, T.INV12c);
+    let r = check(dir);
+    one(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12');
+    const linkTime = changesOf(dir).target_sha256;
+
+    judge(dir, 'stale-base', H, WHY);
+    const judgedTarget = changesOf(dir).judged_target_sha256;
+    assert.equal(judgedTarget, hashOf(dir, SPEC, 'INV-12'), `judged_target_sha256 is the version of INV-12 now:\n${JSON.stringify(changesOf(dir))}`);
+    r = check(dir);
+    const factBefore = fact(r);
+
+    editFile(dir, CS, SP1, SP1b);
+    r = check(dir);
+    one(onLink(r, 'holder-changed', H, 'changes', 'INV-12'), r, 'holder-changed on inv/SP-1 changes INV-12');
+    judge(dir, 'holder-changed', H, WHY);
+    const now = changesOf(dir);
+    assert.equal(now.judged_target_sha256, judgedTarget, `judged_target_sha256 stays:\n${JSON.stringify(now)}`);
+    assert.equal(now.target_sha256, linkTime, `target_sha256 keeps the link-time version:\n${JSON.stringify(now)}`);
+    r = check(dir);
+    none(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12 after the holder-changed judgement');
+    none(onLink(r, 'holder-changed', H, 'changes', 'INV-12'), r, 'holder-changed on inv/SP-1 changes INV-12 after its judgement');
+    assert.equal(fact(r), factBefore, `the map fact stays:\n${show(r)}`);
+  });
+
+  test('stale-base judged on inv/SP-1 changes INV-12 at its text C; then other work changes INV-12 back to its link-time text A: the hint comes back and names inv/J1 as stale; "info judged" no longer lists J1', (t) => {
+    const dir = changes(t);
+    otherWork(dir, 'feature', 'feature-2', T.INV12, T.INV12c);
+    let r = check(dir);
+    one(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12 (A to C)');
+    judge(dir, 'stale-base', H, WHY);
+    r = check(dir);
+    none(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12 after the judgement');
+    assert.ok(judgedLines(r).some((f) => f.msg.includes(`${NAME}/J1 `)), `info judged lists J1:\n${show(r)}`);
+
+    commitAll(dir, `${NAME}: J1`);
+    otherWork(dir, 'feature-2', 'feature-3', T.INV12c, T.INV12);
+    r = check(dir);
+    namesStale(one(onLink(r, 'stale-base', H, 'changes', 'INV-12'), r, 'stale-base on inv/SP-1 changes INV-12 (C back to A)'), r, 1);
+    assert.ok(!judgedLines(r).some((f) => f.msg.includes(`${NAME}/J1 `)), `info judged no longer lists J1:\n${show(r)}`);
+  });
+
   test('binding-unknown on inv/SP-1 changes INV-12, whose target is at the base and which the branch changed: the binding takes the text at the base; the map still says "changed since the link"; al conclude gives no refusal on it', (t) => {
     const dir = changes(t, { onMain: true });
     const atBase = hashOf(dir, SPEC, 'INV-12');
