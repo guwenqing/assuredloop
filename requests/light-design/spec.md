@@ -340,7 +340,7 @@ Also kept:
 - Spikes and their signed question.
 - C1 as `not ok` under `--strict` (signed hints-and-blocks/R2, R5).
 - Every signed hint (own-item, adr-edits, issue-hints with phrases,
-  hints-and-blocks/R1, closed-items, several-successors, adr-lists,
+  adr-rewrite/R1, closed-items, several-successors, adr-lists,
   delete-in-change-spec). A hint goes only with usage evidence and the
   owner's signature.
 - The rule that an ID is never used again.
