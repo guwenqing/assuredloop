@@ -927,7 +927,8 @@ context-all/R1 on 2026-10-25. They are light-resign/R5 and light-resign/R1,
 because `al` does not edit an archived request. The owner signed the new
 version of hints-and-blocks/R1 on 2026-10-27. It is adr-rewrite/R1. The
 owner signed the new version of design-links/R1 on 2026-10-27. It is
-link-hints/R1. The other item below, v4/R10, still waits for the owner.
+link-hints/R1. The owner signed the new version of v4/R10 on 2026-10-27.
+It is kb-search/R10. No item below waits for the owner now.
 
 | Requirement | The new version says, in short |
 |---|---|
