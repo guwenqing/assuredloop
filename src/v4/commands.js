@@ -13,6 +13,9 @@ import { CHANGED, reliance, textSha } from './kept-items.js';
 import { logical, placeOf, sourceOf } from './originals.js';
 import { onSha, ownTarget, reasonNames, reqVersion } from './close.js';
 import { loadState } from './state.js';
+import { findingsNow } from './check.js';
+import { index } from './indexer.js';
+import { BINDING_HINTS, keptOf, names } from './judgements.js';
 
 const TIERS = ['1', '1d', '2', '3', 'S'];
 
@@ -244,16 +247,79 @@ function recordDecision({ top, args, opts }) {
   return { body: [`Added D${n} to ${dir}/request.md and ${rec.path}:`, line], next: 'al index' };
 }
 
+// al record <name> judgement --hint <code> --on <ID> --reason <why> [--yes]:
+// a hint clears by a recorded one-line judgement with its reason (LD-12,
+// #88). It keeps the versions of both sides of the hint (judgements.js); on
+// a binding hint, it moves or binds the links of <ID> in this record to now
+// (indexer.js), so the versions are kept once. --on is the ID that the hint
+// line shows, or its path when that ID is "-". A judgement on a not ok is
+// recorded and shown, and clears nothing. issue-changed keeps its form.
+function recordJudgement(ctx) {
+  const { top, cwd, args, opts } = ctx;
+  const [name] = args;
+  oneLine(opts, ['hint', 'on', 'reason']);
+  if (opts.hint === CHANGED) return recordItemJudgement(ctx);
+  const usage = `al record ${name} judgement --hint <code> --on <ID> --reason <why>`;
+  if (opts.hint === undefined) throw new Fail('--hint <code> is missing', usage);
+  if (!opts.on) throw new Fail('--on <ID> is missing: the ID that the hint line shows, or its path when that ID is -', usage);
+  if (!opts.reason) throw new Fail('--reason <why> is missing: a judgement says in one line why the hint calls for no change', usage);
+  const { rec } = openRequest(top, name);
+  const id = `J${highest(rec, 'judgements', 'J') + 1}`;
+  const head = `${id} ${opts.hint} ${opts.on}: ${opts.reason}`;
+  const none = () => new Fail(`--on ${opts.on}: al check gives no ${opts.hint} hint on ${opts.on} now`, usage);
+  const done = (body) => (opts.yes ? { body: [`Added to ${rec.path}:`, ...body], next: 'al check' }
+    : { body: [`Would add to ${rec.path}:`, ...body], next: 'run the same command with --yes to write it' });
+
+  if (BINDING_HINTS.includes(opts.hint)) {
+    let pick;
+    if (opts.hint === 'binding-unknown') pick = (l, s) => s.unknown && l.holder === opts.on;
+    else {
+      const keys = new Set(findingsNow({ top, cwd, opts: { issues: opts.issues } }).findings
+        .filter((f) => f.code === opts.hint && f.binding?.request === name && f.binding.holder === opts.on)
+        .map((f) => `${f.binding.link}\t${f.binding.target}`));
+      pick = (l, s) => s.bound && l.holder === opts.on && keys.has(`${l.link}\t${l.target}`);
+    }
+    const bind = { record: name, pick, entry: { id, hint: opts.hint, on: opts.on, reason: opts.reason, recorded: stamp(now()) } };
+    const dry = index({ top, cwd, opts: { bind } });
+    if (dry.refused.length) throw new Fail(`--on ${opts.on}: ${dry.refused.map((x) => x.why).join('; ')}`, usage);
+    if (!dry.done.length) throw none();
+    const verb = opts.hint === 'binding-unknown' ? 'binds' : 'moves';
+    const to = (d) => (d.base ? `${d.target}'s text at the base ${d.base.slice(0, 7)}`
+      : d.at ? `${d.target}'s text at ${d.at.slice(0, 7)}, the newest commit that held it` : 'now');
+    const lines = [head, ...dry.done.map((d) => `  ${verb} ${d.link} ${d.target} of ${d.holder} to ${to(d)}`)];
+    if (opts.yes) index({ top, cwd, opts: { bind: { ...bind, write: true } } });
+    return done(lines);
+  }
+
+  const { state, findings } = findingsNow({ top, cwd, opts: { issues: opts.issues } });
+  const found = findings.filter((f) => f.code === opts.hint && names(f, opts.on));
+  if (!found.length) throw none();
+  const kept = found.map((f) => keptOf(state, f));
+  const versions = opts.hint === 'adr-changed' ? { files: kept.flatMap((k) => k.files) }
+    : kept.every((k) => k.blocks) ? { blocks: [...new Set(kept.flatMap((k) => k.blocks))] } : {
+      message_sha256: [...new Set(kept.flatMap((k) => k.message_sha256 ?? []))],
+      keeps: [...new Map(kept.flatMap((k) => k.keeps ?? []).map((k) => [k.id, k])).values()],
+    };
+  const lines = [head];
+  if (found.some((f) => f.severity === 'not ok')) {
+    lines.push(`${id} ${opts.yes ? 'is' : 'would be'} recorded, but a judgement never clears a not ok: ${opts.hint} clears only by its own fix`);
+  }
+  if (!opts.yes) return done(lines);
+  guard(top, [rec.path]);
+  const node = append(rec, 'judgements', { id, hint: opts.hint, on: opts.on, reason: opts.reason, ...versions, recorded: stamp(now()) });
+  for (const k of [...node.get('keeps')?.items ?? [], ...node.get('files')?.items ?? []]) k.flow = true;
+  for (const key of ['message_sha256', 'blocks']) if (node.get(key)) node.get(key).flow = true;
+  write(top, rec.path, recordText(rec));
+  return done(lines);
+}
+
 // al record <name> judgement --hint issue-changed --on <item> --reason <why> --issues <folder> [--yes]:
 // the change of a work item was read (LD-12). It records the item's text
 // now and the moment of reliance that it covers, so the hint comes back
-// when the text changes again or a later sign-off becomes that moment. Only
-// issue-changed takes a judgement for now.
-function recordJudgement({ top, cwd, args, opts }) {
+// when the text changes again or a later sign-off becomes that moment.
+function recordItemJudgement({ top, cwd, args, opts }) {
   const [name] = args;
   const usage = `al record ${name} judgement --hint ${CHANGED} --on <item> --reason <why> --issues <folder>`;
-  oneLine(opts, ['hint', 'on', 'reason']);
-  if (opts.hint !== CHANGED) throw new Fail(opts.hint === undefined ? '--hint <code> is missing' : `--hint ${opts.hint}: only ${CHANGED} takes a judgement for now`, usage);
   if (!opts.on) throw new Fail('--on <item> is missing', usage);
   if (!opts.reason) throw new Fail('--reason <why> is missing: a judgement says in one line why the change was read and what it means', usage);
   if (opts.issues === undefined) throw new Fail('--issues <folder> is missing: the judgement records the item\'s text now', usage);

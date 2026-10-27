@@ -170,7 +170,7 @@ it"; it is only a hint.
 
 ## 5. ADRs
 
-<!-- SCH-22 rule serves:assuredloop-v4/R1,adr-links/R1,hints-and-blocks/R1,hints-and-blocks/R2,adr-edits/R1,adr-edits/R2 -->
+<!-- SCH-22 rule serves:assuredloop-v4/R1,adr-links/R1,adr-rewrite/R1,hints-and-blocks/R2,adr-edits/R1,adr-edits/R2 -->
 
 - One file per decision, numbered, in `specs/adr/`. Its status changes:
   proposed → accepted → superseded by ADR-n. Who accepts it is the project's
@@ -207,9 +207,16 @@ it"; it is only a hint.
   paragraphs. Its status is a line at the top of the file.
 - A superseded ADR keeps its `decides` links as history, even to paragraphs
   that were removed later.
-- After an accepted or superseded ADR is rewritten, `al index --align <ID>`
-  advances the bindings that paragraph `<ID>` holds to it, as for any other
-  target.
+- The hint `adr-changed` clears by a fix, or by a recorded one-line
+  judgement, with its reason, that the decision is unchanged:
+  `al record <name> judgement --hint adr-changed --on ADR-3 --reason <why>`.
+  The judgement keeps the ADR's text, with its marker line, and its status
+  line. It holds until the ADR's text, its marker line or its status line
+  changes again (design.md 3). This holds for an accepted and for a superseded ADR.
+- After an accepted or superseded ADR is rewritten, the links that its
+  paragraphs hold, and the links to them, get `holder-changed` or
+  `stale-base`. A judgement moves those bindings to the new text, as for any
+  other target (design.md 4).
 
 <!-- SCH-37 rule serves:hints-and-blocks/R5,several-successors/R1,adr-lists/R1 -->
 
@@ -312,8 +319,9 @@ A link to another repo uses a qualified ID: `central:INV-41`,
   writes or reads: the requirement versions, the hash of each work item's
   text at the moment of reliance (design.md 8), the identity of each review
   judgement, and the version that the change's own branch gave each spec
-  paragraph that it names (design.md 15). A judgement that the change of a
-  work item was read is written by `al record <name> judgement`.
+  paragraph that it names (design.md 15). A judgement that clears a hint,
+  with its reason and the versions that it keeps, is written by
+  `al record <name> judgement` (design.md 3).
 - One record per doc, mirroring the docs, for example
   `.assuredloop/records/specs/invoices.md.yaml`: only fields that the script
   can regenerate (hash list, display numbers, derived change kinds) and, where
@@ -326,7 +334,7 @@ A link to another repo uses a qualified ID: `central:INV-41`,
   them. AI hints and declared outputs are optional: a project adds them only
   where they help (AI hints where it uses search level 2 or higher). The script recomputes every derived field and ignores
   what anyone wrote there. Ordinary indexing never advances a binding; only
-  `al index --align <ID>` does.
+  a recorded judgement does (design.md 3, 4).
 
 <!-- SCH-39 data serves:origin-elsewhere/R1 -->
 
@@ -436,9 +444,11 @@ outputs:                        # optional; this project declares them; claims, 
   - {repo: invoicer-web, file: test/export-link.test.js, verifies: [central:INV-41]}
   - {repo: invoicer, file: docs/exports.md, documents: [INV-41]}
 
-bindings:                       # written when a link is first indexed; advanced only by --align
+bindings:                       # written when a link is first indexed; moved only by a judgement
   - {holder: invoice-exports/SP-12, link: serves, target: invoice-exports/R2, target_version: 1, holder_sha256: 2f07…}
   - {holder: invoice-exports/SP-12, link: builds-on, target: INV-12, target_sha256: 9c41…, holder_sha256: 2f07…}
+  - {holder: invoice-exports/SP-14, link: changes, target: INV-41, target_sha256: 4e1a…, holder_sha256: 77d0…, judgement: J2, judged_target_sha256: c3b9…}
+    # judged_target_sha256: the target's text when judgement J2 cleared stale-base; only stale-base reads it, never the map or al conclude
   - {holder: invoicer-web/test/export-link.test.js, link: verifies, target: central:INV-41, target_sha256: 2f07…, commit: invoicer-web@a81c…}
 
 closes:                         # close lines (design.md 5); al keeps the hashes
@@ -471,8 +481,10 @@ On these records, the tool can say, as exact facts or as hints:
 4. Two open changes that both `change` INV-41 get an overlap hint on both. A
    new proposal does not change INV-41's text, so it makes no binding stale.
 5. A later PR that edits INV-12 makes SP-12's recorded binding to INV-12 stale
-   (its hash no longer matches). The hint stays until the change aligns on
-   purpose with `al index --align`.
+   (its hash no longer matches). The hint stays until the change fixes it,
+   or records with its reason that SP-12 still builds on INV-12:
+   `al record invoice-exports judgement --hint stale-base --on invoice-exports/SP-12 --reason <why>`.
+   The binding then holds the texts of now and names the judgement.
 6. A typo claim that changes "only paid invoices" to "all paid invoices" is
    marked meaning-sensitive; the review decides (a hint).
 

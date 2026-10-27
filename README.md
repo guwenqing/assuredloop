@@ -101,9 +101,11 @@ Search at level 2 needs the library `@huggingface/transformers` 4.3.1 (see
   every derived field.
 - **Bindings.** When a link is first indexed, `al index` records the hash of
   both ends. Ordinary indexing never moves a binding. When the target
-  changes, the source gets a hint until someone checks it and runs
-  `al index --align <ID>`. When the source paragraph's own text changes,
-  it gets the hint `holder-changed` until it is aligned in the same way.
+  changes, the source gets the hint `stale-base` until someone checks it
+  and records a judgement (see "Hints, and the rules that block"). When the
+  source paragraph's own text changes, it gets the hint `holder-changed`
+  until it is judged in the same way. The judgement moves the binding to
+  the texts of now.
   This hint covers the links that a paragraph of a spec doc, an ADR or an
   open change spec still declares, to a target that still resolves, in the
   records of the open requests. A requirement is out, because a changed
@@ -172,9 +174,10 @@ missing or stale consolidation judgement is shown and never refuses.
   the owner signs; with `--yes`, record the sign-off on the owner's own yes.
 - `al record <name> decision --source <who> --text <decision>
   [--clarifies R<n>]`: add D1, D2…
-- `al record <name> judgement --hint issue-changed --on <item> --reason <why>
-  --issues <folder>`: record that the change of a work item was read; see
-  "Hints from the linked work items".
+- `al record <name> judgement --hint <code> --on <ID> --reason <why>`:
+  record a one-line judgement that clears a hint; see "Hints, and the rules
+  that block". For `issue-changed`, add `--issues <folder>`; see "Hints from
+  the linked work items".
 - `al record <name> close --on <ID> --reason <sentence>`: a close line, on a
   change paragraph that is not delivered or on a requirement that is met
   where no lasting paragraph links to it; see "The close rule".
@@ -183,8 +186,8 @@ missing or stale consolidation judgement is shown and never refuses.
   next free ID.
 - `al index`: write the derived facts and the new bindings, remove the
   bindings of links that no marker declares, and list the AI hints to
-  refresh. `al index --align <ID>` moves the bindings of one paragraph to its
-  targets' current text and to its own, on purpose.
+  refresh. `--align` is removed: a judgement moves a binding (see "Hints,
+  and the rules that block").
   `al index --issues <folder>` also keeps the text of the tasks' work items
   (see "Hints from the linked work items").
 - `al check [--strict] [--issues <folder>] [--full] [--all] [--at <commit>]`:
@@ -404,8 +407,13 @@ ADRs that supersede it: `superseded by ADR-11, ADR-12` or
 - `al check` gives a hint for an ADR whose first line is not
   `Status: proposed`, `Status: accepted` or `Status: superseded by ADR-<n>`,
   with one ADR or a list of them.
-- After a rewrite, `al index --align <ID>` moves the bindings of paragraph
-  `<ID>` to the ADR's new text, for an accepted or a superseded ADR.
+- The hint `adr-changed` clears by a fix, or by a judgement, with its
+  reason, that the decision is unchanged: `al record <name> judgement
+  --hint adr-changed --on ADR-3 --reason <why>`. It holds until the ADR's
+  text or its marker line changes again.
+- After a rewrite, a judgement on `holder-changed` moves the bindings of
+  paragraph `<ID>` to the ADR's new text, for an accepted or a superseded
+  ADR.
 - `al check` gives a hint for a proposed or accepted ADR with no `source:`
   or no `decides:`.
 - A current place that names a superseded ADR also names the ADR that
@@ -858,6 +866,17 @@ hint in every mode, `--strict` included: the marker and ID lints, the path
 claim, a link that does not resolve, an ADR's changed text or missing links,
 the map's hints, and the rest. `--strict` changes only the exit code:
 it is 1 when a `not ok` prints.
+
+A hint clears by a fix, or by a one-line judgement with its reason:
+`al record <name> judgement --hint <code> --on <ID> --reason "<why>" --yes`.
+`<name>` is an open request, the change's own; `--on` is the ID that the
+hint line shows, or its path when that ID is `-`. The judgement keeps the
+versions of both sides of the hint. When one of them changes, the hint
+comes back and names the judgement as stale. `al check` shows the current
+judgements in one line, `info judged`. On `stale-base`, `holder-changed` and
+`binding-unknown`, the judgement moves or binds the binding of that link to
+the texts of now. A judgement never clears a `not ok` or a refusal of
+`al conclude`: it is shown on the `not ok` line, and nothing else changes.
 
 `al check` gives the hint "promise kind?" (`promise-kind`) for a paragraph
 that is not a promise kind and holds a requirement word: MUST, SHALL, SHOULD,

@@ -25,7 +25,9 @@ const PAIRS = {
   // D06, D14: #72 (LD-58) removed the exact-text rule and the dispositions;
   // the drift is the review's judgement now, so al check finds nothing.
   d06: { name: 'a drifted consolidation', defect: [], control: [] },
-  d07: { name: 'a stale base after indexing', defect: ['hint stale-base reminder-emails/SP-4'], control: [] },
+  // #88: the control clears the stale-base with a recorded judgement, and
+  // al check shows the current judgements on one info line.
+  d07: { name: 'a stale base after indexing', defect: ['hint stale-base reminder-emails/SP-4'], control: ['info judged -'] },
   d08: { name: 'a stale AI summary with a surviving quote', defect: ['hint stale-ai-hint INV-8'], control: [] },
   // D09: INV-4 is adopted (decision D16); edited with no link on path 0, it gets no-link back.
   // #238 R2: path-claim is a hint.

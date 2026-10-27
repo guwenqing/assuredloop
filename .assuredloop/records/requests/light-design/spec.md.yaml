@@ -51,7 +51,7 @@ paragraphs:
     display: LD-11 (2:6, in 2. The approach)
   - id: LD-12
     kind: rationale
-    text_sha256: 7703bb437605eaf9a18a0622f49d8bd6ca374d1cdc1650f2fb0e32c607f40d72
+    text_sha256: faf8c8c9bebbeffd318a4532ec6319cf0b99b056a56d38dff1b668b1c82cf01b
     display: LD-12 (2:7, in 2. The approach)
   - id: LD-13
     kind: rationale
@@ -99,7 +99,7 @@ paragraphs:
     display: LD-62 (3:9, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-58
     kind: plan
-    text_sha256: 30304e20e34ede0adf6aacd8440bb44e2910929925de18633c9f2ce2ecfb599f
+    text_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275
     display: LD-58 (3:10, in 3. The records and consolidation (plans; a part that changes a signed requirement waits for the owner's new signature))
   - id: LD-67
     kind: plan
@@ -143,7 +143,7 @@ paragraphs:
     display: LD-41 (4:6, in 4. Commands, answers and the skill (plans))
   - id: LD-22
     kind: flow
-    text_sha256: 617b51609685077b471493c1e680ac28bf83f35a8c6438873d235ca4ec7ff4f1
+    text_sha256: c7f23e7d768133bce61de67ccaf0fc3273259ba5820732c8c8269dbedd258ac0
     display: LD-22 (4:7, in 4. Commands, answers and the skill (plans))
   - id: LD-23
     kind: note

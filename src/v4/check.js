@@ -26,6 +26,7 @@ import { mapSection } from './map.js';
 import { index, isCentral } from './indexer.js';
 import { named, placeOf, requestOf } from './state.js';
 import { placesOf } from './views.js';
+import { judgementPass } from './judgements.js';
 
 // A file or folder that al check cannot read, and that no check reports as
 // not ok, stops it with a refusal: never an internal error, never a pass (#238).
@@ -120,6 +121,10 @@ function settings({ top, cwd, opts }) {
   return { config, kinds, phrases, issues };
 }
 
+// The findings of al check now, before any judgement, and its state; al
+// index does not run, and nothing is written (al record <name> judgement, #88).
+export const findingsNow = (args) => checkAll({ ...args, raw: true });
+
 function checkAll(args) {
   const { top, opts } = args;
   const { config, kinds, phrases, issues } = settings(args);
@@ -164,15 +169,23 @@ function checkAll(args) {
   t10.findings.push(...map.findings);
   // An adopted paragraph needs no link while its text is the captured text (D16).
   const shown = lints.filter((l) => !(l.code === 'no-link' && t10.adopted.has(l.id) && !l.file.startsWith('requests/'))).map((l) => ({ ...l, severity: 'hint' }));
+  // The findings before any judgement, for al record <name> judgement (#88).
+  if (args.raw) return { state: t10.now, findings: [...shown.map((l) => ({ ...l, where: `${l.file}:${l.line}` })), ...t10.findings] };
+  // A hint clears by a recorded judgement while its versions are those of
+  // now, and the current judgements are one line (LD-12, #88).
+  const pass = judgementPass(t10.now);
   lints.length = 0;
-  lints.push(...shown);
+  lints.push(...pass.apply(shown));
+  t10.findings.splice(0, t10.findings.length, ...pass.apply(t10.findings));
+  const judged = pass.judged(t10.judgedBindings);
+  if (judged) t10.findings.push({ severity: 'info', code: 'judged', where: '-', id: '-', message: judged });
   const body = notRead(top, config);
   // A root that config sets but that is not read is a not ok, as in al index (#218).
   const rootLine = rootNotOk(top, config);
   if (rootLine) body.push(rootLine);
   // After each message, the place of each other ID that it shows (LD-47).
   // A lint about a marker names the marker line, the place of the problem.
-  const places = (f) => placesOf(t10.now, t10.was, base, f);
+  const places = (f) => (f.code === 'judged' ? '' : placesOf(t10.now, t10.was, base, f));
   body.push(...lints.map((l) => {
     const f = { id: l.id ?? '-', where: `${l.file}:${l.line}`, message: l.message };
     return `${l.severity} ${l.code} ${f.where} ${f.id} ${l.message}${places(f)}`;
@@ -189,7 +202,7 @@ function checkAll(args) {
   body.push(...reviewSection(top, { now: t10.now, was: t10.was, base, own: list.own ?? [], config, issues }));
   body.push(...map.body);
   // One line that names each check that ran and found nothing (LD-41).
-  const gave = new Set(body.map((l) => /^(?:hint|not ok) (\S+) /.exec(l)?.[1]).filter(Boolean));
+  const gave = new Set([...body.map((l) => /^(?:hint|not ok) (\S+) /.exec(l)?.[1]).filter(Boolean), ...pass.codes]);
   // Only the checks that ran in full: a check that a Not known line or a
   // finding says was not run, or not run on all that it covers, is left out:
   // with no base, the checks of the change against it; with a shallow

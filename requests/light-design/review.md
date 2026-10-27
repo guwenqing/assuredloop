@@ -3,7 +3,7 @@
 ## Consolidation
 
 Each judgement below says what `specs/` holds now, and what I checked in the
-code on main. LD-12, LD-40, LD-49 and section 5 stay out: they wait for new
+code on main. LD-40, LD-49 and section 5 stay out: they wait for new
 signatures or are still open. LD-7 and LD-10 are `approach`: they say how
 this change is built.
 
@@ -23,12 +23,28 @@ this change is built.
 - LD-11 complies: each thing is judged by its own time, now the rationale beside C7 in section 8.
   - Item (LD-11): "Judge each thing by its own time."
   - Spec (DES-131): "each thing is judged by its own time."
-- LD-22 complies: C7, now in section 8, with the judgement that clears the hint. LD-22 was amended before this judgement: the judgement keeps the hash of the item's text, as src/v4/commands.js writes it.
+- LD-22 complies: C7, now in section 8, with the judgement that clears the hint. LD-22 was amended before this judgement: the judgement keeps the hash of the item's text, as src/v4/commands.js writes it. The other hints now take the general judgement of LD-12 (DES-163), and DES-130 says so; issue-changed keeps its own form in src/v4/kept-items.js, which this change does not alter; its judgements are not in the `info judged` line, and the general pass of src/v4/judgements.js does not read them, nor the binding judgements.
   - Item (LD-22): "keeps the hash of the item's text with the judgement"
   - Item (LD-22): "The text at that sign-off is the one that counts, else the text at the"
+  - Item (LD-22): "The other hints take the general judgement of LD-12"
   - Spec (DES-130): "keeps the hash of the item's text with the judgement"
   - Spec (DES-130): "The text at that sign-off"
+  - Spec (DES-130): "The other hints take the judgement of section 3."
   - Code (src/v4/kept-items.js): "A moment that is past is never kept."
+- LD-12 complies: a hint clears by a fix, or by a recorded one-line judgement with its reason, now DES-163 in section 3. The ADR part is in SCH-22, and the move of a binding is in DES-26. `al index --align` is removed, and it refuses (src/v4/indexer.js). A judgement on a `not ok` is shown on its line and clears nothing (src/v4/judgements.js). On a change paragraph's `changes` or `removes` link, a judgement keeps the link-time version that the map and `al conclude` read (DES-160), and a hint with no ID keeps the text of its paragraph, so a move keeps it current. A `stale-base` judgement there keeps the target that it judged; `stale-base` compares with it only, and a later judgement keeps it. A judgement that is stale on one of its hints leaves the `info judged` line, and only the newest judgement on a pair of hint code and `--on` counts; the record keeps the older ones. A binding names the judgement that moved it.
+  - Item (LD-12): "Every hint can be cleared: by a fix, or by a one-line judgement with its reason, which `al` records."
+  - Item (LD-12): "A judgement on them is shown, and changes neither `--strict` nor `conclude`."
+  - Item (LD-12): "A move makes no binding and no judgement stale, and an ID-only edit makes no binding stale"
+  - Spec (DES-163): "Every hint of `al check` clears by a fix, or by a one-line judgement with its reason"
+  - Spec (DES-163): "A judgement never clears a `not ok` or a refusal of `al conclude`."
+  - Spec (DES-163): "A move makes no binding and no judgement stale"
+  - Spec (SCH-22): "The hint `adr-changed` clears by a fix, or by a recorded one-line judgement, with its reason, that the decision is unchanged"
+  - Spec (DES-163): "For a `changes` or `removes` link of a change paragraph, the judgement moves only the holder side."
+  - Spec (DES-163): "For a hint with no ID on a line of a file, such as `no-id`, it is the text of the block at that line, as the marker parser reads it"
+  - Spec (DES-26): "Only a recorded judgement moves it, after the agent has checked the change against the new target"
+  - Code (src/v4/indexer.js): "if (linked && old && bind.entry.hint === 'stale-base') entry.judged_target_sha256 = target.sha;"
+  - Code (src/v4/indexer.js): "--align is removed: a hint clears by a fix, or by a recorded judgement with its reason"
+  - Code (src/v4/judgements.js): "is shown; it does not clear a not ok"
 - LD-24 complies: what is in force and the change's own request, now in section 15 under its heading. The own request is described by what `al index` does not derive, as INDEX_KEYS in src/v4/records.js says; tasks are written by hand, not by `al record`.
   - Item (LD-24): "The ADRs whose status is accepted and that no ADR replaced"
   - Item (LD-24): "What `al index` derives by itself"

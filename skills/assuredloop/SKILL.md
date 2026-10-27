@@ -74,6 +74,9 @@ judgements in `requests/<name>/review.md`.
 9. Run `al check` again. Stop when the search question and the lookups find
    nothing more that applies. An empty lookup alone does not mean that nothing
    applies.
+10. Clear each hint by a fix, or, when it calls for no change, by a one-line
+    judgement with its reason: `al record <name> judgement --hint <code>
+    --on <ID> --reason "<why>" --yes`. A judgement never clears a `not ok`.
 
 A judgement, then a consolidation judgement, which names the spec paragraphs
 that hold the piece now:

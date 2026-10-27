@@ -89,22 +89,26 @@ paragraphs:
     kind: rule
     text_sha256: a8e1cb19a9c02e08d1b13b35635b46e80c7f023261b06b5acacbffe1b0938fc2
     display: DES-22 (3:11, in 3. IDs, kinds and links)
+  - id: DES-163
+    kind: rule
+    text_sha256: fc509afa8072b80b34e500941b51f381ba567e2f148a2c585974430b010c1a62
+    display: DES-163 (3:12, in 3. IDs, kinds and links)
   - id: DES-81
     kind: choice
     text_sha256: 8de44539eedb01d463b7d6372cd958a743bb3c3bb16f5936e3cbd7fb30a6e49e
-    display: DES-81 (3:12, in 3. IDs, kinds and links)
+    display: DES-81 (3:13, in 3. IDs, kinds and links)
   - id: DES-101
     kind: rule
     text_sha256: 6fbe03036c111e54ddabcb21a20687e776b3025a7d565cbbfe0bf62b972463d2
-    display: DES-101 (3:13, in 3. IDs, kinds and links)
+    display: DES-101 (3:14, in 3. IDs, kinds and links)
   - id: DES-102
     kind: data
     text_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb
-    display: DES-102 (3:14, in 3. IDs, kinds and links)
+    display: DES-102 (3:15, in 3. IDs, kinds and links)
   - id: DES-23
     kind: flow
     text_sha256: 5c1b3a6f98fed226b56c764f1c3a677004fa9d6afe230237e8bb997a1144b32c
-    display: DES-23 (3:15, in 3. IDs, kinds and links)
+    display: DES-23 (3:16, in 3. IDs, kinds and links)
   - id: DES-24
     kind: note
     text_sha256: 84947cd9438f30253fda7b8034c11f1e3ebad3c254452c836d9ade5f0e99b28e
@@ -115,7 +119,7 @@ paragraphs:
     display: DES-25 (4:1, in 4. The change spec honors the consolidated spec)
   - id: DES-26
     kind: rule
-    text_sha256: 575f1d76b19aed1c3d566ce8e17bd8675bb837d82ecb53da27a592d4c4859848
+    text_sha256: d7270345348b9ef0cc634da8067f78e56398ee6112990df98c6ff91cfb590cb2
     display: DES-26 (4:2, in 4. The change spec honors the consolidated spec)
   - id: DES-27
     kind: note
@@ -299,7 +303,7 @@ paragraphs:
     display: DES-117 (8:23, in 8. Tasks)
   - id: DES-130
     kind: flow
-    text_sha256: 551c3a53d144dd7a55ffaa67f570a64e85a9348025779d9059e262cc76db328c
+    text_sha256: fd828e2379b41cf3eca8b5231d320071e440ae6fe2fe3d97daef1e0c571348c7
     display: DES-130 (8:24, in 8. Tasks)
   - id: DES-131
     kind: rationale
@@ -459,7 +463,7 @@ paragraphs:
     display: DES-71 (13, 13. Commands)
   - id: DES-72
     kind: interface
-    text_sha256: 392453f6891f52f67d3f1fd4858db41d11d434c1ba62b00dcef46a6e7d54afef
+    text_sha256: 391e1fb5fb7788a1fde1daf61be0154e2bcc6e419aaf24c456f77ff65e474eca
     display: DES-72 (13:1, in 13. Commands)
   - id: DES-132
     kind: interface
