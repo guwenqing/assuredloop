@@ -84,7 +84,6 @@ bindings:
   - { holder: DES-22, link: serves, target: assuredloop-v4/R11, holder_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341, target_sha256: 04d773ae11aee7d726a74cd8803cb1c565d5c02ed60a525cb23205474e0323c2, target_version: 1 }
   - { holder: DES-22, link: serves, target: promise-design-split/R1, holder_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341, target_sha256: bed9d539aa1069b244255ae5759371a8792f86732a4ec5a2fc49bd73a16cd2f3, target_version: 1 }
   - { holder: DES-22, link: serves, target: delete-in-change-spec/R1, holder_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341, target_sha256: 719730fc0ebb806e58c68ceceae592551ae8d5b2f9615ef80e4c5905c7cede33, target_version: 1 }
-  - { holder: DES-22, link: serves, target: design-links/R1, holder_sha256: 92034ea1988a1ca51091f296af2ac3536e6c2fb8209ce11ebda01ca030862341, target_sha256: d7601b61241f94d6c885d4a29e04d70213759790c63051d58b7751e916e09879, target_version: 1 }
   - { holder: SCH-22, link: serves, target: assuredloop-v4/R1, holder_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4, target_sha256: ed8f5a89a344ff76573e23a814ef9e440efbd1ecedad2fda035b11efe7f7789b, target_version: 1 }
 dispositions:
   - { source: adr-links/SP-4, disposition: incorporated, spec: SCH-22, source_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4, spec_sha256: 84ef1d6159bc7306e99ab61d5892c862adc3f514828e317998a084379331aee4 }

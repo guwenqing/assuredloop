@@ -89,26 +89,30 @@ paragraphs:
     kind: rule
     text_sha256: a8e1cb19a9c02e08d1b13b35635b46e80c7f023261b06b5acacbffe1b0938fc2
     display: DES-22 (3:11, in 3. IDs, kinds and links)
+  - id: DES-165
+    kind: rule
+    text_sha256: 4743bf7ab6ab5cf1291f6b8011139a7e1d97c860d89cb93f5a504567f3e5133d
+    display: DES-165 (3:12, in 3. IDs, kinds and links)
   - id: DES-163
     kind: rule
     text_sha256: fc509afa8072b80b34e500941b51f381ba567e2f148a2c585974430b010c1a62
-    display: DES-163 (3:12, in 3. IDs, kinds and links)
+    display: DES-163 (3:13, in 3. IDs, kinds and links)
   - id: DES-81
     kind: choice
     text_sha256: 8de44539eedb01d463b7d6372cd958a743bb3c3bb16f5936e3cbd7fb30a6e49e
-    display: DES-81 (3:13, in 3. IDs, kinds and links)
+    display: DES-81 (3:14, in 3. IDs, kinds and links)
   - id: DES-101
     kind: rule
     text_sha256: 6fbe03036c111e54ddabcb21a20687e776b3025a7d565cbbfe0bf62b972463d2
-    display: DES-101 (3:14, in 3. IDs, kinds and links)
+    display: DES-101 (3:15, in 3. IDs, kinds and links)
   - id: DES-102
     kind: data
     text_sha256: a6e906e37c93435680823a4f0a8a89e6603289b12772adfa5dd5edc4f2490ecb
-    display: DES-102 (3:15, in 3. IDs, kinds and links)
+    display: DES-102 (3:16, in 3. IDs, kinds and links)
   - id: DES-23
     kind: flow
     text_sha256: 5c1b3a6f98fed226b56c764f1c3a677004fa9d6afe230237e8bb997a1144b32c
-    display: DES-23 (3:16, in 3. IDs, kinds and links)
+    display: DES-23 (3:17, in 3. IDs, kinds and links)
   - id: DES-24
     kind: note
     text_sha256: 84947cd9438f30253fda7b8034c11f1e3ebad3c254452c836d9ade5f0e99b28e

@@ -844,7 +844,23 @@ declared link to a promise or design paragraph. During work that is a hint; at c
 LD-57. It says "no declared paragraph link", never "not served" or "not
 built", and it shows the known direct links to code, tests and documents,
 with their limits. Its fixtures: direct output links only, an existing
-design reused, an ADR only, partial links, and no link. Whether the code
+design reused, an ADR only, partial links, and no link. The hint's rules
+where the spec was not clear (#95): it reads every open request, of every
+tier, and only the requirements R<n> of the current version, not a
+spike's question. In `specs/` a declared link is what item 2 reads: a
+`serves` link from any paragraph there, or a `decides` link from an accepted
+ADR; one shared rule decides both. A promise or design paragraph of any open
+change spec that serves it also clears the hint, and an `approach` does not.
+A current close line clears it; a stale one does not, and the hint names
+it. A requirement whose sign-off is not checked gets no hint, and the Not
+known line names it. The known direct links are each paragraph of an open
+change spec that serves it and is no promise or design, each ADR that
+decides it and is not accepted, each declared `verifies` output, and each
+file that `al context <name>/R<n>` shows as citing it, current files first.
+The message names each link by its ID or its file, with its limit. The
+citing line numbers follow the message, outside it, every line shown. A
+judgement keeps the message (DES-163), so it goes stale when a link or a
+citing file comes or goes, and not when a citing line only moves. Whether the code
 does what the requirement says, and whether a user document still says what
 was decided, stay review questions (LD-20, steps 4.4, 4.6 and 4.7); the
 code tests do not prove them.
