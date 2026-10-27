@@ -1,0 +1,29 @@
+schema: assuredloop/1
+request: adr-rewrite
+tier: "1"
+status: open
+sources:
+  - file: 2026-10-27-owner-words.md
+    kind: owner-words
+    sha256: 3d52d71f9f20507427791f888136f089aee4563f10c649418fd17e814b1f161f
+    taken: 2026-10-27T03:35Z
+requirements:
+  - id: R1
+    version: 1
+    sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8
+    title: A rewrite that keeps the meaning
+signoff:
+  - id: S1
+    file: 2026-10-27-signoff.md
+    sha256: c97a8001209cc3ee25a1b010c2fa575fcba0577e7de01aea634994df1eccc5f4
+    signed: 2026-10-27T03:35Z
+    source: owner chat with the architect, 2026-10-27 about 03:30Z
+    words: Sign
+    presented: 2026-10-26 about 06:40Z, again 18:26Z and 22:39Z, the text in full, as hints-and-blocks/R1 version 2
+    transcribed_by: the agent (architect)
+    covers:
+      - { id: R1, version: 1, sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8 }
+decisions: []
+tasks: []
+bindings:
+  - { holder: adr-rewrite/R1, link: from, target: adr-rewrite/2026-10-27-owner-words.md, holder_sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8, target_sha256: 3d52d71f9f20507427791f888136f089aee4563f10c649418fd17e814b1f161f }
