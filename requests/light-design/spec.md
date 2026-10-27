@@ -908,7 +908,8 @@ R12 stay as signed. The owner signed the new versions of v4/R5 and
 context-all/R1 on 2026-10-25. They are light-resign/R5 and light-resign/R1,
 because `al` does not edit an archived request. The owner signed the new
 version of hints-and-blocks/R1 on 2026-10-27. It is adr-rewrite/R1. The
-other two items below still wait for the owner.
+owner signed the new version of design-links/R1 on 2026-10-27. It is
+link-hints/R1. The other item below, v4/R10, still waits for the owner.
 
 | Requirement | The new version says, in short |
 |---|---|
