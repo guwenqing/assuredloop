@@ -6,9 +6,9 @@
 // - `{local: <row>}` with the library: level 2 with that row, for each of the
 //   11 rows this version runs. The Level line names the row; the stand-in
 //   (helpers/search.js) sees the row's model repo, its dtype and its device
-//   (cpu, webgpu or coreml). bge and qwen rows embed through the extractor
-//   (pooling cls or last_token, normalize); EmbeddingGemma rows through the
-//   pipeline's tokenizer and model (sentence_embedding).
+//   (cpu, webgpu or coreml). Each row embeds as it was measured (DES-80):
+//   tokenizer.encode, the cut to 512 ids, padding by hand, and the
+//   pipeline's model (kb-search-embed-99.test.js tests the recipe).
 // - A row that does not fit this computer still runs, with a Not known item
 //   that says what it needs and what the computer has.
 // - Without the library: level 1, a Fallback line, and the Not known line
@@ -24,9 +24,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   MODEL, REVISION, ROW, TRANSFORMERS, TRANSFORMERS_VERSION, WITH_MODEL, besideAl, callsOf, embedded, installEmbedder,
-  runOk, runRefused, search, show, smallRepo,
+  familyOf, runOk, runRefused, search, show, smallRepo,
 } from './helpers/search.js';
-import { HUGE_MAC, RUNNABLE, SMALL_MAC, fakeComputer, noChoice } from './helpers/kb-search.js';
+import { HUGE_MAC, RUNNABLE, SMALL_MAC, checkRecipe, fakeComputer, noChoice } from './helpers/kb-search.js';
 
 const LEVEL1_LINE = 'Level     1 (full text, SQLite FTS5)';
 const level2Line = (row) => `Level     2 (hybrid: full text and ${row})`;
@@ -41,10 +41,6 @@ const MODEL_OF = {
   'qwen3-embedding-0.6b': 'onnx-community/Qwen3-Embedding-0.6B-ONNX',
 };
 const DEVICE_OF = { 'tjs-cpu': 'cpu', 'tjs-webgpu': 'webgpu', 'tjs-coreml': 'coreml' };
-// How each model embeds: bge and qwen through the extractor, with their
-// pooling and normalize; EmbeddingGemma through the pipeline's tokenizer and
-// model (its sentence_embedding output), which al normalizes itself.
-const POOLING_OF = { 'bge-small-en-v1.5': 'cls', 'qwen3-embedding-0.6b': 'last_token' };
 
 // A small repo with the setting, the stand-in with its logs, and a fake Mac.
 function repo(t, setting, standIn = {}) {
@@ -132,16 +128,12 @@ for (const row of RUNNABLE) {
     }
     const all = callsOf(f.calls);
     assert.ok(embedded(f.log).length > 0, `${row}: rows and the query were embedded`);
-    if (model === 'embeddinggemma-300m') {
-      const models = all.filter((c) => c.call === 'model');
-      assert.ok(models.length > 0 && models.every((c) => c.count >= 1), `${row} embeds through the pipeline's model: ${JSON.stringify(all)}`);
-      assert.ok(all.some((c) => c.call === 'tokenize'), `${row} uses the pipeline's tokenizer: ${JSON.stringify(all)}`);
-      assert.deepEqual(all.filter((c) => c.call === 'extract'), [], `${row} does not use the extractor's pooling`);
-    } else {
-      const extracts = all.filter((c) => c.call === 'extract');
-      assert.ok(extracts.length > 0, `${row} embeds through the extractor: ${JSON.stringify(all)}`);
-      for (const c of extracts) assert.deepEqual(c.options, { pooling: POOLING_OF[model], normalize: true }, `${row}: the pooling and normalize`);
-    }
+    // #99 (DES-80): every row embeds as it was measured: tokenizer.encode,
+    // the cut, padding by hand, and the pipeline's model; never the
+    // extractor's pooling (helpers/kb-search.js, checkRecipe).
+    const models = all.filter((c) => c.call === 'model');
+    assert.ok(models.length > 0 && models.every((c) => c.count >= 1), `${row} embeds through the pipeline's model: ${JSON.stringify(all).slice(0, 2000)}`);
+    checkRecipe(f.calls, familyOf(MODEL_OF[model]));
     if (row === ROW) {
       assert.equal(pipes[0].model, MODEL);
       assert.ok(pipes[0].options?.revision === REVISION || JSON.stringify(pipes[0].env).includes(REVISION), 'the pinned revision');

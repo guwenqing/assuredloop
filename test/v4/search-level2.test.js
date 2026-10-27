@@ -17,6 +17,7 @@ import {
   A_TEXT, LEVEL2_LINE, MODEL, QUERY_PREFIX, REVISION, SMALL_SP2, SMALL_SPEC, WITH_MODEL, besideAl, buildWorld, callsOf, clearLog,
   embedded, exportRows, indexFile, installEmbedder, runOk, search, show, smallRepo,
 } from './helpers/search.js';
+import { checkRecipe } from './helpers/kb-search.js';
 
 const NO_SQLITE = ['--no-experimental-sqlite'];
 const idRoles = (out) => out.hits.map((h) => `${h.id} v${h.version} ${h.role}`);
@@ -42,7 +43,7 @@ test('#99 with search: {local: bge-small-en-v1.5 q8 tjs-cpu} and @huggingface/tr
 // options or through the library's `env` settings (remotePathTemplate, for
 // example), and may pass more options. The task, the model and q8 (which
 // model file is used) stay as they are.
-test('level 2 calls the library as pinned: pipeline once per process, with the model, its revision (in the options or in env) and q8; the extractor with cls pooling and normalize, at most 32 texts at a time', (t) => {
+test('level 2 calls the library as pinned: pipeline once per process, with the model, its revision (in the options or in env) and q8; the model as measured (#99: encode, cut, pad by hand), at most 32 texts at a time', (t) => {
   const dir = project(t);
   write(dir, '.gitignore', 'node_modules/\n');
   writeConfig(dir, [{ file: 'specs/many.md', prefix: 'MNY' }], { repo: 'acme', search: WITH_MODEL });
@@ -66,11 +67,14 @@ test('level 2 calls the library as pinned: pipeline once per process, with the m
     `the pinned revision ${REVISION} reaches the library, in the options or in env: ${JSON.stringify(pipes[0])}`);
   assert.ok(pipes[0].options?.revision === undefined || pipes[0].options.revision === REVISION,
     `no other revision is asked for: ${JSON.stringify(pipes[0].options)}`);
-  const extracts = first.filter((c) => c.call === 'extract');
-  assert.ok(extracts.length >= 4, `70 rows and a query need at least 4 calls of the extractor: ${extracts.length}`);
-  for (const c of extracts) {
+  // #99 (DES-80): the row is embedded as it was measured: no extractor with
+  // pooling; the model gets the ids of tokenizer.encode, cut and padded by
+  // hand (helpers/kb-search.js, checkRecipe).
+  checkRecipe(calls, 'bge');
+  const models = first.filter((c) => c.call === 'model');
+  assert.ok(models.length >= 4, `70 rows and a query need at least 4 calls of the model: ${models.length}`);
+  for (const c of models) {
     assert.ok(c.count >= 1 && c.count <= 32, `a batch of 1 to 32 texts: ${c.count}`);
-    assert.deepEqual(c.options, { pooling: 'cls', normalize: true });
   }
   for (let i = 2; i <= 71; i += 1) {
     assert.ok(embedded(log).some((x) => x.includes(`Rule number ${i}:`)), `MNY-${i} was embedded`);
