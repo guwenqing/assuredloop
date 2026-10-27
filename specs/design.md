@@ -596,8 +596,9 @@ refuses while:
 - Nothing else refuses. A missing or stale consolidation judgement and the
   map's hints are shown before `al conclude` closes, and never refuse. A
   review judgement never clears or causes a refusal.
-- The check runs on the closing PR's state. An archived request is never
-  checked again against today's spec.
+- The check runs on the closing PR's state: a request that the branch
+  concludes is checked as an open request, at its new paths. A request
+  archived at the base is never checked again against today's spec.
 - The local tree and main stay apart: "consolidated on main" is read from
   main's history, not from the working tree.
 - Code or tests that still cite a removed ID get a hint.
@@ -1942,7 +1943,7 @@ these facts. The `Hints` section of `al context`, with or without
   one covers the same item and moment. The judgements of a request
   archived at the base are recorded and not checked; those of a request
   that the branch concludes are checked as for an open request. A binding
-  judgement of an archived request is recorded and not checked. At `--at`,
+  judgement of a request archived at the base is recorded and not checked. At `--at`,
   their state is not known. An entry with no hint code or no `--on` is not checked.
 - `Disp.`: each disposition of an old record, as recorded; `al` no longer
   checks it (DES-136).
