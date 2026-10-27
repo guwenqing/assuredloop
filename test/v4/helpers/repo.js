@@ -17,7 +17,12 @@ function cleanEnv(extra = {}) {
   for (const [k, v] of Object.entries(process.env)) {
     if (!k.startsWith('GIT_') && k !== 'SOURCE_DATE_EPOCH') env[k] = v;
   }
-  return { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', ...extra };
+  return {
+    ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1',
+    // No automatic maintenance or gc: a detached run writes into .git while the test removes it (#108).
+    GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'maintenance.auto', GIT_CONFIG_VALUE_0: 'false', GIT_CONFIG_KEY_1: 'gc.auto', GIT_CONFIG_VALUE_1: '0',
+    ...extra,
+  };
 }
 
 const gitEnv = () => cleanEnv({
