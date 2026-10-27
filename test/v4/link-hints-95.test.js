@@ -30,8 +30,13 @@
 //   a request record; and the files that cite <name>/R<n> as a whole word
 //   (the files of the Cited lines of `al context <name>/R<n>`), current
 //   first, then historical.
+// - A known link names its paragraph or ADR by ID only: the message holds
+//   no line number, so a judgement (which keeps the message) stays current
+//   when that paragraph or ADR only moves. The place of each such ID is in
+//   the " · places: <ID> <file>:<line>, ..." tail that al check prints
+//   after a finding (LD-47).
 // - After the message, outside it: " · cited lines: <file> <n>, <n>; ...",
-//   with every citing line.
+//   with every citing line, before the places tail.
 // - The lines never say "not served", "not built", "no code" or "no test".
 // - A hint in every mode: never `not ok`, and `al check --strict` keeps its
 //   exit code. `al context <name>` shows it under Hints.
@@ -189,13 +194,31 @@ const CLEAR = (name, n) =>
   `Link it, record where it is met (al record ${name} close --on ${n} --reason <why>), or judge it (al record ${name} judgement --hint ${CODE} --on ${name}/${n} --reason <why>)`;
 
 // The limit clauses of the known direct links.
-const APPROACH = (id, at) => `approach ${id} (${at}) serves it, and an approach is not a design and is never in force`;
-const OTHER_KIND = (kind, id, at) => `${kind} ${id} (${at}) serves it, and a ${kind} paragraph is not a promise or design paragraph`;
-const ADR_LINK = (status, id, at) => `${status} ${id} (${at}) decides it, and a ${status} ADR is not in force`;
+const APPROACH = (id) => `approach ${id} serves it, and an approach is not a design and is never in force`;
+const OTHER_KIND = (kind, id) => `${kind} ${id} serves it, and a ${kind} paragraph is not a promise or design paragraph`;
+const ADR_LINK = (status, id) => `${status} ${id} decides it, and a ${status} ADR is not in force`;
 const OUTPUT = (file) => `declared output ${file} verifies it, and a declared output is a claim, never shown as proven`;
 const CITED = (cites) =>
   `cited in ${cites.map((c) => `${c.group} ${c.file}`).join(', ')}, and a citation is not evidence that the code or the test does what the requirement says`;
 const TAIL = (cites) => ` · cited lines: ${cites.map((c) => `${c.file} ${c.ns.join(', ')}`).join('; ')}`;
+
+// The message without the tails: the part of the line before " · cited
+// lines: " or " · places: ".
+function messageOf(f) {
+  const ends = [' · cited lines: ', ' · places: '].map((t) => f.msg.indexOf(t)).filter((i) => i >= 0);
+  return ends.length ? f.msg.slice(0, Math.min(...ends)) : f.msg;
+}
+
+// The " · places: <ID> <file>:<line>, ..." tail of a hint names the ID at
+// the place; it is the last part of the line, after any cited lines.
+function placed(f, r, id, at) {
+  const i = f.msg.lastIndexOf(' · places: ');
+  assert.ok(i >= 0, `a places tail:\n${f.line}\n${show(r)}`);
+  const entries = f.msg.slice(i + ' · places: '.length).split(', ');
+  assert.ok(entries.includes(`${id} ${at}`), `the places tail names "${id} ${at}":\n${f.line}\n${show(r)}`);
+  const cited = f.msg.indexOf(' · cited lines: ');
+  if (cited >= 0) assert.ok(cited < i, `the cited lines come before the places:\n${f.line}`);
+}
 
 // The hint on <name>/R<n>, at the requirement's place, with the head, the
 // links part and the way to clear it.
@@ -211,6 +234,7 @@ function hintOn(r, dir, name, n, { known, env } = {}) {
     assert.ok(f.msg.startsWith(HEAD(id) + KNOWN), `the message starts with the head and the known links:\n${f.line}\n${show(r)}`);
   }
   assert.ok(f.msg.includes(CLEAR(name, n)), `the message says how to clear it:\n${f.line}\n${show(r)}`);
+  assert.doesNotMatch(messageOf(f), /:\d/, `the message holds no line number; places are in the places tail:\n${f.line}\n${show(r)}`);
   return f;
 }
 
@@ -291,8 +315,9 @@ test('#95 ADR only: an accepted ADR that decides share/R1 clears it; a proposed 
   const r = check(dir);
   noHint(r, `${NAME}/R1`);
   const f = hintOn(r, dir, NAME, 'R2');
-  const link = ADR_LINK('proposed', 'ADR-5', place(dir, a5.file, a5.heading));
-  assert.ok(f.msg.includes(link), `the proposed ADR, with its limit:\n${link}\n${f.line}\n${show(r)}`);
+  const link = ADR_LINK('proposed', 'ADR-5');
+  assert.ok(messageOf(f).includes(link), `the proposed ADR, by ID, with its limit:\n${link}\n${f.line}\n${show(r)}`);
+  placed(f, r, 'ADR-5', place(dir, a5.file, a5.heading));
 });
 
 // =====================================================================
@@ -345,14 +370,16 @@ test('#95 a promise or design paragraph of the change spec that serves it clears
 test('#95 an approach that serves share/R11 is named with "an approach is not a design and is never in force"; plan, rationale and step each with "a <kind> paragraph is not a promise or design paragraph"', (t) => {
   const dir = kindsWorld(t);
   const r = check(dir);
-  const sp11 = APPROACH(`${NAME}/SP-11`, place(dir, CS, 'Reuse the export link of today.'));
+  const sp11 = APPROACH(`${NAME}/SP-11`);
   const f11 = hintOn(r, dir, NAME, 'R11');
-  assert.ok(f11.msg.includes(sp11), `the approach, with its limit:\n${sp11}\n${f11.line}\n${show(r)}`);
+  assert.ok(messageOf(f11).includes(sp11), `the approach, by ID, with its limit:\n${sp11}\n${f11.line}\n${show(r)}`);
+  placed(f11, r, `${NAME}/SP-11`, place(dir, CS, 'Reuse the export link of today.'));
   OTHERS.forEach((k, i) => {
     const n = i + 12;
-    const link = OTHER_KIND(k, `${NAME}/SP-${n}`, place(dir, CS, `The ${k} paragraph number ${n}.`));
+    const link = OTHER_KIND(k, `${NAME}/SP-${n}`);
     const f = hintOn(r, dir, NAME, `R${n}`);
-    assert.ok(f.msg.includes(link), `the ${k}, with its limit:\n${link}\n${f.line}\n${show(r)}`);
+    assert.ok(messageOf(f).includes(link), `the ${k}, by ID, with its limit:\n${link}\n${f.line}\n${show(r)}`);
+    placed(f, r, `${NAME}/SP-${n}`, place(dir, CS, `The ${k} paragraph number ${n}.`));
   });
 });
 
@@ -510,6 +537,39 @@ test('#95 a new citing file makes the judgement stale: the hint comes back, name
   assert.match(f.msg, /is stale: .+ changed since it/, `it says what changed since the judgement:\n${f.line}`);
 });
 
+// share: R1 and R2 signed; SP-1 approach serves R1, SP-2 approach serves R2.
+// A judgement J1 on share/R1. Then a plan paragraph goes before them, so
+// both approaches move down.
+const SP1_TEXT = 'Reuse the export link of today.';
+const SP2_TEXT = 'A daily job sends the reminders.';
+const MOVE_PARAS = [['SP-1 approach serves:R1', SP1_TEXT], ['SP-2 approach serves:R2', SP2_TEXT]];
+
+test('#95 a judgement stays current when the approach that its hint names only moves; the places tail of the hint on R2 shows the new line of its approach', (t) => {
+  const dir = world(t, [R1, R2], MOVE_PARAS);
+  const before = check(dir);
+  const f1 = hintOn(before, dir, NAME, 'R1');
+  assert.ok(messageOf(f1).includes(APPROACH(`${NAME}/SP-1`)), `the hint on R1 names SP-1:\n${f1.line}\n${show(before)}`);
+  const oldPlace = place(dir, CS, SP2_TEXT);
+  placed(oneHint(before, `${NAME}/R2`), before, `${NAME}/SP-2`, oldPlace);
+  judge(dir);
+  save(dir, `${NAME}: J1`);
+
+  write(dir, CS, doc([['SP-3 plan', 'One PR for the whole change.\nThe link first, then the reminders.'], ...MOVE_PARAS]));
+  save(dir, `${NAME}: SP-1 and SP-2 moved`);
+  const newPlace = place(dir, CS, SP2_TEXT);
+  assert.notEqual(newPlace, oldPlace, 'the fixture: SP-2 moved');
+  assert.notEqual(place(dir, CS, SP1_TEXT), `${CS}:3`, 'the fixture: SP-1 moved');
+
+  const r = check(dir);
+  noHint(r, `${NAME}/R1`);
+  const judged = r.findings.filter((f) => f.severity === 'info' && f.code === 'judged');
+  assert.equal(judged.length, 1, show(r));
+  assert.ok(judged[0].msg.includes(`${NAME}/J1 ${CODE} ${NAME}/R1: ${WHY}`), `the info judged line names J1:\n${show(r)}`);
+  const f2 = hintOn(r, dir, NAME, 'R2');
+  assert.ok(messageOf(f2).includes(APPROACH(`${NAME}/SP-2`)), show(r));
+  placed(f2, r, `${NAME}/SP-2`, newPlace);
+});
+
 // =====================================================================
 // 10. --strict, and 11. the words
 
@@ -560,16 +620,19 @@ test('#95 the words: with every kind of known link on share/R1, the hint and the
     assert.ok(cites.some((c) => c.file === file), `the fixture: al context share/R1 cites ${file}: ${JSON.stringify(cites)}`);
   }
   const want = [
-    APPROACH(`${NAME}/SP-1`, place(dir, CS, 'Reuse the export link of today.')),
-    OTHER_KIND('plan', `${NAME}/SP-2`, place(dir, CS, 'One PR for the link.')),
-    ADR_LINK('proposed', 'ADR-4', place(dir, a4.file, a4.heading)),
+    APPROACH(`${NAME}/SP-1`),
+    OTHER_KIND('plan', `${NAME}/SP-2`),
+    ADR_LINK('proposed', 'ADR-4'),
     OUTPUT('test/a.test.js'),
     CITED(cites),
   ];
   for (const args of [[], ['--strict'], ['--full']]) {
     const r = check(dir, ...args);
     const f = hintOn(r, dir, NAME, 'R1');
-    for (const link of want) assert.ok(f.msg.includes(link), `the known link, with its limit:\n${link}\n${f.line}\n${show(r)}`);
+    for (const link of want) assert.ok(messageOf(f).includes(link), `the known link, with its limit:\n${link}\n${f.line}\n${show(r)}`);
+    placed(f, r, `${NAME}/SP-1`, place(dir, CS, 'Reuse the export link of today.'));
+    placed(f, r, `${NAME}/SP-2`, place(dir, CS, 'One PR for the link.'));
+    placed(f, r, 'ADR-4', place(dir, a4.file, a4.heading));
   }
   const c = ok(dir, ['context', NAME]);
   const shown = lines(c).filter((l) => l.includes(` ${CODE} `));
