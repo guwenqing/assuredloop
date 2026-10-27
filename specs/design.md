@@ -321,15 +321,18 @@ decides a hint, and its decision is recorded where the next review finds it.
   `adr-changed`, these are the text of each ADR file that it covers, with its
   marker line, and its status line; after a rename, the one file of that
   number counts. For a hint with no ID on a line of a file, such as `no-id`,
-  it is the text of the paragraph at that line, because the message names
-  the place, which a move changes. For another hint, they are the hint's
+  it is the text of the block at that line, as the marker parser reads it
+  (a list after a blank line included), because the message names the
+  place, which a move changes. For another hint, they are the hint's
   message, and the text of the paragraph that it is on and of each paragraph
   that its message names. The hint is cleared while these are the versions
   of now.
 - When one side changes, the hint comes back, and it ends with "the
   judgement <request>/J<n> (<date>) is stale: <what> changed since it".
 - `al check` shows the current judgements in one line:
-  `info judged - - <request>/J<n> <code> <ID>: <reason>; …`.
+  `info judged - - <request>/J<n> <code> <ID>: <reason>; …`. A judgement
+  that is stale on one of its hints is not current, and the line leaves it
+  out.
 - A judgement on `stale-base` or `holder-changed` moves each binding of that
   holder that has the hint, in the record of `<name>`, to the versions of now
   (section 4). The binding names its judgement (`judgement: J<n>`), so the
