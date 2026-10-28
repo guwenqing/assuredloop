@@ -591,7 +591,7 @@ paragraphs:
     display: "DES-153 (15:18, in 15. A change and its review: what is in force, the judgements and the map)"
   - id: DES-154
     kind: flow
-    text_sha256: 83e4202634303b247f4559260c574e34b74e4d11a3b8fd713ff95966df39faa6
+    text_sha256: 3dae61e3d9167182edb7f434dc873e3b7970d22986b9ae1b44bb44a78ef86ad8
     display: "DES-154 (15:19, in 15. A change and its review: what is in force, the judgements and the map)"
   - id: DES-155
     kind: flow

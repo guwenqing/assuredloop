@@ -369,21 +369,21 @@ export function index({ top, cwd, opts }) {
     for (const m of missing) notes.push(`not kept: ${m.r.name}/${m.task} ${m.written}: ${m.key ? `no item in ${issues.folder} is ${m.key}` : m.unknown ?? 'it names no item'}`);
     for (const u of issues.unread) notes.push(`item file not read: ${u.file}: ${u.why}`);
   }
-  // The identity of each review judgement that has none (light-design R2).
-  if (!bind) body.push(...keepJudgements(top, recs, loaded, issues));
-  // The versions that the change's own branch gave the spec paragraphs it names (LD-61).
-  if (!bind) body.push(...keepOwnEdits(top, recs, main));
-  const repos = new Map(outputRepos(top, loaded).filter((r) => r.name).map((r) => [r.name, r]));
-  const links = linksOf(top, now, config, true, repos);
-  const then = base ? loadState(top, base, config, names) : null;
-  const atBase = new Set(then ? linksOf(top, then, config, false).map(tripleKey) : []);
-
   // The records of the archived requests: they still hold bindings (#41),
   // and a binding that no current marker declares is removed from them too.
   const archived = new Map();
   for (const n of names.archived) {
     try { const rec = openRecord(top, n); if (rec) archived.set(n, rec); } catch (e) { if (!e.invalid) throw e; notes.push(`not read: ${e.message}`); }
   }
+  // The identity of each review judgement that has none (light-design R2),
+  // also of a request that the branch concludes (DES-154).
+  if (!bind) body.push(...keepJudgements(top, new Map([...recs, ...archived]), loaded, issues));
+  // The versions that the change's own branch gave the spec paragraphs it names (LD-61).
+  if (!bind) body.push(...keepOwnEdits(top, recs, main));
+  const repos = new Map(outputRepos(top, loaded).filter((r) => r.name).map((r) => [r.name, r]));
+  const links = linksOf(top, now, config, true, repos);
+  const then = base ? loadState(top, base, config, names) : null;
+  const atBase = new Set(then ? linksOf(top, then, config, false).map(tripleKey) : []);
 
   // The records that already hold each binding, open and archived: a holder
   // whose marker names no request any more, such as a superseded ADR that

@@ -12,12 +12,12 @@
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { inside, now, read, sha256, stamp } from './base.js';
-import { baseOf, fileAt, git, readObjects, shallowCommits } from './git.js';
+import { baseOf, fileAt, filesAt, git, readObjects, shallowCommits } from './git.js';
 import { FENCE, groupOf, lf } from './markers.js';
 import { append } from './records.js';
 import { centralRepo, outputRepos } from './repos.js';
 import { isShallow } from './scope.js';
-import { adrParagraph, loadState, settingsAt, signedBy } from './state.js';
+import { adrParagraph, checkedNow, loadState, settingsAt, signedBy } from './state.js';
 import { REVIEW_NOTES, designPaths, ownRequests, readDesign } from './inforce.js';
 
 const VERDICTS = ['complies', 'violates', 'unclear', 'not applicable'];
@@ -25,8 +25,9 @@ const VERDICTS = ['complies', 'violates', 'unclear', 'not applicable'];
 const FIRST = new RegExp(`^([^\\s,]+(?:(?:, and |, | and )[^\\s,]+)*) (${VERDICTS.join('|')}): (.+)$`);
 const SEPARATOR = /, and |, | and /;
 const ITEM_ID = /^(?:([a-z0-9][a-z0-9-]*)\/)?((?:[A-Z][A-Z0-9]*-\d+(?:-\d+)?)|[RQ]\d+)$/;
-// The paths that are no part of the change (LD-28).
-const LEFT_OUT = [':(exclude).assuredloop', `:(exclude,glob)${REVIEW_NOTES}`];
+// The paths that are no part of the change (LD-28): al's records, and the
+// review notes of open and of archived requests (DES-154).
+const LEFT_OUT = [':(exclude).assuredloop', `:(exclude,glob)${REVIEW_NOTES}`, ':(exclude,glob)requests/archive/*/review.md'];
 const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();
 const list = (x) => (Array.isArray(x) ? x : []);
 const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -170,7 +171,7 @@ function requestItem(state, q, id, own, ctx) {
     const latest = newest(versions);
     const recorded = newest(versions.filter((e) => e.sha256 === req.sha256));
     const match = !!latest && latest.sha256 === req.sha256;
-    const st = !q.open ? 'not in force' : own && signedBy(state, q.name, id) ? 'proposed by this change' : 'draft';
+    const st = !checkedNow(q, ctx.was) ? 'not in force' : own && signedBy(state, q.name, id) ? 'proposed by this change' : 'draft';
     return {
       state: st, key: `${recorded ? `v${recorded.version}` : 'none'} ${req.sha256}`, version: match ? `v${latest.version}` : req.sha256.slice(0, 12), text: req.text,
       req: { sha: req.sha256, latest: match ? Number(latest.version) : null },
@@ -178,7 +179,7 @@ function requestItem(state, q, id, own, ctx) {
   }
   const p = q.paras.get(id);
   if (!p) return null;
-  return paragraph(p, !q.open ? 'not in force' : !own ? 'draft' : design(state, p) ? 'proposed by this change' : 'not in force');
+  return paragraph(p, !checkedNow(q, ctx.was) ? 'not in force' : !own ? 'draft' : design(state, p) ? 'proposed by this change' : 'not in force');
 }
 
 // What findItem reads beyond the state: the record data of a request, and
@@ -192,6 +193,7 @@ function context(top, config, issues, { data = (q) => q.data, rev = null, was = 
   const designs = new Map();
   return {
     data,
+    was,
     designs(state, r) {
       if (!designs.has(r.name)) {
         const found = new Map();
@@ -306,8 +308,14 @@ export function keepJudgements(top, recs, config, issues = null) {
   const body = [];
   let current = null;
   const kept = stamp(now());
-  const ctx = context(top, config, issues, { data: (q) => recs.get(q.name)?.data ?? q.data });
-  for (const r of ownRequests(top, state, base)) {
+  // A request that the branch concludes is the change's own too (DES-139),
+  // and its tasks name their design documents: the base needs only to tell
+  // which archived requests it already archives.
+  const archived = [...state.requests.values()].filter((r) => !r.open).map((r) => `requests/archive/${r.name}/request.md`);
+  const atBase = archived.length ? filesAt(top, base, archived) : new Map();
+  const was = { requests: new Map([...atBase].filter(([, t]) => t != null).map(([p]) => [p.split('/')[2], { open: false }])) };
+  const ctx = context(top, config, issues, { data: (q) => recs.get(q.name)?.data ?? q.data, was });
+  for (const r of ownRequests(top, state, base, undefined, was)) {
     const rec = recs.get(r.name);
     const text = read(top, notePath(r));
     if (!rec || text == null) continue;
@@ -333,7 +341,7 @@ export function keepJudgements(top, recs, config, issues = null) {
           const then = loadState(top, at.commit);
           const thenConfig = settingsAt(top, at.commit).config;
           entry = {
-            judgement: j.hash, item: j.id, ...versionsOf(then, then.requests.get(r.name), j, context(top, thenConfig, issues, { rev: at.commit })), head: at.commit,
+            judgement: j.hash, item: j.id, ...versionsOf(then, then.requests.get(r.name), j, context(top, thenConfig, issues, { rev: at.commit, was })), head: at.commit,
             repos: changeIdentity(top, baseOf(top, at.commit)?.commit ?? base, thenConfig, at.commit),
           };
         } else {
@@ -370,6 +378,29 @@ function versionsOf(state, r, j, ctx) {
 function notesOnBranch(top, base, r) {
   const commits = (git(top, ['rev-list', '--reverse', `${base}..HEAD`, '--', notePath(r)], { allowFail: true }) ?? '').split('\n').filter(Boolean);
   return commits.map((commit) => ({ commit, hashes: new Set(parseNote(fileAt(top, commit, notePath(r)) ?? '').map((j) => j.hash)) }));
+}
+
+// al conclude --yes (DES-154): the move of the request's folder and its
+// Outcome and Status are al's own work. Called before the move, it gives a
+// function to call after the writes, which moves each judgement of record
+// `rec` that is current in this repo before the move to the change after it.
+// Its other repos, its item versions and its head stay as they were, so a
+// judgement that is stale before the move stays stale.
+export function keepThroughConclude(top, base, config) {
+  if (!base || centralRepo(top, config)) return () => 0;
+  const before = changeHash(top, base);
+  return (rec) => {
+    const after = changeHash(top, base);
+    let n = 0;
+    list(rec.doc.get('reviewed')?.items).forEach((entry) => {
+      for (const x of list(entry?.get?.('repos')?.items)) {
+        if (x?.get?.('repo') !== '.' || x.get('base') !== base || x.get('diff') !== before) continue;
+        x.set('diff', after);
+        n++;
+      }
+    });
+    return n;
+  };
 }
 
 // Whether a kept identity is the selected change's: current, stale or not

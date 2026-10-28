@@ -2,12 +2,10 @@
 // after `al conclude <name> --yes` moves it to requests/archive/<name>/, for
 // a judgement of a paragraph of the proposed design that a saved work item
 // names (LD-48). The review lines are the same as before the move, at the
-// new paths, but for the judgement's state: its identity holds a hash of the
-// whole change, and al conclude changes the change, so after the move the
-// judgement is "stale: judged at <commit>" (LD-28; the architect's decision,
-// until #113). A request archived at the base gives none. Written from the
-// review and the architect's rule, through the al command only. Parts 1 and
-// 2 are archive-hints-110.test.js and archive-hints-110b.test.js.
+// new paths: the judgement stays current (DES-154). A request archived at
+// the base gives none. Written from the review and the architect's rule,
+// through the al command only. Parts 1 and 2 are archive-hints-110.test.js
+// and archive-hints-110b.test.js.
 //
 // The request is path 1d, so its map is "no open change of path 2 or 3",
 // and it has no map consolidation line. Nothing here reads the code under
@@ -78,7 +76,7 @@ const reviewPart = (r) => r.stdout.split('\n').filter((l) =>
 
 describe('The review note of a request that the branch concludes stays as before the move, at the new paths', () => {
   for (const [moment, commit] of [['uncommitted', false], ['committed', true]]) {
-    test(`a judgement of UX-1, the design paragraph that ITEM-7 names: after al conclude --yes (${moment}) and al index --issues, the same review lines at the new paths, with the same version and quotes found, and the state stale: judged at <commit>`, (t) => {
+    test(`a judgement of UX-1, the design paragraph that ITEM-7 names: after al conclude --yes (${moment}) and al index --issues, the review lines are the same, at the new paths, and the judgement is current`, (t) => {
       const dir = base(t);
       const items = itemsFolder(t);
       git(dir, 'checkout', '-q', '-b', 'feature');
@@ -92,21 +90,7 @@ describe('The review note of a request that the branch concludes stays as before
 
       concludeHere(dir, items, { commit });
       const r = checkIssues(dir, items);
-      const after = reviewPart(r);
-      const msg = `the lines before the move, at the new paths, the judgement stale:\n${before.join('\n')}\n${show(r)}`;
-      assert.equal(after.length, before.length, msg);
-      before.map((l) => l.replaceAll(OPEN_DIR, ARCHIVE_DIR)).forEach((want, i) => {
-        if (want.startsWith('review note ')) {
-          assert.equal(after[i], want.replace(': 1 judgements, 1 current, 0 stale, ', ': 1 judgements, 0 current, 1 stale, '), msg);
-        } else if (want.startsWith('judgement UX-1 ')) {
-          assert.ok(want.endsWith(' · current'), want);
-          const head = want.slice(0, -' · current'.length);
-          assert.ok(after[i].startsWith(`${head} · stale: judged at `), msg);
-          assert.match(after[i].slice(head.length), /^ · stale: judged at [0-9a-f]{7}$/, msg);
-        } else {
-          assert.equal(after[i], want, msg);
-        }
-      });
+      assert.deepEqual(reviewPart(r), before.map((l) => l.replaceAll(OPEN_DIR, ARCHIVE_DIR)), `the lines before the move, at the new paths:\n${before.join('\n')}\n${show(r)}`);
     });
   }
 });
