@@ -17,7 +17,7 @@ import { FENCE, groupOf, lf } from './markers.js';
 import { append } from './records.js';
 import { centralRepo, outputRepos } from './repos.js';
 import { isShallow } from './scope.js';
-import { adrParagraph, loadState, settingsAt, signedBy } from './state.js';
+import { adrParagraph, checkedNow, loadState, settingsAt, signedBy } from './state.js';
 import { REVIEW_NOTES, designPaths, ownRequests, readDesign } from './inforce.js';
 
 const VERDICTS = ['complies', 'violates', 'unclear', 'not applicable'];
@@ -171,7 +171,7 @@ function requestItem(state, q, id, own, ctx) {
     const latest = newest(versions);
     const recorded = newest(versions.filter((e) => e.sha256 === req.sha256));
     const match = !!latest && latest.sha256 === req.sha256;
-    const st = !q.open ? 'not in force' : own && signedBy(state, q.name, id) ? 'proposed by this change' : 'draft';
+    const st = !checkedNow(q, ctx.was) ? 'not in force' : own && signedBy(state, q.name, id) ? 'proposed by this change' : 'draft';
     return {
       state: st, key: `${recorded ? `v${recorded.version}` : 'none'} ${req.sha256}`, version: match ? `v${latest.version}` : req.sha256.slice(0, 12), text: req.text,
       req: { sha: req.sha256, latest: match ? Number(latest.version) : null },
@@ -179,7 +179,7 @@ function requestItem(state, q, id, own, ctx) {
   }
   const p = q.paras.get(id);
   if (!p) return null;
-  return paragraph(p, !q.open ? 'not in force' : !own ? 'draft' : design(state, p) ? 'proposed by this change' : 'not in force');
+  return paragraph(p, !checkedNow(q, ctx.was) ? 'not in force' : !own ? 'draft' : design(state, p) ? 'proposed by this change' : 'not in force');
 }
 
 // What findItem reads beyond the state: the record data of a request, and
@@ -193,6 +193,7 @@ function context(top, config, issues, { data = (q) => q.data, rev = null, was = 
   const designs = new Map();
   return {
     data,
+    was,
     designs(state, r) {
       if (!designs.has(r.name)) {
         const found = new Map();
