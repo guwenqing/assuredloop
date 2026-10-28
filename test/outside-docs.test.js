@@ -4,8 +4,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { docsInScope } from '../../src/v4/scope.js';
-import { loadConfig } from '../../src/v4/config.js';
+import { docsInScope } from '../src/scope.js';
+import { loadConfig } from '../src/config.js';
 import { makeRepo, addRequest, runV4, lines, show } from './helpers/repo.js';
 
 // A marker problem a read would show: no blank line after the marker, and no kind.

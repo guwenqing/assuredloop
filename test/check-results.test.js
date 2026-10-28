@@ -1,5 +1,5 @@
 // al-v4 check on result applicability (#179, task T10; design.md 9). States of
-// the market-report and invoicer-web worlds (test/v4/fixtures/invoicer/cases/
+// the market-report and invoicer-web worlds (test/fixtures/invoicer/cases/
 // report-base, res-c3, res-unknown, web-base, res-config). The tool never says
 // that a result "applies".
 import { test } from 'node:test';

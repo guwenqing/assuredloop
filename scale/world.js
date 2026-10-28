@@ -7,11 +7,11 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Document, parse, parseDocument, stringify } from 'yaml';
-import { parseMarkdown } from '../src/v4/markers.js';
-import { requirements, signedText } from '../src/v4/request-md.js';
-import { formatSnapshot } from '../src/v4/snapshot.js';
-import { YAML_OPTIONS } from '../src/v4/records.js';
-import { sha256 as bytesSha } from '../src/v4/base.js';
+import { parseMarkdown } from '../src/markers.js';
+import { requirements, signedText } from '../src/request-md.js';
+import { formatSnapshot } from '../src/snapshot.js';
+import { YAML_OPTIONS } from '../src/records.js';
+import { sha256 as bytesSha } from '../src/base.js';
 
 export const SCHEMA = 'assuredloop/1';
 export const START = Date.UTC(2025, 0, 1);

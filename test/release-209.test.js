@@ -7,7 +7,7 @@
 // publish step, of the cache fill and its cutoff, of the cli at 0.2.0, of the
 // install lines of both packages, and of the offline install of both
 // tarballs are gone from this file. What still holds of them is in
-// test/v4/release-212.test.js: the cli's publish steps and the offline
+// test/release-212.test.js: the cli's publish steps and the offline
 // install of the cli.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 // --- README.md (root)
 

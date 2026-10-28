@@ -1,6 +1,6 @@
 // Helpers for the tests of `al export` and `al search` (#181, T13 and T14).
 // They use only the public commands and the files the commands write. They
-// never read src/v4/export.js or the search code. Level 2 runs with a
+// never read src/export.js or the search code. Level 2 runs with a
 // stand-in @huggingface/transformers (#212): see installEmbedder.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

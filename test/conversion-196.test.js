@@ -2,7 +2,7 @@
 // moves into the v4 record as S1, with no new sign-off (D21). Built from the
 // issue and the record format; it checks this repo's own files. The oracle
 // for the requirement hashes is v4's public reader, requirements(text) and
-// signedText(md) of src/v4/request-md.js. The one run of the command uses a
+// signedText(md) of src/request-md.js. The one run of the command uses a
 // copy of the repo, never the repo itself.
 //
 // The sign-off snapshot (origin/2026-10-10-signoff.md) is kept outside the
@@ -25,9 +25,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { requirements, signedText } from '../../src/v4/request-md.js';
+import { requirements, signedText } from '../src/request-md.js';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const RECORD = '.assuredloop/records/requests/assuredloop-v4.yaml';
 // The request is concluded: `al conclude` moved its folder to requests/archive/.
 const DIR = 'requests/archive/assuredloop-v4';

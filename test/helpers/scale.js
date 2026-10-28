@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
-export const REPO = fileURLToPath(new URL('../../../', import.meta.url));
+export const REPO = fileURLToPath(new URL('../../', import.meta.url));
 export const GENERATE = join(REPO, 'scale/generate.js');
 export const RUN = join(REPO, 'scale/run.js');
 export const AL4 = join(REPO, 'bin/al.js');

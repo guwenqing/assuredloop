@@ -1,4 +1,4 @@
-// Issue #190: read files at a commit with one git process. src/v4/git.js:
+// Issue #190: read files at a commit with one git process. src/git.js:
 // filesAt(top, commit, paths, encoding = 'utf8') and readObjects(top, names),
 // beside fileAt and blobAt; and `al-v4 check` and `al-v4 index` start about
 // as many git processes for 60 docs (or requests) as for 5. Written before the
@@ -13,7 +13,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, chmodSync
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import * as gitjs from '../../src/v4/git.js';
+import * as gitjs from '../src/git.js';
 import { makeRepo } from './helpers/repo.js';
 import {
   project, write, writeYaml, commitAll, git as pgit, al, show, newRequest, tree, baseProject, writeConfig, doc, WORDS_FILE,
@@ -21,11 +21,11 @@ import {
 import { buildWorld, run as runSearch, show as showSearch } from './helpers/search.js';
 import { changeLines78, settled } from './helpers/as-78.js';
 
-const GIT_JS = fileURLToPath(new URL('../../src/v4/git.js', import.meta.url));
+const GIT_JS = fileURLToPath(new URL('../src/git.js', import.meta.url));
 
 // The new functions, with a clear failure while they are not exported.
 function fn(name) {
-  assert.equal(typeof gitjs[name], 'function', `src/v4/git.js exports ${name}`);
+  assert.equal(typeof gitjs[name], 'function', `src/git.js exports ${name}`);
   return gitjs[name];
 }
 const { fileAt, blobAt } = gitjs;
@@ -304,7 +304,7 @@ function childEnv(PATH) {
   return { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', PATH };
 }
 
-// Runs calls [name, args] of src/v4/git.js in one child node process with the
+// Runs calls [name, args] of src/git.js in one child node process with the
 // wrapper first on PATH, and gives each result: a Map as its entries, a value
 // as it is (a Buffer as {b64}, a string as {s}).
 const CHILD = `
@@ -517,7 +517,7 @@ describe('al-v4 check and al-v4 index start about as many git processes for 60 a
   });
 });
 
-// The state of the base (#184, src/v4/state.js): each request's request.md and
+// The state of the base (#184, src/state.js): each request's request.md and
 // record, and each ADR, at the merge-base. `al-v4 check` and `al-v4 context`
 // read it. A repo with n requests (al-v4 new) and n ADRs on main, then a branch.
 // ADR-i decides CH-i of specs/choices.md, and its source is the owner's words of

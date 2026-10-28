@@ -1,5 +1,5 @@
 // al-v4 check on ADRs: the cases of schema.md 5 (#179, task T10), as states of
-// the invoicer world (test/v4/fixtures/invoicer/cases/adr-*.yaml, cr-chain.yaml).
+// the invoicer world (test/fixtures/invoicer/cases/adr-*.yaml, cr-chain.yaml).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { check, invoicer } from './helpers/invoicer.js';

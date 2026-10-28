@@ -679,7 +679,7 @@ describe('#40: al export reads 001-x.md as an ADR', () => {
     commitAll(dir, 'base');
     const { rows } = exportRows(dir);
     const of = (file) => rows.filter((r) => r.doc_or_request === file).map((r) => [r.id, r.role, r.source_type, r.file]);
-    // The four-digit control, as test/v4/export.test.js has it.
+    // The four-digit control, as test/export.test.js has it.
     assert.deepEqual(of('specs/adr/0002-y.md'),
       [['ADR-2', 'baseline', 'adr', 'specs/adr/0002-y.md'], ['ADR-2-1', 'baseline', 'adr', 'specs/adr/0002-y.md']]);
     assert.deepEqual(of('specs/adr/001-x.md'),

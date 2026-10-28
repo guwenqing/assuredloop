@@ -58,7 +58,7 @@ import { invoicer } from './helpers/invoicer.js';
 import { world } from './helpers/cross-repo.js';
 import { BIN, EPOCH, REPO, baseProject, commitAll, git, move, read, write } from './helpers/project.js';
 import { GENERATE, cleanEnv as scaleEnv } from './helpers/scale.js';
-import { Repo, closeRequest, entriesOf } from '../../scale/world.js';
+import { Repo, closeRequest, entriesOf } from '../scale/world.js';
 
 // al parses the records in worker threads when the request records of the
 // working tree (.assuredloop/records/requests/*.yaml) hold more than this

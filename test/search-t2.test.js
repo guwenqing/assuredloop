@@ -1,6 +1,6 @@
 // The T2 retrieval measure on the visible golden questions (#181; tasks.md
 // T13, T14). For each question with expected IDs: build its state of the
-// invoicer world (test/v4/fixtures/invoicer, #179), search with the question's
+// invoicer world (test/fixtures/invoicer, #179), search with the question's
 // words in the query chosen below, and print the recall of the expected IDs
 // in the top 5 and top 10, at level 0, level 1 and level 2 (the fixed test
 // embedder, a stand-in @huggingface/transformers; and the real model when
@@ -14,8 +14,8 @@ import { parse } from 'yaml';
 import { REPO, WITH_MODEL, WORDS_ONLY, besideAl, setSearch } from './helpers/search.js';
 import { KS, measureOne, pct, summary, useLevel2 } from './helpers/t2.js';
 
-const QUESTIONS = parse(readFileSync(join(REPO, 'test/v4/fixtures/search/t2-questions.yaml'), 'utf8'));
-const BUILDER = join(REPO, 'test/v4/helpers/invoicer.js');
+const QUESTIONS = parse(readFileSync(join(REPO, 'test/fixtures/search/t2-questions.yaml'), 'utf8'));
+const BUILDER = join(REPO, 'test/helpers/invoicer.js');
 const REAL = besideAl();
 
 // The fixture case of each question's state. Q13 and Q14 are about the
@@ -56,8 +56,8 @@ const ARMS = [
 ];
 
 test('T2: recall of the expected IDs in the top 5 and top 10, at each level (no threshold)', { timeout: 1_800_000 }, async (t) => {
-  if (!existsSync(BUILDER) || !existsSync(join(REPO, 'test/v4/fixtures/invoicer'))) {
-    t.skip('the invoicer world (test/v4/fixtures/invoicer and test/v4/helpers/invoicer.js, #179) is not in this tree yet');
+  if (!existsSync(BUILDER) || !existsSync(join(REPO, 'test/fixtures/invoicer'))) {
+    t.skip('the invoicer world (test/fixtures/invoicer and test/helpers/invoicer.js, #179) is not in this tree yet');
     return;
   }
   const { invoicer, loadCase } = await import(BUILDER);

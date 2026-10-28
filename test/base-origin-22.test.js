@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mergeBase } from '../../src/v4/git.js';
+import { mergeBase } from '../src/git.js';
 import {
   al, appendSection, baseProject, commitAll, editFile, git, index, newRequest, organized, project, record, req, show, write,
   writeConfig,

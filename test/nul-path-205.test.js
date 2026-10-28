@@ -1,12 +1,12 @@
 // Issue #205: a path or name that holds a NUL byte reads as absent, in every
-// reader of files at a commit (src/v4/git.js: readObjects, filesAt, fileAt,
+// reader of files at a commit (src/git.js: readObjects, filesAt, fileAt,
 // blobAt), and a result whose declared input is such a path shows
 // "applicability unknown". Each NUL case has a clean control (the same path
 // with no NUL), which reads as it does on main. Written before the code, from
 // the issue and the interface note (interface-205.md), by a different author.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readObjects, filesAt, fileAt, blobAt } from '../../src/v4/git.js';
+import { readObjects, filesAt, fileAt, blobAt } from '../src/git.js';
 import { makeRepo } from './helpers/repo.js';
 import { blobSha, centralConfig, commit, world, worldOutputs, ZIP_V1 } from './helpers/cross-repo.js';
 import { al, baseProject, commitAll, git, sha, show, write, writeYaml } from './helpers/project.js';

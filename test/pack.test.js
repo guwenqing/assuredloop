@@ -8,7 +8,7 @@
 //   gone); "files" stays bin/, src/, skills/, README.md, LICENSE; yaml,
 //   pinned at exactly 2.9.1, is in "dependencies", not devDependencies.
 // - npm pack holds package.json, LICENSE, README.md, bin/al.js, every file git
-//   tracks under src/ (all under src/v4/), skills/assuredloop/SKILL.md, and
+//   tracks under src/ (all directly in src/), skills/assuredloop/SKILL.md, and
 //   nothing outside package.json and the "files" entries.
 // - The installed al: --version names the version and the installed folder;
 //   check and spec run in a scratch git repo.
@@ -32,7 +32,7 @@ import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { git, lines, makeRepo } from './helpers/repo.js';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const NAME = '@assuredloop/cli';
 const PKG = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const LOCK = JSON.parse(readFileSync(join(ROOT, 'package-lock.json'), 'utf8'));

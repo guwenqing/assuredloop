@@ -360,11 +360,11 @@ describe('generate.js on a small world', () => {
     for (const p of parents) assert.equal(specIdsAt(central(), p).size, 0, `parent ${p} has no spec paragraph`);
   });
 
-  // PR #184 adds the checks that read the adoption (src/v4/checks.js). Until it
+  // PR #184 adds the checks that read the adoption (src/checks.js). Until it
   // is merged, this al has no such check, and the test is skipped.
-  const has184 = existsSync(join(REPO, 'src/v4/checks.js'));
+  const has184 = existsSync(join(REPO, 'src/checks.js'));
   test("with PR #184's checks, an adopted paragraph whose text is unchanged gets no no-link hint",
-    { skip: !has184 && 'needs the checks of PR #184 (src/v4/checks.js)' }, () => {
+    { skip: !has184 && 'needs the checks of PR #184 (src/checks.js)' }, () => {
       const now = new Map(exportAt(central(), 'main').filter((r) => r.role === 'baseline' && String(r.file).startsWith('specs/')).map((r) => [r.id, r.sha256]));
       const unchanged = adoption().dispositions.filter((d) => now.get(d.spec) === d.spec_sha256).map((d) => d.spec);
       assert.ok(unchanged.length >= 1, 'some adopted paragraph is unchanged at main');

@@ -1,6 +1,6 @@
-// The invoicer fixture world (#179): builds a state of test/v4/fixtures/invoicer
+// The invoicer fixture world (#179): builds a state of test/fixtures/invoicer
 // through the public commands, as a throwaway git repo. Nothing here reads the
-// code under test. See test/v4/fixtures/invoicer/README.md for the case format.
+// code under test. See test/fixtures/invoicer/README.md for the case format.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {

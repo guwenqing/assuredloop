@@ -1,10 +1,10 @@
-// src/v4/markers.js: parseMarkdown(text, file, options?), KINDS, groupOf.
+// src/markers.js: parseMarkdown(text, file, options?), KINDS, groupOf.
 // Written from the T8 interface (issue #174), design.md section 3 and
 // schema.md sections 3 and 4.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { parseMarkdown, KINDS, groupOf } from '../../src/v4/markers.js';
+import { parseMarkdown, KINDS, groupOf } from '../src/markers.js';
 
 const sha = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
 const doc = (...ls) => ls.join('\n') + '\n';
