@@ -5,14 +5,14 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { check } from '../src/v4/check.js';
-import { Fail, spec } from '../src/v4/spec.js';
-import { newRequest, record } from '../src/v4/commands.js';
-import { index } from '../src/v4/indexer.js';
-import { exportCommand } from '../src/v4/export.js';
-import { search } from '../src/v4/search.js';
-import { context } from '../src/v4/views.js';
-import { conclude } from '../src/v4/conclude.js';
+import { check } from '../src/check.js';
+import { Fail, spec } from '../src/spec.js';
+import { newRequest, record } from '../src/commands.js';
+import { index } from '../src/indexer.js';
+import { exportCommand } from '../src/export.js';
+import { search } from '../src/search.js';
+import { context } from '../src/views.js';
+import { conclude } from '../src/conclude.js';
 
 // positionals: how many positional arguments a command uses, or a function of
 // its options that says so; any more are refused. None given: it uses them all.
