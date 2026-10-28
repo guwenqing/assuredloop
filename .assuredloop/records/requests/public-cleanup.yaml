@@ -9,7 +9,12 @@ sources:
     taken: 2026-10-25T20:39Z
 requirements: []
 signoff: []
-decisions: []
+decisions:
+  - id: D1
+    date: 2026-10-28
+    source: "the agent (architect), message to the developer for #63"
+    text: "The code is in src/ and the tests are in test/, both flat: src/v4/ moved to src/, and test/v4/ to test/. This replaces the sentence of assuredloop-v4 D21 that src/v4/ and test/v4/ stay where they are."
+    sha256: 7771fea3bbe5e12279ec506f756f8ece8fe27864baa544d44a7be71a1c76ad4f
 tasks: []
 bindings: []
 dispositions: []
