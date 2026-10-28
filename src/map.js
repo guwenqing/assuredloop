@@ -126,7 +126,7 @@ export function mapSection(top, { now: state, was, base, own, changes, config, i
     }
     if (missing.length) {
       findings.push({
-        severity: 'hint', code: 'map-consolidation', where: r.specFile, id: r.name,
+        severity: 'hint', code: 'map-consolidation', where: r.specFile, id: r.name, request: r.name,
         message: `${missing.length} change paragraphs that go into specs/ have no current consolidation judgement: ${missing.join(', ')}; judge each consolidation in ${notePath(r)}`,
       });
     }

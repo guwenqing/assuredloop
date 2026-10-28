@@ -25,6 +25,11 @@ const idOf = (f) => f.id ?? '-';
 // Whether `on` names finding `f`: its ID, or its path when its ID is "-".
 export const names = (f, on) => String(on) === idOf(f) || (idOf(f) === '-' && String(on) === pathOf(f));
 
+// The request of finding `f`: the one that it names, as map-consolidation
+// does, whose ID is the bare request name, or the one that its ID starts
+// with (#121).
+const requestOf = (f) => f.request ?? /^([a-z0-9][a-z0-9-]*)\//.exec(idOf(f))?.[1] ?? null;
+
 // The text hash of an ID in `state`, or null when it does not resolve. A bare
 // ID of a request's own paragraph, or a bare R<n>, is read in `request`.
 function shaOf(state, id, request) {
@@ -58,7 +63,7 @@ export function keptOf(state, f) {
   }
   const at = /^(.+):(\d+)$/.exec(String(f.file && f.line ? `${f.file}:${f.line}` : f.where ?? ''));
   if (idOf(f) === '-' && at) return { blocks: [sha256(blockAt(state, at[1], Number(at[2])))] };
-  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(idOf(f))?.[1] ?? null;
+  const request = requestOf(f);
   const ids = [...new Set([...(idOf(f) === '-' ? [] : [f.id]), ...namedIds(f.message, { qualified: false })])];
   return { message_sha256: [sha256(f.message)], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
 }
@@ -78,7 +83,7 @@ function changedSince(state, j, f) {
   }
   if (now.blocks) return list(j.blocks).includes(now.blocks[0]) ? null : `the text at ${f.where ?? `${f.file}:${f.line}`}`;
   if (!list(j.message_sha256).includes(now.message_sha256[0])) return 'the hint\'s text';
-  const request = /^([a-z0-9][a-z0-9-]*)\//.exec(idOf(f))?.[1] ?? null;
+  const request = requestOf(f);
   const moved = list(j.keeps).find((k) => isMap(k) && shaOf(state, String(k.id), request) !== (k.sha256 ?? null));
   return moved ? String(moved.id) : null;
 }
