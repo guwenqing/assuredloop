@@ -39,11 +39,11 @@ What the owner wants, and why:
 
 <!-- DES-5 limit serves:assuredloop-v4/R11,assuredloop-v4/R7,hints-and-blocks/R2 -->
 
-**What v4 is not.** It is not a full lifecycle tool that makes the user
-follow one exact, heavy way of working for everything (input 126). For
-example, AWS AI-DLC (awslabs/aidlc-workflows, version 2) runs a
-deterministic engine with 14 agents and 33 stages, with a gate at each
-stage. Every rule in this design
+**What v4 is not.** "I do not want a fullscacle lifecycle tool, to demand
+user must follow an exact heavy wow to do everything in one way. anti
+pattern, AWS's ai software development lifecycle framework" (input 126). AWS
+AI-DLC (awslabs/aidlc-workflows, version 2) runs a deterministic engine with
+14 agents and 33 stages, with a gate at each stage. Every rule in this design
 must pass these limits:
 - No phases or stages, and no order of work. How and when to test, review or
   design is the project's way of working (R11).
@@ -1361,10 +1361,7 @@ moved the main tag on close to half of the notes in one study (arXiv
 <!-- DES-58 rule serves:kb-search/R10,assuredloop-v4/R12,promise-design-split/R1,hints-and-blocks/R2 -->
 
 - `.assuredloop/schema.yaml`: the schema, with a version. The owner and the
-  architect design it. `al` writes it when it is absent, and reads only its
-  `kinds`: a kind counts as the group that lists it. A project's change of
-  the kinds gets the same careful review. The link words are `al`'s own, and
-  `al` does not read the `links:` line.
+  architect design it. A user's extension gets the same careful review.
 - `.assuredloop/records/`, committed to git:
   - one record per request: the chain of that change, its bindings (section
     4) and its close lines (section 5). Mostly that change's own PRs touch

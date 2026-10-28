@@ -19,7 +19,7 @@ paragraphs:
     display: DES-4 (1:1, in 1. Intent)
   - id: DES-5
     kind: limit
-    text_sha256: 60685ac599c5ab7655b1f9f570f9647c9894050bad76d2810d9f87489b5d8fa6
+    text_sha256: 268ca8b7c6bfe1f44bb8a7a9aa96d482046990f782972f16e85bc7c055aba61d
     display: DES-5 (1:2, in 1. Intent)
   - id: DES-6
     kind: rationale
@@ -351,7 +351,7 @@ paragraphs:
     display: DES-57 (10:1, in 10. Records)
   - id: DES-58
     kind: rule
-    text_sha256: a6c67a6fd915f84dd0f24d2db453b34574a391f540276f083ca25f98b54ff63f
+    text_sha256: de57a3122ec2c8a1db2d960d4a045c3e1ff23c31b813564c2195fc47e0307e9e
     display: DES-58 (10:2, in 10. Records)
   - id: DES-90
     kind: rule
