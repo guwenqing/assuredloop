@@ -1,4 +1,4 @@
-// The T3 reviewer questions (validation t2/questions.yaml) answered from the
+// The T3 reviewer questions (from AssuredLoop's own validation) answered from the
 // T11 views (#179, task T11). Each test asks the view of the question's state
 // and checks that the output holds the facts of the right answer, and not
 // those of a wrong option where that is clear.
