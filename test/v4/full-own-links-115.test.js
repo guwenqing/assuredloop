@@ -174,3 +174,58 @@ describe('al check --full: a link to a paragraph of the own request that the bra
     assert.deepEqual(committed, after, 'the block is the same after the commit');
   });
 });
+
+// =====================================================================
+// DES-132, a deleted target: share is open at the base. The branch next
+// deletes SP-1 from the change spec, and edits SP-2's text while SP-2 keeps
+// its link to SP-1. The link shows SP-1's text at the base. The link is
+// written as builds-on:SP-1 and, as a second form, builds-on:share/SP-1.
+
+const SP1_PARA = `<!-- SP-1 component serves:R1 -->\n\n${SP1}\n\n`;
+
+function deletedAtBranch(t, target) {
+  const dir = M.world(t, [
+    ['SP-1 component serves:R1', SP1],
+    [`SP-2 component serves:R1 builds-on:${target} builds-on:INV-12`, SP2],
+  ]);
+  ok(dir, ['record', NAME, 'close', '--on', 'R1', '--reason', 'Met by the export code.', '--yes']);
+  index(dir);
+  commitAll(dir, `${NAME}: close R1\n\n${TIER}`);
+  git(dir, 'checkout', '-q', 'main');
+  git(dir, 'merge', '-q', '--no-ff', '-m', 'Merge the branch feature', 'feature');
+  git(dir, 'checkout', '-q', '-b', 'next');
+  editFile(dir, `${OPEN_DIR}spec.md`, SP1_PARA, '');
+  editFile(dir, `${OPEN_DIR}spec.md`, SP2, SP2_EDITED);
+  index(dir);
+  return dir;
+}
+
+describe('al check --full: a link to a paragraph of the own request that the branch deletes shows the target\'s text at the base (DES-132)', () => {
+  for (const target of ['SP-1', `${NAME}/SP-1`]) {
+    test(`builds-on:${target}; the branch deletes SP-1 and edits SP-2: SP-2's block shows "builds on ${target} (component):" with SP-1's base text, before al conclude --yes (uncommitted and committed) and after it (uncommitted and committed)`, (t) => {
+      const dir = deletedAtBranch(t, target);
+      const link = [`  builds on ${target} (component):`, `    ${SP1}`];
+      const blocks = [];
+      const at = (when) => {
+        const r = full(dir);
+        const b = block(r, 'SP-2');
+        assert.ok(b.length > 0, `SP-2 is listed in the map (${when}):\n${show(r)}`);
+        assert.ok(b.includes(`    ${SP2_EDITED}`), `SP-2's own text is the edited text (${when}):\n${b.join('\n')}`);
+        assert.ok(!b.includes(`  builds on ${target}: not found`), `no "builds on ${target}: not found" (${when}):\n${b.join('\n')}`);
+        assert.ok(hasPair(b, link), `the link line of ${target} with SP-1's text at the base (${when}):\n${b.join('\n')}`);
+        assert.ok(hasPair(b, SPEC_LINK), `the link to INV-12 keeps its line (${when}):\n${b.join('\n')}`);
+        blocks.push(b);
+      };
+      at('before the move, uncommitted');
+      commitAll(dir, `${NAME}: no SP-1\n\n${TIER}`);
+      at('before the move, committed');
+      concludeHere(dir, false);
+      at('after the move, uncommitted');
+      commitAll(dir, `Conclude ${NAME}\n\n${TIER}`);
+      at('after the move, committed');
+      assert.ok(blocks[2][0].startsWith(`map paragraph ${NAME}/SP-2 · ${ARCHIVE_DIR}spec.md:`), blocks[2].join('\n'));
+      assert.deepEqual(blocks[2].slice(1), blocks[1].slice(1), 'the block after the move, but for its first line');
+      assert.deepEqual(blocks[3], blocks[2], 'the block is the same after the commit');
+    });
+  }
+});
