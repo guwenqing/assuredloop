@@ -353,7 +353,8 @@ Also kept:
 
 <!-- LD-18 plan -->
 
-Three commands for the AI, the same as MCP tools. Each answer is a few
+Three commands for the AI. An MCP server that offers them as tools is later
+work (D5). Each answer is a few
 lines, groups repeated lines but never leaves one out (context-all/R1), and
 says what to ask next only where that helps. `--full` shows everything;
 `--at <commit>` answers as of a past commit.
@@ -1050,8 +1051,16 @@ prove it.
   is only a helper: the list uses only what is in force, and `al search`
   keeps all marked text.
 
-<!-- LD-40 open -->
+<!-- LD-40 note -->
 
-Not decided here: file formats, the release plan and the order of building.
-The owner's signed light-resign/R5 settles the two points that waited: item
-2 of the close rule (LD-57) refuses, and item 3 stays.
+Settled during the build:
+
+- The file formats are those that the builds wrote: the records in YAML,
+  and a saved work item in YAML or Markdown (D4).
+- Release 4.0.0 holds the light design. The next release holds the search
+  of section 5.
+- The order of building followed the issues.
+- The owner's signed light-resign/R5 settles the two points that waited:
+  item 2 of the close rule (LD-57) refuses, and item 3 stays.
+- An MCP server that offers the commands of LD-18 as tools is later work
+  (D5).
