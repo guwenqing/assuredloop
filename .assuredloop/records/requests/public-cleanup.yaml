@@ -13,20 +13,3 @@ decisions: []
 tasks: []
 bindings: []
 dispositions: []
-judgements:
-  - id: J1
-    hint: path-claim
-    on: DES-5
-    reason: "DES-5 keeps its meaning: the owner's quote of input 126 is now in neutral words, and its limits are unchanged"
-    message_sha256: [ 453e05a3c2ea1bc148b3f8709d7bc11f8382db44f35fbb351a0b0a55e93e0064 ]
-    keeps:
-      - { id: DES-5, sha256: 60685ac599c5ab7655b1f9f570f9647c9894050bad76d2810d9f87489b5d8fa6 }
-    recorded: 2026-10-28T03:09Z
-  - id: J2
-    hint: path-claim
-    on: DES-58
-    reason: DES-58's first bullet now states what al does with .assuredloop/schema.yaml (it writes it when absent and reads only its kinds; the link words are al's own), a fact of the code, not a new promise; the review rule stays
-    message_sha256: [ e4a31298cca6885912c0249167242c6522bb556f1af87a1fb588cf568c58f6bf ]
-    keeps:
-      - { id: DES-58, sha256: a6c67a6fd915f84dd0f24d2db453b34574a391f540276f083ca25f98b54ff63f }
-    recorded: 2026-10-28T03:09Z
