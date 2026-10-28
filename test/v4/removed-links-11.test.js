@@ -290,11 +290,14 @@ test('R1: a link declared at the base whose binding was lost stays "binding unkn
 
 // main: config, specs/invoices.md. The request old, with a change spec, the
 // specs/ paragraph INV-70 and a declared output, concluded and so archived.
-// Then the open request inv with SP-1. Branch feature; committed.
+// Then the open request inv with SP-1. Branch feature; committed. With
+// `atBase`, old is concluded and committed on main before the branch
+// feature, so it is archived at the base (#110: a request that the branch
+// itself concludes is checked).
 const OLD_SP1 = 'An export MUST hold one row per invoice line.';
 const OLD_INV70 = 'An export MUST hold one row per invoice line, in the order of the lines.';
-function archived(t) {
-  const dir = baseProject(t);
+function archived(t, { atBase = false } = {}) {
+  const dir = baseProject(t, atBase ? { branch: null } : {});
   newRequest(dir, 'old');
   appendSection(dir, 'old', organized([req('R1', 'Rows', 'One row per invoice line.', [WORDS_FILE])]));
   write(dir, 'requests/old/spec.md', doc([
@@ -310,11 +313,16 @@ function archived(t) {
   editFile(dir, SPEC, OLD_INV70, OLD_SP1);
   index(dir);
   ok(dir, ['conclude', 'old', '--yes']);
+  if (atBase) {
+    index(dir);
+    commitAll(dir, 'Tier: 2 — old, concluded');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+  }
   newRequest(dir, 'inv');
   appendSection(dir, 'inv', organized([R1]));
   write(dir, CS, doc([['SP-1 rule serves:R1 builds-on:INV-13', SP[1]]]));
   index(dir);
-  commitAll(dir, 'Tier: 2 — old, concluded; inv');
+  commitAll(dir, atBase ? 'Tier: 2 — inv' : 'Tier: 2 — old, concluded; inv');
   return dir;
 }
 
@@ -793,7 +801,7 @@ test('R2: out of scope: a changed output file and a changed requirement (its fro
 });
 
 test('R2: out of scope: the holders of an archived request\'s bindings (an archived change spec paragraph, a specs/ paragraph) change: no holder-changed; the open request\'s changed paragraph gets them', (t) => {
-  const dir = archived(t);
+  const dir = archived(t, { atBase: true });
   editFile(dir, 'requests/archive/old/spec.md', OLD_SP1, 'An export MUST hold one row per line of an invoice.');
   editFile(dir, SPEC, `<!-- INV-70 rule serves:old/R1 builds-on:INV-13 -->\n\n${OLD_SP1}`,
     '<!-- INV-70 rule serves:old/R1 builds-on:INV-13 -->\n\nAn export MUST hold one row per line of an invoice.');

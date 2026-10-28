@@ -199,6 +199,12 @@ export const isPromise = (state, kind) => !!kind && groupOf(kind, state.kinds) =
 export const hasBaselineEffect = (state, kind) => !!kind && kind !== 'approach'
   && ['promise', 'design', 'informative'].includes(groupOf(kind, state.kinds));
 
+// Whether al check checks request `r` of the working tree, given the state
+// `was` at the base: an open request, or one that the branch concludes
+// (archived now, and not archived at the base). A request archived at the
+// base is never checked again, and with no base only open ones are (DES-37).
+export const checkedNow = (r, was) => r.open || (was != null && was.requests.get(r.name)?.open !== false);
+
 // A link target as written, made exact: `name:ID` is another repo's (T12);
 // `<request>/<ID>` a request's; in a request's own text, R, Q, D and S numbers,
 // a snapshot file and an ID of its own change spec are its own; else a spec ID.

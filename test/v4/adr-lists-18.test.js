@@ -371,11 +371,17 @@ describe('adr-lists/R1 (SCH-37): exempt places stay exempt for the new forms', (
   });
 
   test('exempt: an archived request (control: the same request moved back to requests/ is not ok)', (t) => {
+    // old is archived on main, and feature takes it, so it is archived at
+    // the base (#110: a request that the branch itself concludes is checked).
     const archived = (t2) => {
       const dir = world(t2);
+      git(dir, 'checkout', '-q', 'main');
       newRequest(dir, 'old', 'the owner says: keep paper.\n');
       write(dir, 'requests/old/request.md', `${read(dir, 'requests/old/request.md')}\n${EXEMPT_TEXT}\n`);
       move(dir, 'requests/old', 'requests/archive/old');
+      commitAll(dir, 'An archived request old');
+      git(dir, 'checkout', '-q', 'feature');
+      git(dir, 'merge', '-q', '--ff-only', 'main');
       return dir;
     };
     noneNotOk(both(archived(t)));

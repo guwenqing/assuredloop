@@ -6,6 +6,7 @@
 import { read } from './base.js';
 import { requestMarkdown } from './blocks.js';
 import { SPEC } from './scope.js';
+import { checkedNow } from './state.js';
 import { Fail } from './spec.js';
 
 const NEXT = 'fix phrases: in .assuredloop/config.yaml';
@@ -53,14 +54,14 @@ export function phraseHits(text, matchers) {
 export const phraseMessage = (h) => `matches ${JSON.stringify(h.entry)}: ${JSON.stringify(h.match.replace(/\s+/g, ' '))}`;
 
 // The hints in the spec docs, the ADRs and the open requests' Markdown files.
-export function phraseFindings(top, state, matchers, add) {
+export function phraseFindings(top, state, matchers, add, was = null) {
   if (!matchers.length) return;
   const files = [
     ...(state.docs ?? []).filter((d) => d.scope === SPEC && typeof d.text === 'string').map((d) => [d.path, d.text]),
     ...state.adrList.map((a) => [a.file, a.text]),
   ];
   for (const r of state.requests.values()) {
-    if (!r.open) continue;
+    if (!checkedNow(r, was)) continue;
     for (const f of requestMarkdown(top, r.dir)) {
       if (f.unreadable) continue;
       let t = null;

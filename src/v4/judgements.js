@@ -9,7 +9,7 @@
 import { read, sha256 } from './base.js';
 import { blocksOf, lf } from './markers.js';
 import { namedIds } from './repos.js';
-import { qualify, resolve } from './state.js';
+import { checkedNow, qualify, resolve } from './state.js';
 import { CHANGED, itemState } from './kept-items.js';
 
 // The hints whose judgement moves a binding.
@@ -93,10 +93,9 @@ const day = (j) => String(j.recorded ?? '').slice(0, 10);
 // are the codes of the hints that a judgement cleared; stateOf(bindings) is
 // the state of each judgement, as these give it, for the full trace (#91).
 export function judgementPass(state, was = null) {
-  // A request that this branch concludes (archived now, and not archived at
-  // the base `was`) keeps its judgements as an open one does; a request
-  // archived at the base is never checked again (#107).
-  const checked = (r) => r.open || (was !== null && was.requests.get(r.name)?.open !== false);
+  // A request that this branch concludes keeps its judgements as an open one
+  // does (#107).
+  const checked = (r) => checkedNow(r, was);
   const entries = [...state.requests.values()].filter(checked)
     .flatMap((r) => list(r.data?.judgements).filter((j) => isMap(j) && j.id != null && typeof j.hint === 'string' && !OWN_FORM.has(j.hint) && j.on != null)
       .map((j) => ({ r, j })))
@@ -143,9 +142,7 @@ export function judgementPass(state, was = null) {
   // on a pair of hint code and --on counts (DES-163); a binding judgement
   // counts for each binding that names it; issue-changed keeps its own form.
   const stateOf = (bindings = new Map()) => (r, j) => {
-    // al check gives no binding hint for an archived request, so its binding
-    // judgements are not checked either (DES-164).
-    if (!checked(r) || (!r.open && BINDING_HINTS.includes(j.hint))) return 'recorded; not checked: the request is archived';
+    if (!checked(r)) return 'recorded; not checked: the request is archived';
     if (typeof j.hint !== 'string' || j.on == null) return 'not checked: the entry has no hint code or no --on';
     if (j.hint === CHANGED) return itemState(r, j);
     const key = `${r.name}/${j.id}`;

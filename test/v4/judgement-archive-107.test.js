@@ -300,16 +300,16 @@ describe('Control: with no base, al behaves as today', () => {
 
 // =====================================================================
 // A binding judgement (stale-base, holder-changed, binding-unknown) of a
-// request that is not open is "recorded; not checked: the request is
-// archived", also when the branch concludes the request. A non-binding
-// judgement of that request stays current. The binding hints are not asked
-// about here.
+// request that the branch concludes is checked again, as for an open
+// request (#110): with nothing changed, it stays current after the move,
+// and its Binding line still names it. Only a binding judgement of a
+// request archived at the base is "recorded; not checked: the request is
+// archived". A non-binding judgement of that request stays current.
 
-describe('A binding judgement of a request that the branch concludes: "recorded; not checked: the request is archived"', () => {
+describe('A binding judgement of a request that the branch concludes stays current after the move; one of a request archived at the base is "recorded; not checked: the request is archived"', () => {
   const REC = recordPath(NAME);
   const WHY_BOUND = 'Checked against the new INV-12.';
   const BOUND_J1 = /^Binding {3}inv\/SP-1 builds-on INV-12 target [0-9a-f]{12} holder [0-9a-f]{12} judgement J1: bound$/;
-  const NAMES_J1 = /^Binding {3}inv\/SP-1 builds-on INV-12 target [0-9a-f]{12} holder [0-9a-f]{12} judgement J1: /;
 
   // main: the config and specs/invoices.md. The branch feature makes inv
   // (path 1d) with SP-1 plan builds-on:INV-12, which holds never. Then
@@ -347,7 +347,7 @@ describe('A binding judgement of a request that the branch concludes: "recorded;
   }
 
   for (const [moment, commit] of MOMENTS) {
-    test(`stale-base J1 and promise-kind J2 on inv/SP-1; al conclude --yes (${moment}), al index: --audit gives J1 "recorded; not checked: the request is archived", its Binding line still names J1, and J2 stays current`, (t) => {
+    test(`stale-base J1 and promise-kind J2 on inv/SP-1; al conclude --yes (${moment}), al index: --audit gives J1 and J2 current, and the Binding line still names J1 and is bound`, (t) => {
       const dir = judgedTwice(t);
       const before = trace(dir);
       assert.equal(before.binding.length, 1, show(before.r));
@@ -358,8 +358,8 @@ describe('A binding judgement of a request that the branch concludes: "recorded;
       concludeHere(dir, { commit });
       const after = trace(dir);
       assert.equal(after.binding.length, 1, show(after.r));
-      assert.match(after.binding[0], NAMES_J1, show(after.r));
-      judgementIs(after, 'J1', 'stale-base', 'recorded; not checked: the request is archived', WHY_BOUND);
+      assert.match(after.binding[0], BOUND_J1, show(after.r));
+      judgementIs(after, 'J1', 'stale-base', 'current', WHY_BOUND);
       judgementIs(after, 'J2', 'promise-kind', 'current', WHY);
     });
   }

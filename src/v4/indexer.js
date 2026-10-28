@@ -14,6 +14,7 @@ import { loadConfig } from './config.js';
 import { ADR_FILE, SPEC, adrId, docsInScope, symlinkOn } from './scope.js';
 import { Fail, SCHEMA, docRecordPath, guard, inside, read, recordPath, sha256, write } from './base.js';
 import { requirements } from './request-md.js';
+import { checkedNow } from './state.js';
 import { outputRepos } from './repos.js';
 import { loadItems, taskItems } from './issues.js';
 import { keepItems } from './kept-items.js';
@@ -236,14 +237,17 @@ function bindingsOf(rec) {
 
 // Whether a binding's holder declares its link now: the same holder, link
 // word and target (#2). It reads al check's own state (state.js), so each
-// file is read once, by al check's rules.
-export function declaredNow(top, state) {
+// file is read once, by al check's rules. A request that the branch
+// concludes (`was` is the state at the base) declares its links as an open
+// one does (#110).
+export function declaredNow(top, state, was = null) {
   const docs = [
     { request: null, ids: new Set(), paragraphs: [...state.spec.values()].filter((p) => p.id) },
-    ...[...state.requests.values()].filter((r) => r.open).map((r) => ({ request: r.name, ids: new Set(r.paras.keys()), paragraphs: [...r.paras.values()].filter((p) => p.id) })),
+    ...[...state.requests.values()].filter((r) => checkedNow(r, was)).map((r) => ({ request: r.name, ids: new Set(r.paras.keys()), paragraphs: [...r.paras.values()].filter((p) => p.id) })),
     ...state.adrList.map((a) => ({ request: null, ids: new Set(), paragraphs: a.paragraphs.filter((p) => p.id) })),
   ];
-  const keys = new Set(linksOf(top, { docs, requests: state.requests }, state.config, false).map(tripleKey));
+  const requests = new Map([...state.requests].map(([n, r]) => [n, !r.open && checkedNow(r, was) ? { ...r, open: true } : r]));
+  const keys = new Set(linksOf(top, { docs, requests }, state.config, false).map(tripleKey));
   return (b) => keys.has(tripleKey(b));
 }
 

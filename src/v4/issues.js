@@ -33,6 +33,7 @@ import { changedHints } from './kept-items.js';
 import { FENCE, lf } from './markers.js';
 import { phraseHits, phraseMessage } from './phrases.js';
 import { outputRepos } from './repos.js';
+import { checkedNow } from './state.js';
 import { Fail } from './spec.js';
 
 const ISSUE_URL = /\bhttps?:\/\/[^\s/]+\/([\w.-]+)\/([\w.-]+)\/issues\/(\d+)\b/g;
@@ -294,13 +295,13 @@ export function itemFinder(top, config, items) {
 // (SP-8, SP-9): { named: [{ r, task, it }], missing: [{ r, task, written,
 // key | unknown | none }], tasked, finder } (tasked: the open requests with
 // a task that has a ref; finder: itemFinder's, for other refs).
-export function taskItems(top, state, items) {
+export function taskItems(top, state, items, was = null) {
   const finder = itemFinder(top, state.config, items);
   const named = [];
   const missing = [];
   const tasked = [];
   for (const r of state.requests.values()) {
-    if (!r.open) continue;
+    if (!checkedNow(r, was)) continue;
     for (const t of Array.isArray(r.data?.tasks) ? r.data.tasks : []) {
       if (!isMap(t) || t.ref == null) continue;
       if (!tasked.includes(r)) tasked.push(r);
@@ -335,7 +336,7 @@ export function outOfReach(config) {
 // by a key that a task's ref holds as a whole word while no item of the
 // folder has it as its ref. A ref that names no saved item gets no hint only
 // when it holds one or more such keys and nothing else.
-function outOfReachItems(state, entries, finder, items, missing) {
+function outOfReachItems(state, entries, finder, items, missing, was = null) {
   const repos = new Set();
   const keys = new Set();
   const texts = new Set();
@@ -360,7 +361,7 @@ function outOfReachItems(state, entries, finder, items, missing) {
     : texts.has(slug(m.written)) || (m.key && (keys.has(slug(m.key)) || repos.has(slug(m.key).replace(/#\d+$/, '')))));
   const hits = [];
   for (const r of state.requests.values()) {
-    if (!r.open) continue;
+    if (!checkedNow(r, was)) continue;
     for (const t of Array.isArray(r.data?.tasks) ? r.data.tasks : []) {
       if (!isMap(t) || t.ref == null) continue;
       const id = `${r.name}/${String(t.id ?? '-')}`;
@@ -372,14 +373,14 @@ function outOfReachItems(state, entries, finder, items, missing) {
 }
 
 // `skip` takes the codes of the checks that did not run in full (LD-41).
-export function issueHints(top, state, matchers, add, { folder, items, unread, owns }, skip = () => {}) {
+export function issueHints(top, state, matchers, add, { folder, items, unread, owns }, skip = () => {}, was = null) {
   const notKnown = [];
   const cited = supersededIn(state);
-  const { named, missing: lost, tasked, finder } = taskItems(top, state, items);
+  const { named, missing: lost, tasked, finder } = taskItems(top, state, items, was);
   const { own, names, folders } = finder;
   // The items out of the CI token's reach that are not in the folder: one
   // line names them all, in place of issue-missing and issue-changed (DES-117).
-  const { hits, away } = outOfReachItems(state, outOfReach(state.config), finder, items, lost);
+  const { hits, away } = outOfReachItems(state, outOfReach(state.config), finder, items, lost, was);
   const missing = lost.filter((m) => !away(m));
   // Each item once, ignoring case, in the form of the first task that names it.
   const reach = new Map();
