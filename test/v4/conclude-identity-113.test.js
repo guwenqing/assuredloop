@@ -268,13 +268,15 @@ describe('A judgement of the concluded request\'s own change paragraph and signe
 // =====================================================================
 // A second judgement of UX-1, added to the archived review note after the
 // move. UX-1 is a paragraph of the design that the saved item ITEM-7 names,
-// so al index needs --issues to find its version.
+// so al index needs --issues to find its version. al groups judgement lines
+// that are the same but for their line number into one line with each line
+// number, so the two UX-1 judgements show as one line.
 
 const SECOND_UX1 = `- UX-1 complies: the panel still lists the exports.\n  - Item: "${UX1}"\n  - Code (src/panel.js): "${PANEL}"\n`;
 
 describe('After the move, a second judgement of UX-1 in requests/archive/<name>/review.md gets the item\'s version and is current', () => {
   for (const [way, commitFirst] of [['al index --issues on the uncommitted note', false], ['the note committed, then al index --issues', true]]) {
-    test(`${way}: the new UX-1 line has the version of the first UX-1 line, item quote found, and current; the review note line counts 3 current`, (t) => {
+    test(`${way}: the new UX-1 judgement is the same as the first (version, item quote found, current), so the two show as one line at both line numbers; the review note line counts 3 current`, (t) => {
       const w = world(t);
       const before = currentBefore(w);
       concludeHere(w, { commit: true });
@@ -292,9 +294,7 @@ describe('After the move, a second judgement of UX-1 in requests/archive/<name>/
         if (when === 'committed' && !commitFirst) commitAll(w.dir, `A second review of UX-1\n\n${TIER}`);
         const r = checkIssues(w);
         const ux = reviewLines(r).filter((l) => l.startsWith('judgement UX-1 '));
-        assert.equal(ux.length, 2, `two UX-1 lines (${when}):\n${show(r)}`);
-        assert.equal(ux[0], first, `the first UX-1 line is as after the move (${when}):\n${show(r)}`);
-        assert.equal(ux[1], first.replace(` · ${note}:3 · `, ` · ${note}:${at} · `), `the new UX-1 line, as the first at its own line ${at} (${when}):\n${show(r)}`);
+        assert.deepEqual(ux, [first.replace(` · ${note}:3 · `, ` · ${note}:3, ${at} · `)], `one grouped UX-1 line, the first with its line 3 and the new line ${at} (${when}):\n${show(r)}`);
         assert.equal(noteLine(r), `review note ${note}: 3 judgements, 3 current, 0 stale, 0 not known when judged, 0 identity not kept, 0 not read`, `${when}:\n${show(r)}`);
       }
     });
