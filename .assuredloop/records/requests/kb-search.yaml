@@ -20,7 +20,7 @@ signoff:
     source: owner chat with the architect, 2026-10-27 about 15:32Z
     words: Yes
     presented: 2026-10-27 about 11:25Z, the text in full, as assuredloop-v4/R10 version 2; asked again about 15:32Z
-    transcribed_by: assuredloop/architect
+    transcribed_by: the agent (architect)
     covers:
       - { id: R10, version: 1, sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da }
 decisions:

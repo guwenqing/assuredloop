@@ -12,10 +12,12 @@
 // - The file is not an item (SP-9, SP-10). A file that is not valid gets one
 //   issue-unread and is ignored as a whole (SP-9).
 // - Without --issues nothing changes (SP-5).
-// - The README gives the two JSON Schemas of SP-11 and SP-12.
+// - The README gives the two JSON Schemas of SP-11 and SP-12, as
+//   specs/design.md gives them in force.
 //
 // Nothing here reads the code under test: the tests run `node bin/al.js`
-// (the helpers' BIN) in throwaway repos, and read README.md.
+// (the helpers' BIN) in throwaway repos, and read README.md and
+// specs/design.md.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -582,16 +584,16 @@ describe('#3 (SP-5): without --issues, al check gives the output of main, with a
 // =====================================================================
 // SP-11, SP-12: the README gives the two JSON Schemas.
 
-// The two schemas, as the change spec gives them (SP-11, then SP-12). The
-// spec is read where it is now, or in the archive once the request is concluded.
+// The two schemas, as specs/design.md gives them in force (DES-109, DES-110:
+// the schemas of SP-11 and SP-12, with the state of closed-items R1). The
+// change spec of own-item is no longer read: its rules are in specs/ (#63).
+const DESIGN = 'specs/design.md';
 function specSchemas() {
-  const rel = ['requests/own-item/spec.md', 'requests/archive/own-item/spec.md'].find((r) => existsSync(join(REPO, r)));
-  assert.ok(rel, 'the change spec of own-item is in requests/ or requests/archive/');
-  const found = jsonBlocks(readFileSync(join(REPO, rel), 'utf8')).map((b) => JSON.parse(b)).filter((p) => '$schema' in p);
-  assert.equal(found.length, 2, `${rel} gives two JSON Schemas`);
+  const found = jsonBlocks(readFileSync(join(REPO, DESIGN), 'utf8')).map((b) => JSON.parse(b)).filter((p) => '$schema' in p);
+  assert.equal(found.length, 2, `${DESIGN} gives two JSON Schemas`);
   const [item, requests] = found;
-  assert.equal(item.title, 'an item file: one item, or a list of items', rel);
-  assert.equal(requests.title, OWN_ITEMS, rel);
+  assert.equal(item.title, 'an item file: one item, or a list of items', DESIGN);
+  assert.equal(requests.title, OWN_ITEMS, DESIGN);
   return { item, requests };
 }
 
@@ -614,19 +616,10 @@ describe('#3 (SP-11, SP-12): the README gives the JSON Schema of each kind of fi
     const parsed = blocks.map((b) => { try { return JSON.parse(b); } catch { return undefined; } });
     const schemas = parsed.filter((p) => p && typeof p === 'object' && !Array.isArray(p) && '$schema' in p);
     const has = (schema) => schemas.some((s) => { try { assert.deepEqual(s, schema); return true; } catch { return false; } });
-    // closed-items R1 (#33) adds one optional item property, state, with the
-    // values OPEN and CLOSED. Without that one property, the README's item
-    // schema is SP-11 exactly; closed-items-33.test.js checks state itself.
-    const withoutState = (s) => {
-      const props = s?.$defs?.item?.properties;
-      if (!props || !('state' in props)) return s;
-      const copy = structuredClone(s);
-      delete copy.$defs.item.properties.state;
-      return copy;
-    };
-    const hasItem = schemas.some((s) => { try { assert.deepEqual(withoutState(s), item); return true; } catch { return false; } });
-    assert.ok(hasItem, `the README section holds the item schema of SP-11 (plus only the state of closed-items R1); its JSON Schema blocks:\n${JSON.stringify(schemas, null, 2)}`);
-    assert.ok(has(requests), `the README section holds the schema of ${OWN_ITEMS} of SP-12; its JSON Schema blocks:\n${JSON.stringify(schemas, null, 2)}`);
+    // specs/design.md gives the item schema with the state of closed-items
+    // R1 (#33), so the README's item schema must be that schema exactly.
+    assert.ok(has(item), `the README section holds the item schema of specs/design.md (SP-11 with the state of closed-items R1); its JSON Schema blocks:\n${JSON.stringify(schemas, null, 2)}`);
+    assert.ok(has(requests), `the README section holds the schema of ${OWN_ITEMS} of specs/design.md (SP-12); its JSON Schema blocks:\n${JSON.stringify(schemas, null, 2)}`);
     // Each block that looks like a schema is valid JSON.
     blocks.forEach((b, i) => { if (b.includes('"$schema"')) assert.notEqual(parsed[i], undefined, `a schema block that is not valid JSON:\n${b}`); });
   });
