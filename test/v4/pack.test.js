@@ -121,7 +121,7 @@ test('#196 package.json: bin maps al to bin/al.js, the v4 entry; bin/al-v4.js is
   assert.ok(!existsSync(join(ROOT, 'bin', 'al-v4.js')), 'bin/al-v4.js should be gone');
   const src = git(ROOT, ['ls-files', 'src']).split('\n').filter(Boolean);
   assert.ok(src.length > 0, 'git should track files in src/');
-  assert.deepEqual(src.filter((p) => !p.startsWith('src/v4/')), [], 'every file git tracks under src/ should be under src/v4/');
+  assert.deepEqual(src.filter((p) => !/^src\/[^/]+$/.test(p)), [], 'every file git tracks under src/ should be directly in src/, in no subfolder (#63)');
 });
 
 test('#196 package.json: yaml, pinned at exactly 2.9.1, is in dependencies, not devDependencies (D3, D10), and package-lock.json agrees', () => {
