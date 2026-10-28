@@ -96,11 +96,12 @@ this change is built.
   - Spec (DES-152): "A quote is the text between the first and the last double quote of its line."
   - Spec (DES-9): "the review note: the review's judgements of the change"
   - Code (src/v4/evidence.js): "const VERDICTS = ['complies', 'violates', 'unclear', 'not applicable'];"
-- LD-28 complies: C8 and the identity of the reviewed change, now in section 15. C8 shows its results in the review section, and gives no hint line, so the spec says that it gives no `not ok` and changes no exit code.
+- LD-28 complies: C8 and the identity of the reviewed change, now in section 15. C8 shows its results in the review section, and gives no hint line, so the spec says that it gives no `not ok` and changes no exit code. `al conclude --yes` keeps a current judgement current, and the review notes of archived requests are left out of the change too (#113).
   - Item (LD-28): "A judgement is current only while the selected change has the same base, the"
   - Item (LD-28): "`al` shows a quote that it found as"
   - Spec (DES-153): "A found quote is not shown as "complies""
   - Spec (DES-154): "A judgement is current only while the selected change has the same base, the same diff hash and the same item version."
+  - Spec (DES-154): "keeps the identity of each judgement of its request that is current before the move"
   - Code (src/v4/evidence.js): "if (!same) return `stale: judged at ${short(entry.head)}`;"
 - LD-66 complies: the rules of the check and how `al index` keeps an identity, now in section 15.
   - Item (LD-66): "The diff hash is taken over each changed path, its git mode and the hash of its"

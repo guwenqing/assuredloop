@@ -13,6 +13,7 @@ import { Fail, day, exists, guard, isName, now, write } from './base.js';
 import { branchOf } from './checks.js';
 import { closeLine, closeLines, closeRefusals, unsignedRemovals } from './close.js';
 import { baseOf, git } from './git.js';
+import { keepThroughConclude } from './evidence.js';
 import { openRecord, recordText } from './records.js';
 import { requestOriginals } from './originals.js';
 import { isPromise, loadState, qualify, servesSigned } from './state.js';
@@ -145,9 +146,12 @@ export function conclude({ top, args, opts }) {
   }
   const md = withOutcome(withStatus(r.md), block);
   rec.doc.set('status', 'concluded');
+  // A review judgement that is current before the move stays current (DES-154).
+  const keep = keepThroughConclude(top, base, state.config);
   mkdirSync(dirname(join(top, target)), { recursive: true });
   renameSync(join(top, r.dir), join(top, target));
   write(top, `${target}/request.md`, md);
+  keep(rec);
   write(top, rec.path, recordText(rec));
   return { body: [...hints, ...shown, `Concluded ${name}: ${what}`], read, next: 'commit the archive move with the closing PR', notKnown };
 }
