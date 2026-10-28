@@ -60,6 +60,11 @@ decisions:
     source: the agent (architect)
     text: "A saved work item may be YAML with the fields of a JSON item, or Markdown: a header of Key: value lines (URL, Number, Repository, Ref, State, Parent), the body, then a section for each comment that starts with ## Comment <k>, with (minimized) for a hidden comment; every .md file of the folder is read as an item; the list items-out-of-reach: in the committed config names the items that the CI token cannot read, and al gives one info line for those that are not in the folder (LD-39, LD-48)."
     sha256: 3f456faab897d000eaec8a85620d11e24cdfd5de316b77deb626a176db49c06e
+  - id: D5
+    date: 2026-10-28
+    source: the owner (owner chat with the architect, 2026-10-27)
+    text: An MCP server for al is later work. The AI asks through the skill and the al commands.
+    sha256: d7a4d9062d52d8ee3c558c876026239f47c02f7c87d0b2ea44f0ee31341e4a01
 tasks: []
 bindings:
   - { holder: light-design/LD-22, link: serves, target: light-design/R3, holder_sha256: c7f23e7d768133bce61de67ccaf0fc3273259ba5820732c8c8269dbedd258ac0, target_sha256: 9f5dc55ba2f2312e15674d7926ccd30725030d3a240fa139ea2cbd33326239b4, target_version: 1, judgement: J1 }
@@ -82,7 +87,7 @@ bindings:
   - { holder: light-design/LD-66, link: builds-on, target: light-design/LD-28, holder_sha256: f47c4c8dd006d05397c6b64c220f9ccc171b0a6f81198338720d89c95e7969a3, target_sha256: e48b59f6f158eb3b0ca6d676f7484c1522c39dcefd790324ec03c31743485284 }
   - { holder: light-design/LD-55, link: changes, target: DES-29, holder_sha256: 4e28c631ea2ae82a45282399ec30b3baf8c7c09a38ddd11053bf357026157a23, target_sha256: 21efefe0b4b2f1c52b3a97b2260cda27575e05afc139532c3d026cb52e9a6231 }
   - { holder: light-design/LD-57, link: changes, target: DES-34, holder_sha256: b1c6861a8720a94102be3e7d0b50dbbc31ef0c871ebbc9897d150602dc5b7210, target_sha256: 9b94acd795b6059dbee92ec693514387237b2458f3d0c33a9b791f8aaf7bfb04 }
-  - { holder: light-design/LD-57, link: changes, target: DES-37, holder_sha256: b1c6861a8720a94102be3e7d0b50dbbc31ef0c871ebbc9897d150602dc5b7210, target_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f, judgement: J2, judged_target_sha256: 3c48a72fe4999189cc6374c4439187890e181600deba3a007f71d7ddf2b1ecc6 }
+  - { holder: light-design/LD-57, link: changes, target: DES-37, holder_sha256: b1c6861a8720a94102be3e7d0b50dbbc31ef0c871ebbc9897d150602dc5b7210, target_sha256: ccb2305cb2284035d77fc8e65c3f7ac5f49ab262953cdcbc485045c8b7077f1f, judgement: J8, judged_target_sha256: 5da0571fa6142c5ffb16f695c01152618c15b1db6186774ca263b9132f3466e3 }
   - { holder: light-design/LD-58, link: serves, target: light-resign/R5, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: 0022bc764161c80a5f9f4267b1f848de128b3a14d6dfc872c7f16e8f95a9fb8b, target_version: 1, judgement: J3 }
   - { holder: light-design/LD-58, link: changes, target: DES-5, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: 091be7e89d98190fdb70059c47b520f9aa41f62dfb62b6e2c844495122311075, judgement: J3 }
   - { holder: light-design/LD-58, link: changes, target: DES-22, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: 8b773ad38b76da4f9edfbc1d16fb0513d7761950fd68a0fcd0a623656be1df88, judgement: J3 }
@@ -90,7 +95,7 @@ bindings:
   - { holder: light-design/LD-58, link: changes, target: DES-38, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: a1f19233a1c30a8bfa32aedaf6f4c13bfe8635e6a20f55c8d70b7efa2a6695de, judgement: J3 }
   - { holder: light-design/LD-58, link: changes, target: DES-44, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: cf0788c3e7685d5c529280abe247056eaeb87db703f47eb7c325ba55f1097bec, judgement: J3 }
   - { holder: light-design/LD-58, link: changes, target: DES-58, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: 2ebfae29407383815134908439ff404e2d33931da7e93d22b15a63b374d41112, judgement: J3 }
-  - { holder: light-design/LD-58, link: changes, target: DES-61, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df, judgement: J4, judged_target_sha256: 00ec41b9280f75bc8644f2722cb4549587a10187f7af9a466be71b4aefa733fa }
+  - { holder: light-design/LD-58, link: changes, target: DES-61, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: 30efdd2daa388dcdf5d85dec9bc503fa60a97e85341af7649544dc0493d6c4df, judgement: J9, judged_target_sha256: 1039d2339217a748b42ec2f4a7621124f5247fa113b4f8dae24b01133d1e479a }
   - { holder: light-design/LD-58, link: changes, target: DES-62, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: de3f1d9ec2439ff5df6392079ddd63a7de32fe3f0422c135ca63b5dd8b4a1f91, judgement: J3 }
   - { holder: light-design/LD-58, link: changes, target: DES-72, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: 7b7234b0becb42eb913287e5cf0ad44c5ade7dc2534bd04de7f6a6a3f6483026, judgement: J3 }
   - { holder: light-design/LD-58, link: changes, target: SCH-15, holder_sha256: dbeb336fe0314c11b67ab83c76f9fd950591fec6801cf86be8523f28177e4275, target_sha256: 995ea9ecf34f15873cec5f920aaf18842ed685f05c52499d93aac116cd75f5ba, judgement: J3 }
@@ -124,8 +129,8 @@ bindings:
   - { holder: DES-134, link: serves, target: light-design/R2, holder_sha256: 82cc8f1387e991d97b20bcb5224410fbe1101820a06e97f3b9a43026592a4a4c, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
   - { holder: DES-134, link: serves, target: light-resign/R1, holder_sha256: 82cc8f1387e991d97b20bcb5224410fbe1101820a06e97f3b9a43026592a4a4c, target_sha256: ccb9983961a7fdf313f708089a694862023cb258dcaf236b9bbf082163c47152, target_version: 1 }
   - { holder: DES-138, link: serves, target: light-design/R1, holder_sha256: 0afb66103dc1571a624c1fad8d9b629a7c968377c2e373010a6861e0a66625e7, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
-  - { holder: DES-139, link: serves, target: light-design/R1, holder_sha256: 4687c4f578414a1c51f093e7bc708271a49e6ad1f0e3ebb299b8b44bf3df36fc, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
-  - { holder: DES-139, link: builds-on, target: DES-138, holder_sha256: 4687c4f578414a1c51f093e7bc708271a49e6ad1f0e3ebb299b8b44bf3df36fc, target_sha256: 0afb66103dc1571a624c1fad8d9b629a7c968377c2e373010a6861e0a66625e7 }
+  - { holder: DES-139, link: serves, target: light-design/R1, holder_sha256: 3ed2738b3a6edefb1d3d0be267eee22be1431bc94d3c0f0c5a02cc54df8ec205, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1, judgement: J10 }
+  - { holder: DES-139, link: builds-on, target: DES-138, holder_sha256: 3ed2738b3a6edefb1d3d0be267eee22be1431bc94d3c0f0c5a02cc54df8ec205, target_sha256: 0afb66103dc1571a624c1fad8d9b629a7c968377c2e373010a6861e0a66625e7, judgement: J10 }
   - { holder: DES-140, link: serves, target: light-design/R1, holder_sha256: b68fb71e8d36a723e545406ac43aac470e54ab4bfae7210e374962b750ce8dc4, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
   - { holder: DES-140, link: builds-on, target: DES-138, holder_sha256: b68fb71e8d36a723e545406ac43aac470e54ab4bfae7210e374962b750ce8dc4, target_sha256: 0afb66103dc1571a624c1fad8d9b629a7c968377c2e373010a6861e0a66625e7 }
   - { holder: DES-141, link: serves, target: light-design/R1, holder_sha256: 4d6a20b6ac4da836cda72c65fbf242c557c14d3e5f870e2c9126e45de8d7f0bd, target_sha256: ac36b27da263092c7bc624e239c9061e0ed2c912f2eaee3991e98b55904a72e8, target_version: 1 }
@@ -153,13 +158,13 @@ bindings:
   - { holder: DES-152, link: builds-on, target: DES-150, holder_sha256: 3cc4cc48e0f745ee3ce3e07fa2281360deda2762cb117ec149367cfed6fbc1b0, target_sha256: f78b2ffc6e8a8328e1029713032f3e1b315398177237e6712a983eacf158fd71 }
   - { holder: DES-153, link: serves, target: light-design/R2, holder_sha256: 33a473f8db74c0c160ee3e7b21874ec730a3f992e835d06f88679aa50b957c4e, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
   - { holder: DES-153, link: builds-on, target: DES-152, holder_sha256: 33a473f8db74c0c160ee3e7b21874ec730a3f992e835d06f88679aa50b957c4e, target_sha256: 3cc4cc48e0f745ee3ce3e07fa2281360deda2762cb117ec149367cfed6fbc1b0 }
-  - { holder: DES-154, link: serves, target: light-design/R2, holder_sha256: 83e4202634303b247f4559260c574e34b74e4d11a3b8fd713ff95966df39faa6, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
-  - { holder: DES-154, link: builds-on, target: DES-153, holder_sha256: 83e4202634303b247f4559260c574e34b74e4d11a3b8fd713ff95966df39faa6, target_sha256: 33a473f8db74c0c160ee3e7b21874ec730a3f992e835d06f88679aa50b957c4e }
-  - { holder: DES-154, link: builds-on, target: DES-37, holder_sha256: 83e4202634303b247f4559260c574e34b74e4d11a3b8fd713ff95966df39faa6, target_sha256: 3c48a72fe4999189cc6374c4439187890e181600deba3a007f71d7ddf2b1ecc6 }
+  - { holder: DES-154, link: serves, target: light-design/R2, holder_sha256: 3dae61e3d9167182edb7f434dc873e3b7970d22986b9ae1b44bb44a78ef86ad8, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1, judgement: J11 }
+  - { holder: DES-154, link: builds-on, target: DES-153, holder_sha256: 3dae61e3d9167182edb7f434dc873e3b7970d22986b9ae1b44bb44a78ef86ad8, target_sha256: 33a473f8db74c0c160ee3e7b21874ec730a3f992e835d06f88679aa50b957c4e, judgement: J11 }
+  - { holder: DES-154, link: builds-on, target: DES-37, holder_sha256: 3dae61e3d9167182edb7f434dc873e3b7970d22986b9ae1b44bb44a78ef86ad8, target_sha256: 5da0571fa6142c5ffb16f695c01152618c15b1db6186774ca263b9132f3466e3, judgement: J11 }
   - { holder: DES-155, link: serves, target: light-design/R2, holder_sha256: 4ad98bf4bd6432e7dd7d9cceac20c82f19dcd129ebd804ec3274a535dd03e33c, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
   - { holder: DES-155, link: builds-on, target: DES-153, holder_sha256: 4ad98bf4bd6432e7dd7d9cceac20c82f19dcd129ebd804ec3274a535dd03e33c, target_sha256: 33a473f8db74c0c160ee3e7b21874ec730a3f992e835d06f88679aa50b957c4e }
   - { holder: DES-156, link: serves, target: light-design/R2, holder_sha256: 75e731f3df4a30e421f8fee9084cd17f75fbd9a5c9003d5220b2dc07bfec0fba, target_sha256: 42e5b5ea833188e3178cc2b675bb938dc505388b6445013feb293dd667b9f01b, target_version: 1 }
-  - { holder: DES-156, link: builds-on, target: DES-154, holder_sha256: 75e731f3df4a30e421f8fee9084cd17f75fbd9a5c9003d5220b2dc07bfec0fba, target_sha256: 83e4202634303b247f4559260c574e34b74e4d11a3b8fd713ff95966df39faa6 }
+  - { holder: DES-156, link: builds-on, target: DES-154, holder_sha256: 75e731f3df4a30e421f8fee9084cd17f75fbd9a5c9003d5220b2dc07bfec0fba, target_sha256: 3dae61e3d9167182edb7f434dc873e3b7970d22986b9ae1b44bb44a78ef86ad8, judgement: J12 }
 dispositions: []
 own_edits:
   - { paragraph: DES-29, sha256: 1b8cff7c180353c52362e9279f244f65c276f7feca15716b30b5ad276274aea8, kept: 2026-10-26T06:48Z }
@@ -278,3 +283,16 @@ judgements:
   - { id: J4, hint: stale-base, on: light-design/LD-58, reason: "DES-61 no longer names a disposition for the export role, which is the change of LD-58; its later edit is the outside-originals rule of origin-elsewhere/R1, which LD-58 does not touch.", recorded: 2026-10-27T13:22Z }
   - { id: J5, hint: holder-changed, on: DES-130, reason: DES-130 still serves light-design/R3 and builds on the work-item hints of DES-91; its later edit only names the judgement of section 3 for the other hints., recorded: 2026-10-27T13:22Z }
   - { id: J6, hint: stale-base, on: DES-132, reason: "DES-132 still builds on DES-72: the al check row of DES-72 is unchanged; the later edit of DES-72 extends the existing judgement row to other hints and removes --align.", recorded: 2026-10-27T13:22Z }
+  - id: J7
+    hint: promise-kind
+    on: light-design/LD-18
+    reason: "LD-18 states no new promise: 'never leaves one out' restates context-all/R1, which it names. The edit only adds that an MCP server is later work (D5)."
+    message_sha256: [ 261393a5fae6f665cbe6e2807a66cea19de87b0ef5be04c851f4d9db1f161dce ]
+    keeps:
+      - { id: light-design/LD-18, sha256: 4582ba3996f4aacffc69324405ff6e99765ed7b6955922c51043a5b12c09f944 }
+    recorded: 2026-10-28T02:45Z
+  - { id: J8, hint: stale-base, on: light-design/LD-57, reason: "LD-57 still changes DES-37 as bound: DES-37 holds the close rule by path that LD-57 sets, and LD-57's items are unchanged. The later edits of DES-37 add that a request whose record is missing or cannot be read is refused first (#104), and that the closing PR checks a request that it concludes as an open one (#110).", recorded: 2026-10-28T02:45Z }
+  - { id: J9, hint: stale-base, on: light-design/LD-58, reason: "LD-58 still changes DES-61 as bound: DES-61 names no disposition for the export role. The later edit of DES-61 (#99) says that the local index and a team's own knowledge base read the export, and that it serves kb-search/R10, which LD-58 does not touch.", recorded: 2026-10-28T02:45Z }
+  - { id: J10, hint: holder-changed, on: DES-139, reason: "DES-139 still serves light-design/R1 and builds on DES-138: its edit only adds that a request that the branch concludes is the change's own too (#110), so the in-force list of a closing PR stays as it was before the move.", recorded: 2026-10-28T02:45Z }
+  - { id: J11, hint: holder-changed, on: DES-154, reason: "DES-154 still serves light-design/R2 and builds on DES-153 and DES-37: its edit adds that the review notes of archived requests are left out too, and that al conclude --yes keeps a current judgement current across the move (#113). The identity of the reviewed change still serves R2.", recorded: 2026-10-28T02:45Z }
+  - { id: J12, hint: stale-base, on: DES-156, reason: "DES-156 still builds on DES-154: al index still keeps each identity once and does not write it again. The later edit of DES-154 adds that al conclude --yes, not al index, keeps a current judgement current across the move (#113).", recorded: 2026-10-28T02:45Z }
