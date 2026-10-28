@@ -119,7 +119,7 @@ paragraphs:
     display: LD-17 (4, 4. Commands, answers and the skill (plans))
   - id: LD-18
     kind: plan
-    text_sha256: d62c8a78bc1a66d81cb2f2e775eec9c557c86837506879b50d87ae4ae106a57e
+    text_sha256: 4582ba3996f4aacffc69324405ff6e99765ed7b6955922c51043a5b12c09f944
     display: LD-18 (4:1, in 4. Commands, answers and the skill (plans))
   - id: LD-63
     kind: plan
@@ -254,6 +254,6 @@ paragraphs:
     text_sha256: 0299ed244b3c3505ea6b82d22c1241cdbac69600461d119aa7881bb4304282af
     display: LD-39 (9:1, in 8. Smaller asks (plan))
   - id: LD-40
-    kind: open
-    text_sha256: 7d2d9094e2aba3a7d49f4303aeb072bf36f8a7633e38ab6effdd195509c98770
+    kind: note
+    text_sha256: 1479bf44a0b06becbd7506a2ea23134973fcb579e6d6d9a02d052db16f5d6d43
     display: LD-40 (9:2, in 8. Smaller asks (plan))
