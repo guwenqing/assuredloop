@@ -14,7 +14,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as M from './helpers/map-68.js';
-import { al, commitAll, git, index, ok, show, write } from './helpers/project.js';
+import { al, commitAll, editFile, git, index, ok, show, write } from './helpers/project.js';
 
 const NAME = M.NAME;
 const OPEN_DIR = `requests/${NAME}/`;
@@ -122,5 +122,55 @@ describe('al check --full: a link between two paragraphs of the request that the
       const listed = r.stdout.split('\n').filter((l) => l.startsWith(`map paragraph ${NAME}/`));
       assert.deepEqual(listed, [], `${when}:\n${show(r)}`);
     }
+  });
+});
+
+// =====================================================================
+// DES-132: the --full map shows the text at the base of each paragraph that a
+// paragraph builds on. That holds for a target in the request's own change
+// spec too. Here share is open at the base: the branch feature made it and
+// was merged into main. The branch next edits the text of SP-1 and of SP-2.
+// A specs/ target that the branch edits already shows its base text, in the
+// same form.
+
+const SP1_EDITED = 'The exporter writes one file a week.';
+const SP2_EDITED = 'The file names the week.';
+const BASE_LINK = ['  builds on SP-1 (component):', `    ${SP1}`];
+const EDITED_LINK = ['  builds on SP-1 (component):', `    ${SP1_EDITED}`];
+
+function openAtBase(t) {
+  const dir = world(t);
+  git(dir, 'checkout', '-q', 'main');
+  git(dir, 'merge', '-q', '--no-ff', '-m', 'Merge the branch feature', 'feature');
+  git(dir, 'checkout', '-q', '-b', 'next');
+  editFile(dir, `${OPEN_DIR}spec.md`, SP1, SP1_EDITED);
+  editFile(dir, `${OPEN_DIR}spec.md`, SP2, SP2_EDITED);
+  index(dir);
+  return dir;
+}
+
+function baseTextOf(r, when) {
+  const b = block(r, 'SP-2');
+  assert.ok(b.length > 0, `SP-2 is listed in the map (${when}):\n${show(r)}`);
+  assert.ok(b.includes(`    ${SP2_EDITED}`), `SP-2's own text is the edited text (${when}):\n${b.join('\n')}`);
+  assert.ok(!hasPair(b, EDITED_LINK), `the link line of SP-1 is not followed by the edited text (${when}):\n${b.join('\n')}`);
+  assert.ok(hasPair(b, BASE_LINK), `the link line of SP-1 is followed by SP-1's text at the base (${when}):\n${b.join('\n')}`);
+  assert.ok(hasPair(b, SPEC_LINK), `the link to INV-12 keeps its line (${when}):\n${b.join('\n')}`);
+  return b;
+}
+
+describe('al check --full: a link to a paragraph of the own request that the branch edits shows the target\'s text at the base (DES-132)', () => {
+  test('share open at the base; the branch edits SP-1 and SP-2: SP-2\'s block shows SP-1\'s base text, before al conclude --yes (uncommitted and committed) and after it (uncommitted and committed)', (t) => {
+    const dir = openAtBase(t);
+    baseTextOf(full(dir), 'before the move, uncommitted');
+    commitAll(dir, `${NAME}: a file a week\n\n${TIER}`);
+    const before = baseTextOf(full(dir), 'before the move, committed');
+    concludeHere(dir, false);
+    const after = baseTextOf(full(dir), 'after the move, uncommitted');
+    assert.ok(after[0].startsWith(`map paragraph ${NAME}/SP-2 · ${ARCHIVE_DIR}spec.md:`), after.join('\n'));
+    assert.deepEqual(after.slice(1), before.slice(1), `the block after the move, but for its first line:\n${before.join('\n')}`);
+    commitAll(dir, `Conclude ${NAME}\n\n${TIER}`);
+    const committed = baseTextOf(full(dir), 'after the move, committed');
+    assert.deepEqual(committed, after, 'the block is the same after the commit');
   });
 });
