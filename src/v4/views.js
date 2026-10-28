@@ -711,8 +711,9 @@ export function paragraphDetails(now, was, request, p) {
   }
   // A target is qualified within its request, as al context does it (#115):
   // an ID of a request's change spec is its paragraph, else a spec paragraph.
-  // Either is read at the base first (DES-132).
-  const own = new Set(request ? now.requests.get(request)?.paras.keys() ?? [] : []);
+  // Either is read at the base first (DES-132), so an ID that the branch
+  // removed from the change spec is one of its own too.
+  const own = new Set(request ? [now, was].flatMap((s) => [...(s?.requests.get(request)?.paras.keys() ?? [])]) : []);
   const para = (state, t) => state?.requests.get(t.req)?.paras.get(t.id);
   for (const [key, word] of [['buildsOn', 'builds on'], ['changes', 'changes'], ['removes', 'removes']]) {
     for (const ref of p.links[key]) {
