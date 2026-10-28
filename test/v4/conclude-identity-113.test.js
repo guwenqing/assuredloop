@@ -264,3 +264,39 @@ describe('A judgement of the concluded request\'s own change paragraph and signe
     }
   });
 });
+
+// =====================================================================
+// A second judgement of UX-1, added to the archived review note after the
+// move. UX-1 is a paragraph of the design that the saved item ITEM-7 names,
+// so al index needs --issues to find its version.
+
+const SECOND_UX1 = `- UX-1 complies: the panel still lists the exports.\n  - Item: "${UX1}"\n  - Code (src/panel.js): "${PANEL}"\n`;
+
+describe('After the move, a second judgement of UX-1 in requests/archive/<name>/review.md gets the item\'s version and is current', () => {
+  for (const [way, commitFirst] of [['al index --issues on the uncommitted note', false], ['the note committed, then al index --issues', true]]) {
+    test(`${way}: the new UX-1 line has the version of the first UX-1 line, item quote found, and current; the review note line counts 3 current`, (t) => {
+      const w = world(t);
+      const before = currentBefore(w);
+      concludeHere(w, { commit: true });
+      const moved = checkIssues(w);
+      assert.deepEqual(reviewLines(moved), atNewPaths(before), `current after the move:\n${show(moved)}`);
+      const first = judgementOf(moved, 'UX-1');
+
+      const note = `${ARCHIVE_DIR}review.md`;
+      const text = read(w.dir, note);
+      write(w.dir, note, `${text}${SECOND_UX1}`);
+      const at = text.split('\n').length;
+      if (commitFirst) commitAll(w.dir, `A second review of UX-1\n\n${TIER}`);
+      indexIssues(w);
+      for (const when of commitFirst ? ['committed'] : ['uncommitted', 'committed']) {
+        if (when === 'committed' && !commitFirst) commitAll(w.dir, `A second review of UX-1\n\n${TIER}`);
+        const r = checkIssues(w);
+        const ux = reviewLines(r).filter((l) => l.startsWith('judgement UX-1 '));
+        assert.equal(ux.length, 2, `two UX-1 lines (${when}):\n${show(r)}`);
+        assert.equal(ux[0], first, `the first UX-1 line is as after the move (${when}):\n${show(r)}`);
+        assert.equal(ux[1], first.replace(` · ${note}:3 · `, ` · ${note}:${at} · `), `the new UX-1 line, as the first at its own line ${at} (${when}):\n${show(r)}`);
+        assert.equal(noteLine(r), `review note ${note}: 3 judgements, 3 current, 0 stale, 0 not known when judged, 0 identity not kept, 0 not read`, `${when}:\n${show(r)}`);
+      }
+    });
+  }
+});
