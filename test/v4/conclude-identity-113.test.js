@@ -20,7 +20,8 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  INVOICES, al, commitAll, doc, editRecord, git, newRequest, ok, project, read, show, write, writeConfig,
+  INVOICES, al, appendSection, commitAll, doc, editRecord, git, index, newRequest, ok, organized, project, read, req, show,
+  write, writeConfig,
 } from './helpers/project.js';
 
 const NAME = 'inv';
@@ -174,6 +175,92 @@ describe('Control: a judgement that is stale before al conclude --yes stays stal
       const r = checkIssues(w);
       for (const id of ['UX-1', 'INV-50']) assert.match(judgementOf(r, id), STALE, `${id} stays stale (${when}):\n${show(r)}`);
       assert.ok(noteLine(r).includes(': 2 judgements, 0 current, 2 stale, '), show(r));
+    }
+  });
+});
+
+// =====================================================================
+// The item state of a judgement on the request's own items: a path 2
+// request inv2, with R1 signed, SP-1 component serves:R1, and INV-50 in
+// specs/ that serves inv2/R1 (so al conclude has a declared link for R1).
+// review.md judges SP-1 and R1. Before the move, both read "item proposed by
+// this change"; after al conclude --yes, the same.
+
+const OWN = 'inv2';
+const OWN_OPEN = `requests/${OWN}/`;
+const OWN_ARCHIVE = `requests/archive/${OWN}/`;
+const R1 = req('R1', 'Monthly export', 'A user MUST be able to download one month as one CSV file.');
+const OWN_SP1 = 'The month writer builds one CSV file.';
+const OWN_NOTE = [
+  `# Review of ${OWN}`,
+  '',
+  '- SP-1 complies: one writer for each month.',
+  `  - Item: "${OWN_SP1}"`,
+  '  - Test: tests not examined',
+  '- R1 complies: the export is one CSV file a month.',
+  '  - Item: "download one month as one CSV file"',
+  '  - Test: tests not examined',
+  '',
+].join('\n');
+const PROPOSED = ' · item quote found; item proposed by this change · tests not examined · current';
+
+// main: the config and specs/invoices.md; then the branch `branch` makes
+// inv2, indexed and committed.
+function ownWorld(t, branch = 'feature') {
+  const dir = project(t);
+  writeConfig(dir);
+  write(dir, 'specs/invoices.md', INVOICES);
+  commitAll(dir, 'base');
+  git(dir, 'checkout', '-q', '-b', branch);
+  newRequest(dir, OWN, 'The owner wants a monthly export.\n', ['--tier', '2']);
+  appendSection(dir, OWN, organized([R1]));
+  ok(dir, ['record', OWN, 'signoff', '--source', 'owner', '--words', 'Yes, sign it', '--yes']);
+  write(dir, `${OWN_OPEN}spec.md`, doc([['SP-1 component serves:R1 builds-on:INV-12', OWN_SP1]]));
+  write(dir, 'specs/invoices.md', `${INVOICES}\n${doc([[`INV-50 component serves:${OWN}/R1 builds-on:INV-12`, 'The exporter writes one CSV file for each month.']])}`);
+  write(dir, `${OWN_OPEN}review.md`, OWN_NOTE);
+  index(dir);
+  commitAll(dir, `The request ${OWN}\n\nTier: 2 — ${OWN}`);
+  return dir;
+}
+const plainCheck = (dir) => {
+  const r = al(dir, ['check']);
+  assert.equal(r.code, 0, show(r));
+  return r;
+};
+const ownJudgements = (r) => r.stdout.split('\n').filter((l) => l.startsWith('judgement SP-1 ') || l.startsWith('judgement R1 '));
+function concludeOwn(dir, commit) {
+  const r = ok(dir, ['conclude', OWN, '--yes']);
+  assert.match(r.stdout, new RegExp(`^Concluded ${OWN}: `, 'm'), show(r));
+  index(dir);
+  if (commit) commitAll(dir, `Conclude ${OWN}\n\nTier: 2 — ${OWN}`);
+}
+
+describe('A judgement of the concluded request\'s own change paragraph and signed requirement keeps "item proposed by this change" after the move', () => {
+  for (const [moment, commit] of [['uncommitted', false], ['committed', true]]) {
+    test(`SP-1 and R1 read "item proposed by this change" before the move and after al conclude --yes and al index (${moment}), at the new paths`, (t) => {
+      const dir = ownWorld(t);
+      const r0 = plainCheck(dir);
+      const before = ownJudgements(r0);
+      assert.equal(before.length, 2, show(r0));
+      for (const l of before) assert.ok(l.endsWith(PROPOSED), `before the move:\n${l}\n${show(r0)}`);
+      concludeOwn(dir, commit);
+      const r = plainCheck(dir);
+      assert.deepEqual(ownJudgements(r), before.map((l) => l.replaceAll(OWN_OPEN, OWN_ARCHIVE)), `the lines before the move, at the new paths:\n${before.join('\n')}\n${show(r)}`);
+    });
+  }
+
+  test('control: inv2 concluded on the branch earlier and merged into main; the branch feature changes README.md: no judgement line of SP-1 or R1, and no review note line of inv2', (t) => {
+    const dir = ownWorld(t, 'earlier');
+    concludeOwn(dir, true);
+    git(dir, 'checkout', '-q', 'main');
+    git(dir, 'merge', '-q', '--no-ff', '-m', 'Merge the branch earlier', 'earlier');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    write(dir, 'README.md', 'notes\n');
+    for (const when of ['uncommitted', 'committed']) {
+      if (when === 'committed') commitAll(dir, 'Notes\n\nTier: 0 — notes only');
+      const r = plainCheck(dir);
+      assert.deepEqual(ownJudgements(r), [], `${when}:\n${show(r)}`);
+      assert.deepEqual(r.stdout.split('\n').filter((l) => l.startsWith(`review note ${OWN_ARCHIVE}`) || l.startsWith(`review note ${OWN_OPEN}`)), [], `${when}:\n${show(r)}`);
     }
   });
 });
