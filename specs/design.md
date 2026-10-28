@@ -8,8 +8,8 @@ This is the consolidated spec of AssuredLoop: its promises and its lasting
 design. Its paragraphs come from the change spec of the request
 `assuredloop-v4`, which also keeps how that change was built. `schema.md` in
 this folder holds the model and a worked example. "R<n>" is a requirement of
-that request, and "Input N" means owner input N, whose words are in the
-request's `origin/` folder.
+that request, and "Input N" means owner input N. The owner's words are
+original files, which the project keeps outside the repo.
 Where this design and an older text differ, this design holds.
 
 <!-- DES-3 note -->
@@ -18,26 +18,24 @@ Where this design and an older text differ, this design holds.
 
 <!-- DES-4 rationale explains:DES-5 -->
 
-What the owner wants, and why, in the owner's words:
+What the owner wants, and why:
 
 - Each paragraph of the spec and the design is traced, and a reference
   points to the part that matters, not to a whole section (input 101).
-- Each change keeps its own documents, and one consolidated set stays
-  current: "still have both one ti,e and the consolidated
-  files/spec/design/adr" (input 92).
-- "the big part of the change is the design itself for THAT CHANGE ONLY"
-  (input 106), "with the honor of the existing consolidated design" (input
-  107).
-- "I DO NOT WANT TO HAVE 90% of the things in a "free" uncontrolled/untraced
-  document" (input 109).
-- No tool consolidates: "just do the simple paragraph replacement" (input
-  95), and consolidation may happen "before the close of the whole "epic""
+- Each change keeps its own documents, and one consolidated set of spec,
+  design and ADRs stays current (input 92).
+- Most of a change is the design of that change only (input 106), and it
+  respects the existing consolidated design (input 107).
+- The design is not mostly free text that nothing controls or traces
+  (input 109).
+- No tool consolidates: a person or an AI replaces paragraphs by hand
+  (input 95), and consolidation may happen before the whole epic closes
   (input 105).
-- "a schema with modeling from input till the output (code + test + doc
-  changes + adr .. etc), they are alll connected like a graph" (input 100).
-- "if things are not useful, it is a total waste" (input 111), but "soem
-  sort of price we must pay, we can pay" (input 127).
-- "I allow ai to do typo fixing at least" (input 128).
+- A schema models the chain from the input to the outputs (code, tests,
+  docs, ADRs), all connected like a graph (input 100).
+- What is not useful is waste (input 111), but some cost is acceptable
+  (input 127).
+- An AI may fix typos (input 128).
 
 <!-- DES-5 limit serves:assuredloop-v4/R11,assuredloop-v4/R7,hints-and-blocks/R2 -->
 
@@ -119,8 +117,8 @@ A reader must find the current system without reading past changes (R1).
 
 <!-- DES-12 rationale explains:DES-13 -->
 
-Why: "I assume every paragraph will have an "id", so you can freely link
-them" (input 100), and "there are different kind of texts" (input 100). Only
+Why: every paragraph has an ID, so that links can name it freely, and texts
+are of different kinds (input 100). Only
 an ID stored in the text survives rewording: Doorstop takes the ID from the
 file name, StrictDoc keeps a machine ID apart from the other fields, and the
 Ferrocene Language Specification keeps a stable ID apart from its shown
@@ -630,8 +628,8 @@ is, and a path-1 edit adds `serves:<request>/R<n>`.
 
 <!-- DES-41 rationale explains:DES-42 -->
 
-Why: "Requirements are still the same need the signoff" (input 100); the
-owner signs the organized requirement, never a paragraph (R4). The owner and
+Why: requirements still need the sign-off (input 100); the
+owner signs the organized requirement, not a paragraph (R4). The owner and
 the requirement may change while the owner explores (input 122).
 
 <!-- DES-42 rule serves:assuredloop-v4/R4,hints-and-blocks/R3 -->
@@ -1773,9 +1771,8 @@ across up to 20 repos. These are estimates, at about 100 tokens a paragraph:
 
 <!-- DES-68 rationale explains:DES-69 -->
 
-Why: "many of our solutions are using multi repos" (input 134); "so far
-let's assume the spec stay in the central repo" (input 133). Links from output
-repos are a must.
+Why: many solutions use several repos (input 134), and for now the spec
+stays in the central repo (input 133). Links from output repos are a must.
 
 <!-- DES-69 rule serves:assuredloop-v4/R8,assuredloop-v4/R13,promise-design-split/R1 -->
 
@@ -2001,7 +1998,7 @@ a code test can check that `al` accepts each one.
 
 <!-- DES-74 rationale explains:DES-75 -->
 
-Why: "no need to take care of nbackward copatibility" (input 98).
+Why: backward compatibility is not needed (input 98).
 
 <!-- DES-75 rule serves:assuredloop-v4/R9 -->
 

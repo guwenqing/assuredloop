@@ -4,6 +4,16 @@
 // for the requirement hashes is v4's public reader, requirements(text) and
 // signedText(md) of src/v4/request-md.js. The one run of the command uses a
 // copy of the repo, never the repo itself.
+//
+// The sign-off snapshot (origin/2026-10-10-signoff.md) is kept outside the
+// repo (#63; .assuredloop/config.yaml says originals: {outside: assuredloop}).
+// So these tests read only the record and today's request.md. An earlier
+// version of this file proved, from the snapshot's bytes, that signedText of
+// today's request.md is the snapshot's signed text byte for byte, and that the
+// snapshot's SHA-256: line states its hash. With that established, the hashes
+// below are checked against signedText(request.md). `al check` verifies the
+// snapshot itself against the record (file name and sha256) on a machine where
+// the place of the originals is set; with no place set, it says "not checked".
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -22,9 +32,7 @@ const RECORD = '.assuredloop/records/requests/assuredloop-v4.yaml';
 // The request is concluded: `al conclude` moved its folder to requests/archive/.
 const DIR = 'requests/archive/assuredloop-v4';
 const SNAPSHOT_FILE = '2026-10-10-signoff.md';
-const SNAPSHOT = `${DIR}/origin/${SNAPSHOT_FILE}`;
 const REQUEST = `${DIR}/request.md`;
-const MARK = '--- signed text ---\n';
 const IDS = Array.from({ length: 14 }, (_, i) => `R${i + 1}`);
 const LIMIT = 60_000;
 
@@ -33,37 +41,27 @@ const read = (rel) => readFileSync(join(ROOT, rel));
 const record = () => parse(read(RECORD).toString('utf8'));
 const byNumber = (a, b) => Number(a.slice(1)) - Number(b.slice(1));
 
-// The snapshot's bytes after the `--- signed text ---` line, and the hash its
-// own `SHA-256:` header line states.
-function snapshot() {
-  const bytes = read(SNAPSHOT);
-  const at = bytes.indexOf(MARK);
-  assert.ok(at >= 0, `the fixture: ${SNAPSHOT} has a "--- signed text ---" line`);
-  assert.ok(at === 0 || bytes[at - 1] === 0x0a, 'the fixture: the marker starts a line');
-  const head = bytes.subarray(0, at).toString('utf8');
-  const stated = head.match(/^SHA-256:\s*([0-9a-f]{64})\b/m);
-  assert.ok(stated, `the fixture: ${SNAPSHOT} has a SHA-256: header line`);
-  const signed = bytes.subarray(at + Buffer.byteLength(MARK));
-  return { signed, text: signed.toString('utf8'), stated: stated[1] };
+// The signed text of today's request.md, as v4 derives it.
+function signedNow() {
+  const now = signedText(read(REQUEST).toString('utf8'));
+  assert.equal(typeof now, 'string', 'request.md should have an organized requirement');
+  return now;
 }
 
 // requirement id -> sha256, as v4 derives it from `text`.
 const hashes = (text) => new Map(requirements(text).map((r) => [r.id, r.sha256]));
 
-test('#196 the v4 record has exactly one sign-off, S1, of 2026-10-10-signoff.md, whose sha256 is the hash of the signed text and the hash the snapshot states', () => {
-  const { signed, stated } = snapshot();
-  assert.equal(sha(signed), stated, 'the fixture: the snapshot\'s SHA-256: line states the hash of its signed text');
+test('#196 the v4 record has exactly one sign-off, S1, of 2026-10-10-signoff.md, whose sha256 is the hash of the signed text of today\'s request.md', () => {
   const so = record().signoff;
   assert.ok(Array.isArray(so), `${RECORD} should have a signoff list`);
   assert.deepEqual(so.map((s) => s.id), ['S1'], 'exactly one sign-off entry, S1');
   assert.equal(so[0].file, SNAPSHOT_FILE);
-  assert.equal(so[0].sha256, sha(signed));
+  assert.equal(so[0].sha256, sha(Buffer.from(signedNow(), 'utf8')));
 });
 
 test('#196 S1 covers R1 to R14, each version 1, each sha256 the hash v4 derives from the signed text and from today\'s request.md', () => {
-  const { text } = snapshot();
-  const signedHashes = hashes(text);
-  assert.deepEqual([...signedHashes.keys()].sort(byNumber), IDS, 'the fixture: the signed text holds R1 to R14');
+  const signedHashes = hashes(signedNow());
+  assert.deepEqual([...signedHashes.keys()].sort(byNumber), IDS, 'the signed text holds R1 to R14');
   const todayHashes = hashes(read(REQUEST).toString('utf8'));
   assert.deepEqual([...todayHashes.keys()].sort(byNumber), IDS, 'request.md holds R1 to R14');
   for (const id of IDS) assert.equal(todayHashes.get(id), signedHashes.get(id), `${id}: request.md's hash should equal the signed one`);
@@ -75,13 +73,6 @@ test('#196 S1 covers R1 to R14, each version 1, each sha256 the hash v4 derives 
     assert.equal(c.version, 1, `${c.id}: version 1`);
     assert.equal(c.sha256, signedHashes.get(c.id), `${c.id}: sha256 should be the hash v4 derives from the signed text`);
   }
-});
-
-test('#196 signedText of today\'s request.md is the snapshot\'s signed text, byte for byte (the markers did not change the signed bytes)', () => {
-  const { signed } = snapshot();
-  const now = signedText(read(REQUEST).toString('utf8'));
-  assert.equal(typeof now, 'string', 'request.md should have an organized requirement');
-  assert.ok(Buffer.from(now, 'utf8').equals(signed), `signedText(request.md) should equal the signed text:\n--- now\n${now}--- signed\n${signed}`);
 });
 
 test('#196 S1 has a note that says it was converted from 0.1.0', () => {
@@ -148,7 +139,7 @@ function tree(dir) {
   return out;
 }
 
-// Tests 1-3 check that S1 covers today's requirement; this one checks that the concluded request is not signed again.
+// Tests 1-2 check that S1 covers today's requirement; this one checks that the concluded request is not signed again.
 test('#196 node bin/al.js record assuredloop-v4 signoff --source x --words x (no --yes), from the repo top: it refuses the archived request with exit 2, and it writes nothing', (t) => {
   const dir = copyRepo(t);
   const before = tree(dir);

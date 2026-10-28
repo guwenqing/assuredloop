@@ -7,7 +7,7 @@ paragraphs:
     display: "DES-1 (0, AssuredLoop: the design)"
   - id: DES-2
     kind: note
-    text_sha256: 7a27a3ce0e17de78aaf3f456682d932a147c702e762cbe5bde2c7d3863b07128
+    text_sha256: f595b044908e5ac934c2d5965a1c7144e1a2ecc5b36eb348293a08ec344e4133
     display: "DES-2 (0:1, in AssuredLoop: the design)"
   - id: DES-3
     kind: note
@@ -15,7 +15,7 @@ paragraphs:
     display: DES-3 (1, 1. Intent)
   - id: DES-4
     kind: rationale
-    text_sha256: 1ca1d304f694c7c0ef9dc9b7a86e3f26ee1160f85c84f2abe6364b1a400d08ba
+    text_sha256: 61122aba3286123e769c3d975974177fa7b16a6ef8581f8b671fff8058162d75
     display: DES-4 (1:1, in 1. Intent)
   - id: DES-5
     kind: limit
@@ -47,7 +47,7 @@ paragraphs:
     display: DES-11 (3, 3. IDs, kinds and links)
   - id: DES-12
     kind: rationale
-    text_sha256: 136b5dfce10a672df026b1c057e2fdfec164a08b79bc09fa5153dcf237dbdf8b
+    text_sha256: e1b8fe7f8a064372321d6248b6acb760ee53ef93c4b0880fda6be94f3fc57e77
     display: DES-12 (3:1, in 3. IDs, kinds and links)
   - id: DES-13
     kind: rule
@@ -159,7 +159,7 @@ paragraphs:
     display: DES-40 (6, 6. Sign-off)
   - id: DES-41
     kind: rationale
-    text_sha256: 0a9bf438a1bba72a3b251e050f3a18d41a54939d05ce4afc5f3bcb2fec67e157
+    text_sha256: a50612e886f4edd1ab53554937ac8440f90961d345230d7a2e782e99b5473ea5
     display: DES-41 (6:1, in 6. Sign-off)
   - id: DES-42
     kind: rule
@@ -455,7 +455,7 @@ paragraphs:
     display: DES-67 (12, 12. One central spec repo, and output repos)
   - id: DES-68
     kind: rationale
-    text_sha256: 2a792ffe2426acecba40f3314697d54986c4598d41b7d76ab6a22a8999b71033
+    text_sha256: 27d1eac6c4180fb385e09b93c7112967bfa9c2fcc1f65ea18f1ffdcfb2a539d0
     display: DES-68 (12:1, in 12. One central spec repo, and output repos)
   - id: DES-69
     kind: rule
@@ -507,7 +507,7 @@ paragraphs:
     display: DES-73 (14, 14. Migration and adoption)
   - id: DES-74
     kind: rationale
-    text_sha256: 560f942a665086bd17d4722e77d287a00d44b58c4e43355299375cceef09c120
+    text_sha256: 78ec5f85c7e37010c7f2bba4311c5aca830117e67ba4290964c9e59074a724b6
     display: DES-74 (14:1, in 14. Migration and adoption)
   - id: DES-75
     kind: rule

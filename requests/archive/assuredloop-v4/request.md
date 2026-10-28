@@ -6,7 +6,7 @@ Tier: 3 · Status: concluded
 - 2026-10-10 the owner's words, snapshot origin/2026-10-10-owner-words.md
 - The dialog in brief:
   - The owner asked whether a schema built for every change, with a RAG
-    index, could replace the strange change format (owner inputs 92-99).
+    index, could replace the change format (owner inputs 92-99).
     Research on built schemas, RAG levels and zero infrastructure followed.
   - The owner asked for an ID on every paragraph, kinds of text, ADRs as a
     special kind, and one graph from the owner's input to the output
@@ -32,14 +32,14 @@ Tier: 3 · Status: concluded
   origin/2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14.md.
   Decision D1 below.
 - 2026-10-10: the owner's words 146-150: the scale pass marks are fine; the
-  architect carries on overnight and decides T6; the cost is fine to try; up
-  to three developers at once. Snapshot
+  architect decides T6; the cost is fine to try; up to three developers at
+  once. Snapshot
   origin/2026-10-10-owner-chat-with-the-architect-2026-10-10-inputs-14-2.md.
   Decision D2 below.
 - 2026-10-11: the owner's words 156-159: yes to the removal of v1's code
-  from the repo, with 0.1.0 kept on npm; a question on how the cost is
-  measured; the owner accepts the cost for this release, and it is measured
-  again on real features after the release. Snapshot
+  from the repo, with 0.1.0 kept on npm; the owner accepts the cost for
+  this release, and it is measured again on real features after the
+  release. Snapshot
   origin/2026-10-11-owner-chat-with-the-architect-2026-10-11-inputs-15.md.
   Decisions D23 and D24 below.
 - 2026-10-11: the owner's words 160: the release needs no yes from the
