@@ -61,7 +61,7 @@ jobs:
       - name: The real-model smoke test
         env:
           AL_REQUIRE_REAL_MODEL: 1
-        run: node --test test/v4/search-real-model.test.js test/v4/search-offline-39.test.js
+        run: node --test test/search-real-model.test.js test/search-offline-39.test.js
 
   # The only job that can prove who it is to npm, so it installs nothing.
   # Publishing packs the files package.json lists and needs no dependencies to
