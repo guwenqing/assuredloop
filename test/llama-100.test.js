@@ -1,4 +1,4 @@
-// Issue #100: the llama.cpp runtime (src/v4/llama.js). Built from the issue,
+// Issue #100: the llama.cpp runtime (src/llama.js). Built from the issue,
 // kb-search/R10 and the module's public interface only. Nothing here reads
 // src/. A fake llama-server on PATH stands in for llama.cpp
 // (helpers/llama.js): no model, no download, no network beyond 127.0.0.1.
@@ -13,7 +13,7 @@ import {
   BOS, CLS, EOS, EOS_G, SEP, alive, codes, fakeLlama, freePort, sha256, startFake, versionOf,
 } from './helpers/llama.js';
 
-const llama = () => import('../../src/v4/llama.js');
+const llama = () => import('../src/llama.js');
 
 const INSTRUCTION = 'Given the title and description of a code change, retrieve the files and spec paragraphs that the change touches';
 const OTHER_BUILD_NOTE = (b) => `llama.cpp build ${b}; measured with b11624; the figures may differ`;

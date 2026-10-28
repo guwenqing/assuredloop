@@ -5,8 +5,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { parseMarkdown } from '../../src/v4/markers.js';
-import { diffParagraphs, idLints } from '../../src/v4/ids.js';
+import { parseMarkdown } from '../src/markers.js';
+import { diffParagraphs, idLints } from '../src/ids.js';
 
 const sha = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
 const F = 'specs/adr/0004-pick-a.md';

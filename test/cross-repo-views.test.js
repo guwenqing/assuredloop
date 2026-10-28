@@ -1,7 +1,7 @@
 // The cross-repo facts of T12 (#185) in al-v4 check and al-v4 context (#179,
 // T10 and T11): the results of output repos, an output repo that cannot be
 // read, output-repo tests as checks, and the git facts of task PRs. Built on
-// the cross-repo world of test/v4/helpers/cross-repo.js.
+// the cross-repo world of test/helpers/cross-repo.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { world } from './helpers/cross-repo.js';

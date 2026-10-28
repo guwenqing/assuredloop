@@ -15,7 +15,7 @@
 //   with or without --strict.
 //
 // The state is the case applied-promise of the invoicer world
-// (test/v4/fixtures/invoicer/cases/applied-promise.yaml). Its two arms add the
+// (test/fixtures/invoicer/cases/applied-promise.yaml). Its two arms add the
 // same paragraphs; only arm `linked` has the builds-on links. Each "no hint"
 // test has a control that gives the hint, in the same state or in arm
 // `unlinked`.
@@ -167,7 +167,7 @@ test('nothing new blocks: the not ok lines and the exit code are the same with a
 // The central repo lists one output repo (a sibling clone) in its config. So
 // builds-on:central:INV-13 names its own rule INV-13. With { central: false },
 // the config lists no outputs, so central:INV-13 names another repo's INV-13,
-// not a local paragraph. Built as in test/v4/design-links-229.test.js.
+// not a local paragraph. Built as in test/design-links-229.test.js.
 //
 // specs/invoices.md has INV-12 (data), INV-13 (rule) and INV-41 (rule). The
 // branch adds, each with a requirement word:

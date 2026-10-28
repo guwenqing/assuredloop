@@ -2,7 +2,7 @@
 // from the issue and the interface note (interface-199.md), by a different
 // author than the code.
 //
-// 1. commitsOf(dir, revs) in src/v4/git.js: one git process for any number of
+// 1. commitsOf(dir, revs) in src/git.js: one git process for any number of
 //    revs, none for an empty list; each value equals commitOf(dir, rev).
 // 2. mergesOf(dir, commit): one git process; the function it returns gives,
 //    for each n, what mergeOf(dir, commit, n) gives.
@@ -21,19 +21,19 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import * as gitjs from '../../src/v4/git.js';
+import * as gitjs from '../src/git.js';
 import { makeRepo } from './helpers/repo.js';
 import { blobSha, centralConfig, commit, world, worldOutputs } from './helpers/cross-repo.js';
 import { invoicer } from './helpers/invoicer.js';
 import { al, baseProject, commitAll, git, move, read, readYaml, sha, show, write, writeYaml } from './helpers/project.js';
 import { as78, settled } from './helpers/as-78.js';
 
-const GIT_JS = fileURLToPath(new URL('../../src/v4/git.js', import.meta.url));
+const GIT_JS = fileURLToPath(new URL('../src/git.js', import.meta.url));
 const { commitOf, mergeOf } = gitjs;
 
 // The new functions, with a clear failure while they are not exported.
 function fn(name) {
-  assert.equal(typeof gitjs[name], 'function', `src/v4/git.js exports ${name}`);
+  assert.equal(typeof gitjs[name], 'function', `src/git.js exports ${name}`);
   return gitjs[name];
 }
 

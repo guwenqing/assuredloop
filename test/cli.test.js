@@ -2,8 +2,8 @@
 // repos. Written from the T8 interface (issue #174) and design.md 3 and 13.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMarkdown } from '../../src/v4/markers.js';
-import { loadConfig } from '../../src/v4/config.js';
+import { parseMarkdown } from '../src/markers.js';
+import { loadConfig } from '../src/config.js';
 import { makeRepo as makeBareRepo, addRequest, runV4, lines, assertFrame, show } from './helpers/repo.js';
 import { outsideOk } from './helpers/as-78.js';
 

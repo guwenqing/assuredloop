@@ -4,7 +4,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, symlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { parseMarkdown } from '../../src/v4/markers.js';
+import { parseMarkdown } from '../src/markers.js';
 import { makeRepo, runV4, lines, show } from './helpers/repo.js';
 import { changeLines78, outsideOk } from './helpers/as-78.js';
 

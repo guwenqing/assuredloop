@@ -12,8 +12,8 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-import { writeSetup } from '../src/v4/config.js';
-import { groupOf } from '../src/v4/markers.js';
+import { writeSetup } from '../src/config.js';
+import { groupOf } from '../src/markers.js';
 import { EFFECT, HOUR, Repo, SCHEMA, START, Words, closeRequest, docRecord, docRecordPath, entriesOf, git, openRequest, pad, recordPath, recordText, render } from './world.js';
 
 const SECTIONS = 4;

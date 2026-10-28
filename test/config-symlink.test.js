@@ -4,8 +4,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, symlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { loadConfig, loadSchema } from '../../src/v4/config.js';
-import { KINDS } from '../../src/v4/markers.js';
+import { loadConfig, loadSchema } from '../src/config.js';
+import { KINDS } from '../src/markers.js';
 import { makeRepo, runV4, lines, show } from './helpers/repo.js';
 
 const CONFIG = 'root: design\n';

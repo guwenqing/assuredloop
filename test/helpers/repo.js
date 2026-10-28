@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 
-export const AL4 = fileURLToPath(new URL('../../../bin/al.js', import.meta.url));
+export const AL4 = fileURLToPath(new URL('../../bin/al.js', import.meta.url));
 
 const DATE = '2026-01-01T00:00:00Z';
 
@@ -103,7 +103,7 @@ export function assertFrame(stdout) {
 export const show = (r) => `exit ${r.code}${r.signal ? ` (${r.signal})` : ''}\n--- stdout\n${r.stdout}--- stderr\n${r.stderr}`;
 
 // The request that spec fixtures name with serves:inv/R<n>, in the form
-// src/v4/request-md.js reads. Written, not committed.
+// src/request-md.js reads. Written, not committed.
 export const REQUEST_MD = [
   '# inv', '',
   '## Organized requirement', '',

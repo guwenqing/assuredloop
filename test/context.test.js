@@ -1,7 +1,7 @@
 // al-v4 context: the project view, the request view, the ID view, the review
 // view of a diff (now al check, #78), --audit and --at (#179, task T11;
 // design.md 5, 8, 9, 13).
-// States of the invoicer world (test/v4/fixtures/invoicer/cases/).
+// States of the invoicer world (test/fixtures/invoicer/cases/).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { check, invoicer } from './helpers/invoicer.js';

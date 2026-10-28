@@ -1,4 +1,4 @@
-// loadResults from src/v4/results.js: the result files and their problems (#175).
+// loadResults from src/results.js: the result files and their problems (#175).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
 import { REPO, project, write, writeConfig } from './helpers/project.js';
 
-const load = async () => (await import(pathToFileURL(join(REPO, 'src/v4/results.js')).href)).loadResults;
+const load = async () => (await import(pathToFileURL(join(REPO, 'src/results.js')).href)).loadResults;
 const DIR = '.assuredloop/results';
 const H = 'c'.repeat(64);
 const GOOD = [

@@ -1,6 +1,6 @@
 // al-v4 check on the planted defects D01-D14 of T2 and their clean controls
 // (#179, task T10). Each pair is two states of the invoicer world
-// (test/v4/fixtures/invoicer/cases/dNN.yaml). The core assertion: the findings
+// (test/fixtures/invoicer/cases/dNN.yaml). The core assertion: the findings
 // of the defect minus those of the control, compared on (severity, code, id),
 // are exactly the planted ones; and the reverse difference is exactly what the
 // control alone should show.

@@ -2,7 +2,7 @@
 
 This folder holds the invented `invoicer` world of the v4 validation (T1, T2),
 converted to the final design. The tests of T10 (#179) use it. Other v4 tests
-may use it too. The builder is `test/v4/helpers/invoicer.js`.
+may use it too. The builder is `test/helpers/invoicer.js`.
 
 The source is the validation folder `validation/v4/` of the assuredloop bot:
 `fixtures/full/` (the base state and the case overlays) and

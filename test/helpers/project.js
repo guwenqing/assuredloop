@@ -12,7 +12,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse, stringify } from 'yaml';
 
-export const REPO = fileURLToPath(new URL('../../../', import.meta.url));
+export const REPO = fileURLToPath(new URL('../../', import.meta.url));
 export const BIN = join(REPO, 'bin/al.js');
 
 // "Now" for every run: 2026-05-04 09:30 UTC.

@@ -62,7 +62,7 @@ export const EOS = 1_351_643;
 export const codes = (s) => [...s].map((c) => c.codePointAt(0));
 
 const SCRIPT = String.raw`#!/usr/bin/env node
-// A fake llama-server for tests. See test/v4/helpers/llama.js.
+// A fake llama-server for tests. See test/helpers/llama.js.
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');

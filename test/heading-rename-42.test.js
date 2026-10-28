@@ -8,8 +8,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { parseMarkdown } from '../../src/v4/markers.js';
-import { diffParagraphs } from '../../src/v4/ids.js';
+import { parseMarkdown } from '../src/markers.js';
+import { diffParagraphs } from '../src/ids.js';
 import { makeRepo, addRequest, runV4, lines, show } from './helpers/repo.js';
 import { changeLines78 } from './helpers/as-78.js';
 

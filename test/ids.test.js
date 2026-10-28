@@ -1,10 +1,10 @@
-// src/v4/ids.js: diffParagraphs(base, head) and idLints(base, head, opts).
+// src/ids.js: diffParagraphs(base, head) and idLints(base, head, opts).
 // Paragraphs are built by hand in the shape parseMarkdown returns, so these
 // tests do not depend on the parser.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { diffParagraphs, idLints } from '../../src/v4/ids.js';
+import { diffParagraphs, idLints } from '../src/ids.js';
 
 const sha = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
 const LINK_KEYS = ['serves', 'buildsOn', 'changes', 'removes', 'explains', 'illustrates',

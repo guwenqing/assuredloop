@@ -1,7 +1,7 @@
 // Issue #63, part 1: the repo follows its own config. .assuredloop/config.yaml
 // says originals: {outside: assuredloop}, so the original files of each request
 // (the owner's words, sign-off snapshots and other source snapshots) are kept
-// outside the repo, in the place that each machine sets (src/v4/originals.js).
+// outside the repo, in the place that each machine sets (src/originals.js).
 // The records in .assuredloop/records/requests/ keep each file's name and
 // sha256. So git tracks no file under requests/<name>/origin/ or
 // requests/archive/<name>/origin/. Built from the issue; it reads only this
@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 // A path under requests/<name>/origin/ or requests/archive/<name>/origin/.
 // requests/archive/ is the archive folder, not a request named archive.

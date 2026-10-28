@@ -37,10 +37,10 @@ export const ZIP_V1 = fixture('worker/src/zip-export.v1.js');
 export const ZIP_V2 = fixture('worker/src/zip-export.v2.js');
 export const GONE_SHA = 'a'.repeat(64);
 
-// crossRepo from src/v4/repos.js, imported when a test runs, so a missing
+// crossRepo from src/repos.js, imported when a test runs, so a missing
 // module fails that test and not the file.
 export async function crossRepo(top) {
-  const mod = await import(pathToFileURL(join(REPO, 'src/v4/repos.js')).href);
+  const mod = await import(pathToFileURL(join(REPO, 'src/repos.js')).href);
   return mod.crossRepo(top);
 }
 

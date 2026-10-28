@@ -2,7 +2,7 @@
 // #72, LD-58 and LD-9). #72 removed the dispositions, their validity and the
 // wording decisions from al: an old record that holds them stays readable,
 // and al check no longer checks them. The states of the invoicer world that
-// hold such records (test/v4/fixtures/invoicer/cases/cr-*.yaml) give no
+// hold such records (test/fixtures/invoicer/cases/cr-*.yaml) give no
 // finding with the code `disposition` or `disposition-pending`, plain or
 // --strict.
 import { test } from 'node:test';

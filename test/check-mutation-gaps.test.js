@@ -2,7 +2,7 @@
 // disposition of a paragraph with a changes: link (decision D15, rule a), and
 // the case of the requirement words (design.md 3). #72 (LD-58) removed the
 // dispositions, so only the requirement words are left here. States of the
-// invoicer world (test/v4/fixtures/invoicer/cases/req-words.yaml).
+// invoicer world (test/fixtures/invoicer/cases/req-words.yaml).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { check, invoicer } from './helpers/invoicer.js';

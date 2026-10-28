@@ -1,4 +1,4 @@
-// Issue #100: the rerank method (src/v4/rerank.js). Built from the issue,
+// Issue #100: the rerank method (src/rerank.js). Built from the issue,
 // kb-search/R10 and the module's public interface only. Nothing here reads
 // src/. Word search gives its top 30; a reranker scores them, and its order
 // replaces the order of those 30. The llama.cpp scorers run against a fake
@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CLS, SEP, codes, fakeLibrary, startFake } from './helpers/llama.js';
 
-const rerankJs = () => import('../../src/v4/rerank.js');
+const rerankJs = () => import('../src/rerank.js');
 
 const INSTRUCTION = 'Given the title and description of a code change, retrieve the files and spec paragraphs that the change touches';
 const prompt = (query, doc) => `<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n<Instruct>: ${INSTRUCTION}\n<Query>: ${query}\n<Document>: ${doc}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n`;

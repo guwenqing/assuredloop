@@ -4,7 +4,7 @@
 // Built from the issue's requirement and the public interface only:
 // package.json and package-lock.json, the packed tarball, the two workflow
 // files as GitHub Actions files, README.md, and the installed `al`. Nothing
-// here reads src/. It follows test/v4/pack.test.js: a scratch npm home, cache
+// here reads src/. It follows test/pack.test.js: a scratch npm home, cache
 // and config, `npm pack --json`, an offline global install into a scratch
 // prefix, and a hard time limit on every spawned process.
 // - Item 1: one package. packages/search/ is gone, and no shipped file names
@@ -43,7 +43,7 @@ import {
   LEVEL2_LINE, TRANSFORMERS, TRANSFORMERS_VERSION, WITH_MODEL, importsOf, installEmbedder, smallRepo, standIn,
 } from './helpers/search.js';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CLI = '@assuredloop/cli';
 const OLD = '@assuredloop/search';
 const YAML_VERSION = '2.9.1';

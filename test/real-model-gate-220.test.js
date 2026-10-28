@@ -1,7 +1,7 @@
 // Issue #220: the release gate runs the real level-2 model smoke test.
 // Built from the architect's decision and the public interface only: the
 // switch AL_REQUIRE_REAL_MODEL, the smoke test file
-// test/v4/search-real-model.test.js, and the two workflow files read as
+// test/search-real-model.test.js, and the two workflow files read as
 // GitHub Actions files. Nothing here reads src/.
 // - With AL_REQUIRE_REAL_MODEL=1 the smoke test does not skip: it fails when
 //   @huggingface/transformers does not resolve from the repo top, and when
@@ -29,8 +29,8 @@ import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { TRANSFORMERS, TRANSFORMERS_VERSION, standIn } from './helpers/search.js';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const SMOKE = 'test/v4/search-real-model.test.js';
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const SMOKE = 'test/search-real-model.test.js';
 const SWITCH = 'AL_REQUIRE_REAL_MODEL';
 const INSTALL = `${TRANSFORMERS}@${TRANSFORMERS_VERSION}`;
 // A nested node --test with a stand-in takes seconds; a hang is killed.
@@ -40,7 +40,7 @@ const DAY_MS = 86_400_000;
 // --- the smoke test, run in a scratch copy of al
 //
 // The copy holds what the smoke test and al need: package.json, bin/, src/,
-// skills/, node_modules/yaml, test/v4/helpers/ and the smoke test itself, as
+// skills/, node_modules/yaml, test/helpers/ and the smoke test itself, as
 // they are in this clone now. It holds no @huggingface/transformers, and it
 // lives in the system's temp folder, so nothing above it gives one either.
 
@@ -48,7 +48,7 @@ function world(t) {
   const dir = mkdtempSync(join(realpathSync(tmpdir()), 'al4-gate-220-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   copyFileSync(join(ROOT, 'package.json'), join(dir, 'package.json'));
-  for (const d of ['bin', 'src', 'skills', 'node_modules/yaml', 'test/v4/helpers']) {
+  for (const d of ['bin', 'src', 'skills', 'node_modules/yaml', 'test/helpers']) {
     if (existsSync(join(ROOT, d))) cpSync(join(ROOT, d), join(dir, d), { recursive: true });
   }
   copyFileSync(join(ROOT, SMOKE), join(dir, SMOKE));
@@ -158,7 +158,7 @@ const npmInstalls = (run) => [...run.replace(/\\\n/g, ' ').matchAll(new RegExp(`
 
 const isFull = (s) => typeof s.run === 'string' && s.run.trim() === 'node --test';
 const isSmoke = (s) => typeof s.run === 'string'
-  && /\bnode\b[^\n]*--test\b[^\n]*test\/v4\/search-real-model\.test\.js\b/.test(s.run);
+  && /\bnode\b[^\n]*--test\b[^\n]*test\/search-real-model\.test\.js\b/.test(s.run);
 const switchOn = (s) => String(s.env?.[SWITCH] ?? '') === '1' || new RegExp(`\\b${SWITCH}=['"]?1\\b`).test(s.run);
 const installsLib = (s) => typeof s.run === 'string' && LIB.test(s.run) && npmInstalls(s.run).length > 0;
 const label = (s, i) => s.name ?? (typeof s.run === 'string' ? s.run.split('\n')[0] : s.uses) ?? `step ${i}`;

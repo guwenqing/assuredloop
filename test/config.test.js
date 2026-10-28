@@ -1,9 +1,9 @@
-// src/v4/config.js: loadConfig(top) and loadSchema(top), and src/v4/git.js.
+// src/config.js: loadConfig(top) and loadSchema(top), and src/git.js.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadConfig, loadSchema } from '../../src/v4/config.js';
-import { KINDS } from '../../src/v4/markers.js';
-import { git as gitV4, mergeBase, fileAt } from '../../src/v4/git.js';
+import { loadConfig, loadSchema } from '../src/config.js';
+import { KINDS } from '../src/markers.js';
+import { git as gitV4, mergeBase, fileAt } from '../src/git.js';
 import { makeRepo, runV4, show } from './helpers/repo.js';
 
 describe('loadConfig', () => {
