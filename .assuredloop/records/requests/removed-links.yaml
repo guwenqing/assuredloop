@@ -21,10 +21,10 @@ signoff:
     file: 2026-10-19-signoff.md
     sha256: f62ff32d71f2d1966b40df4db3c6980bf0808073a9c05645100dd85b29e1959c
     signed: 2026-10-19T19:58Z
-    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-19 at 19:51Z
+    source: the owner, in the chat with the architect, 2026-10-19 at 19:51Z
     words: Yes I am good on both
     presented: 'R1, R2 and the Out: line word for word, marker lines not shown, first at 19:30Z, and again at 19:50Z with a plain account of each part after the owner asked "Tell me more what to sign"; the one answer covers this text and the text of issue #13'
-    transcribed_by: assuredloop/architect
+    transcribed_by: the agent (architect)
     covers:
       - { id: R1, version: 1, sha256: 802374ed4943b64d591db08cf6e8aa40fb739ebcdebdc3237bc36d87236b83f0 }
       - { id: R2, version: 1, sha256: 3a48959b5d476d95a590355cb620e60f0bd6712543fbedc4915ac74bec4efbe2 }

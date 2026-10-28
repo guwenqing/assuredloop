@@ -20,7 +20,7 @@ signoff:
     source: owner chat with the architect, 2026-10-27 about 11:16Z
     words: Ok sign
     presented: 2026-10-27 about 06:30Z and again 10:41Z, the text in full, as design-links/R1 version 2
-    transcribed_by: assuredloop/architect
+    transcribed_by: the agent (architect)
     covers:
       - { id: R1, version: 1, sha256: cad70e107f96f4bbc8053f90e8def59fec4861c08826ecd23fad53d17795f4d1 }
 decisions: []

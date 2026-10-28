@@ -21,10 +21,10 @@ signoff:
     file: 2026-10-19-signoff.md
     sha256: 42fd0fe99c4b3cee2401ee3302f17e8e958201c9789b5c8f36045beaf6030525
     signed: 2026-10-19T18:23Z
-    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-19 about 18:21Z
+    source: the owner, in the chat with the architect, 2026-10-19 about 18:21Z
     words: "The 4: this is ok"
     presented: "R1, R2 and the Out: line word for word, marker lines not shown, about 18:20Z, in simpler words after the owner said the first text was hard to understand, with a plain account of the two kinds of edit"
-    transcribed_by: assuredloop/architect
+    transcribed_by: the agent (architect)
     covers:
       - { id: R1, version: 1, sha256: 37f34d019858afdb7a175b80c56f986b38b6b3b4c8910eab0d9e1e5baf819d1a }
       - { id: R2, version: 1, sha256: 30444637c018b02d23b2ede3153f34f0324bc04eaacf9aba4884b4131aecd354 }

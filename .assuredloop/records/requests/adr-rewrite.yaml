@@ -20,7 +20,7 @@ signoff:
     source: owner chat with the architect, 2026-10-27 about 03:30Z
     words: Sign
     presented: 2026-10-26 about 06:40Z, again 18:26Z and 22:39Z, the text in full, as hints-and-blocks/R1 version 2
-    transcribed_by: assuredloop/architect
+    transcribed_by: the agent (architect)
     covers:
       - { id: R1, version: 1, sha256: b57a738b9c83f8eadd9f8f02a3dfd10cff1de347f4e627ead201088d2d8c0fa8 }
 decisions: []

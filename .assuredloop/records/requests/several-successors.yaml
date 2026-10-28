@@ -17,10 +17,10 @@ signoff:
     file: 2026-10-19-signoff.md
     sha256: eb6d5b7e14c5104870ff5e66d216bf95b9fc6ea65311fcf8b84e3aff0c6495a9
     signed: 2026-10-19T18:22Z
-    source: the owner, in assuredloop/architect's Claude Code tab, 2026-10-19 about 18:18Z
+    source: the owner, in the chat with the architect, 2026-10-19 about 18:18Z
     words: I don’t understand except for 1 which I say yes
     presented: "R1 and the Out: line word for word, marker lines not shown, first about 16:25Z and again about 17:35Z, each time after a short plain account and together with the texts for #3 and #4"
-    transcribed_by: assuredloop/architect
+    transcribed_by: the agent (architect)
     covers:
       - { id: R1, version: 1, sha256: bb7dce968cc5309edcdd0262604b903c6eb7d95b9c43c22db3108b3c3437428c }
 decisions: []
