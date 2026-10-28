@@ -308,12 +308,13 @@ export function keepJudgements(top, recs, config, issues = null) {
   const body = [];
   let current = null;
   const kept = stamp(now());
-  const ctx = context(top, config, issues, { data: (q) => recs.get(q.name)?.data ?? q.data });
-  // A request that the branch concludes is the change's own too (DES-139):
-  // the base needs only to tell which archived requests it already archives.
+  // A request that the branch concludes is the change's own too (DES-139),
+  // and its tasks name their design documents: the base needs only to tell
+  // which archived requests it already archives.
   const archived = [...state.requests.values()].filter((r) => !r.open).map((r) => `requests/archive/${r.name}/request.md`);
   const atBase = archived.length ? filesAt(top, base, archived) : new Map();
   const was = { requests: new Map([...atBase].filter(([, t]) => t != null).map(([p]) => [p.split('/')[2], { open: false }])) };
+  const ctx = context(top, config, issues, { data: (q) => recs.get(q.name)?.data ?? q.data, was });
   for (const r of ownRequests(top, state, base, undefined, was)) {
     const rec = recs.get(r.name);
     const text = read(top, notePath(r));
@@ -340,7 +341,7 @@ export function keepJudgements(top, recs, config, issues = null) {
           const then = loadState(top, at.commit);
           const thenConfig = settingsAt(top, at.commit).config;
           entry = {
-            judgement: j.hash, item: j.id, ...versionsOf(then, then.requests.get(r.name), j, context(top, thenConfig, issues, { rev: at.commit })), head: at.commit,
+            judgement: j.hash, item: j.id, ...versionsOf(then, then.requests.get(r.name), j, context(top, thenConfig, issues, { rev: at.commit, was })), head: at.commit,
             repos: changeIdentity(top, baseOf(top, at.commit)?.commit ?? base, thenConfig, at.commit),
           };
         } else {
