@@ -37,7 +37,7 @@ decisions:
 tasks: []
 bindings:
   - { holder: kb-search/R10, link: from, target: kb-search/2026-10-27-owner-words.md, holder_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_sha256: a810f4a6f20b2323facb83139f98c514649dab647ff315920acf52c661ced172 }
-  - { holder: DES-58, link: serves, target: kb-search/R10, holder_sha256: de57a3122ec2c8a1db2d960d4a045c3e1ff23c31b813564c2195fc47e0307e9e, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
+  - { holder: DES-58, link: serves, target: kb-search/R10, holder_sha256: a6c67a6fd915f84dd0f24d2db453b34574a391f540276f083ca25f98b54ff63f, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1, judgement: J5 }
   - { holder: DES-82, link: serves, target: kb-search/R10, holder_sha256: 1ba277553e01c830fab0397f5d9266a3b7e863608e0d635166a940eb18a0912c, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
   - { holder: DES-83, link: serves, target: kb-search/R10, holder_sha256: 42e0f5058ede90567525cdceb7d042806586df5a4946d73404ca23edcbcecc37, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
   - { holder: DES-61, link: serves, target: kb-search/R10, holder_sha256: 1039d2339217a748b42ec2f4a7621124f5247fa113b4f8dae24b01133d1e479a, target_sha256: 5817fdce4bd470ec686e2dff629ed5a8b41f421e24ee39303b4cb9e1b6aae0da, target_version: 1 }
@@ -62,3 +62,4 @@ judgements:
   - { id: J2, hint: holder-changed, on: DES-65, reason: "DES-65 still serves kb-search/R10: its edit adds the reranker row to the setting table, names llama.cpp as the second runtime of level 2, and drops the not-yet refusal now that every measured row runs.", recorded: 2026-10-27T18:13Z }
   - { id: J3, hint: holder-changed, on: DES-166, reason: "DES-166 still serves kb-search/R10 and builds on DES-65: its edit drops the not-yet state, adds that a llama.cpp row is offered on macOS arm64 only, and adds the 10 s bound to the recommendation (decision D2).", recorded: 2026-10-27T18:13Z }
   - { id: J4, hint: stale-base, on: SCH-41, reason: "SCH-41 still builds on DES-65: the four forms of the setting are unchanged; DES-65 only adds the reranker row kind and the llama.cpp runtime.", recorded: 2026-10-27T18:13Z }
+  - { id: J5, hint: holder-changed, on: DES-58, reason: "DES-58 still serves kb-search/R10: the edit changes only its first bullet, on .assuredloop/schema.yaml, to say what al reads; the records, AI hints and search parts are unchanged", recorded: 2026-10-28T03:09Z }
