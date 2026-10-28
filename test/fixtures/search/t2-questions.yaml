@@ -1,7 +1,7 @@
 # T2 (issue #170): the visible golden questions.
 # Written by the T2 author, apart from the fixture author (T1) and the
-# simulation (T3). Each answer was checked against the fixture files under
-# validation/v4/fixtures/full/ (composed with model/compose.mjs) on 2026-10-09.
+# simulation (T3). Each answer was checked on 2026-10-09 against the full
+# fixture of AssuredLoop's own v4 validation.
 # The held-out questions are in held-out/questions.yaml. Record writers in the
 # simulation may see this file; they must never see held-out/.
 #
