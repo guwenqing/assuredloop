@@ -2258,7 +2258,11 @@ records left out; and the item's version. A judgement is current only while
 the selected change has the same base, the same diff hash and the same item
 version. So a commit that only saves review notes or `al`'s records keeps it
 current, and a commit that changes any other file of the change, quoted or
-not, in any repo, makes it "stale: judged at <head>". A stale judgement
+not, in any repo, makes it "stale: judged at <head>". The review notes are
+those of open and of archived requests. `al conclude --yes` keeps the
+identity of each judgement of its request that is current before the move,
+with the change after the move, because the move and the Outcome and Status
+are `al`'s own work. A stale judgement
 needs a new judgement or a renewed review, even when every quote is still
 there. A judgement of an earlier PR of the same request has another base, so
 it shows as stale. C8 gives no `not ok` and changes no exit code. A
