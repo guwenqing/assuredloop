@@ -212,17 +212,22 @@ test('design-link: exactly the expected findings in the design world', (t) => {
 });
 
 test('design-link: no hint in a concluded (archived) request; the same paragraph in an open request fires', (t) => {
-  const dir = baseProject(t);
+  // done1 is archived on main, so it is archived at the base of the branch
+  // feature (#110: a request that the branch itself concludes is checked).
+  const dir = baseProject(t, { branch: null });
   const paras = [
     ['SP-1 rule serves:R1', 'An export MUST hold the invoices of one calendar month.'],
     ['SP-2 component serves:R1 builds-on:INV-12', 'The month reader loads the invoices of the month.'],
   ];
-  request(dir, 'open1', [R1], paras);
   request(dir, 'done1', [R1], paras);
   index(dir);
   archive(dir, 'done1');
   index(dir);
-  commitAll(dir, `open1 and done1\n\n${claim('open1')}`);
+  commitAll(dir, `done1\n\n${claim('done1')}`);
+  git(dir, 'checkout', '-q', '-b', 'feature');
+  request(dir, 'open1', [R1], paras);
+  index(dir);
+  commitAll(dir, `open1\n\n${claim('open1')}`);
   const r = check(dir);
   assert.equal(one(r, 'design-link', 'open1/SP-2').severity, 'hint', show(r));
   none(r, 'design-link', 'done1/SP-2');

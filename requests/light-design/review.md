@@ -31,7 +31,7 @@ this change is built.
   - Spec (DES-130): "The text at that sign-off"
   - Spec (DES-130): "The other hints take the judgement of section 3."
   - Code (src/v4/kept-items.js): "A moment that is past is never kept."
-- LD-12 complies: a hint clears by a fix, or by a recorded one-line judgement with its reason, now DES-163 in section 3. The ADR part is in SCH-22, and the move of a binding is in DES-26. `al index --align` is removed, and it refuses (src/v4/indexer.js). A judgement on a `not ok` is shown on its line and clears nothing (src/v4/judgements.js). On a change paragraph's `changes` or `removes` link, a judgement keeps the link-time version that the map and `al conclude` read (DES-160), and a hint with no ID keeps the text of its paragraph, so a move keeps it current. A `stale-base` judgement there keeps the target that it judged; `stale-base` compares with it only, and a later judgement keeps it. A judgement that is stale on one of its hints leaves the `info judged` line, and only the newest judgement on a pair of hint code and `--on` counts; the record keeps the older ones. A binding names the judgement that moved it. On the branch that concludes a request, its judgements still clear their hints, now in DES-164 (#107).
+- LD-12 complies: a hint clears by a fix, or by a recorded one-line judgement with its reason, now DES-163 in section 3. The ADR part is in SCH-22, and the move of a binding is in DES-26. `al index --align` is removed, and it refuses (src/v4/indexer.js). A judgement on a `not ok` is shown on its line and clears nothing (src/v4/judgements.js). On a change paragraph's `changes` or `removes` link, a judgement keeps the link-time version that the map and `al conclude` read (DES-160), and a hint with no ID keeps the text of its paragraph, so a move keeps it current. A `stale-base` judgement there keeps the target that it judged; `stale-base` compares with it only, and a later judgement keeps it. A judgement that is stale on one of its hints leaves the `info judged` line, and only the newest judgement on a pair of hint code and `--on` counts; the record keeps the older ones. A binding names the judgement that moved it. On the branch that concludes a request, its judgements still clear their hints, now in DES-164 (#107). There, al check also still gives the request's hints, at their new paths, and a binding judgement is checked again (#110).
   - Item (LD-12): "Every hint can be cleared: by a fix, or by a one-line judgement with its reason, which `al` records."
   - Item (LD-12): "A judgement on them is shown, and changes neither `--strict` nor `conclude`."
   - Item (LD-12): "A move makes no binding and no judgement stale, and an ID-only edit makes no binding stale"
@@ -39,6 +39,7 @@ this change is built.
   - Spec (DES-163): "A judgement never clears a `not ok` or a refusal of `al conclude`."
   - Spec (DES-163): "A move makes no binding and no judgement stale"
   - Spec (DES-164): "those of a request that the branch concludes are checked as for an open request."
+  - Spec (DES-164): "A binding judgement of a request archived at the base is recorded and not checked."
   - Spec (SCH-22): "The hint `adr-changed` clears by a fix, or by a recorded one-line judgement, with its reason, that the decision is unchanged"
   - Spec (DES-163): "For a `changes` or `removes` link of a change paragraph, the judgement moves only the holder side."
   - Spec (DES-163): "For a hint with no ID on a line of a file, such as `no-id`, it is the text of the block at that line, as the marker parser reads it"
@@ -46,12 +47,13 @@ this change is built.
   - Code (src/v4/indexer.js): "if (linked && old && bind.entry.hint === 'stale-base') entry.judged_target_sha256 = target.sha;"
   - Code (src/v4/indexer.js): "--align is removed: a hint clears by a fix, or by a recorded judgement with its reason"
   - Code (src/v4/judgements.js): "is shown; it does not clear a not ok"
-- LD-24 complies: what is in force and the change's own request, now in section 15 under its heading. The own request is described by what `al index` does not derive, as INDEX_KEYS in src/v4/records.js says; tasks are written by hand, not by `al record`.
+- LD-24 complies: what is in force and the change's own request, now in section 15 under its heading. The own request is described by what `al index` does not derive, as INDEX_KEYS in src/v4/records.js says; tasks are written by hand, not by `al record`. A request that the branch concludes is the change's own too (#110).
   - Item (LD-24): "The ADRs whose status is accepted and that no ADR replaced"
   - Item (LD-24): "What `al index` derives by itself"
   - Spec (DES-135): "## 15. A change and its review: what is in force, the judgements and the map"
   - Spec (DES-138): "The ADRs whose status is accepted and that no accepted ADR replaces by"
   - Spec (DES-139): "What `al index` derives by itself"
+  - Spec (DES-139): "is an open request, or one that the branch concludes"
   - Code (src/v4/records.js): "export const INDEX_KEYS = ['requirements', 'bindings', 'reviewed', 'items', 'own_edits'];"
 - LD-42 complies: what is not in force, now in section 15; a replaced requirement is added from LD-68.
   - Item (LD-42): "An accepted ADR whose text changed keeps today's hint"

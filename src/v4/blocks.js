@@ -14,6 +14,7 @@ import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { read, recordPath } from './base.js';
 import { SPEC, adrId, linkedDocs, rootNotOk } from './scope.js';
+import { checkedNow } from './state.js';
 
 const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const text = (x) => typeof x === 'string' && x.length > 0;
@@ -284,7 +285,7 @@ export function requestMarkdown(top, dir, sub = '') {
 // R5: a current place that names a superseded ADR names an ADR that
 // supersedes it, in the same marker or the same paragraph; and each
 // superseded ADR's status line names an ADR whose marker supersedes it.
-export function supersededBlocks(top, state, add) {
+export function supersededBlocks(top, state, add, was = null) {
   const down = supersedes(state);
   const cited = supersededIn(state);
   // The ADRs that `id` supersedes, directly or through a chain.
@@ -332,9 +333,10 @@ export function supersededBlocks(top, state, add) {
   for (const f of [...links].sort()) unreadable(f, SYMLINK);
   // The spec docs, each paragraph with its marker.
   for (const d of state.docs ?? []) if (d.scope === SPEC && typeof d.text === 'string') check(d.path, d.text);
-  // The Markdown files of each open request, but origin/ and the recorded decisions.
+  // The Markdown files of each open request, and of one that the branch
+  // concludes, but origin/ and the recorded decisions.
   for (const r of state.requests.values()) {
-    if (!r.open) continue;
+    if (!checkedNow(r, was)) continue;
     for (const f of requestMarkdown(top, r.dir)) {
       if (f.unreadable) {
         unreadable(`${r.dir}/${f.unreadable}`, f.why);

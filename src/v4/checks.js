@@ -12,7 +12,7 @@ import { diffParagraphs } from './ids.js';
 import { crossResults } from './repos.js';
 import { loadResults } from './results.js';
 import {
-  adrParagraph, hasBaselineEffect, isPromise, loadState, named, placeOf, placeOfTarget, qualify, replaceLinks, requestOf, resolve, servesSigned,
+  adrParagraph, checkedNow, hasBaselineEffect, isPromise, loadState, named, placeOf, placeOfTarget, qualify, replaceLinks, requestOf, resolve, servesSigned,
   servesUnknown, signed, unknownBy,
 } from './state.js';
 import { NEAR, closeness, diffWords, marks, requirementWords, sentencesOf, showHunk } from './words.js';
@@ -155,7 +155,9 @@ export function checks(top, { base, phrases = [], issues = null }) {
   const skipped = new Set();
   const skip = (...codes) => codes.forEach((c) => skipped.add(c));
   const promise = (k) => isPromise(now, k);
-  const open = [...now.requests.values()].filter((r) => r.open);
+  // The requests whose hints al check gives: the open ones, and those that
+  // the branch concludes, at their new paths (DES-37, #110).
+  const open = [...now.requests.values()].filter((r) => checkedNow(r, was));
   const { changes, captured, notAdopted, claim, commits, typo, isPromiseChange, uncovered, unknown } = branchOf(top, now, was, base);
 
   // Sign-off coverage (design.md 6): a promise change with no signed requirement that covers it.
@@ -219,12 +221,12 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // the change paragraph count as links, current or stale.
   const judged = new Map();
   const judgedOf = (r) => {
-    if (!judged.has(r.name)) judged.set(r.name, consolidations(top, now, r, { config: now.config, issues }));
+    if (!judged.has(r.name)) judged.set(r.name, consolidations(top, now, r, { config: now.config, issues, was }));
     return judged.get(r.name);
   };
   for (const c of changes) {
     const r = c.request && now.requests.get(c.request);
-    if (!r?.open || r.spike || !c.head || !hasBaselineEffect(now, c.head.kind)) continue;
+    if (!r || !checkedNow(r, was) || r.spike || !c.head || !hasBaselineEffect(now, c.head.kind)) continue;
     const linked = new Set([...c.head.links.changes, ...c.head.links.buildsOn, ...c.head.links.removes].map((x) => x.replace(/^central:/, '')));
     for (const j of judgedOf(r)) if (j.named.has(c.id)) for (const id of j.specs) linked.add(id);
     for (const s of now.spec.values()) {
@@ -466,7 +468,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
           : now.spec.get(hq.id) ?? adrParagraph(now, hq.id);
         const unclear = twins.length > 1 && hp?.sha256 !== b.holder_sha256 && holders.length > 1
           ? ` It is unclear which of ${holders.map((p) => p.file).join(', ')} holds it.` : '';
-        declared ??= declaredNow(top, now);
+        declared ??= declaredNow(top, now, was);
         alignable ??= canAlignTo(now);
         if (hp && hp.sha256 !== b.holder_sha256 && declared(b) && alignable(b.target)) {
           hint('holder-changed', hp, `${b.link} ${b.target}: this paragraph changed after the link was bound.${unclear} Check that it still ${b.link} ${b.target}, ${next('holder-changed')}`, b.holder);
@@ -487,7 +489,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
       // A superseded ADR's links are history (schema.md 5).
       if (now.adrs.get(String(b.holder))?.status === 'superseded') continue;
       // A link that its holder no longer declares, or whose holder is gone, is history too (#2).
-      declared ??= declaredNow(top, now);
+      declared ??= declaredNow(top, now, was);
       if (!declared(b)) continue;
       const hq = qualify(String(b.holder), null);
       const hp = hq.req ? now.requests.get(hq.req)?.paras.get(hq.id) : now.spec.get(hq.id);
@@ -587,13 +589,13 @@ export function checks(top, { base, phrases = [], issues = null }) {
   // The rules that block (#238): unsigned requirements, record evidence,
   // unreadable records and citations of superseded ADRs.
   notKnown.push(...recordBlocks(top, now, add, skip));
-  supersededBlocks(top, now, add);
+  supersededBlocks(top, now, add, was);
 
   // Phrases for the review (issue-hints R2), and with --issues <folder> the
   // hints from the work items that the caller saved (issue-hints R1); without
   // it, no item is read and nothing is added.
-  phraseFindings(top, now, phrases, add);
-  if (issues) notKnown.push(...issueHints(top, now, phrases, add, issues, skip));
+  phraseFindings(top, now, phrases, add, was);
+  if (issues) notKnown.push(...issueHints(top, now, phrases, add, issues, skip, was));
 
   // Results (design.md 9): whether each one applies to the current text. The
   // commits they ran at are looked up in one batch.

@@ -433,12 +433,16 @@ test('#95 signed, then its text changed: share/R2 is not signed at its current t
 });
 
 test('#95 an archived request: done/R1, signed and with no link, gets no hint; share/R1 in the same state gets one', (t) => {
-  const dir = baseProject(t);
+  // done is archived on main, so it is archived at the base of the branch
+  // feature (#110: a request that the branch itself concludes is checked).
+  const dir = baseProject(t, { branch: null });
   request(dir, 'done', [R1], [['SP-9 plan', 'One PR.']]);
   index(dir);
   archive(dir, 'done');
+  save(dir, 'done');
+  git(dir, 'checkout', '-q', '-b', 'feature');
   request(dir, NAME, [R1], [['SP-9 plan', 'One PR.']]);
-  save(dir, 'done and share');
+  save(dir, 'share');
   const r = check(dir);
   noHint(r, 'done/R1');
   assert.deepEqual(r.findings.filter((f) => f.code === CODE && f.file.includes('archive')).map((f) => f.line), [], show(r));
