@@ -291,10 +291,10 @@ function recordJudgement(ctx) {
     return done(lines);
   }
 
-  const { state, was, findings } = findingsNow({ top, cwd, opts: { issues: opts.issues } });
-  const found = findings.filter((f) => f.code === opts.hint && names(f, opts.on, state, was));
+  const { state, findings } = findingsNow({ top, cwd, opts: { issues: opts.issues } });
+  const found = findings.filter((f) => f.code === opts.hint && names(f, opts.on));
   if (!found.length) throw none();
-  const kept = found.map((f) => keptOf(state, f, was));
+  const kept = found.map((f) => keptOf(state, f));
   const versions = opts.hint === 'adr-changed' ? { files: kept.flatMap((k) => k.files) }
     : kept.every((k) => k.blocks) ? { blocks: [...new Set(kept.flatMap((k) => k.blocks))] } : {
       message_sha256: [...new Set(kept.flatMap((k) => k.message_sha256 ?? []))],
