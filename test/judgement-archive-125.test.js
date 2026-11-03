@@ -32,10 +32,18 @@
 // - No judgement that was current changes state. So a hash of the message with
 //   the archive path in it, as an earlier al wrote it after the move, still
 //   holds.
-// - requests/<name>/<file> and requests/archive/<name>/<file> are two spellings
-//   of one path when the request moved, so the newest judgement on either one
-//   counts. Both spellings are accepted when a judgement is recorded after the
-//   move. Only a path that starts at requests/archive/ counts as moved.
+// - When a request moved, requests/<name>/<file> and
+//   requests/archive/<name>/<file> are two spellings of one path for reading:
+//   the judgement pass of `al check` and the audit. So a judgement on the open
+//   spelling from before the move still counts, and the newest on either
+//   spelling counts. Only a path whose whole text starts at requests/archive/
+//   counts as moved. In a message, only a path to a Markdown file of the
+//   finding's own request reads as moved, as a whole word. A message that gains
+//   archive/ on anything else is a changed message.
+// - `al record` does not read that way (DES-163). After the move, the hint's
+//   path is the archive path, so `--on requests/<name>/<file>` is refused, and
+//   only the path that the hint line shows is accepted. The record keeps the
+//   hash of the message as `al check` shows it, with the archive path in it.
 // - The open spelling counts only for a request that the branch concludes
 //   (DES-37). For a request archived at the base, requests/<name>/<file> names
 //   no hint, and only the path that the hint line shows does (DES-163).
@@ -901,22 +909,200 @@ describe('#125 the two spellings of a moved path, and judgements in another open
     assertAudit(dir, { holder: OTHER, id: 'J2', code: 'no-id', on: esc(LOOK_ARCHIVE), state: CURRENT, why: WHY2, when: 'with a judgement on each file' });
   });
 
-  for (const [spelling, on] of [['the path that the hint line shows', ARCHIVED], ['the open path', CS]]) {
-    test(`recording after the move, by another open request, on the no-id hint of the moved file: --on ${on} (${spelling}) is accepted and clears the hint; an edit of the block makes it stale`, (t) => {
-      const dir = strayWorld(t);
-      otherPlan(dir);
+  test(`recording after the move, by another open request, on the no-id hint of the moved file: --on ${ARCHIVED}, the path that the hint line shows, is accepted and clears the hint; an edit of the block makes it stale`, (t) => {
+    const dir = strayWorld(t);
+    otherPlan(dir);
+    concludeHere(dir);
+    const r = check(dir);
+    assert.equal(fileOf(one(coded(r, 'no-id'), r, 'no-id after the move')), ARCHIVED, show(r));
+    judge(dir, 'no-id', ARCHIVED, WHY, { name: OTHER });
+    assertNoIdCleared(dir, 'after the judgement', { holder: OTHER });
+    assertNoIdAudit(dir, { holder: OTHER, state: CURRENT, when: 'after the judgement' });
+    commitMove(dir, NAME, '1d');
+    assertNoIdCleared(dir, 'after the commit', { holder: OTHER });
+    editFile(dir, ARCHIVED, STRAY, STRAY_B);
+    assertNoIdStale(dir, 'after an edit of the block', { holder: OTHER });
+  });
+
+  test(`recording after the move, by another open request, on the no-id hint of the moved file: --on ${CS} is refused, with exit 2 and nothing written: al check gives no such hint now; the hint stays`, (t) => {
+    const dir = strayWorld(t);
+    otherPlan(dir);
+    concludeHere(dir);
+    const stays = (when) => {
+      for (const r of checks(dir)) {
+        const f = one(coded(r, 'no-id'), r, `no-id ${when}`);
+        assert.equal(fileOf(f), ARCHIVED, `the hint is at the new path ${when}:\n${f.line}\n${show(r)}`);
+        assert.ok(!f.msg.includes('the judgement '), `the hint names no judgement ${when}:\n${f.line}`);
+        assertNotJudged(r, `${OTHER}/J1`, when);
+      }
+    };
+    stays('before the attempt');
+    const r = refused(dir, judgementArgs('no-id', CS, WHY, { name: OTHER }));
+    assert.match(r.stdout, new RegExp(`al check gives no no-id hint on ${esc(CS)} now`), show(r));
+    stays('after the refusal');
+  });
+
+  test('recording after the move, by another open request, on the map-consolidation hint of the moved request: the record keeps the sha256 of the message as al check shows it, with the archive path in it, and the hint clears', (t) => {
+    const dir = world(t, PARAS);
+    openRequest(dir, OTHER, [['OT-1 rule serves:R1', 'Another promise that never ends.']]);
+    commitAll(dir, claim(OTHER));
+    closeLine(dir);
+    commitAll(dir, 'The close line');
+    concludeHere(dir);
+    const r = check(dir);
+    const msg = before(one(consolidation(r), r, 'map-consolidation after the move').msg);
+    assert.ok(msg.includes(`${archive(NAME)}/review.md`), `the message names the archive path:\n${msg}`);
+    judge(dir, 'map-consolidation', NAME, WHY, { name: OTHER });
+    assert.deepEqual(judgementOf(dir, OTHER, 'J1').message_sha256, [sha(msg)], `the sha256 of the message as shown:\n${msg}`);
+    assertCurrent(dir, 'after the judgement', { holder: OTHER });
+    assertAudit(dir, { holder: OTHER, state: CURRENT, when: 'after the judgement' });
+  });
+
+  // From review. A path counts as moved only when the whole path starts at
+  // requests/archive/. Here the first folder is "notes requests", whose name
+  // holds a space. The reader of findings in the helpers splits a line at a
+  // space, so these tests read the hint lines as text.
+  const SPACED_OPEN = `notes ${open(NAME)}/copy.md`;
+  const SPACED_ARCHIVE = `notes ${archive(NAME)}/copy.md`;
+  const noIdLines = (r) => r.stdout.split('\n').filter((l) => l.startsWith('hint no-id '));
+  for (const [on, kept] of [[SPACED_OPEN, SPACED_ARCHIVE], [SPACED_ARCHIVE, SPACED_OPEN]]) {
+    test(`a folder with a space in front of the path never moved: --on "${on}" clears only that hint, before and after share moves`, (t) => {
+      const dir = world(t, null, {
+        link: false,
+        onMain: (d) => {
+          writeConfig(d, [{ file: SPEC, prefix: 'INV' }, { file: SPACED_OPEN, prefix: 'NA' }, { file: SPACED_ARCHIVE, prefix: 'NB' }]);
+          write(d, SPACED_OPEN, doc([['NA-1 note', '# Notes']]));
+          write(d, SPACED_ARCHIVE, doc([['NB-1 note', '# Notes']]));
+        },
+      });
+      openRequest(dir, NAME, [['SP-1 plan', 'One PR.']], { tier: '1d' });
+      for (const file of [SPACED_OPEN, SPACED_ARCHIVE]) write(dir, file, `${read(dir, file)}\n${STRAY}\n`);
+      index(dir);
+      commitAll(dir, claim(NAME, '1d'));
+      assert.equal(noIdLines(check(dir)).length, 2, 'two no-id hints before the judgement');
+      judge(dir, 'no-id', on, WHY, { name: NAME });
+      commitAll(dir, `${NAME}: the judgement J1`);
+      const onlyThis = (when) => {
+        for (const r of checks(dir)) {
+          const lines = noIdLines(r);
+          assert.equal(lines.length, 1, `one no-id hint, on "${kept}" ${when}:\n${show(r)}`);
+          assert.ok(lines[0].startsWith(`hint no-id ${kept}:`), `the hint is on "${kept}" ${when}:\n${lines[0]}`);
+          assert.ok(!lines[0].includes('the judgement '), `the hint names no judgement ${when}:\n${lines[0]}`);
+          assert.ok(judgedHas(r, `${NAME}/J1 no-id ${on}: ${WHY}`), `the info judged line names J1 on "${on}" ${when}:\n${show(r)}`);
+        }
+      };
+      onlyThis('before the move');
       concludeHere(dir);
-      const r = check(dir);
-      assert.equal(fileOf(one(coded(r, 'no-id'), r, 'no-id after the move')), ARCHIVED, show(r));
-      judge(dir, 'no-id', on, WHY, { name: OTHER });
-      assertNoIdCleared(dir, 'after the judgement', { holder: OTHER });
-      assertNoIdAudit(dir, { holder: OTHER, state: CURRENT, when: 'after the judgement' });
-      commitMove(dir, NAME, '1d');
-      assertNoIdCleared(dir, 'after the commit', { holder: OTHER });
-      editFile(dir, ARCHIVED, STRAY, STRAY_B);
-      assertNoIdStale(dir, 'after an edit of the block', { holder: OTHER });
+      onlyThis('after the move');
     });
   }
+
+  // From review. A changed message makes the judgement stale (DES-163). The
+  // reading at the open path counts only for a path of the finding's own
+  // request, as a whole word. A hint on a spec paragraph has no request, so
+  // nothing in its message reads as moved, also when the token only gains
+  // archive/.
+  for (const [from, to] of [
+    [`${open(NAME)}/missing/**`, `${archive(NAME)}/missing/**`],
+    [`notes?${open(NAME)}/missing/**`, `notes?${archive(NAME)}/missing/**`],
+  ]) {
+    test(`a message that gains archive/ on a path that did not move is a changed message: the files token ${from} of INV-41 becomes ${to}: scope-no-file comes back, it names share/J1 as stale, and the audit agrees`, (t) => {
+      const dir = world(t, null, {
+        link: false,
+        onMain: (d) => editFile(d, SPEC, '<!-- INV-41 rule -->', `<!-- INV-41 rule files:${from} -->`),
+      });
+      openRequest(dir, NAME, [['SP-1 plan', 'One PR.']], { tier: '1d' });
+      commitAll(dir, claim(NAME, '1d'));
+      const first = check(dir);
+      assert.ok(one(coded(first, 'scope-no-file', 'INV-41'), first, 'scope-no-file on INV-41').msg.includes(from), show(first));
+      judge(dir, 'scope-no-file', 'INV-41', WHY, { name: NAME });
+      commitAll(dir, `${NAME}: the judgement J1`);
+      concludeHere(dir);
+      const text = `${NAME}/J1 scope-no-file INV-41: ${WHY}`;
+      for (const r of checks(dir)) {
+        none(coded(r, 'scope-no-file', 'INV-41'), r, 'scope-no-file after the move, with the message unchanged');
+        assert.ok(judgedHas(r, text), `the info judged line names "${text}" after the move:\n${show(r)}`);
+      }
+      assertAudit(dir, { code: 'scope-no-file', on: 'INV-41', state: CURRENT, when: 'after the move' });
+      editFile(dir, SPEC, `files:${from}`, `files:${to}`);
+      for (const r of checks(dir)) {
+        const f = one(coded(r, 'scope-no-file', 'INV-41'), r, 'scope-no-file after the edit of the files token');
+        const msg = before(f.msg);
+        assert.ok(msg.includes(to), `the message names the new token:\n${f.line}`);
+        assert.ok(msg.endsWith(`; the judgement ${NAME}/J1 (${DAY}) is stale: ${HINT_TEXT}${CHANGED}`), `it names ${NAME}/J1 as stale, and the text is the reason:\n${f.line}\n${show(r)}`);
+        assertNotJudged(r, `${NAME}/J1`, 'after the edit of the files token');
+      }
+      assertAudit(dir, { code: 'scope-no-file', on: 'INV-41', state: STALE, when: 'after the edit of the files token' });
+    });
+  }
+
+  // From review. Only a path to a Markdown file of the moved request counts as
+  // moved in a message. A malformed ID that looks like a path does not. A
+  // scope-no-file variant on a change paragraph is left out: al gave no such
+  // hint on a change paragraph of the kinds plan, rule, data, component and
+  // approach.
+  test('a malformed ID that looks like a path is not a moved path: unresolved-link on requests/share/INV-41 holds across the move; the target changed to requests/archive/share/INV-41 in the moved change spec makes J1 stale, and the audit agrees', (t) => {
+    const from = `${open(NAME)}/INV-41`;
+    const to = `${archive(NAME)}/INV-41`;
+    const on = `${NAME}/SP-1`;
+    const dir = world(t, null, { link: false });
+    openRequest(dir, NAME, [[`SP-1 plan builds-on:${from}`, 'One PR.']], { tier: '1d' });
+    commitAll(dir, claim(NAME, '1d'));
+    const first = check(dir);
+    assert.ok(one(coded(first, 'unresolved-link', on), first, `unresolved-link on ${on}`).msg.startsWith(`${from}: no such ID`), show(first));
+    judge(dir, 'unresolved-link', on, WHY, { name: NAME });
+    commitAll(dir, `${NAME}: the judgement J1`);
+    concludeHere(dir);
+    const text = `${NAME}/J1 unresolved-link ${on}: ${WHY}`;
+    for (const r of checks(dir)) {
+      none(coded(r, 'unresolved-link', on), r, 'unresolved-link after the move, with the message unchanged');
+      assert.ok(judgedHas(r, text), `the info judged line names "${text}" after the move:\n${show(r)}`);
+    }
+    assertAudit(dir, { code: 'unresolved-link', on: esc(on), state: CURRENT, when: 'after the move' });
+    editFile(dir, ARCHIVED, `builds-on:${from}`, `builds-on:${to}`);
+    for (const r of checks(dir)) {
+      const f = one(coded(r, 'unresolved-link', on), r, 'unresolved-link after the edit of the target');
+      const msg = before(f.msg);
+      assert.ok(msg.startsWith(`${to}: no such ID`), `the message names the new target:\n${f.line}`);
+      assert.ok(msg.endsWith(`; the judgement ${NAME}/J1 (${DAY}) is stale: ${HINT_TEXT}${CHANGED}`), `it names ${NAME}/J1 as stale, and the text is the reason:\n${f.line}\n${show(r)}`);
+      assertNotJudged(r, `${NAME}/J1`, 'after the edit of the target');
+    }
+    assertAudit(dir, { code: 'unresolved-link', on: esc(on), state: STALE, when: 'after the edit of the target' });
+  });
+
+  // From review. A hint whose ID is a path is not a hint with no ID. Two such
+  // IDs that differ only by the archive path are two hints, so the audit agrees
+  // with al check, also after the move.
+  test('the audit agrees with al check: design-doc hints on requests/share/missing.md and requests/archive/share/missing.md are two hints: after the move, both judgements are current, and neither is the history of the other', (t) => {
+    const OPEN_ID = `${open(NAME)}/missing.md`;
+    const ARCHIVE_ID = `${archive(NAME)}/missing.md`;
+    const WHY_OPEN = 'The first document comes later.';
+    const WHY_ARCHIVE = 'The second document comes later.';
+    const dir = world(t, null, { link: false });
+    openRequest(dir, NAME, [['SP-1 plan', 'One PR.']], { tier: '1d' });
+    openRequest(dir, OTHER, [['OT-1 plan', 'Another plan.']], { tier: '1d' });
+    const md = `${open(OTHER)}/request.md`;
+    editFile(dir, md, '## Organized requirement', `Design: ${OPEN_ID}\nDesign: ${ARCHIVE_ID}\n\n## Organized requirement`);
+    index(dir);
+    commitAll(dir, claim(NAME, '1d'));
+    const r = check(dir);
+    for (const id of [OPEN_ID, ARCHIVE_ID]) one(coded(r, 'design-doc', id), r, `design-doc on ${id}`);
+    judge(dir, 'design-doc', OPEN_ID, WHY_OPEN, { name: OTHER });
+    judge(dir, 'design-doc', ARCHIVE_ID, WHY_ARCHIVE, { name: OTHER });
+    index(dir);
+    const agree = (when) => {
+      for (const x of checks(dir)) {
+        none(coded(x, 'design-doc'), x, `design-doc ${when}`);
+        assert.ok(judgedHas(x, `${OTHER}/J1 design-doc ${OPEN_ID}: ${WHY_OPEN}`), `al check names J1 ${when}:\n${show(x)}`);
+        assert.ok(judgedHas(x, `${OTHER}/J2 design-doc ${ARCHIVE_ID}: ${WHY_ARCHIVE}`), `al check names J2 ${when}:\n${show(x)}`);
+      }
+      assertAudit(dir, { holder: OTHER, id: 'J1', code: 'design-doc', on: esc(OPEN_ID), state: CURRENT, why: WHY_OPEN, when });
+      assertAudit(dir, { holder: OTHER, id: 'J2', code: 'design-doc', on: esc(ARCHIVE_ID), state: CURRENT, why: WHY_ARCHIVE, when });
+    };
+    agree('before the move');
+    concludeHere(dir);
+    agree('after the move');
+  });
 });
 
 describe('#125 a request archived at the base did not move on this branch: the open spelling of its path counts for nothing (DES-37)', () => {
