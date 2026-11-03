@@ -28,6 +28,15 @@
 // shorter list). They commit the edit too. `al record` stays refused, because
 // an archived request is not edited.
 //
+// Later decisions, in the last block of tests:
+// - No judgement that was current changes state. So a hash of the message with
+//   the archive path in it, as an earlier al wrote it after the move, still
+//   holds.
+// - requests/<name>/<file> and requests/archive/<name>/<file> are two spellings
+//   of one path when the request moved, so the newest judgement on either one
+//   counts. Both spellings are accepted when a judgement is recorded after the
+//   move. Only a path that starts at requests/archive/ counts as moved.
+//
 // A request needs a close line or a link to conclude on path 2, so the
 // map-consolidation worlds record a close line on R1. The no-id worlds use path
 // 1d. `al new` refuses an uppercase name, so the test of a name that looks like
@@ -42,10 +51,11 @@ import assert from 'node:assert/strict';
 import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  DAY, baseProject, commitAll, doc, editFile, editRecord, git, index, ok, read, record, refused, show, write,
+  DAY, EPOCH, baseProject, commitAll, doc, editFile, editRecord, git, index, ok, read, record, refused, sha, show, write,
+  writeConfig,
 } from './helpers/project.js';
 import { CS, NAME, SPEC, addSpec, claim, openRequest, world } from './helpers/map-68.js';
-import { check, coded, judge, judgedLines, none, one } from './helpers/judgement-88.js';
+import { check, coded, judge, judgedLines, judgementArgs, none, one } from './helpers/judgement-88.js';
 
 const open = (name) => `requests/${name}`;
 const archive = (name) => `requests/archive/${name}`;
@@ -515,13 +525,13 @@ function assertNoIdCleared(dir, when, { holder = NAME, n = 1, why = WHY } = {}) 
 
 // One no-id hint, at `file` (the new path by default), and it names the
 // judgement as stale.
-function assertNoIdStale(dir, when, { holder = NAME, n = 1, file = ARCHIVED } = {}) {
+function assertNoIdStale(dir, when, { holder = NAME, n = 1, file = ARCHIVED, day = DAY } = {}) {
   for (const r of checks(dir)) {
     const f = one(coded(r, 'no-id'), r, `no-id ${when}`);
     assert.equal(fileOf(f), file, `the hint is at ${file} ${when}:\n${f.line}\n${show(r)}`);
     assert.equal(f.id, '-', f.line);
     const msg = before(f.msg);
-    const tail = `; the judgement ${holder}/J${n} (${DAY}) is stale: `;
+    const tail = `; the judgement ${holder}/J${n} (${day}) is stale: `;
     const where = msg.lastIndexOf(tail);
     assert.ok(where >= 0, `the hint names ${holder}/J${n} as stale ${when}:\n${f.line}\n${show(r)}`);
     const rest = msg.slice(where + tail.length);
@@ -761,4 +771,147 @@ describe('#125 control: an open request and an archived request with one name: a
     commitAll(dir, `${NAME}: the judgement J1`);
     onlyOwn(dir, ARCHIVED, open(NAME), archive(NAME), 'after a commit');
   });
+});
+
+describe('#125 the two spellings of a moved path, and judgements in another open request', () => {
+  const OTHER = 'other';
+  const WHY2 = 'Looked at again after the move.';
+  const otherPlan = (dir) => {
+    openRequest(dir, OTHER, [['OT-1 plan', 'Another plan.']], { tier: '1d' });
+    commitAll(dir, claim(OTHER, '1d'));
+  };
+
+  test('an older record: the hash in another open request is of the message with the archive path, as al check shows it: the judgement stays current, and a different list still makes it stale', (t) => {
+    const dir = world(t, PARAS);
+    openRequest(dir, OTHER, [['OT-1 rule serves:R1', 'Another promise that never ends.']]);
+    commitAll(dir, claim(OTHER));
+    closeLine(dir);
+    commitAll(dir, 'The close line');
+    concludeHere(dir);
+    const r = check(dir);
+    const msg = before(one(consolidation(r), r, 'map-consolidation after the move').msg);
+    assert.ok(msg.includes(`${archive(NAME)}/review.md`), `the message names the archive path:\n${msg}`);
+    assert.ok(!msg.includes('the judgement '), `the message has no stale text:\n${msg}`);
+    judge(dir, 'map-consolidation', NAME, WHY, { name: OTHER });
+    editRecord(dir, OTHER, (rec) => {
+      rec.judgements.find((j) => j.id === 'J1').message_sha256 = [sha(msg)];
+    });
+    assertCurrent(dir, 'with the older hash', { holder: OTHER });
+    assertAudit(dir, { holder: OTHER, state: CURRENT, when: 'with the older hash' });
+    commitMove(dir);
+    assertCurrent(dir, 'with the older hash, after the commit', { holder: OTHER });
+    addParagraph(dir, ARCHIVED, SP3);
+    assertStale(dir, 'with the older hash, after SP-3 is added', { holder: OTHER, text: true });
+  });
+
+  // The clock of a test run is fixed, and with one stamp al takes share/J1 as
+  // the newer one. So the later judgement is recorded with a clock one day
+  // later (SOURCE_DATE_EPOCH, which al reads for its stamps). The record is not
+  // edited.
+  test('newest wins across the two spellings: share/J1 on requests/share/spec.md before the move, a later other/J1 on requests/archive/share/spec.md after it: the audit shows share/J1 as history and other/J1 as current; the later one is what goes stale', (t) => {
+    const dir = strayWorld(t);
+    otherPlan(dir);
+    judge(dir, 'no-id', CS, WHY, { name: NAME });
+    commitAll(dir, `${NAME}: the judgement J1`);
+    concludeHere(dir);
+    assertNoIdCleared(dir, 'after the move, with share/J1');
+    ok(dir, judgementArgs('no-id', ARCHIVED, WHY2, { name: OTHER }), { env: { SOURCE_DATE_EPOCH: String(EPOCH + 86400) } });
+    const read2 = (when) => {
+      assertNoIdCleared(dir, when, { holder: OTHER, why: WHY2 });
+      for (const r of checks(dir)) assertNotJudged(r, `${NAME}/J1`, when);
+      assertNoIdAudit(dir, { state: `history: ${OTHER}/J1 is newer on the same hint and ID`, when });
+      assertNoIdAudit(dir, { holder: OTHER, state: CURRENT, why: WHY2, when });
+    };
+    read2('after the later judgement');
+    commitMove(dir, NAME, '1d');
+    read2('after the commit');
+    editFile(dir, ARCHIVED, STRAY, STRAY_B);
+    assertNoIdStale(dir, 'after an edit of the block', { holder: OTHER, day: '2026-05-05' });
+  });
+
+  // Rule: only a path that starts at requests/archive/ counts as moved. The two
+  // files are spec docs through `docs:` in the config, under the root specs/,
+  // and each holds the same unmarked block, so only the path tells them apart.
+  const LOOK_OPEN = `specs/${open(NAME)}/notes.md`;
+  const LOOK_ARCHIVE = `specs/${archive(NAME)}/notes.md`;
+  function lookAlike(t) {
+    const dir = world(t, null, {
+      link: false,
+      onMain: (d) => {
+        writeConfig(d, [{ file: SPEC, prefix: 'INV' }, { file: LOOK_OPEN, prefix: 'NA' }, { file: LOOK_ARCHIVE, prefix: 'NB' }]);
+        write(d, LOOK_OPEN, doc([['NA-1 note', '# Notes']]));
+        write(d, LOOK_ARCHIVE, doc([['NB-1 note', '# Notes']]));
+      },
+    });
+    openRequest(dir, NAME, [['SP-1 plan', 'One PR.']], { tier: '1d' });
+    otherPlan(dir);
+    for (const file of [LOOK_OPEN, LOOK_ARCHIVE]) write(dir, file, `${read(dir, file)}\n${STRAY}\n`);
+    index(dir);
+    commitAll(dir, claim(NAME, '1d'));
+    const r = check(dir);
+    for (const file of [LOOK_OPEN, LOOK_ARCHIVE]) {
+      one(coded(r, 'no-id').filter((f) => fileOf(f) === file), r, `no-id on ${file}`);
+    }
+    return dir;
+  }
+  // The hint on `on` is cleared, and the one on `kept` shows and names no judgement.
+  function onlyThisFile(dir, on, kept, holder, when) {
+    for (const r of checks(dir)) {
+      const f = one(coded(r, 'no-id'), r, `no-id ${when}`);
+      assert.equal(fileOf(f), kept, `the one hint is on ${kept} ${when}:\n${f.line}\n${show(r)}`);
+      assert.ok(!f.msg.includes('the judgement '), `the hint names no judgement ${when}:\n${f.line}`);
+      assert.ok(judgedHas(r, `${holder}/J1 no-id ${on}: ${WHY}`), `the info judged line names ${holder}/J1 on ${on} ${when}:\n${show(r)}`);
+    }
+  }
+
+  for (const [on, kept] of [[LOOK_OPEN, LOOK_ARCHIVE], [LOOK_ARCHIVE, LOOK_OPEN]]) {
+    test(`a path that only looks like the archive: --on ${on} clears only that hint, before and after share moves, with the judgement in the moved request`, (t) => {
+      const dir = lookAlike(t);
+      judge(dir, 'no-id', on, WHY, { name: NAME });
+      commitAll(dir, `${NAME}: the judgement J1`);
+      onlyThisFile(dir, on, kept, NAME, 'before the move');
+      concludeHere(dir);
+      onlyThisFile(dir, on, kept, NAME, 'after the move');
+      commitMove(dir, NAME, '1d');
+      onlyThisFile(dir, on, kept, NAME, 'after the commit of the move');
+    });
+
+    test(`a path that only looks like the archive: --on ${on} recorded after the move by another open request clears only that hint`, (t) => {
+      const dir = lookAlike(t);
+      concludeHere(dir);
+      judge(dir, 'no-id', on, WHY, { name: OTHER });
+      onlyThisFile(dir, on, kept, OTHER, 'after the judgement');
+    });
+  }
+
+  test('a path that only looks like the archive: a judgement on each file: both hints clear, and neither judgement is the history of the other', (t) => {
+    const dir = lookAlike(t);
+    concludeHere(dir);
+    judge(dir, 'no-id', LOOK_OPEN, WHY, { name: OTHER });
+    judge(dir, 'no-id', LOOK_ARCHIVE, WHY2, { name: OTHER });
+    for (const r of checks(dir)) {
+      none(coded(r, 'no-id'), r, 'no-id with a judgement on each file');
+      assert.ok(judgedHas(r, `${OTHER}/J1 no-id ${LOOK_OPEN}: ${WHY}`), show(r));
+      assert.ok(judgedHas(r, `${OTHER}/J2 no-id ${LOOK_ARCHIVE}: ${WHY2}`), show(r));
+    }
+    assertAudit(dir, { holder: OTHER, id: 'J1', code: 'no-id', on: esc(LOOK_OPEN), state: CURRENT, when: 'with a judgement on each file' });
+    assertAudit(dir, { holder: OTHER, id: 'J2', code: 'no-id', on: esc(LOOK_ARCHIVE), state: CURRENT, why: WHY2, when: 'with a judgement on each file' });
+  });
+
+  for (const [spelling, on] of [['the path that the hint line shows', ARCHIVED], ['the open path', CS]]) {
+    test(`recording after the move, by another open request, on the no-id hint of the moved file: --on ${on} (${spelling}) is accepted and clears the hint; an edit of the block makes it stale`, (t) => {
+      const dir = strayWorld(t);
+      otherPlan(dir);
+      concludeHere(dir);
+      const r = check(dir);
+      assert.equal(fileOf(one(coded(r, 'no-id'), r, 'no-id after the move')), ARCHIVED, show(r));
+      judge(dir, 'no-id', on, WHY, { name: OTHER });
+      assertNoIdCleared(dir, 'after the judgement', { holder: OTHER });
+      assertNoIdAudit(dir, { holder: OTHER, state: CURRENT, when: 'after the judgement' });
+      commitMove(dir, NAME, '1d');
+      assertNoIdCleared(dir, 'after the commit', { holder: OTHER });
+      editFile(dir, ARCHIVED, STRAY, STRAY_B);
+      assertNoIdStale(dir, 'after an edit of the block', { holder: OTHER });
+    });
+  }
 });
