@@ -22,15 +22,18 @@ const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const pathOf = (f) => String(f.file ?? f.where ?? '').replace(/ at the base .*$/, '').replace(/:\d+$/, '');
 // The ID that a finding's line shows: a lint with no ID shows "-".
 const idOf = (f) => f.id ?? '-';
-// `text` as it reads while each request that it names is open: a path under
-// requests/archive/<name>/ counts as requests/<name>/ when <name> is an
-// archived request. An open request of that name keeps its archived folder
-// apart. So a move to the archive changes no message and no --on that a
-// judgement reads (DES-37).
-const asOpen = (state, text) => String(text).replace(/(?<![\w./-])requests\/archive\/([^/\s]+)\//g,
-  (path, name) => (state.requests.get(name)?.open === false ? `requests/${name}/` : path));
+// `text` as it reads while the requests that this branch concludes are open: a
+// path under requests/archive/<name>/ counts as requests/<name>/ when the
+// branch concludes <name>, with `was` the state at the base. So that move
+// changes no message and no --on that a judgement reads (DES-37). A request
+// archived at the base, or an open request of that name, keeps its archived
+// folder apart.
+const asOpen = (state, was, text) => String(text).replace(/(?<![\w./-])requests\/archive\/([^/\s]+)\//g, (path, name) => {
+  const r = state.requests.get(name);
+  return r && !r.open && checkedNow(r, was) ? `requests/${name}/` : path;
+});
 // Whether `on` names finding `f` in `state`: its ID, or its path when its ID is "-".
-export const names = (f, on, state) => String(on) === idOf(f) || (idOf(f) === '-' && asOpen(state, on) === asOpen(state, pathOf(f)));
+export const names = (f, on, state, was) => String(on) === idOf(f) || (idOf(f) === '-' && asOpen(state, was, on) === asOpen(state, was, pathOf(f)));
 
 // The request of finding `f`: the one that it names, as map-consolidation
 // does, whose ID is the bare request name, or the one that its ID starts
@@ -62,7 +65,7 @@ function blockAt(state, file, line) {
 // names its place, which a move changes. For another hint, the hint's
 // message as asOpen reads it, so that the move of a request keeps its hash,
 // and the text of the paragraph it is on and of each that its message names.
-export function keptOf(state, f) {
+export function keptOf(state, f, was) {
   if (f.code === 'adr-changed') {
     const file = pathOf(f);
     const a = state.adrList.find((x) => x.file === file);
@@ -72,12 +75,12 @@ export function keptOf(state, f) {
   if (idOf(f) === '-' && at) return { blocks: [sha256(blockAt(state, at[1], Number(at[2])))] };
   const request = requestOf(f);
   const ids = [...new Set([...(idOf(f) === '-' ? [] : [f.id]), ...namedIds(f.message, { qualified: false })])];
-  return { message_sha256: [sha256(asOpen(state, f.message))], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
+  return { message_sha256: [sha256(asOpen(state, was, f.message))], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
 }
 
 // What changed since judgement `j` on finding `f`, or null when it holds.
-function changedSince(state, j, f) {
-  const now = keptOf(state, f);
+function changedSince(state, j, f, was) {
+  const now = keptOf(state, f, was);
   if (f.code === 'adr-changed') {
     // The file that the judgement kept; after a rename, the one file of that number (DES-113).
     const [cur] = now.files;
@@ -122,14 +125,14 @@ export function judgementPass(state, was = null) {
   const apply = (findings) => findings.flatMap((f) => {
     // Only the newest judgement on a pair of hint code and --on counts; an
     // older one is history (DES-163).
-    const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on, state));
+    const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on, state, was));
     if (!last || f.severity === 'info') return [f];
     const key = `${last.r.name}/${last.j.id}`;
     if (f.severity === 'not ok') {
       notOk.add(key);
       return [{ ...f, message: `${f.message} · judgement ${key} is shown; it does not clear a not ok` }];
     }
-    const what = changedSince(state, last.j, f);
+    const what = changedSince(state, last.j, f, was);
     if (what === null) {
       cleared.set(key, last);
       codes.add(f.code);
@@ -166,7 +169,7 @@ export function judgementPass(state, was = null) {
       return b.hinted ? `stale: ${[...b.whats].join(', ')} changed since it` : 'current';
     }
     const at = entries.findIndex((e) => e.r.name === r.name && String(e.j.id) === String(j.id));
-    const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && asOpen(state, e.j.on) === asOpen(state, j.on));
+    const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && asOpen(state, was, e.j.on) === asOpen(state, was, j.on));
     if (newer) return `history: ${newer.r.name}/${newer.j.id} is newer on the same hint and ID`;
     if (stale.has(key)) return `stale: ${[...stale.get(key)].join(', ')} changed since it`;
     if (cleared.has(key)) return 'current';
