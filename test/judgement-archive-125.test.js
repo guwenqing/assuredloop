@@ -513,11 +513,12 @@ function assertNoIdCleared(dir, when, { holder = NAME, n = 1, why = WHY } = {}) 
   }
 }
 
-// One no-id hint, at the new path, and it names the judgement as stale.
-function assertNoIdStale(dir, when, { holder = NAME, n = 1 } = {}) {
+// One no-id hint, at `file` (the new path by default), and it names the
+// judgement as stale.
+function assertNoIdStale(dir, when, { holder = NAME, n = 1, file = ARCHIVED } = {}) {
   for (const r of checks(dir)) {
     const f = one(coded(r, 'no-id'), r, `no-id ${when}`);
-    assert.equal(fileOf(f), ARCHIVED, `the hint is at the new path ${when}:\n${f.line}\n${show(r)}`);
+    assert.equal(fileOf(f), file, `the hint is at ${file} ${when}:\n${f.line}\n${show(r)}`);
     assert.equal(f.id, '-', f.line);
     const msg = before(f.msg);
     const tail = `; the judgement ${holder}/J${n} (${DAY}) is stale: `;
@@ -525,8 +526,8 @@ function assertNoIdStale(dir, when, { holder = NAME, n = 1 } = {}) {
     assert.ok(where >= 0, `the hint names ${holder}/J${n} as stale ${when}:\n${f.line}\n${show(r)}`);
     const rest = msg.slice(where + tail.length);
     assert.ok(rest.endsWith(CHANGED), `the message ends with "<what> changed since it" ${when}:\n${f.line}`);
-    assert.ok(rest.includes(ARCHIVED), `<what> names the place at the new path ${when}:\n${f.line}`);
-    assert.ok(!rest.includes(`${CS}:`), `<what> names no old path ${when}:\n${f.line}`);
+    assert.ok(rest.includes(`${file}:`), `<what> names the place in ${file} ${when}:\n${f.line}`);
+    if (file === ARCHIVED) assert.ok(!rest.includes(`${CS}:`), `<what> names no old path ${when}:\n${f.line}`);
     assertNotJudged(r, `${holder}/J${n}`, when);
   }
 }
@@ -574,19 +575,41 @@ describe('#125 a no-id judgement, whose --on is the hint\'s path, holds across t
     assertNoIdStale(dir, 'after the move');
   });
 
-  test('a second unmarked block added after the move gets its own hint at the new path; the judged block stays cleared', (t) => {
+  // `--on` names the file, so J1 covers each no-id hint of that file. A second
+  // unmarked block makes J1 stale on its hint (DES-163: a judgement that is
+  // stale on one of its hints is not current). The first block stays cleared.
+  const SECOND = ['<!-- SP-1 plan -->\n\nOne PR.\n', '<!-- SP-1 plan -->\n\nOne PR.\n\nA second stray paragraph.\n'];
+  function secondBlock(dir, file) {
+    editFile(dir, file, ...SECOND);
+    assertNoIdStale(dir, 'with a second unmarked block', { file });
+    const r = check(dir);
+    const f = one(coded(r, 'no-id'), r, 'no-id: the second block');
+    assert.ok(f.msg.startsWith('a paragraph with no ID marker, after SP-1'), `the one hint is on the second block, so the first stays cleared:\n${f.line}`);
+    assertNoIdAudit(dir, { state: STALE, when: 'with a second unmarked block' });
+    return f.line;
+  }
+
+  test('control: on the open request, with no move, a second unmarked block gets a hint that names J1 as stale, no info judged line names J1, and the first block stays cleared', (t) => {
+    const dir = strayWorld(t);
+    judge(dir, 'no-id', CS, WHY, { name: NAME });
+    commitAll(dir, `${NAME}: the judgement J1`);
+    assertNoIdCleared(dir, 'with one block');
+    secondBlock(dir, CS);
+  });
+
+  test('a second unmarked block added after the move gives the same as on the open request, at the new path: one hint, which names J1 as stale, no info judged line for J1, and the first block stays cleared', (t) => {
     const dir = strayWorld(t);
     judge(dir, 'no-id', CS, WHY, { name: NAME });
     commitAll(dir, `${NAME}: the judgement J1`);
     concludeHere(dir);
-    editFile(dir, ARCHIVED, '<!-- SP-1 plan -->\n\nOne PR.\n', '<!-- SP-1 plan -->\n\nOne PR.\n\nA second stray paragraph.\n');
-    for (const r of checks(dir)) {
-      const f = one(coded(r, 'no-id'), r, 'no-id: the new block');
-      assert.equal(fileOf(f), ARCHIVED, f.line);
-      assert.ok(f.msg.startsWith('a paragraph with no ID marker, after SP-1'), `the hint is on the new block:\n${f.line}`);
-      assert.ok(!f.msg.includes('the judgement '), `the hint names no judgement:\n${f.line}`);
-      assert.ok(judgedMatches(r, noIdOn(NAME, 1, WHY)), `the judged block stays cleared:\n${show(r)}`);
-    }
+    assertNoIdCleared(dir, 'after the move, with one block');
+    const moved = secondBlock(dir, ARCHIVED);
+
+    const ctl = strayWorld(t);
+    judge(ctl, 'no-id', CS, WHY, { name: NAME });
+    commitAll(ctl, `${NAME}: the judgement J1`);
+    const opened = secondBlock(ctl, CS);
+    assert.equal(moved, opened.replaceAll(`${open(NAME)}/`, `${archive(NAME)}/`), 'the hint line of the open request, at the new paths');
   });
 
   test('only the newest counts across the move: J1 and J2 on one hint: the info judged line names J2, the audit shows J1 as history and J2 as current, before and after the commit', (t) => {
