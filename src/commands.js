@@ -292,7 +292,7 @@ function recordJudgement(ctx) {
   }
 
   const { state, findings } = findingsNow({ top, cwd, opts: { issues: opts.issues } });
-  const found = findings.filter((f) => f.code === opts.hint && names(f, opts.on));
+  const found = findings.filter((f) => f.code === opts.hint && names(f, opts.on, state));
   if (!found.length) throw none();
   const kept = found.map((f) => keptOf(state, f));
   const versions = opts.hint === 'adr-changed' ? { files: kept.flatMap((k) => k.files) }

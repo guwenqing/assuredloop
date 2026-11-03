@@ -22,8 +22,15 @@ const isMap = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const pathOf = (f) => String(f.file ?? f.where ?? '').replace(/ at the base .*$/, '').replace(/:\d+$/, '');
 // The ID that a finding's line shows: a lint with no ID shows "-".
 const idOf = (f) => f.id ?? '-';
-// Whether `on` names finding `f`: its ID, or its path when its ID is "-".
-export const names = (f, on) => String(on) === idOf(f) || (idOf(f) === '-' && String(on) === pathOf(f));
+// `text` as it reads while each request that it names is open: a path under
+// requests/archive/<name>/ counts as requests/<name>/ when <name> is an
+// archived request. An open request of that name keeps its archived folder
+// apart. So a move to the archive changes no message and no --on that a
+// judgement reads (DES-37).
+const asOpen = (state, text) => String(text).replace(/(?<![\w./-])requests\/archive\/([^/\s]+)\//g,
+  (path, name) => (state.requests.get(name)?.open === false ? `requests/${name}/` : path));
+// Whether `on` names finding `f` in `state`: its ID, or its path when its ID is "-".
+export const names = (f, on, state) => String(on) === idOf(f) || (idOf(f) === '-' && asOpen(state, on) === asOpen(state, pathOf(f)));
 
 // The request of finding `f`: the one that it names, as map-consolidation
 // does, whose ID is the bare request name, or the one that its ID starts
@@ -53,8 +60,8 @@ function blockAt(state, file, line) {
 // marker line in) and its status line. For a hint with no ID on a line of a
 // file, such as no-id, the text of the paragraph at that line: its message
 // names its place, which a move changes. For another hint, the hint's
-// message, and the text of the paragraph it is on and of each that its
-// message names.
+// message as asOpen reads it, so that the move of a request keeps its hash,
+// and the text of the paragraph it is on and of each that its message names.
 export function keptOf(state, f) {
   if (f.code === 'adr-changed') {
     const file = pathOf(f);
@@ -64,8 +71,9 @@ export function keptOf(state, f) {
   const at = /^(.+):(\d+)$/.exec(String(f.file && f.line ? `${f.file}:${f.line}` : f.where ?? ''));
   if (idOf(f) === '-' && at) return { blocks: [sha256(blockAt(state, at[1], Number(at[2])))] };
   const request = requestOf(f);
-  const ids = [...new Set([...(idOf(f) === '-' ? [] : [f.id]), ...namedIds(f.message, { qualified: false })])];
-  return { message_sha256: [sha256(f.message)], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
+  const message = asOpen(state, f.message);
+  const ids = [...new Set([...(idOf(f) === '-' ? [] : [f.id]), ...namedIds(message, { qualified: false })])];
+  return { message_sha256: [sha256(message)], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
 }
 
 // What changed since judgement `j` on finding `f`, or null when it holds.
@@ -82,7 +90,9 @@ function changedSince(state, j, f) {
     return null;
   }
   if (now.blocks) return list(j.blocks).includes(now.blocks[0]) ? null : `the text at ${f.where ?? `${f.file}:${f.line}`}`;
-  if (!list(j.message_sha256).includes(now.message_sha256[0])) return 'the hint\'s text';
+  // An earlier al kept the hash of the message as it was shown.
+  const kept = list(j.message_sha256);
+  if (!kept.includes(now.message_sha256[0]) && !kept.includes(sha256(f.message))) return 'the hint\'s text';
   const request = requestOf(f);
   const moved = list(j.keeps).find((k) => isMap(k) && shaOf(state, String(k.id), request) !== (k.sha256 ?? null));
   return moved ? String(moved.id) : null;
@@ -113,7 +123,7 @@ export function judgementPass(state, was = null) {
   const apply = (findings) => findings.flatMap((f) => {
     // Only the newest judgement on a pair of hint code and --on counts; an
     // older one is history (DES-163).
-    const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on));
+    const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on, state));
     if (!last || f.severity === 'info') return [f];
     const key = `${last.r.name}/${last.j.id}`;
     if (f.severity === 'not ok') {
@@ -157,7 +167,7 @@ export function judgementPass(state, was = null) {
       return b.hinted ? `stale: ${[...b.whats].join(', ')} changed since it` : 'current';
     }
     const at = entries.findIndex((e) => e.r.name === r.name && String(e.j.id) === String(j.id));
-    const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && String(e.j.on) === String(j.on));
+    const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && asOpen(state, e.j.on) === asOpen(state, j.on));
     if (newer) return `history: ${newer.r.name}/${newer.j.id} is newer on the same hint and ID`;
     if (stale.has(key)) return `stale: ${[...stale.get(key)].join(', ')} changed since it`;
     if (cleared.has(key)) return 'current';
