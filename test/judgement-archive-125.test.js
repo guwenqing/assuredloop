@@ -36,6 +36,9 @@
 //   of one path when the request moved, so the newest judgement on either one
 //   counts. Both spellings are accepted when a judgement is recorded after the
 //   move. Only a path that starts at requests/archive/ counts as moved.
+// - The open spelling counts only for a request that the branch concludes
+//   (DES-37). For a request archived at the base, requests/<name>/<file> names
+//   no hint, and only the path that the hint line shows does (DES-163).
 //
 // A request needs a close line or a link to conclude on path 2, so the
 // map-consolidation worlds record a close line on R1. The no-id worlds use path
@@ -914,4 +917,63 @@ describe('#125 the two spellings of a moved path, and judgements in another open
       assertNoIdStale(dir, 'after an edit of the block', { holder: OTHER });
     });
   }
+});
+
+describe('#125 a request archived at the base did not move on this branch: the open spelling of its path counts for nothing (DES-37)', () => {
+  const OTHER = 'other';
+  const otherPlan = (dir) => {
+    openRequest(dir, OTHER, [['OT-1 plan', 'Another plan.']], { tier: '1d' });
+    commitAll(dir, claim(OTHER, '1d'));
+  };
+  // share concluded on the branch feature, and merged into main. Then the new
+  // branch next.
+  const merged = (dir) => {
+    concludeHere(dir);
+    commitMove(dir, NAME, '1d');
+    archivedAtBase(dir);
+  };
+  function hintStays(dir, when) {
+    for (const r of checks(dir)) {
+      const f = one(coded(r, 'no-id'), r, `no-id ${when}`);
+      assert.equal(fileOf(f), ARCHIVED, `the hint is at the archived path ${when}:\n${f.line}\n${show(r)}`);
+      assert.ok(!f.msg.includes('the judgement '), `the hint names no judgement ${when}:\n${f.line}`);
+      assertNotJudged(r, `${OTHER}/J1`, when);
+    }
+  }
+
+  test('--on requests/share/spec.md, recorded by another open request on the new branch, is refused: al check gives no such hint now; the hint stays', (t) => {
+    const dir = strayWorld(t);
+    merged(dir);
+    otherPlan(dir);
+    hintStays(dir, 'before the attempt');
+    const r = refused(dir, judgementArgs('no-id', CS, WHY, { name: OTHER }));
+    assert.match(r.stdout, new RegExp(`al check gives no no-id hint on ${esc(CS)} now`), show(r));
+    hintStays(dir, 'after the refusal');
+  });
+
+  test('a judgement that another open request recorded on requests/share/spec.md while share was open clears nothing once share is archived at the base: the hint shows at the archived path, and the audit says "no hint now"', (t) => {
+    const dir = strayWorld(t);
+    otherPlan(dir);
+    judge(dir, 'no-id', CS, WHY, { name: OTHER });
+    commitAll(dir, 'The judgement in the record of other');
+    assertNoIdCleared(dir, 'while share is open', { holder: OTHER });
+    merged(dir);
+    hintStays(dir, 'with share archived at the base');
+    assertAudit(dir, {
+      holder: OTHER, code: 'no-id', on: esc(CS), state: `no hint now: al check gives no no-id hint on ${esc(CS)}`, when: 'with share archived at the base',
+    });
+  });
+
+  test('control: --on requests/archive/share/spec.md, the path that the hint line shows, recorded by another open request, is accepted and clears the hint (DES-163)', (t) => {
+    const dir = strayWorld(t);
+    merged(dir);
+    otherPlan(dir);
+    hintStays(dir, 'before the judgement');
+    judge(dir, 'no-id', ARCHIVED, WHY, { name: OTHER });
+    for (const r of checks(dir)) {
+      none(coded(r, 'no-id'), r, 'no-id after the judgement');
+      assert.ok(judgedHas(r, `${OTHER}/J1 no-id ${ARCHIVED}: ${WHY}`), `the info judged line names ${OTHER}/J1:\n${show(r)}`);
+    }
+    assertAudit(dir, { holder: OTHER, code: 'no-id', on: esc(ARCHIVED), state: CURRENT, when: 'after the judgement' });
+  });
 });
