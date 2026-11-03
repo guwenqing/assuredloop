@@ -71,9 +71,8 @@ export function keptOf(state, f) {
   const at = /^(.+):(\d+)$/.exec(String(f.file && f.line ? `${f.file}:${f.line}` : f.where ?? ''));
   if (idOf(f) === '-' && at) return { blocks: [sha256(blockAt(state, at[1], Number(at[2])))] };
   const request = requestOf(f);
-  const message = asOpen(state, f.message);
-  const ids = [...new Set([...(idOf(f) === '-' ? [] : [f.id]), ...namedIds(message, { qualified: false })])];
-  return { message_sha256: [sha256(message)], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
+  const ids = [...new Set([...(idOf(f) === '-' ? [] : [f.id]), ...namedIds(f.message, { qualified: false })])];
+  return { message_sha256: [sha256(asOpen(state, f.message))], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
 }
 
 // What changed since judgement `j` on finding `f`, or null when it holds.
