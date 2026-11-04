@@ -40,7 +40,7 @@ const concludes = (state, was, name) => {
 };
 // For reading a judgement only, as the request reads while it is open (DES-37).
 // A whole path under requests/archive/<name>/ counts as requests/<name>/.
-const pathAsOpen = (state, was, path) => String(path).replace(/^requests\/archive\/([^/]+)\//,
+export const pathAsOpen = (state, was, path) => String(path).replace(/^requests\/archive\/([^/]+)\//,
   (all, name) => (concludes(state, was, name) ? `requests/${name}/` : all));
 
 // The text hash of an ID in `state`, or null when it does not resolve. A bare

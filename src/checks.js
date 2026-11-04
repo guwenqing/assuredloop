@@ -24,6 +24,7 @@ import { issueHints } from './issues.js';
 import { ownEdit } from './map.js';
 import { consolidations } from './evidence.js';
 import { closeLines, declaredLink } from './close.js';
+import { pathAsOpen } from './judgements.js';
 import { citeScan, citingFiles } from './views.js';
 
 const DESIGN = ['component', 'interface', 'data', 'flow', 'choice'];
@@ -331,7 +332,7 @@ export function checks(top, { base, phrases = [], issues = null }) {
   const holds = (p) => isPromise(now, p.kind) || (p.kind !== 'approach' && groupOf(p.kind, now.kinds) === 'design');
   const unlinked = [];
   for (const r of open) {
-    const lines = new Map(closeLines(now, r).map((c) => [String(c.e.on), c]));
+    const lines = new Map(closeLines(now, r, was).map((c) => [String(c.e.on), c]));
     for (const q of r.reqs.filter((x) => /^R\d+$/.test(x.id))) {
       const key = `${r.name}/${q.id}`;
       if (lines.get(q.id)?.current || declaredLink(now, key) || designs.some((d) => holds(d.p) && servesKey(d, key))) continue;
@@ -366,19 +367,27 @@ export function checks(top, { base, phrases = [], issues = null }) {
       }
     }
     // A citation may be written `central:<name>/R<n>`; al context <name>/R<n> counts it too.
-    const files = citingFiles(now, cites.found.filter((c) => c.ids.some((id) => id.replace(/^central:/, '') === key)));
-    if (files.length) {
-      links.push(`cited in ${files.map((f) => `${f.past ? 'historical' : 'current'} ${f.file}`).join(', ')}, `
-        + 'and a citation is not evidence that the code or the test does what the requirement says');
-    }
+    const found = cites.found.filter((c) => c.ids.some((id) => id.replace(/^central:/, '') === key));
+    const files = citingFiles(now, found);
     const unread = cites.unread.length ? `not known: ${cites.unread.join('; ')}` : '';
-    const known = links.length ? ` Known direct links, each with the limit of its evidence: ${links.join(' · ')}${unread ? `; ${unread}` : ''}.`
-      : ` Known direct links: none known${unread ? ` in the files that were read; ${unread}` : ''}.`;
-    const message = `${key} has no declared paragraph link: no paragraph of specs/ and no promise or design paragraph of an open change spec serves it, `
-      + `and no accepted ADR decides it.${known} Link it, record where it is met (al record ${r.name} close --on ${q.id} --reason <why>), `
-      + `or judge it (al record ${r.name} judgement --hint no-paragraph-link --on ${key} --reason <why>)${close ? `; close line ${close.e.id} is stale` : ''}`;
+    const say = (cited) => {
+      const all = cited.length ? [...links, `cited in ${cited.map((f) => `${f.past ? 'historical' : 'current'} ${f.file}`).join(', ')}, `
+        + 'and a citation is not evidence that the code or the test does what the requirement says'] : links;
+      const known = all.length ? ` Known direct links, each with the limit of its evidence: ${all.join(' · ')}${unread ? `; ${unread}` : ''}.`
+        : ` Known direct links: none known${unread ? ` in the files that were read; ${unread}` : ''}.`;
+      return `${key} has no declared paragraph link: no paragraph of specs/ and no promise or design paragraph of an open change spec serves it, `
+        + `and no accepted ADR decides it.${known} Link it, record where it is met (al record ${r.name} close --on ${q.id} --reason <why>), `
+        + `or judge it (al record ${r.name} judgement --hint no-paragraph-link --on ${key} --reason <why>)${close ? `; close line ${close.e.id} is stale` : ''}`;
+    };
+    // The message as it reads with each request that the branch concludes
+    // still at its open paths, so that a citing file that only moves does not
+    // make a judgement stale. A file at the old path beside the moved one is a
+    // citing file that came: the two would read as one, so it gives no open form.
+    const opened = citingFiles(now, found.map((c) => ({ ...c, file: pathAsOpen(now, was, c.file) })));
     const tail = files.length ? ` · cited lines: ${files.map((f) => `${f.file} ${f.at.map(([n]) => n).join(', ')}`).join('; ')}` : '';
-    add('hint', 'no-paragraph-link', placeOfTarget(now, qualify(key, null)) ?? `${r.dir}/request.md`, key, message, { tail });
+    add('hint', 'no-paragraph-link', placeOfTarget(now, qualify(key, null)) ?? `${r.dir}/request.md`, key, say(files), {
+      tail, ...(opened.length === files.length ? { openMessage: say(opened) } : {}),
+    });
   }
 
   // Requirements that replace a requirement of another request (LD-68).
