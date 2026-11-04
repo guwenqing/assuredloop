@@ -174,8 +174,8 @@ export function judgementPass(state, was = null) {
       return b.hinted ? `stale: ${[...b.whats].join(', ')} changed since it` : 'current';
     }
     const at = entries.findIndex((e) => e.r.name === r.name && String(e.j.id) === String(j.id));
-    // A judgement on a hint with no ID keeps the block, and its --on is a path.
-    const onOf = (x) => (x.blocks ? read(x.on) : String(x.on));
+    // A judgement on an ID keeps that ID, so another --on is a hint's path.
+    const onOf = (x) => (list(x.keeps).some((k) => isMap(k) && String(k.id) === String(x.on)) ? String(x.on) : read(x.on));
     const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && onOf(e.j) === onOf(j));
     if (newer) return `history: ${newer.r.name}/${newer.j.id} is newer on the same hint and ID`;
     if (stale.has(key)) return `stale: ${[...stale.get(key)].join(', ')} changed since it`;
