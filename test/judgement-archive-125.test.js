@@ -914,6 +914,46 @@ describe('#125 the two spellings of a moved path, and judgements in another open
     assertNoIdAudit(dir, { holder: OTHER, state: `no hint now: al check gives no no-id hint on ${NO_ID_ON}`, why: WHY2, when: 'with the block removed' });
   });
 
+  // From review. The audit agrees with al check on history for a hint with no
+  // ID and no line. Such a judgement keeps the message and its paragraphs, and no
+  // blocks. The two spellings of a moved path name one hint there too.
+  test('history for a hint with no ID and no line: a result hint at a file of the moved request: share/J1 on the open path holds after the move; a later other/J1 on the archive path is the only current one, and the audit shows share/J1 as history', (t) => {
+    const resultAt = (name) => `${name}/results/missing-check.yaml`;
+    const OPEN_RESULT = resultAt(open(NAME));
+    const ARCHIVE_RESULT = resultAt(archive(NAME));
+    const dir = empty(t);
+    writeConfig(dir, undefined, { results: `${open(NAME)}/results` });
+    openRequest(dir, NAME, [['SP-1 plan', 'One PR.']], { tier: '1d' });
+    write(dir, OPEN_RESULT, 'outcome: pass\ncommit: unknown\n');
+    index(dir);
+    commitAll(dir, claim(NAME, '1d'));
+    otherPlan(dir);
+    const first = check(dir);
+    const f = one(coded(first, 'result', '-'), first, `result at ${OPEN_RESULT}`);
+    assert.equal(fileOf(f), OPEN_RESULT, show(first));
+
+    judge(dir, 'result', OPEN_RESULT, WHY, { name: NAME });
+    const j = judgementOf(dir, NAME, 'J1');
+    assert.ok('message_sha256' in j && 'keeps' in j, `J1 keeps the message and its paragraphs:\n${JSON.stringify(j)}`);
+    assert.ok(!('blocks' in j), `J1 keeps no blocks:\n${JSON.stringify(j)}`);
+    commitAll(dir, `${NAME}: the judgement J1`);
+
+    ok(dir, ['conclude', NAME, '--yes']);
+    writeConfig(dir, undefined, { results: `${archive(NAME)}/results` });
+    index(dir);
+    const moved = check(dir);
+    none(coded(moved, 'result', '-'), moved, 'result after the move');
+    assert.ok(judgedHas(moved, `${NAME}/J1 result ${OPEN_RESULT}: ${WHY}`), `share/J1 still clears the hint:\n${show(moved)}`);
+
+    ok(dir, judgementArgs('result', ARCHIVE_RESULT, WHY2, { name: OTHER }), { env: { SOURCE_DATE_EPOCH: String(EPOCH + 86400) } });
+    const later = check(dir);
+    none(coded(later, 'result', '-'), later, 'result after the later judgement');
+    assert.ok(judgedHas(later, `${OTHER}/J1 result ${ARCHIVE_RESULT}: ${WHY2}`), `al check names other/J1:\n${show(later)}`);
+    assertNotJudged(later, `${NAME}/J1`, 'after the later judgement');
+    assertAudit(dir, { code: 'result', on: esc(OPEN_RESULT), state: `history: ${OTHER}/J1 is newer on the same hint and ID`, when: 'after the later judgement' });
+    assertAudit(dir, { holder: OTHER, code: 'result', on: esc(ARCHIVE_RESULT), state: CURRENT, why: WHY2, when: 'after the later judgement' });
+  });
+
   // Rule: only a path that starts at requests/archive/ counts as moved. The two
   // files are spec docs through `docs:` in the config, under the root specs/,
   // and each holds the same unmarked block, so only the path tells them apart.
