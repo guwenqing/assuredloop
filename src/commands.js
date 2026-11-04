@@ -95,6 +95,7 @@ export function newRequest({ top, cwd, args, opts }) {
   const [name] = args;
   oneLine(opts, ['title']);
   if (!isName(name)) throw new Fail(`bad request name ${JSON.stringify(name ?? '')}: use lowercase letters, digits and hyphens`, 'al new <name> --from <file|->');
+  if (name === 'archive') throw new Fail('the name archive is reserved: requests/archive/ holds the concluded requests', 'al new <another name> --from <file|->');
   if (opts.tier === '0') throw new Fail('tier 0 has no record: a fix says so in its PR', 'al new <name> --tier 1 (or higher) when the work changes a promise');
   if (opts.tier !== undefined && !TIERS.includes(opts.tier)) throw new Fail(`bad tier ${opts.tier}: one of ${TIERS.join(', ')}`);
   const used = [`requests/${name}`, `requests/archive/${name}`, recordPath(name)].find((p) => exists(top, p));
