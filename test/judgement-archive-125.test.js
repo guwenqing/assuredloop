@@ -12,14 +12,16 @@
 //   judgement counts.
 // - DES-37: a request that the branch concludes is checked as an open request,
 //   at its new paths. A request archived at the base is never checked again.
-// - The decision for map-consolidation: the hint line and the record stay as
-//   they were. The finding says what its message is at the open path, and only
-//   map-consolidation does so. A judgement compares its hash with the message as
-//   shown and with that open message. So a judgement that was recorded on the
-//   open request clears its hint after the move, with no new record. No text
-//   that a user wrote is ever read as moved. A hint whose message names a path
-//   under its request's folder and that gives no open message goes stale across
-//   the move, which is the safe way to fail.
+// - The decision for a hint with an open form: the hint line stays as it was.
+//   The finding says what its message is at the open paths. map-consolidation
+//   does so, and no-paragraph-link does so too (#128). A judgement on such a
+//   hint keeps the hash of the message as shown and the hash of the message at
+//   the open paths, when they differ (#128). A judgement compares its hashes
+//   with the message as shown and with that open message. So a judgement that
+//   was recorded on the open request clears its hint after the move, with no
+//   new record. No text that a user wrote is ever read as moved. A hint whose
+//   message names a path under its request's folder and that gives no open
+//   message goes stale across the move, which is the safe way to fail.
 // - The decision for no-id: a judgement on the path of the open request's file
 //   holds on that file after the move, and the audit shows it as current. It
 //   does not clear a hint on another file with the same text.
@@ -44,7 +46,9 @@
 // - `al record` does not read that way (DES-163). After the move, the hint's
 //   path is the archive path, so `--on requests/<name>/<file>` is refused, and
 //   only the path that the hint line shows is accepted. The record keeps the
-//   hash of the message as `al check` shows it, with the archive path in it.
+//   hash of the message as `al check` shows it, with the archive path in it. On
+//   a hint with an open form, it also keeps the hash of the message at the open
+//   paths, when they differ (#128).
 // - The open spelling counts only for a request that the branch concludes
 //   (DES-37). For a request archived at the base, requests/<name>/<file> names
 //   no hint, and only the path that the hint line shows does (DES-163).
@@ -1054,14 +1058,16 @@ describe('#125 the two spellings of a moved path, and judgements in another open
     stays('after the refusal');
   });
 
-  test('recording after the move, by another open request, on the map-consolidation hint of the moved request: the record keeps the sha256 of the message as al check shows it, with the archive path in it, and the hint clears', (t) => {
+  test('recording after the move, by another open request, on the map-consolidation hint of the moved request: the record keeps two hashes, in this order: the sha256 of the message as al check shows it, with the archive path in it, and the sha256 of the same message at the open path; and the hint clears', (t) => {
     const dir = closedWithOther(t);
     concludeHere(dir);
     const r = check(dir);
     const msg = before(one(consolidation(r), r, 'map-consolidation after the move').msg);
     assert.ok(msg.includes(`${archive(NAME)}/review.md`), `the message names the archive path:\n${msg}`);
     judge(dir, 'map-consolidation', NAME, WHY, { name: OTHER });
-    assert.deepEqual(judgementOf(dir, OTHER, 'J1').message_sha256, [sha(msg)], `the sha256 of the message as shown:\n${msg}`);
+    const openMsg = msg.replaceAll(`${archive(NAME)}/`, `${open(NAME)}/`);
+    assert.notEqual(openMsg, msg, `the open form differs from the message as shown:\n${msg}`);
+    assert.deepEqual(judgementOf(dir, OTHER, 'J1').message_sha256, [sha(msg), sha(openMsg)], `the sha256 of the message as shown, then of the same message at the open path:\n${msg}`);
     assertCurrent(dir, 'after the judgement', { holder: OTHER });
     assertAudit(dir, { holder: OTHER, state: CURRENT, when: 'after the judgement' });
   });

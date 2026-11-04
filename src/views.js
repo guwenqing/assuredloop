@@ -312,7 +312,9 @@ function requestView(state, r, audit) {
   const prs = prsFromGit(state, r.name);
   body.push(`PRs from git: ${prs.length ? prs.join(' · ') : 'none found'}`);
   // The close lines (LD-62); al conclude shows what refuses.
-  if (!r.spike) body.push(...closeLines(state, r).map((c) => closeLine(r, c, placeOfTarget(state, qualify(`${r.name}/${c.e.on}`, null)) ?? 'not found')));
+  const base = !r.open && !state.rev ? mergeBase(state.top) : null;
+  const was = base ? loadState(state.top, base) : null;
+  if (!r.spike) body.push(...closeLines(state, r, was).map((c) => closeLine(r, c, placeOfTarget(state, qualify(`${r.name}/${c.e.on}`, null)) ?? 'not found')));
   const rules = [...state.spec.values()].filter((p) => p.kind === 'rule'
     && p.links.serves.some((s) => qualify(s, null).req === r.name));
   body.push(...coverage(state, rules, true));

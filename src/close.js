@@ -11,7 +11,7 @@ import { isCentral } from './indexer.js';
 import { linkStates, mapped } from './map.js';
 import { parseMarkdown } from './markers.js';
 import { SPEC, docsInScope } from './scope.js';
-import { isPromise, qualify, servesSigned, settingsAt, signed } from './state.js';
+import { checkedNow, isPromise, qualify, servesSigned, settingsAt, signed } from './state.js';
 
 const list = (x) => (Array.isArray(x) ? x : []);
 const ID_WORD = /(?<![\w-])(central:)?(ADR-[0-9]+-[0-9]+|[A-Z][A-Z0-9]*-[0-9]+)(?![\w-])/g;
@@ -47,14 +47,15 @@ export function reasonNames(state, reason, on) {
 }
 
 // The latest close line for each own ID of request `r`, with whether it is
-// current: [{ e, current, facts }], `facts` naming what changed since. An
-// archived request is never checked again against today's spec: its lines
-// are { e, archived: true }.
-export function closeLines(state, r) {
+// current: [{ e, current, facts }], `facts` naming what changed since. A
+// request archived at the base is never checked again against today's spec:
+// its lines are { e, archived: true }. One that the branch concludes, with
+// `was` the state at the base, reads as an open one (DES-37).
+export function closeLines(state, r, was = null) {
   const latest = new Map();
   for (const e of list(r.data?.closes)) if (e?.on) latest.set(String(e.on), e);
   return [...latest.values()].map((e) => {
-    if (!r.open) return { e, archived: true, current: false, facts: [] };
+    if (!checkedNow(r, was)) return { e, archived: true, current: false, facts: [] };
     const on = String(e.on);
     const now = onSha(r, on);
     const v = isReq(on) ? reqVersion(r, on) : null;

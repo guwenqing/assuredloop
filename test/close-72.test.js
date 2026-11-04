@@ -44,7 +44,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  al, appendSection, commitAll, doc, editFile, editRecord, editRequest, exists, index, newRequest, ok, organized, read, refused,
+  al, appendSection, commitAll, doc, editFile, editRecord, editRequest, exists, git, index, newRequest, ok, organized, read, refused,
   req, write, writeConfig, writesNothing,
 } from './helpers/project.js';
 import { conclude, word } from './helpers/views.js';
@@ -889,6 +889,11 @@ test('#72 an archived request is never checked again: C1 on SP-1 naming INV-12, 
   save(dir, `${NAME}: C1`);
   closes(dir);
   commitAll(dir, `${NAME}: concluded\n\nTier: 2 — ${NAME}; closes the request`);
+  // The concluding branch goes into main, and a later branch starts. So the
+  // request is archived at the base (DES-37).
+  git(dir, 'checkout', '-q', 'main');
+  git(dir, 'merge', '-q', '--no-ff', '-m', 'Merge the branch feature', 'feature');
+  git(dir, 'checkout', '-q', '-b', 'later');
   recordedLine(context(dir), 'C1', 'SP-1', reason);
   editSpec(dir, 'INV-12', 'data', T12, 'An invoice has a number, a customer, a currency, lines, a total and a paid date.');
   save(dir, 'Later work: INV-12 gets a currency');
