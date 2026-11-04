@@ -66,8 +66,8 @@ function blockAt(state, file, line) {
 // marker line in) and its status line. For a hint with no ID on a line of a
 // file, such as no-id, the text of the paragraph at that line: its message
 // names its place, which a move changes. For another hint, the hint's
-// message, and the text of the paragraph it is on and of each that its
-// message names.
+// message, as shown and at its open paths when it has that form, and the text
+// of the paragraph it is on and of each that its message names.
 export function keptOf(state, f) {
   if (f.code === 'adr-changed') {
     const file = pathOf(f);
@@ -78,7 +78,7 @@ export function keptOf(state, f) {
   if (idOf(f) === '-' && at) return { blocks: [sha256(blockAt(state, at[1], Number(at[2])))] };
   const request = requestOf(f);
   const ids = [...new Set([...(idOf(f) === '-' ? [] : [f.id]), ...namedIds(f.message, { qualified: false })])];
-  return { message_sha256: [sha256(f.message)], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
+  return { message_sha256: [sha256(f.message), ...(f.openMessage ? [sha256(f.openMessage)] : [])], keeps: ids.map((id) => ({ id, sha256: shaOf(state, id, request) })) };
 }
 
 // What changed since judgement `j` on finding `f`, or null when it holds.
@@ -98,7 +98,7 @@ function changedSince(state, j, f) {
   // A hint whose message names a path under its request's folder gives the
   // message at the open path; a hint that does not goes stale across the move.
   const kept = list(j.message_sha256);
-  if (!kept.includes(now.message_sha256[0]) && !(f.openMessage && kept.includes(sha256(f.openMessage)))) return 'the hint\'s text';
+  if (!now.message_sha256.some((h) => kept.includes(h))) return 'the hint\'s text';
   const request = requestOf(f);
   const moved = list(j.keeps).find((k) => isMap(k) && shaOf(state, String(k.id), request) !== (k.sha256 ?? null));
   return moved ? String(moved.id) : null;
