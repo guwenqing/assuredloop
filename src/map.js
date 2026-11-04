@@ -125,9 +125,13 @@ export function mapSection(top, { now: state, was, base, own, changes, config, i
       if (!js.some((j) => j.current)) missing.push(q.id);
     }
     if (missing.length) {
+      const say = (dir) => `${missing.length} change paragraphs that go into specs/ have no current consolidation judgement: ${missing.join(', ')}; judge each consolidation in ${notePath({ dir })}`;
       findings.push({
         severity: 'hint', code: 'map-consolidation', where: r.specFile, id: r.name, request: r.name,
-        message: `${missing.length} change paragraphs that go into specs/ have no current consolidation judgement: ${missing.join(', ')}; judge each consolidation in ${notePath(r)}`,
+        message: say(r.dir),
+        // A hint whose message names a path under its request's folder sets
+        // this; a hint that does not goes stale across the move (judgements.js).
+        openMessage: say(`requests/${r.name}`),
       });
     }
   }

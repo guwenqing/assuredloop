@@ -42,11 +42,6 @@ const concludes = (state, was, name) => {
 // A whole path under requests/archive/<name>/ counts as requests/<name>/.
 const pathAsOpen = (state, was, path) => String(path).replace(/^requests\/archive\/([^/]+)\//,
   (all, name) => (concludes(state, was, name) ? `requests/${name}/` : all));
-// In the message of finding `f`, so does a path to a Markdown file of the
-// request of `f`, as a whole word. Other text that looks like a path stays
-// as it is: a file scope or a malformed ID names no moved file.
-const messageAsOpen = (state, was, f) => String(f.message).replace(/(?<!\S)requests\/archive\/([^/\s]+)\/(?=[\w./-]*\.md(?![\w./*?-]))/g,
-  (all, name) => (name === requestOf(f) && concludes(state, was, name) ? `requests/${name}/` : all));
 
 // The text hash of an ID in `state`, or null when it does not resolve. A bare
 // ID of a request's own paragraph, or a bare R<n>, is read in `request`.
@@ -71,9 +66,8 @@ function blockAt(state, file, line) {
 // marker line in) and its status line. For a hint with no ID on a line of a
 // file, such as no-id, the text of the paragraph at that line: its message
 // names its place, which a move changes. For another hint, the hint's
-// message as it shows, and the text of the paragraph it is on and of each
-// that its message names. changedSince also reads the message as messageAsOpen
-// gives it, because a move changes the path in it.
+// message, and the text of the paragraph it is on and of each that its
+// message names.
 export function keptOf(state, f) {
   if (f.code === 'adr-changed') {
     const file = pathOf(f);
@@ -88,7 +82,7 @@ export function keptOf(state, f) {
 }
 
 // What changed since judgement `j` on finding `f`, or null when it holds.
-function changedSince(state, j, f, was) {
+function changedSince(state, j, f) {
   const now = keptOf(state, f);
   if (f.code === 'adr-changed') {
     // The file that the judgement kept; after a rename, the one file of that number (DES-113).
@@ -101,8 +95,10 @@ function changedSince(state, j, f, was) {
     return null;
   }
   if (now.blocks) return list(j.blocks).includes(now.blocks[0]) ? null : `the text at ${f.where ?? `${f.file}:${f.line}`}`;
+  // A hint whose message names a path under its request's folder gives the
+  // message at the open path; a hint that does not goes stale across the move.
   const kept = list(j.message_sha256);
-  if (!kept.includes(now.message_sha256[0]) && !kept.includes(sha256(messageAsOpen(state, was, f)))) return 'the hint\'s text';
+  if (!kept.includes(now.message_sha256[0]) && !(f.openMessage && kept.includes(sha256(f.openMessage)))) return 'the hint\'s text';
   const request = requestOf(f);
   const moved = list(j.keeps).find((k) => isMap(k) && shaOf(state, String(k.id), request) !== (k.sha256 ?? null));
   return moved ? String(moved.id) : null;
@@ -131,20 +127,17 @@ export function judgementPass(state, was = null) {
   const stale = new Map();
   const notOk = new Set();
   const codes = new Set();
-  // Each judgement that a newer one on the same finding makes history.
-  const older = new Map();
   const apply = (findings) => findings.flatMap((f) => {
     // Only the newest judgement on a pair of hint code and --on counts; an
     // older one is history (DES-163).
     const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on, read));
     if (!last || f.severity === 'info') return [f];
-    for (const e of entries) if (e !== last && e.j.hint === f.code && names(f, e.j.on, read)) older.set(`${e.r.name}/${e.j.id}`, last);
     const key = `${last.r.name}/${last.j.id}`;
     if (f.severity === 'not ok') {
       notOk.add(key);
       return [{ ...f, message: `${f.message} · judgement ${key} is shown; it does not clear a not ok` }];
     }
-    const what = changedSince(state, last.j, f, was);
+    const what = changedSince(state, last.j, f);
     if (what === null) {
       cleared.set(key, last);
       codes.add(f.code);
@@ -181,7 +174,9 @@ export function judgementPass(state, was = null) {
       return b.hinted ? `stale: ${[...b.whats].join(', ')} changed since it` : 'current';
     }
     const at = entries.findIndex((e) => e.r.name === r.name && String(e.j.id) === String(j.id));
-    const newer = older.get(key) ?? entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && String(e.j.on) === String(j.on));
+    // A judgement on a hint with no ID keeps the block, and its --on is a path.
+    const onOf = (x) => (x.blocks ? read(x.on) : String(x.on));
+    const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && onOf(e.j) === onOf(j));
     if (newer) return `history: ${newer.r.name}/${newer.j.id} is newer on the same hint and ID`;
     if (stale.has(key)) return `stale: ${[...stale.get(key)].join(', ')} changed since it`;
     if (cleared.has(key)) return 'current';
