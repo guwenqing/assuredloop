@@ -1054,14 +1054,16 @@ describe('#125 the two spellings of a moved path, and judgements in another open
     stays('after the refusal');
   });
 
-  test('recording after the move, by another open request, on the map-consolidation hint of the moved request: the record keeps the sha256 of the message as al check shows it, with the archive path in it, and the hint clears', (t) => {
+  test('recording after the move, by another open request, on the map-consolidation hint of the moved request: the record keeps two hashes, in this order: the sha256 of the message as al check shows it, with the archive path in it, and the sha256 of the same message at the open path; and the hint clears', (t) => {
     const dir = closedWithOther(t);
     concludeHere(dir);
     const r = check(dir);
     const msg = before(one(consolidation(r), r, 'map-consolidation after the move').msg);
     assert.ok(msg.includes(`${archive(NAME)}/review.md`), `the message names the archive path:\n${msg}`);
     judge(dir, 'map-consolidation', NAME, WHY, { name: OTHER });
-    assert.deepEqual(judgementOf(dir, OTHER, 'J1').message_sha256, [sha(msg)], `the sha256 of the message as shown:\n${msg}`);
+    const openMsg = msg.replaceAll(`${archive(NAME)}/`, `${open(NAME)}/`);
+    assert.notEqual(openMsg, msg, `the open form differs from the message as shown:\n${msg}`);
+    assert.deepEqual(judgementOf(dir, OTHER, 'J1').message_sha256, [sha(msg), sha(openMsg)], `the sha256 of the message as shown, then of the same message at the open path:\n${msg}`);
     assertCurrent(dir, 'after the judgement', { holder: OTHER });
     assertAudit(dir, { holder: OTHER, state: CURRENT, when: 'after the judgement' });
   });
