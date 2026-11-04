@@ -12,14 +12,16 @@
 //   judgement counts.
 // - DES-37: a request that the branch concludes is checked as an open request,
 //   at its new paths. A request archived at the base is never checked again.
-// - The decision for map-consolidation: the hint line and the record stay as
-//   they were. The finding says what its message is at the open path, and only
-//   map-consolidation does so. A judgement compares its hash with the message as
-//   shown and with that open message. So a judgement that was recorded on the
-//   open request clears its hint after the move, with no new record. No text
-//   that a user wrote is ever read as moved. A hint whose message names a path
-//   under its request's folder and that gives no open message goes stale across
-//   the move, which is the safe way to fail.
+// - The decision for a hint with an open form: the hint line stays as it was.
+//   The finding says what its message is at the open paths. map-consolidation
+//   does so, and no-paragraph-link does so too (#128). A judgement on such a
+//   hint keeps the hash of the message as shown and the hash of the message at
+//   the open paths, when they differ (#128). A judgement compares its hashes
+//   with the message as shown and with that open message. So a judgement that
+//   was recorded on the open request clears its hint after the move, with no
+//   new record. No text that a user wrote is ever read as moved. A hint whose
+//   message names a path under its request's folder and that gives no open
+//   message goes stale across the move, which is the safe way to fail.
 // - The decision for no-id: a judgement on the path of the open request's file
 //   holds on that file after the move, and the audit shows it as current. It
 //   does not clear a hint on another file with the same text.
@@ -44,7 +46,9 @@
 // - `al record` does not read that way (DES-163). After the move, the hint's
 //   path is the archive path, so `--on requests/<name>/<file>` is refused, and
 //   only the path that the hint line shows is accepted. The record keeps the
-//   hash of the message as `al check` shows it, with the archive path in it.
+//   hash of the message as `al check` shows it, with the archive path in it. On
+//   a hint with an open form, it also keeps the hash of the message at the open
+//   paths, when they differ (#128).
 // - The open spelling counts only for a request that the branch concludes
 //   (DES-37). For a request archived at the base, requests/<name>/<file> names
 //   no hint, and only the path that the hint line shows does (DES-163).
