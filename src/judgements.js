@@ -23,12 +23,25 @@ const pathOf = (f) => String(f.file ?? f.where ?? '').replace(/ at the base .*$/
 // The ID that a finding's line shows: a lint with no ID shows "-".
 const idOf = (f) => f.id ?? '-';
 // Whether `on` names finding `f`: its ID, or its path when its ID is "-".
-export const names = (f, on) => String(on) === idOf(f) || (idOf(f) === '-' && String(on) === pathOf(f));
+// `read` is how a path is read: al record takes it as written.
+export const names = (f, on, read = String) => String(on) === idOf(f) || (idOf(f) === '-' && read(on) === read(pathOf(f)));
 
 // The request of finding `f`: the one that it names, as map-consolidation
 // does, whose ID is the bare request name, or the one that its ID starts
 // with (#121).
 const requestOf = (f) => f.request ?? /^([a-z0-9][a-z0-9-]*)\//.exec(idOf(f))?.[1] ?? null;
+
+// Whether this branch concludes request `name`, with `was` the state at the
+// base. An open request of that name, or one archived at the base, keeps its
+// archived folder apart (DES-37).
+const concludes = (state, was, name) => {
+  const r = state.requests.get(name);
+  return !!r && !r.open && checkedNow(r, was);
+};
+// For reading a judgement only, as the request reads while it is open (DES-37).
+// A whole path under requests/archive/<name>/ counts as requests/<name>/.
+const pathAsOpen = (state, was, path) => String(path).replace(/^requests\/archive\/([^/]+)\//,
+  (all, name) => (concludes(state, was, name) ? `requests/${name}/` : all));
 
 // The text hash of an ID in `state`, or null when it does not resolve. A bare
 // ID of a request's own paragraph, or a bare R<n>, is read in `request`.
@@ -82,7 +95,10 @@ function changedSince(state, j, f) {
     return null;
   }
   if (now.blocks) return list(j.blocks).includes(now.blocks[0]) ? null : `the text at ${f.where ?? `${f.file}:${f.line}`}`;
-  if (!list(j.message_sha256).includes(now.message_sha256[0])) return 'the hint\'s text';
+  // A hint whose message names a path under its request's folder gives the
+  // message at the open path; a hint that does not goes stale across the move.
+  const kept = list(j.message_sha256);
+  if (!kept.includes(now.message_sha256[0]) && !(f.openMessage && kept.includes(sha256(f.openMessage)))) return 'the hint\'s text';
   const request = requestOf(f);
   const moved = list(j.keeps).find((k) => isMap(k) && shaOf(state, String(k.id), request) !== (k.sha256 ?? null));
   return moved ? String(moved.id) : null;
@@ -101,6 +117,7 @@ export function judgementPass(state, was = null) {
   // A request that this branch concludes keeps its judgements as an open one
   // does (#107).
   const checked = (r) => checkedNow(r, was);
+  const read = (path) => pathAsOpen(state, was, path);
   const entries = [...state.requests.values()].filter(checked)
     .flatMap((r) => list(r.data?.judgements).filter((j) => isMap(j) && j.id != null && typeof j.hint === 'string' && !OWN_FORM.has(j.hint) && j.on != null)
       .map((j) => ({ r, j })))
@@ -113,7 +130,7 @@ export function judgementPass(state, was = null) {
   const apply = (findings) => findings.flatMap((f) => {
     // Only the newest judgement on a pair of hint code and --on counts; an
     // older one is history (DES-163).
-    const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on));
+    const last = entries.findLast(({ j }) => j.hint === f.code && names(f, j.on, read));
     if (!last || f.severity === 'info') return [f];
     const key = `${last.r.name}/${last.j.id}`;
     if (f.severity === 'not ok') {
@@ -157,7 +174,9 @@ export function judgementPass(state, was = null) {
       return b.hinted ? `stale: ${[...b.whats].join(', ')} changed since it` : 'current';
     }
     const at = entries.findIndex((e) => e.r.name === r.name && String(e.j.id) === String(j.id));
-    const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && String(e.j.on) === String(j.on));
+    // A judgement on an ID keeps that ID, so another --on is a hint's path.
+    const onOf = (x) => (list(x.keeps).some((k) => isMap(k) && String(k.id) === String(x.on)) ? String(x.on) : read(x.on));
+    const newer = entries.slice(at < 0 ? entries.length : at + 1).findLast((e) => e.j.hint === j.hint && onOf(e.j) === onOf(j));
     if (newer) return `history: ${newer.r.name}/${newer.j.id} is newer on the same hint and ID`;
     if (stale.has(key)) return `stale: ${[...stale.get(key)].join(', ')} changed since it`;
     if (cleared.has(key)) return 'current';
