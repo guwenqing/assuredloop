@@ -27,13 +27,11 @@
 // - `al record` refuses an archived request. So each record is made before the
 //   move. A change after the move is an edit of the moved files.
 //
-// `al context <name>` on a closing branch shows a close line. On main at this
-// test's base it shows this line, and this file does not assert it, because the
-// requirement does not say what it must show:
-//   close C1 share/R1 (requests/archive/share/request.md:14) recorded at the
-//   close; an archived request is not checked against today's spec: <reason>
-// The Hints section of `al context` is asserted, because it shows what al check
-// gives. For a request archived at the base, the close line is asserted too.
+// The decision for `al context <name>`: on a closing branch, in the working tree
+// with a base, it agrees with al check about a close line. It shows the line as
+// `current`, or as `stale` with the fact that changed, at the new path. It does
+// not say "an archived request is not checked". For a request archived at the
+// base, and with no base, it still says so, and al check gives no such hint.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cpSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
@@ -78,6 +76,11 @@ const NONE_KNOWN = (id, name, n) => `${HEAD(id)} Known direct links: none known.
 const KNOWN_CITED = (id, name, n, cites) =>
   `${HEAD(id)} Known direct links, each with the limit of its evidence: cited in ${cites.join(', ')}, and a citation is not evidence that the code or the test does what the requirement says. ${CLEAR(name, n)}`;
 const SHARE_MESSAGE = (cites) => KNOWN_CITED(ID, NAME, 'R1', cites);
+
+// The line of a close line in `al context share`. R1 is at line 14 of request.md.
+const CLOSE_LINE = (state, why) => `close C1 ${ID} (${MOVED}/request.md:14) ${state}: ${why}`;
+const NOT_CHECKED = (why) => CLOSE_LINE("recorded at the close; an archived request is not checked against today's spec", why);
+const STALE_CLOSE = (fact, why) => CLOSE_LINE(`stale: ${fact} changed since it was recorded; it clears nothing until you record it again`, why);
 
 // --- the worlds
 
@@ -143,6 +146,58 @@ const judged = (t) => copyOf(t, 'judged', (b) => {
 const judgedMoved = (t) => copyOf(t, 'judged and moved', (b) => {
   const dir = judged(b);
   ok(dir, ['conclude', NAME, '--yes']);
+  save(dir);
+  return dir;
+});
+
+// As `judged`, and specs/x.md cites R1 too. Then the same world, after the move.
+const judgedWithX = (t) => copyOf(t, 'judged with x', (b) => {
+  const dir = opened(b, [CITED]);
+  citeIn(dir, 'specs/x.md');
+  judge(dir, CODE, ID, WHY, { name: NAME });
+  save(dir);
+  return dir;
+});
+const judgedWithXMoved = (t) => copyOf(t, 'judged with x and moved', (b) => {
+  const dir = judgedWithX(b);
+  ok(dir, ['conclude', NAME, '--yes']);
+  save(dir);
+  return dir;
+});
+
+// closedTwo, after the commit of the move.
+const closedTwoMoved = (t) => copyOf(t, 'closed and moved', (b) => {
+  const dir = closedTwo(b);
+  ok(dir, ['conclude', NAME, '--yes']);
+  save(dir, { tier: '2' });
+  return dir;
+});
+
+// share on path 1d, whose own spec cites R1, after the commit of the move. Then
+// the same world, archived at the base of the branch next.
+const citedMoved = (t) => copyOf(t, 'cited and moved', (b) => {
+  const dir = opened(b, [CITED]);
+  ok(dir, ['conclude', NAME, '--yes']);
+  save(dir);
+  return dir;
+});
+const citedAtBase = (t) => copyOf(t, 'cited at the base', (b) => {
+  const dir = citedMoved(b);
+  mergeAndBranch(dir);
+  return dir;
+});
+
+// share, whose own spec cites R1, and the open request other. Then the same
+// world, where other and specs/x.md cite R1 too.
+const citedWithOther = (t) => copyOf(t, 'cited with other', (b) => {
+  const dir = opened(b, [CITED]);
+  another(dir);
+  return dir;
+});
+const threeCite = (t) => copyOf(t, 'three cite', (b) => {
+  const dir = opened(b, [CITED]);
+  another(dir, 'other', [['OT-9 plan', CITE]]);
+  citeIn(dir, 'specs/x.md');
   save(dir);
   return dir;
 });
@@ -298,8 +353,7 @@ describe('#128 a current close line clears the hint before and after the move', 
   });
 
   test('path 2: the Hints section of al context shows no such hint after the move, as al check gives none', (t) => {
-    const dir = closedTwo(t);
-    concludeHere(dir, { tier: '2' });
+    const dir = closedTwoMoved(t);
     const r = ok(dir, ['context', NAME]);
     assert.ok(r.stdout.split('\n').includes('Hints     none'), `Hints none:\n${show(r)}`);
     assert.doesNotMatch(r.stdout, new RegExp(`hint ${CODE}`), show(r));
@@ -319,7 +373,7 @@ describe('#128 a current close line clears the hint before and after the move', 
     const dir = opened(t, [CITED]);
     closeIt(dir);
     save(dir);
-    acrossTheMove(dir, (when) => assertClear(dir, when));
+    beforeAndAfter(dir, (when) => assertClear(dir, when));
   });
 
   test('the issue: a judgement, then a close line, then the move: no hint, and nothing reads as stale', (t) => {
@@ -366,8 +420,8 @@ describe('#128 a current close line clears the hint before and after the move', 
 
 describe('#128 a close line that goes stale on the closing branch clears nothing, and the hint names it', () => {
   // Path 1d allows the move with a stale line, so the requirement can change first.
-  function staleByRequirement(t) {
-    const dir = opened(t);
+  const staleByRequirement = (t) => copyOf(t, 'stale by R1', (b) => {
+    const dir = opened(b);
     closeIt(dir);
     save(dir);
     assertClear(dir, 'while the close line is current');
@@ -376,7 +430,7 @@ describe('#128 a close line that goes stale on the closing branch clears nothing
     ok(dir, ['record', NAME, 'signoff', '--source', 'owner', '--words', 'Yes, the new text', '--yes']);
     save(dir);
     return dir;
-  }
+  });
 
   test('path 1d: R1 gets a new version, signed: C1 is stale before the move, al conclude shows it and closes, and C1 is stale after the move', (t) => {
     const dir = staleByRequirement(t);
@@ -469,8 +523,7 @@ describe('#128 a close line that goes stale on the closing branch clears nothing
   });
 
   test('the moved request.md changes R1: R1 is not signed, so a not ok and no hint. al index adds no version, and --strict exits 1', (t) => {
-    const dir = closedTwo(t);
-    concludeHere(dir, { tier: '2' });
+    const dir = closedTwoMoved(t);
     const versions = record(dir, NAME).requirements;
     editFile(dir, `${MOVED}/request.md`, TEXT_24, TEXT_48);
     index(dir);
@@ -493,7 +546,7 @@ describe('#128 a close line that goes stale on the closing branch clears nothing
     assertStaleClose(dir, 'before the judgement');
     judgeIt(dir);
     save(dir);
-    acrossTheMove(dir, (when) => assertHolds(dir, when));
+    beforeAndAfter(dir, (when) => assertHolds(dir, when));
   });
 
   test('a judgement, then a close line that goes stale: the message gains the close line, so the judgement is stale, before and after the move', (t) => {
@@ -508,6 +561,58 @@ describe('#128 a close line that goes stale on the closing branch clears nothing
       assert.ok(f.msg.includes('; close line C1 is stale'), `it names C1 ${when}:\n${f.line}`);
       if (when === 'before the move') concludeHere(dir);
     }
+  });
+});
+
+// =====================================================================
+// al context on a closing branch agrees with al check about a close line.
+
+describe('#128 al context on a closing branch agrees with al check about a close line', () => {
+  const NOT_CHECKED_WORDS = 'an archived request is not checked';
+
+  // The state is the working tree with a base: al check says so.
+  function assertWithBase(dir) {
+    const r = check(dir);
+    assert.match(r.stdout, /^Read {6}working tree · base [0-9a-f]+ /m, show(r));
+  }
+  function assertContext(dir, line, when) {
+    const r = ok(dir, ['context', NAME]);
+    assert.ok(r.stdout.split('\n').includes(line), `the line "${line}" ${when}:\n${show(r)}`);
+    assert.ok(!r.stdout.includes(NOT_CHECKED_WORDS), `no "${NOT_CHECKED_WORDS}" ${when}:\n${show(r)}`);
+    assert.match(r.stdout, /^Read {6}working tree/m, show(r));
+    return r;
+  }
+
+  test('a current close line shows as current at its new path, and al context does not say that the request is not checked, before and after the commit of the move', (t) => {
+    const dir = closedTwo(t);
+    ok(dir, ['conclude', NAME, '--yes']);
+    index(dir);
+    assertWithBase(dir);
+    assertContext(dir, CLOSE_LINE('current', MET), 'before the commit of the move');
+    commitAll(dir, claim(NAME, '2'));
+    assertWithBase(dir);
+    assertContext(dir, CLOSE_LINE('current', MET), 'after the commit of the move');
+  });
+
+  test('a stale close line shows as stale, with the fact that changed: a paragraph that its reason names, or the requirement', (t) => {
+    const named = closedTwo(t, NAMES_INV12);
+    concludeHere(named, { tier: '2' });
+    editFile(named, SPEC, T12, T12B);
+    save(named, { tier: '2' });
+    assertWithBase(named);
+    const r = assertContext(named, STALE_CLOSE('INV-12', NAMES_INV12), 'after INV-12 changes');
+    assert.ok(r.stdout.includes('; close line C1 is stale'), `the Hints section names C1:\n${show(r)}`);
+
+    const dir = opened(t);
+    closeIt(dir);
+    save(dir);
+    editRequest(dir, NAME, TEXT_24, TEXT_48);
+    index(dir);
+    ok(dir, ['record', NAME, 'signoff', '--source', 'owner', '--words', 'Yes, the new text', '--yes']);
+    save(dir);
+    concludeHere(dir);
+    assertWithBase(dir);
+    assertContext(dir, STALE_CLOSE('R1', MET), 'after R1 gets a new version');
   });
 });
 
@@ -543,13 +648,12 @@ describe('#128 a judgement on the hint holds across the move when the own files 
     citeIn(dir, `${OPEN}/review.md`);
     citeIn(dir, `${OPEN}/notes/more.md`);
     write(dir, `${OPEN}/request.md`, `${read(dir, `${OPEN}/request.md`)}\n## Notes\n\nSee ${ID}.\n`);
-    save(dir);
     const r = check(dir);
     const f = one(hintOn(r), r, 'the hint before the judgement');
     assert.deepEqual(citedIn(f), [`current ${OPEN}/notes/more.md`, `current ${OPEN}/request.md`, `current ${OPEN}/review.md`, `current ${OPEN}/spec.md`], f.line);
     judgeIt(dir);
     save(dir);
-    acrossTheMove(dir, (when) => assertHolds(dir, when));
+    beforeAndAfter(dir, (when) => assertHolds(dir, when));
   });
 
   test('guard: no citation: the judgement holds across the move', (t) => {
@@ -584,17 +688,15 @@ describe('#128 a judgement on the hint holds across the move when the own files 
   });
 
   test('a judgement that another open request holds on share/R1 holds across the move of share', (t) => {
-    const dir = opened(t, [CITED]);
-    another(dir);
+    const dir = citedWithOther(t);
     judgeIt(dir, { name: 'other' });
     save(dir, { name: 'other' });
-    acrossTheMove(dir, (when) => assertHolds(dir, when, { holder: 'other' }));
+    beforeAndAfter(dir, (when) => assertHolds(dir, when, { holder: 'other' }));
     assertAudit(dir, { holder: 'other', state: 'current' });
   });
 
   test('guard: another open request records a judgement on share/R1 after the move: it clears the hint at the text that the hint line shows', (t) => {
-    const dir = opened(t, [CITED]);
-    another(dir);
+    const dir = citedWithOther(t);
     concludeHere(dir);
     const r = check(dir);
     one(hintOn(r), r, 'the hint after the move');
@@ -651,12 +753,22 @@ describe('#128 a citation or a link that comes or goes on the closing branch mak
     });
   }
 
+  // The new file has the open spelling of the moved file. A reading that maps
+  // the moved path back to its open path must not take the two files as one.
+  test('a citation comes after the move, in a new file at the old path of an own file that also cites it: the judgement is stale, and the message names both files', (t) => {
+    const dir = judgedMoved(t);
+    assertHolds(dir, 'after the move');
+    write(dir, `${OPEN}/spec.md`, doc([CITED]));
+    const both = [`current ${OPEN}/spec.md`, `historical ${MOVED}/spec.md`];
+    assert.deepEqual(citedIn(assertStale(dir, 'after the new file, before al index')), both);
+    save(dir);
+    const f = assertStale(dir, 'after the new file and the commit');
+    assert.deepEqual(citedIn(f), both, f.line);
+    assert.ok(f.msg.endsWith(` · cited lines: ${OPEN}/spec.md 3; ${MOVED}/spec.md 3`), f.line);
+  });
+
   test('guard: a citation goes before the move: the judgement is stale before the move and after it', (t) => {
-    const dir = opened(t, [CITED]);
-    citeIn(dir, 'specs/x.md');
-    save(dir);
-    judgeIt(dir);
-    save(dir);
+    const dir = judgedWithX(t);
     write(dir, `${OPEN}/spec.md`, doc([NOT_CITED]));
     save(dir);
     assertStale(dir, 'before the move');
@@ -665,12 +777,7 @@ describe('#128 a citation or a link that comes or goes on the closing branch mak
   });
 
   test('a citing line goes from the moved spec after the move: the judgement is stale', (t) => {
-    const dir = opened(t, [CITED]);
-    citeIn(dir, 'specs/x.md');
-    save(dir);
-    judgeIt(dir);
-    save(dir);
-    concludeHere(dir);
+    const dir = judgedWithXMoved(t);
     assertHolds(dir, 'after the move');
     write(dir, `${MOVED}/spec.md`, doc([NOT_CITED]));
     save(dir);
@@ -690,7 +797,6 @@ describe('#128 a citation or a link that comes or goes on the closing branch mak
   test('a moved file that cites it is deleted after the move: the judgement is stale', (t) => {
     const dir = opened(t, [CITED]);
     citeIn(dir, `${OPEN}/review.md`);
-    save(dir);
     judgeIt(dir);
     save(dir);
     concludeHere(dir);
@@ -702,12 +808,7 @@ describe('#128 a citation or a link that comes or goes on the closing branch mak
   });
 
   test('a citing file outside the request is deleted after the move: the judgement is stale', (t) => {
-    const dir = opened(t, [CITED]);
-    citeIn(dir, 'specs/x.md');
-    save(dir);
-    judgeIt(dir);
-    save(dir);
-    concludeHere(dir);
+    const dir = judgedWithXMoved(t);
     assertHolds(dir, 'after the move');
     rmSync(join(dir, 'specs/x.md'));
     save(dir);
@@ -810,6 +911,12 @@ describe('#128 a request archived at the base stays unchecked', () => {
     });
   }
 
+  const archivedWithOther = (t) => copyOf(t, 'archived with other', (b) => {
+    const dir = archivedAtBase(b, { paras: [NOT_CITED] });
+    another(dir);
+    return dir;
+  });
+
   test('guard: no hint and no judged line for a request archived at the base, with a citation in its own spec, also after a commit on the new branch', (t) => {
     const dir = archivedAtBase(t);
     for (const when of ['on the new branch', 'after a commit on it']) {
@@ -837,18 +944,14 @@ describe('#128 a request archived at the base stays unchecked', () => {
     editFile(dir, SPEC, T12, T12B);
     save(dir, { tier: '1', message: 'INV-12' });
     const r = ok(dir, ['context', NAME]);
-    assert.ok(
-      r.stdout.split('\n').includes(`close C1 ${ID} (${MOVED}/request.md:14) recorded at the close; an archived request is not checked against today's spec: ${NAMES_INV12}`),
-      show(r),
-    );
+    assert.ok(r.stdout.split('\n').includes(NOT_CHECKED(NAMES_INV12)), show(r));
     assert.ok(r.stdout.split('\n').includes('Hints     none'), show(r));
   });
 
   // `--on` names the ID of a hint, or the path of a hint with no ID.
   for (const on of [`${MOVED}/spec.md`, `${MOVED}/request.md`, `${OPEN}/request.md`, ID]) {
     test(`guard: an open request records a judgement with --on ${on}: refused, exit 2, and the live hint of the open request stays`, (t) => {
-      const dir = archivedAtBase(t, { paras: [NOT_CITED] });
-      another(dir);
+      const dir = archivedWithOther(t);
       const r = refused(dir, ['record', 'other', 'judgement', '--hint', CODE, '--on', on, '--reason', WHY, '--yes']);
       assert.ok(r.stdout.split('\n').includes(`al: --on ${on}: al check gives no ${CODE} hint on ${on} now`), show(r));
       const c = check(dir);
@@ -860,8 +963,7 @@ describe('#128 a request archived at the base stays unchecked', () => {
   // the archived request. Its other fields still match the live hint.
   for (const on of [`${MOVED}/spec.md`, `${MOVED}/request.md`, `${OPEN}/request.md`]) {
     test(`guard: a record whose judgement says on: ${on} clears nothing on an open request whose own path is different`, (t) => {
-      const dir = archivedAtBase(t, { paras: [NOT_CITED] });
-      another(dir);
+      const dir = archivedWithOther(t);
       judgeIt(dir, { name: 'other', on: 'other/R1' });
       save(dir, { name: 'other' });
       assertHolds(dir, 'before the edit', { id: 'other/R1', holder: 'other' });
@@ -906,14 +1008,19 @@ describe('#128 a request archived at the base stays unchecked', () => {
     one(hintOn(next, 'other/R1'), next, 'the hint on other/R1, with share archived at the base');
   });
 
-  test('guard: with no base, a concluded request gets no hint', (t) => {
+  test('guard: with no base, a concluded request gets no hint, and al context says that it is not checked', (t) => {
     const dir = opened(t, [CITED]);
+    closeIt(dir);
+    save(dir);
     git(dir, 'branch', '-m', 'main', 'trunk');
     git(dir, 'branch', '-m', 'feature', 'work');
     concludeHere(dir);
     const r = check(dir);
     assert.match(r.stdout, /^Read {6}working tree · no base$/m, show(r));
     none(hintOn(r), r, `${CODE} on ${ID}`);
+    const c = ok(dir, ['context', NAME]);
+    assert.ok(c.stdout.split('\n').includes(NOT_CHECKED(MET)), show(c));
+    assert.ok(c.stdout.split('\n').includes('Hints     none'), show(c));
   });
 });
 
@@ -929,16 +1036,13 @@ describe('#128 al record stays strict', () => {
 
   for (const [label, args] of RECORDS) {
     test(`guard: al record ${NAME} ${label} on a request that the branch concluded: refused, exit 2, and it writes nothing`, (t) => {
-      const dir = opened(t, [CITED]);
-      concludeHere(dir);
+      const dir = citedMoved(t);
       const r = refused(dir, ['record', NAME, ...args]);
       assert.ok(r.stdout.split('\n').includes(REFUSAL), show(r));
     });
 
     test(`guard: al record ${NAME} ${label} on a request archived at the base: refused, exit 2, and it writes nothing`, (t) => {
-      const dir = opened(t, [CITED]);
-      concludeHere(dir);
-      mergeAndBranch(dir);
+      const dir = citedAtBase(t);
       const r = refused(dir, ['record', NAME, ...args]);
       assert.ok(r.stdout.split('\n').includes(REFUSAL), show(r));
     });
@@ -960,10 +1064,7 @@ describe('#128 al record stays strict', () => {
 
 describe('#128 a move can change the order of the files in the message, and the judgement holds', () => {
   test('another open request and specs/ sort around the own file: the judgement holds, and the shown message has the real order', (t) => {
-    const dir = opened(t, [CITED]);
-    another(dir, 'other', [['OT-9 plan', CITE]]);
-    citeIn(dir, 'specs/x.md');
-    save(dir);
+    const dir = threeCite(t);
     const r = check(dir);
     assert.deepEqual(
       citedIn(one(hintOn(r), r, 'the hint before the judgement')),
@@ -982,7 +1083,6 @@ describe('#128 a move can change the order of the files in the message, and the 
   test('a file that sorts between requests/archive/ and requests/share/: the judgement holds across the move', (t) => {
     const dir = opened(t, [CITED]);
     citeIn(dir, 'requests/b-note.md');
-    save(dir);
     const r = check(dir);
     assert.deepEqual(
       citedIn(one(hintOn(r), r, 'the hint before the judgement')),
@@ -1073,7 +1173,6 @@ describe('#128 a citation in a snapshot under origin/ is historical before and a
     const dir = opened(t, [CITED]);
     citeIn(dir, `${OPEN}/origin-notes.md`);
     citeIn(dir, `${OPEN}/sub/origin/deep.md`);
-    save(dir);
     const r = check(dir);
     assert.deepEqual(
       citedIn(one(hintOn(r), r, 'the hint before the judgement')),
@@ -1091,10 +1190,7 @@ describe('#128 a citation in a snapshot under origin/ is historical before and a
 
 describe('#128 a citation that does not move keeps its word and its path, and the judgement holds', () => {
   test('a citation in another open request and in specs/, beside an own citation', (t) => {
-    const dir = opened(t, [CITED]);
-    another(dir, 'other', [['OT-9 plan', CITE]]);
-    citeIn(dir, 'specs/x.md');
-    save(dir);
+    const dir = threeCite(t);
     judgeIt(dir);
     save(dir);
     beforeAndAfter(dir, (when) => assertHolds(dir, when));
@@ -1124,7 +1220,6 @@ describe('#128 a citation that does not move keeps its word and its path, and th
     const dir = opened(t, [CITED]);
     const odd = [`docs/${MOVED}/note.md`, `specs/${OPEN}/note.md`];
     for (const file of odd) citeIn(dir, file);
-    save(dir);
     judgeIt(dir);
     save(dir);
     beforeAndAfter(dir, (when) => assertHolds(dir, when));
@@ -1183,8 +1278,8 @@ describe('#128 two requests cite each other', () => {
 
   // alpha cites beta/R1, and beta cites alpha/R1. Each has a judgement on its
   // own hint, made while both are open.
-  function crossCited(t) {
-    const dir = empty(t);
+  const crossCited = (t) => copyOf(t, 'cross cited', (b) => {
+    const dir = empty(b);
     openRequest(dir, A, [['SP-9 plan', `Build for ${JB} first.`]], { tier: '1d' });
     commitAll(dir, claim(A, '1d'));
     openRequest(dir, B, [['SP-9 plan', `Build for ${JA} first.`]], { tier: '1d' });
@@ -1197,7 +1292,7 @@ describe('#128 two requests cite each other', () => {
     judgeIt(dir, { name: B, on: JB });
     save(dir, { name: B });
     return dir;
-  }
+  });
   const holdsA = (dir, when) => assertHolds(dir, when, { id: JA, holder: A });
   const holdsB = (dir, when) => assertHolds(dir, when, { id: JB, holder: B });
 
@@ -1219,7 +1314,7 @@ describe('#128 two requests cite each other', () => {
   // requirement does not say.
   test('the branch concludes only alpha: the judgement of alpha holds, and the judgement of beta, which stays open, holds too', (t) => {
     const dir = crossCited(t);
-    acrossTheMove(dir, (when) => {
+    beforeAndAfter(dir, (when) => {
       holdsA(dir, when);
       holdsB(dir, when);
     }, { name: A });
@@ -1240,8 +1335,7 @@ describe('#128 two requests cite each other', () => {
 
 describe('#128 the message as shown does not change', () => {
   test('guard: with no judgement: the hint shows the moved file as historical, at its real path', (t) => {
-    const dir = opened(t, [CITED]);
-    concludeHere(dir);
+    const dir = citedMoved(t);
     const r = check(dir);
     const f = one(hintOn(r), r, 'the hint after the move');
     assert.equal(f.file, `${MOVED}/request.md`, f.line);
@@ -1267,7 +1361,6 @@ describe('#128 the message as shown does not change', () => {
     const dir = opened(t, [CITED]);
     another(dir, 'other', [['OT-9 plan', NO_CITE]]);
     citeIn(dir, `${OPEN}/review.md`, 'other/R1');
-    save(dir);
     judgeIt(dir);
     save(dir);
     concludeHere(dir);
@@ -1282,8 +1375,7 @@ describe('#128 the message as shown does not change', () => {
 
 describe('#128 --strict stays as it is', () => {
   test('guard: the hint with no judgement, after the move: exit 0 in both modes', (t) => {
-    const dir = opened(t, [CITED]);
-    concludeHere(dir);
+    const dir = citedMoved(t);
     const r = bothModes(dir);
     one(hintOn(r), r, 'the hint after the move');
   });
